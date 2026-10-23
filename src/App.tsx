@@ -25,8 +25,8 @@ import NewContactModal from "./components/modals/NewContactModal";
 import Landing from "./views/landings/Landing";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
-import { LanguageProvider } from "./components/LanguageProvider";
-import { Plus, Eye, EyeOff, Loader2 } from "lucide-react";
+import { LanguageProvider, useLanguage } from "./components/LanguageProvider";
+import { Plus, Eye, EyeOff, Loader2, ChevronLeft } from "lucide-react";
 import { Skeleton } from "./components/ui/Skeleton";
 import { Contact } from "./types";
 import ContactDetailsModal from "./components/modals/ContactDetailsModal";
@@ -463,24 +463,42 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Contact detail is now a real URL route (`/people/:contactId`), so the
   // browser back button and top-nav links always leave the detail page. The
   // route is the source of truth; this state is only the loaded contact object.
+  // `unavailableContactId` distinguishes "no such person, or not yours" from
+  // "still loading", so a dead or forbidden deep link is answered instead of
+  // rendering a blank page (#1761). Keyed by id, so moving to another person
+  // never shows the previous person's answer.
+  const [unavailableContactId, setUnavailableContactId] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!contactId) {
       setSelectedContact(null);
       return;
     }
     const ref = doc(db, "contacts", contactId);
-    const unsubscribe = onSnapshot(ref, (snap) => {
-      const exists =
-        typeof snap.exists === "function" ? snap.exists() : Boolean(snap.data?.());
-      if (exists) {
-        setSelectedContact({
-          id: contactId,
-          ...(snap.data?.() || {}),
-        } as Contact);
-      } else {
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        const exists =
+          typeof snap.exists === "function" ? snap.exists() : Boolean(snap.data?.());
+        if (exists) {
+          setSelectedContact({
+            id: contactId,
+            ...(snap.data?.() || {}),
+          } as Contact);
+          setUnavailableContactId(null);
+        } else {
+          setSelectedContact(null);
+          setUnavailableContactId(contactId);
+        }
+      },
+      (error) => {
+        // Rules deny the read outright for a person outside the viewer's
+        // scope, so no snapshot ever arrives: answer the route instead of
+        // leaving it blank (#1761).
+        console.error("contact subscription error", error);
         setSelectedContact(null);
-      }
-    });
+        setUnavailableContactId(contactId);
+      },
+    );
     return unsubscribe;
   }, [contactId, effectiveIdentityKey]);
 
@@ -550,6 +568,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Pick a desktop shell from the user's preference, falling through to the
   // top-bar shell below lg regardless of preference (#664).
   const { effective } = useNavShell();
+  const { t } = useLanguage();
   // `lg`, per docs/specs/navigation-shell-preference.md: below the large
   // breakpoint every preference falls through to the top-bar shell, which
   // already carries its own hamburger drawer under `lg` and MobileNav's bottom
@@ -623,6 +642,25 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   initialThreadId={initialParentId}
                   initialInteractionId={initialInteractionId}
                 />
+              ) : contactId && unavailableContactId === contactId ? (
+                <div className="flex min-h-[60vh] items-center justify-center p-6">
+                  <div className="w-full max-w-sm rounded-3xl bg-surface p-6 text-center text-on-surface">
+                    <h1 className="font-serif text-xl font-semibold">
+                      {t('modals.contactDetails.access_restricted')}
+                    </h1>
+                    <p className="mt-2 text-sm text-on-surface-variant">
+                      {t('modals.contactDetails.no_permission')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/directory')}
+                      className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-primary px-5 text-sm font-semibold text-on-primary"
+                    >
+                      <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                      {t('modals.contactDetails.back_to_people')}
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <React.Suspense
                   fallback={

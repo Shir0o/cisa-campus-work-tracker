@@ -61,7 +61,7 @@ function KindControl({
         aria-expanded={open}
         aria-label={t('modals.contactDetails.change_kind')}
         title={t('modals.contactDetails.change_kind')}
-        className="inline-flex items-center gap-1 rounded-full hover:opacity-80 transition-opacity"
+        className="inline-flex items-center gap-1 rounded-full min-h-11 -my-3 px-1 hover:opacity-80 transition-opacity"
       >
         <KindChip contact={contact} showAll />
         <ChevronDown className="w-3 h-3 text-on-surface-variant" />
@@ -130,6 +130,7 @@ function MoreMenu({
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
@@ -141,16 +142,30 @@ function MoreMenu({
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
 
+  // The menu is a layer on top of the page, so it answers Escape first: the
+  // contact page has its own Escape handler on `window` that closes the whole
+  // page, which would lose the reader's place (#1761).
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
   const item =
-    "w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors";
+    "w-full flex items-center gap-2 px-3 py-2 min-h-11 text-left hover:bg-surface-container-high transition-colors";
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative" onKeyDown={handleKeyDown}>
       <button
+        ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         aria-label={t('modals.contactDetails.more_actions', 'More actions')}
         title={t('modals.contactDetails.more_actions', 'More actions')}
-        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="w-11 h-11 md:w-9 md:h-9 rounded-full border border-outline text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
@@ -199,9 +214,16 @@ function MoreMenu({
             </button>
           )}
           {showDelete && (
-            <button onClick={() => { setOpen(false); onDelete(); }} className={item}>
-              <Trash2 className="w-4 h-4" /> {t('modals.contactDetails.delete_contact')}
-            </button>
+            <>
+              {/* #1761: destructive is told apart from the hand-offs above it. */}
+              <div className="my-1 h-px bg-outline" aria-hidden="true" />
+              <button
+                onClick={() => { setOpen(false); onDelete(); }}
+                className={cn(item, "text-error hover:bg-error/10")}
+              >
+                <Trash2 className="w-4 h-4" /> {t('modals.contactDetails.delete_contact')}
+              </button>
+            </>
           )}
         </div>
       )}
@@ -323,7 +345,7 @@ export default function ContactHead(props: ContactHeadProps) {
     <button
       type="button"
       onClick={onOpenPrayers}
-      className="px-5 py-1.5 text-xs font-medium text-accent hover:underline text-left bg-transparent"
+      className="px-5 min-h-11 text-xs font-medium text-accent hover:underline text-left bg-transparent"
     >
       {(openPrayerCount === 1
         ? t('modals.contactDetails.prayers_held_count_one')
@@ -341,7 +363,7 @@ export default function ContactHead(props: ContactHeadProps) {
             <button
               type="button"
               onClick={onCancelEdit}
-              className="text-sm font-semibold text-on-surface-variant"
+              className="min-h-11 px-1 text-sm font-semibold text-on-surface-variant"
             >
               {t('modals.contactDetails.cancel')}
             </button>
@@ -349,7 +371,7 @@ export default function ContactHead(props: ContactHeadProps) {
             <button
               type="submit"
               form="edit-contact-form"
-              className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold"
+              className="min-h-11 px-4 bg-primary text-on-primary rounded-full text-xs font-semibold"
             >
               {t('modals.contactDetails.save')}
             </button>
@@ -370,7 +392,7 @@ export default function ContactHead(props: ContactHeadProps) {
                 {role !== 'viewer' && (
                   <button
                     onClick={onEdit}
-                    className="px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
+                    className="min-h-11 px-4 rounded-full border border-outline text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
                   >
                     {t('actions.edit') || 'Edit'}
                   </button>
@@ -402,14 +424,19 @@ export default function ContactHead(props: ContactHeadProps) {
               <button
                 type="button"
                 onClick={onOpenConversation}
-                className="relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+                aria-label={
+                  conversationUnread
+                    ? `${t('modals.contactDetails.follow_up')}, ${t('modals.contactDetails.full_timers_unread')}`
+                    : undefined
+                }
+                className="relative inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full border border-outline text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 {t('modals.contactDetails.follow_up')}
                 {conversationUnread && (
                   <span
                     className="cd-pane-dot"
-                    aria-label={t('modals.contactDetails.full_timers_unread')}
+                    aria-hidden="true"
                   />
                 )}
               </button>
@@ -431,7 +458,7 @@ export default function ContactHead(props: ContactHeadProps) {
                     type="button"
                     onClick={onOpenAbout}
                     aria-label={aboutLabel}
-                    className="cd-name text-left bg-transparent p-0 block max-w-full font-serif text-2xl text-on-surface leading-tight truncate"
+                    className="cd-name text-left bg-transparent p-0 block max-w-full min-h-11 font-serif text-2xl text-on-surface leading-tight truncate"
                   >
                     {contact.name}
                   </button>
@@ -441,7 +468,7 @@ export default function ContactHead(props: ContactHeadProps) {
                       <span
                         key={t}
                         style={tagStyle(t)}
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)]"
+                        className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)]"
                       >
                         {t}
                       </span>

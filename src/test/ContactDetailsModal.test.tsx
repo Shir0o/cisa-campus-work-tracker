@@ -4240,3 +4240,90 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
 });
 
 
+
+// #1761 — the phone critique of /people/:contactId. Behaviour that a 375×812
+// render can assert: the page lock behind the full-screen sheet, Escape
+// belonging to the open menu, and an audit line that never says "undefined".
+describe('Contact detail on a phone (#1761)', () => {
+  const onClose = vi.fn();
+  const contact = { ...mockContact, email: undefined, phone: undefined };
+  let restoreMatchMedia: (() => void) | null = null;
+
+  const renderOnPhone = (ui: React.ReactElement) => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: query === '(max-width: 768px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    restoreMatchMedia = () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    return render(ui);
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.messages = [];
+  });
+
+  afterEach(() => {
+    restoreMatchMedia?.();
+    restoreMatchMedia = null;
+    document.body.style.overflow = '';
+  });
+
+  it('locks the page behind the sheet and restores it on close', () => {
+    document.body.style.overflow = 'auto';
+
+    const { unmount } = renderOnPhone(
+      <ContactDetailsModal isOpen={true} onClose={onClose} contact={contact} />,
+    );
+
+    expect(document.body.style.overflow).toBe('hidden');
+    unmount();
+    expect(document.body.style.overflow).toBe('auto');
+  });
+
+  it('closes More actions on Escape instead of leaving the page', () => {
+    renderOnPhone(<ContactDetailsModal isOpen={true} onClose={onClose} contact={contact} />);
+
+    const trigger = screen.getByRole('button', { name: 'More actions' });
+    fireEvent.click(trigger);
+    expect(screen.getByText('Add prayer')).toBeInTheDocument();
+
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+
+    expect(screen.queryByText('Add prayer')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+
+  it('does not write "undefined" into the audit line when filling a field that was never set', async () => {
+    renderOnPhone(<ContactDetailsModal isOpen={true} onClose={onClose} contact={contact} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByPlaceholderText('(555) 000-0000'), {
+      target: { value: '555-0100' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /\bSave\b/i }));
+
+    await waitFor(() => expect(firestore.updateDoc).toHaveBeenCalled());
+    const descriptions = (logActivity as any).mock.calls
+      .map(([arg]: any[]) => arg)
+      .filter((arg: any) => arg?.type === 'edit')
+      .map((arg: any) => arg.description as string)
+      .join('\n');
+
+    expect(descriptions).not.toContain('undefined');
+    expect(descriptions).toContain('phone: "" → "555-0100"');
+    expect(descriptions).not.toContain('email:');
+  });
+});

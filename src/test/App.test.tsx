@@ -137,13 +137,17 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { LIST: 'LIST' },
 }));
 
+// #1761: a person doc the viewer cannot read produces no snapshot at all, so
+// the route has to answer for it. Flip this to simulate a forbidden/deleted id.
+const contactState = vi.hoisted(() => ({ exists: true }));
+
 // Mock Firestore just enough for the app-level roster sync (issue #549).
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: any, collection: string, id: string) => ({ path: `${collection}/${id}`, id })),
   onSnapshot: vi.fn((ref: any, callback: any) => {
     callback(
       ref?.path?.startsWith('contacts/')
-        ? { exists: () => true, id: ref.id, data: () => ({ name: 'John Doe' }) }
+        ? { exists: () => contactState.exists, id: ref.id, data: () => ({ name: 'John Doe' }) }
         : ref?.path === 'users'
           ? { docs: [] }
           : { data: () => ({ pairs: {} }) },
@@ -172,6 +176,7 @@ describe('App Component', () => {
     mockAuthValue.role = 'viewer';
     mockAuthValue.effectiveIdentityKey = 'viewer';
     mockAuthValue.pendingMfa = null;
+    contactState.exists = true;
     window.location.hash = '';
     window.history.replaceState(null, '', '/');
   });
@@ -525,6 +530,26 @@ describe('App Component', () => {
       expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
       expect(screen.getByTestId('directory-view')).toBeInTheDocument();
     });
+  });
+
+  // #1761: a `/people/:id` deep link to a person who is gone, or outside the
+  // viewer's scope, used to render an empty page under the shell.
+  it('answers a person route whose contact is unavailable instead of a blank page (#1761)', async () => {
+    contactState.exists = false;
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+    window.history.replaceState(null, '', '/people/someone-else');
+
+    render(<App />);
+
+    expect(await screen.findByText('Access Restricted')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to view this contact record.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to People' }));
+    await waitFor(() => expect(screen.getByTestId('directory-view')).toBeInTheDocument());
   });
 
   it('remounts the routed view when the identity changes (impersonation switch)', async () => {

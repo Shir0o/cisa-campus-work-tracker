@@ -170,6 +170,18 @@ export default function ContactDetailsModal({
     }
   }, [isOpen, contact?.id, user?.uid]);
 
+  // The phone page is a fixed full-screen sheet, so the document underneath it
+  // must not scroll: otherwise the page rubber-bands behind the sheet and, in a
+  // browser with classic scrollbars, the sheet loses 15px of width (#1761).
+  useEffect(() => {
+    if (!isOpen || !isMobile) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isOpen, isMobile]);
+
   // Reach prompt on return from phone/chat app
   useEffect(() => {
     if (!isOpen) return;

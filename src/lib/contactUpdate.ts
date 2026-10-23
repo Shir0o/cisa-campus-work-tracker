@@ -39,14 +39,20 @@ export async function executeContactUpdate({
   const fullName = `${formData.firstName} ${formData.lastName}`.trim();
 
   const changes: string[] = [];
+  // `email`, `phone` and `stage` are optional on the document, so compare the
+  // normalised values: an empty form field must not diff against `undefined`
+  // and write `email: "undefined" → ""` into the activity log (#1761).
+  const emailBefore = contact.email || "";
+  const phoneBefore = contact.phone || "";
+  const stageBefore = contact.stage || "";
   if (fullName !== contact.name)
     changes.push(`name: "${contact.name}" → "${fullName}"`);
-  if (formData.email !== contact.email)
-    changes.push(`email: "${contact.email}" → "${formData.email}"`);
-  if (formData.phone !== contact.phone)
-    changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-  if (formData.stage !== contact.stage)
-    changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
+  if (formData.email !== emailBefore)
+    changes.push(`email: "${emailBefore}" → "${formData.email}"`);
+  if (formData.phone !== phoneBefore)
+    changes.push(`phone: "${phoneBefore}" → "${formData.phone}"`);
+  if (formData.stage !== stageBefore)
+    changes.push(`stage: "${stageBefore}" → "${formData.stage}"`);
   if (formData.spiritualBackground !== contact.spiritualBackground)
     changes.push(`spiritualBackground: "${contact.spiritualBackground || ""}" → "${formData.spiritualBackground}"`);
   if (formData.gender !== contact.gender)

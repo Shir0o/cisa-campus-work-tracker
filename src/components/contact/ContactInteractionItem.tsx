@@ -116,21 +116,21 @@ export default function ContactInteractionItem({
                 </span>
                 {interaction.reachedByName &&
                   interaction.reachedByName !== interaction.userName && (
-                    <span className="text-[10px] font-medium text-on-surface-variant">
+                    <span className="text-[11px] font-medium text-on-surface-variant">
                       {t('modals.contactDetails.logged_by').replace('{name}', interaction.userName || '')}
                     </span>
                   )}
-                <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
+                <span className="text-[11px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
                   {new Date(
                     interaction.dateTime,
                   ).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex items-center gap-2 transition-opacity">
+              <div className="flex items-center gap-1 -my-3">
                 {canEdit && (
                   <button
                     onClick={onStartEdit}
-                    className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
+                    className="min-h-11 px-2 text-[11px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
                   >
                     {t('actions.edit')}
                   </button>
@@ -138,7 +138,7 @@ export default function ContactInteractionItem({
                 {canRemove && (
                   <button
                     onClick={onRemove}
-                    className="text-[10px] font-semibold text-error hover:opacity-80 focus:outline-none"
+                    className="min-h-11 px-2 text-[11px] font-semibold text-error hover:opacity-80 focus:outline-none"
                   >
                     {t('modals.contactDetails.remove_interaction')}
                   </button>
@@ -149,14 +149,14 @@ export default function ContactInteractionItem({
               <Translate showOriginalToggle text={interaction.content} />
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
+              <span className="text-[11px] font-semibold text-on-surface-variant  ">
                 {interaction.createdAt
                   ? t('modals.contactDetails.logged_at').replace('{date}', new Date(interaction.createdAt).toLocaleDateString()).replace('{time}', new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
                   : t('modals.contactDetails.logging')}
               </span>
               {(interaction.duration ||
                 interaction.type) && (
-                <span className="text-[10px] font-semibold text-on-surface-variant/40   flex items-center gap-1">
+                <span className="text-[11px] font-semibold text-on-surface-variant   flex items-center gap-1">
                   {interaction.type && (
                     <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
                       {interaction.type}

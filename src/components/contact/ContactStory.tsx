@@ -21,6 +21,18 @@ function changePhrases(change: StoryChange, t: TranslateFn): string[] {
       ];
     case "field": {
       const label = t(`modals.contactDetails.story_field_${change.field}`, change.field);
+      // A field that was never set (or is being cleared) has no "from"/"to" to
+      // print: "changed major from to History" is not a sentence (#1761).
+      if (!change.from) {
+        return [
+          t('modals.contactDetails.story_change_field_set')
+            .replace('{field}', label)
+            .replace('{to}', change.to),
+        ];
+      }
+      if (!change.to) {
+        return [t('modals.contactDetails.story_change_field_cleared').replace('{field}', label)];
+      }
       return [
         t('modals.contactDetails.story_change_field')
           .replace('{field}', label)
