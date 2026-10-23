@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import type { ChatMessage, ChatRoom } from '@cisa/core';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ChatThreadScreen } from './ChatThreadScreen';
@@ -92,6 +92,30 @@ describe('ChatThreadScreen', () => {
     const { getByText, queryByTestId } = await renderAs(trainee, { room: null });
     expect(queryByTestId('thread-skeleton')).toBeNull();
     expect(getByText('Nothing here yet. Send one to start it off.')).toBeTruthy();
+  });
+
+  describe('opening without a flash (#1710)', () => {
+    it('holds the header lines blank, not "Loading", until the room lands', async () => {
+      const { queryByText } = await renderAs(trainee, { loading: true, room: null });
+      expect(queryByText(/Loading/)).toBeNull();
+    });
+
+    it('keeps the rows hidden until the stream has jumped to its newest message', async () => {
+      jest.useFakeTimers();
+      try {
+        const { getByText, getByTestId } = await renderAs(trainee, { messages: [graceSays] });
+        const card = getByTestId('chat-stream-card');
+        expect(StyleSheet.flatten(card.props.style).opacity).toBe(0);
+        expect(getByText('CAN-YOU-COVER')).toBeTruthy();
+        await fireEvent(card, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 400 } } });
+        await act(async () => {
+          jest.runAllTimers();
+        });
+        expect(StyleSheet.flatten(getByTestId('chat-stream-card').props.style).opacity).toBe(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe('rows (G1–G5)', () => {
