@@ -1056,6 +1056,12 @@
     "no_one_yet": "nadie aún",
     "one_person": "1 persona",
     "n_people": "{n} personas",
+    "eyebrow": "la jornada",
+    "mobile_summary_one": "1 estudiante, avanzando desde un primer saludo hacia una familia de iglesia.",
+    "mobile_summary_many": "{n} estudiantes, avanzando desde un primer saludo hacia una familia de iglesia.",
+    "move_to_another_step": "Mover a {name} a otro paso",
+    "move_sheet_title": "¿Dónde está {name} ahora?",
+    "move_sheet_subtitle": "Muévelo al paso que corresponda hoy.",
     "stage_captions": {
       "first_contact": "Apenas nos conocimos: un nombre, un rostro, un primer hola.",
       "second_contact": "Dando seguimiento: un café, un mensaje, conociendo quiénes son.",

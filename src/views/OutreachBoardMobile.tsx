@@ -72,8 +72,14 @@ export const toneStyle = (color: string | undefined, index: number = 0): React.C
   } as React.CSSProperties;
 };
 
-const connectedLabel = (d: number) =>
-  d === 0 ? 'Connected today' : d === 1 ? 'Last connected yesterday' : `Last connected ${d} days ago`;
+const STAGE_CAPTION_KEY: Record<string, string> = {
+  'first contact': 'first_contact',
+  'second contact': 'second_contact',
+  regular: 'regular',
+  church: 'church',
+};
+const captionKeyFor = (label?: string) =>
+  (label && STAGE_CAPTION_KEY[label.trim().toLowerCase()]) || undefined;
 
 const parseMs = (s?: string | null): number | null => {
   if (!s) return null;
@@ -96,36 +102,54 @@ export default function OutreachBoardMobile({
   onAddContact,
 }: OutreachBoardMobileProps) {
   const { t } = useLanguage();
-  // Let's create a combined list of stages where "Unassigned" is the first stage if there are unassigned contacts.
-  // In the desktop board, unassigned contacts appear in a column. On mobile, we can add it as the first tab!
   const hasUnassigned = unmappedContacts.length > 0;
   const mobileStages = useMemo(() => {
     const list = [...stages];
     if (hasUnassigned) {
       list.unshift({
         id: 'uncategorized',
-        label: 'Unassigned',
+        label: t('outreachBoard.unassigned'),
         color: 'bg-surface-variant',
         order: -1,
       });
     }
     return list;
-  }, [stages, hasUnassigned]);
+  }, [stages, hasUnassigned, t]);
 
-  const [active, setActive] = useState(0);
+  // Selection is the stage id, not its index: an incoming unassigned person
+  // prepends a tab, and an index would silently jump the reader to it.
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [movingContact, setMovingContact] = useState<Contact | null>(null);
   const switchRef = useRef<HTMLDivElement>(null);
-  const touchX = useRef<number | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const userNavigated = useRef(false);
+  const moveTriggerRef = useRef<HTMLElement | null>(null);
+  const moveSheetRef = useRef<HTMLDivElement>(null);
 
-  const idx = Math.min(active, mobileStages.length - 1);
-  const stage = mobileStages[idx] || { id: 'uncategorized', label: 'Unassigned', color: 'bg-surface-variant' };
-
-  const getStageContacts = (stageLabel: string) => {
-    if (stageLabel === 'Unassigned') return unmappedContacts;
-    return contacts.filter((c) => c.stage === stageLabel);
+  const activeIndex = mobileStages.findIndex((s) => s.id === activeStageId);
+  const idx = activeIndex >= 0 ? activeIndex : 0;
+  const stage = mobileStages[idx] || {
+    id: 'uncategorized',
+    label: t('outreachBoard.unassigned'),
+    color: 'bg-surface-variant',
   };
 
-  const items = getStageContacts(stage.label);
+  const items = stage.id === 'uncategorized'
+    ? unmappedContacts
+    : contacts.filter((c) => c.stage === stage.label);
+  const countLabel = (n: number) =>
+    n === 1 ? t('outreachBoard.one_person') : t('outreachBoard.n_people').replace('{n}', String(n));
+
+  const selectStage = (next: number) => {
+    const bounded = Math.max(0, Math.min(next, mobileStages.length - 1));
+    const target = mobileStages[bounded];
+    if (!target) return;
+    userNavigated.current = true;
+    setActiveStageId(target.id);
+  };
 
   useEffect(() => {
     const sw = switchRef.current;
@@ -136,64 +160,169 @@ export default function OutreachBoardMobile({
     sw.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
   }, [idx]);
 
+  // A new step starts at its heading, not wherever the previous step's list
+  // happened to be scrolled to.
+  useEffect(() => {
+    if (!userNavigated.current) return;
+    userNavigated.current = false;
+    const scroller = panelRef.current?.closest('main') as HTMLElement | null;
+    if (scroller) scroller.scrollTop = 0;
+  }, [idx]);
+
+  useEffect(() => {
+    if (!movingContact) return;
+    const dialog = moveSheetRef.current;
+    const panel = panelRef.current;
+    dialog?.focus();
+    const scroller = rootRef.current?.closest('main') as HTMLElement | null;
+    const previousOverflow = scroller?.style.overflow;
+    if (scroller) scroller.style.overflow = 'hidden';
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMovingContact(null);
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement;
+      if (event.shiftKey && (current === first || current === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (scroller) scroller.style.overflow = previousOverflow || '';
+      const trigger = moveTriggerRef.current;
+      if (trigger && document.contains(trigger)) trigger.focus();
+      else panel?.focus();
+    };
+  }, [movingContact]);
+
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (mobileStages.length < 2) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (idx + 1) % mobileStages.length;
+        break;
+      case 'ArrowLeft':
+        next = (idx - 1 + mobileStages.length) % mobileStages.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = mobileStages.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    selectStage(next);
+    tabRefs.current[next]?.focus();
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
-    touchX.current = e.touches[0].clientX;
+    const point = e.touches[0];
+    if (point) touchStart.current = { x: point.clientX, y: point.clientY };
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current == null) return;
-    const dx = e.changedTouches[0].clientX - touchX.current;
-    if (Math.abs(dx) > 60) {
-      if (dx < 0 && idx < mobileStages.length - 1) setActive(idx + 1);
-      if (dx > 0 && idx > 0) setActive(idx - 1);
+    const start = touchStart.current;
+    touchStart.current = null;
+    const point = e.changedTouches[0];
+    if (!start || !point) return;
+    const dx = point.clientX - start.x;
+    const dy = point.clientY - start.y;
+    // A vertical scroll with a drifting thumb is not a step change.
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      selectStage(idx + (dx < 0 ? 1 : -1));
     }
-    touchX.current = null;
   };
 
+  const openMoveSheet = (contact: Contact, event: React.MouseEvent<HTMLButtonElement>) => {
+    moveTriggerRef.current = event.currentTarget;
+    setMovingContact(contact);
+  };
+
+  const captionKey = captionKeyFor(stage.label);
+
   return (
-    <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page jrn jrnm">
+    <div ref={rootRef} className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page jrn jrnm">
       <header className="px-5 pt-8 pb-4 bg-surface jrnm-hero">
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 jrn-eyebrow">
-          the journey
+          {t('outreachBoard.eyebrow')}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface jrn-h1">{t('outreach.stages')}</h1>
         <p className="text-[14.5px] text-on-surface-variant/90 leading-relaxed mt-2 jrnm-state">
-          <b className="font-semibold text-on-surface">{contacts.length} students</b>, moving from a first hello toward a church family.
+          {t(
+            contacts.length === 1
+              ? 'outreachBoard.mobile_summary_one'
+              : 'outreachBoard.mobile_summary_many',
+          ).replace('{n}', String(contacts.length))}
         </p>
         {isAdmin && (
           <button
-            className="mt-3.5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-variant transition-all jrnm-shape"
+            className="mt-3.5 min-h-11 inline-flex items-center gap-2 px-3.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-variant transition-all jrnm-shape focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             onClick={onShapeJourney}
           >
-            <Settings2 className="w-3.5 h-3.5" /> Shape the journey
+            <Settings2 className="w-3.5 h-3.5" /> {t('outreachBoard.shape_the_journey')}
           </button>
         )}
       </header>
 
       {/* Switcher tabs */}
       <div
-        className="flex gap-2 overflow-x-auto px-5 py-4 border-b border-outline-variant/30 no-scrollbar whitespace-nowrap jrnm-switch bg-surface"
+        role="tablist"
+        aria-label={t('outreach.stages')}
+        onKeyDown={onTabKeyDown}
+        className="sticky top-0 z-20 flex gap-2 overflow-x-auto px-5 py-4 border-b border-outline-variant/30 no-scrollbar whitespace-nowrap jrnm-switch bg-surface"
         ref={switchRef}
       >
         {mobileStages.map((s, i) => {
-          const count = getStageContacts(s.label).length;
-          const activeTab = i === idx;
+          const count = stage.id === s.id
+            ? items.length
+            : s.id === 'uncategorized'
+              ? unmappedContacts.length
+              : contacts.filter((c) => c.stage === s.label).length;
+          const activeTab = s.id === stage.id;
           const tStyle = toneStyle(s.color, i);
           return (
             <button
               key={s.id}
+              role="tab"
+              id={`journey-tab-${s.id}`}
+              aria-selected={activeTab}
+              aria-controls={`journey-panel-${s.id}`}
+              tabIndex={activeTab ? 0 : -1}
+              ref={(el) => { tabRefs.current[i] = el; }}
               style={tStyle}
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold border transition-all jrnm-seg shrink-0",
+                "min-h-11 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold border transition-all jrnm-seg shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
                 activeTab
-                  ? "bg-[var(--tone-soft)] border-[var(--tone)]/40 text-[var(--tone)] is-on font-semibold "
+                  ? "bg-on-surface border-on-surface text-background is-on"
                   : "bg-surface border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/55"
               )}
-              onClick={() => setActive(i)}
+              onClick={() => selectStage(i)}
             >
-              <span className="w-1.5 h-1.5 rounded-full jrnm-seg-dot bg-[var(--tone)]" aria-hidden />
+              <span className={cn("w-1.5 h-1.5 rounded-full jrnm-seg-dot", activeTab ? "bg-background/60" : "bg-[var(--tone)]")} aria-hidden />
               <span className="jrnm-seg-name">{s.label}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant/80 font-medium jrnm-seg-count", activeTab && "bg-surface/80 text-[var(--tone)] font-semibold")}>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium jrnm-seg-count", activeTab ? "bg-background/15 text-background" : "bg-surface-variant text-on-surface-variant/80")}>
                 {count}
               </span>
             </button>
@@ -201,31 +330,39 @@ export default function OutreachBoardMobile({
         })}
       </div>
 
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {`${stage.label}, ${countLabel(items.length)}`}
+      </p>
+
       {/* List content panel */}
       <section
+        ref={panelRef}
+        role="tabpanel"
+        id={`journey-panel-${stage.id}`}
+        aria-labelledby={`journey-tab-${stage.id}`}
+        tabIndex={-1}
         style={toneStyle(stage.color, idx)}
-        className="flex-1 px-5 pt-6 pb-2 jrnm-panel transition-all bg-[var(--tone-soft)]"
+        className="flex-1 px-5 pt-6 pb-2 jrnm-panel transition-all bg-[var(--tone-soft)] focus:outline-none"
         key={stage.id}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
         <div className="mb-4 flex flex-col gap-0.5 jrnm-panel-head">
-          <span className="text-[13px] font-semibold   text-on-surface-variant/80 jrnm-panel-count">
-            {items.length === 0 ? "no one here yet" : items.length === 1 ? "1 person" : `${items.length} people`}
-          </span>
-          {stage.id !== 'uncategorized' && stage.label && (
+          {items.length > 0 && (
+            <span className="text-[13px] font-semibold   text-on-surface-variant/80 jrnm-panel-count">
+              {countLabel(items.length)}
+            </span>
+          )}
+          {captionKey && (
             <p className="text-xs text-on-surface-variant/90 leading-relaxed max-w-sm mt-1 jrnm-panel-caption">
-              {stage.label.toLowerCase() === 'first contact' ? "We've only just met — a name, a face, a first hello." :
-               stage.label.toLowerCase() === 'second contact' ? "Following up — a coffee, a text, learning who they are." :
-               stage.label.toLowerCase() === 'regular' ? "Part of the rhythm now, around most weeks." :
-               stage.label.toLowerCase() === 'church' ? "Finding a church family to belong to." : ""}
+              {t(`outreachBoard.stage_captions.${captionKey}`)}
             </p>
           )}
         </div>
 
         {items.length === 0 ? (
           <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 jrnm-empty shadow-inner">
-            No one at this step just now.
+            {t('outreachBoard.no_one_here')}
           </div>
         ) : (
           <div className="space-y-2.5 jrnm-list">
@@ -241,9 +378,19 @@ export default function OutreachBoardMobile({
               const sub = [c.year, c.major].filter(Boolean).join(' · ');
               return (
                 <article
-                  className="flex items-start gap-3.5 p-4 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person  cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={c.name}
+                  className="flex items-start gap-3.5 p-4 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--tone-soft)]"
                   key={c.id}
                   onClick={() => onOpenContact(c)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onOpenContact(c);
+                    }
+                  }}
                 >
                   <Avatar contact={c} size="md" />
                   <div className="min-w-0 flex-1 jrnm-p-body">
@@ -261,16 +408,16 @@ export default function OutreachBoardMobile({
                     )}
                     {note && (
                       <p className="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed opacity-95">
-                        <span className="font-medium text-on-surface-variant/70">Last:</span> <Translate text={note} />
+                        <span className="font-medium text-on-surface-variant/70">{t('outreachBoard.last')}</span> <Translate text={note} />
                       </p>
                     )}
                   </div>
                   <button
-                    className="p-2.5 bg-surface-container border border-outline-variant/65 text-on-surface rounded-xl active:scale-95 transition-all jrnm-p-move shrink-0 self-center"
-                    aria-label={`Move ${c.name.split(" ")[0]} to another step`}
+                    className="w-11 h-11 grid place-items-center bg-surface-container border border-outline-variant/65 text-on-surface rounded-xl active:scale-95 transition-all jrnm-p-move shrink-0 self-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    aria-label={t('outreachBoard.move_to_another_step').replace('{name}', c.name.split(' ')[0])}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMovingContact(c);
+                      openMoveSheet(c, e);
                     }}
                   >
                     <ArrowRight className="w-4 h-4" />
@@ -282,8 +429,8 @@ export default function OutreachBoardMobile({
         )}
 
         <button
-          onClick={() => onAddContact(stage.label)}
-          className="mt-4 w-full py-3.5 text-center text-sm bg-surface border border-outline-variant/70 text-accent font-semibold rounded-2xl active:brightness-95 transition-all  jrnm-add"
+          onClick={() => onAddContact(stage.id === 'uncategorized' ? '' : stage.label)}
+          className="mt-4 w-full py-3.5 text-center text-sm bg-surface border border-outline-variant/70 text-accent font-semibold rounded-2xl active:brightness-95 transition-all  jrnm-add focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--tone-soft)]"
         >
           {stage.id === 'uncategorized' || (stages[0] && stage.label === stages[0].label)
             ? t('outreach.welcome_someone_new')
@@ -298,22 +445,28 @@ export default function OutreachBoardMobile({
           onClick={() => setMovingContact(null)}
         >
           <div
-            className="bg-surface rounded-t-2xl shadow-2xl w-full max-h-[85vh] flex flex-col overflow-hidden modal ibxs animate-in slide-in-from-bottom duration-300"
+            ref={moveSheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="move-sheet-title"
+            aria-describedby="move-sheet-description"
+            tabIndex={-1}
+            className="bg-surface rounded-t-2xl shadow-2xl w-full max-h-[85vh] flex flex-col overflow-hidden modal ibxs animate-in slide-in-from-bottom duration-300 focus:outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0 ibxs-grab" />
             <div className="flex items-center justify-between px-5 pt-1 ibxs-head">
               <div className="ibxs-headtext">
-                <h3 className="font-serif text-lg text-on-surface ibxs-title">
-                  Where is {movingContact.name.split(" ")[0]} now?
+                <h3 id="move-sheet-title" className="font-serif text-lg text-on-surface ibxs-title">
+                  {t('outreachBoard.move_sheet_title').replace('{name}', movingContact.name.split(' ')[0])}
                 </h3>
-                <p className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
-                  Move them to the step that fits today.
+                <p id="move-sheet-description" className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
+                  {t('outreachBoard.move_sheet_subtitle')}
                 </p>
               </div>
               <button
                 onClick={() => setMovingContact(null)}
-                className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
+                className="w-11 h-11 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
@@ -323,27 +476,30 @@ export default function OutreachBoardMobile({
             <div className="overflow-y-auto px-4 pb-8 pt-4 flex flex-col gap-2 mds-body">
               <div className="flex flex-col gap-2 jrnm-move-list">
                 {mobileStages.map((s, i) => {
-                  const here = s.label === movingContact.stage || (s.id === 'uncategorized' && !movingContact.stage);
+                      const hereNow = s.id === 'uncategorized'
+                        ? !movingContact.stage
+                        : s.label === movingContact.stage;
                   const tStyle = toneStyle(s.color, i);
 
                   return (
                     <button
                       key={s.id}
                       style={tStyle}
+                      aria-current={hereNow ? 'true' : undefined}
                       onClick={() => {
-                        if (!here) onMove(movingContact.id, s.label === 'Unassigned' ? '' : s.label);
+                        if (!hereNow) onMove(movingContact.id, s.id === 'uncategorized' ? '' : s.label);
                         setMovingContact(null);
                       }}
                       className={cn(
-                        "flex items-center gap-3.5 p-4 rounded-xl text-left border transition-all jrnm-move-opt w-full",
-                        here ? "bg-[var(--tone-soft)] border-[var(--tone)]/30 text-[var(--tone)] is-here" : "bg-surface border-outline-variant hover:bg-surface-variant"
+                        "min-h-11 flex items-center gap-3.5 p-4 rounded-xl text-left border transition-all jrnm-move-opt w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                        hereNow ? "bg-[var(--tone-soft)] border-[var(--tone)]/30 text-[var(--tone)] is-here" : "bg-surface border-outline-variant hover:bg-surface-variant"
                       )}
                     >
                       <span className="w-2 h-2 rounded-full jrnm-move-dot bg-[var(--tone)]" />
                       <div className="flex-1 min-w-0 jrnm-move-text">
                         <div className="font-medium text-[15px] jrnm-move-name">{s.label}</div>
                       </div>
-                      {here ? (
+                      {hereNow ? (
                         <span className="text-xs font-semibold   text-[var(--tone)] jrnm-move-here">{t('outreach.here_now')}</span>
                       ) : (
                         <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
