@@ -64,13 +64,14 @@ function MemberThread({ roomId }: { roomId: string }) {
             numberOfLines={1}
             style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.room.ink }}
           >
-            {name || t('mobile.common.loading')}
+            {name || ' '}
           </Text>
-          {!!subtitle && (
-            <Text numberOfLines={1} style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
-              {subtitle}
-            </Text>
-          )}
+          {/* Both lines hold their height before the room lands, so the header
+              doesn't swap "Loading…" for the name or grow a line, shoving the
+              stream down, a beat after the room opens (#1710). */}
+          <Text numberOfLines={1} style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
+            {subtitle || ' '}
+          </Text>
         </View>
       </View>
 

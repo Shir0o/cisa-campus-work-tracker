@@ -97,6 +97,12 @@ export function ChatStreamPane({
   const staff = !memberRoleOf(role);
   const { room } = data;
   const inThread = parentId !== null;
+  // A stream opens on its newest message (G4), but its first frame lays out at
+  // the top and the jump to the end lands a frame later — the oldest rows flash
+  // past on the way down (#1710). Keep the rows hidden until that first jump.
+  // A Thread reads from its parent down, so it never jumps and never hides.
+  const [settled, setSettled] = useState(inThread);
+  if (settled && !inThread && data.loading) setSettled(false);
   const isAnnouncement = room?.type === 'announcement';
   const isMember = !!room && room.memberIds.includes(me);
   const isFullTimer = role === 'admin';
@@ -257,10 +263,21 @@ export function ChatStreamPane({
             </Text>
           ) : (
             <View
-              style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 8 }}
+              testID="chat-stream-card"
+              style={{
+                backgroundColor: c.card.bg,
+                borderRadius: radius.tile,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                opacity: settled ? 1 : 0,
+              }}
               onLayout={(e) => {
                 viewRef.current.cardY = e.nativeEvent.layout.y;
                 maybeMarkRead();
+                if (!settled) {
+                  scroller.current?.scrollToEnd({ animated: false });
+                  requestAnimationFrame(() => setSettled(true));
+                }
               }}
             >
               {thread ? (
