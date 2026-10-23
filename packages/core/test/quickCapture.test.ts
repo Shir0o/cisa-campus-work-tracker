@@ -18,6 +18,8 @@ import {
   reminderNotificationTrigger,
   reminderNotificationContent,
   reminderSetLine,
+  reminderCalendarWeeks,
+  reminderDateLabel,
 } from '../src/quickCapture';
 import type { Touch } from '../src/myday';
 import type { Contact } from '../src/types';
@@ -121,6 +123,32 @@ describe('reminderDueDate', () => {
     const week = new Date(reminderDueDate('week', NOW)).getTime();
     expect(Math.round((few - tom) / DAY_MS)).toBe(2);
     expect(Math.round((week - tom) / DAY_MS)).toBe(6);
+  });
+});
+
+describe('reminderDueDate with a picked date (#1709)', () => {
+  it('passes a picked yyyy-MM-dd straight through as the due date', () => {
+    expect(reminderDueDate({ date: '2026-08-14' }, NOW)).toBe('2026-08-14');
+  });
+});
+
+describe('reminderCalendarWeeks (#1709)', () => {
+  it('lays a month out in Sunday-first weeks, blank before the 1st and after the last day', () => {
+    // July 2026 starts on a Wednesday and has 31 days.
+    const weeks = reminderCalendarWeeks(new Date(2026, 6, 20));
+    expect(weeks.every((w) => w.length === 7)).toBe(true);
+    expect(weeks[0].slice(0, 3)).toEqual([null, null, null]);
+    expect(weeks[0][3]).toBe('2026-07-01');
+    const days = weeks.flat().filter((d): d is string => d !== null);
+    expect(days).toHaveLength(31);
+    expect(days[30]).toBe('2026-07-31');
+    expect(weeks[weeks.length - 1].slice(6)).toEqual([null]); // Jul 31 is a Friday
+  });
+});
+
+describe('reminderDateLabel (#1709)', () => {
+  it('reads a picked date as a short weekday and day', () => {
+    expect(reminderDateLabel('2026-08-14')).toBe('Fri, Aug 14');
   });
 });
 
@@ -296,6 +324,7 @@ describe('the saved step’s own lines', () => {
     expect(reminderSetLine('tom')).toBe("You'll be reminded — tomorrow");
     expect(reminderSetLine('few')).toBe("You'll be reminded — in a few days");
     expect(reminderSetLine('week')).toBe("You'll be reminded — next week");
+    expect(reminderSetLine({ date: '2026-08-14' })).toBe("You'll be reminded — Fri, Aug 14");
   });
 
   it('says where the prayer went, and the two places differ', () => {

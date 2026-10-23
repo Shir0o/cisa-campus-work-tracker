@@ -14,6 +14,8 @@
 // another / Open their page.
 import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { addMonths, format, startOfMonth } from 'date-fns';
 import {
   FIRST_MET_PRESETS,
   QUICK_CAPTURE_KINDS,
@@ -29,6 +31,8 @@ import {
   prayerAddedLine,
   quickCaptureRecents,
   quickCaptureSearchMatches,
+  reminderCalendarWeeks,
+  reminderDateLabel,
   reminderDueDate,
   reminderSetLine,
   type Contact,
@@ -36,7 +40,7 @@ import {
   type LogSavedBeat,
   type OnCampusWindow,
   type QuickCaptureKindId,
-  type ReminderPreset,
+  type ReminderChoice,
 } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
@@ -161,8 +165,11 @@ function LogSheetBody({
   const [saved, setSaved] = useState<Saved | null>(null);
   const [expand, setExpand] = useState<'fu' | 'pr' | null>(null);
   const [fuText, setFuText] = useState('');
-  const [fuPreset, setFuPreset] = useState<ReminderPreset>('few');
-  const [fuSet, setFuSet] = useState<ReminderPreset | null>(null);
+  const [fuPreset, setFuPreset] = useState<ReminderChoice>('few');
+  const [fuSet, setFuSet] = useState<ReminderChoice | null>(null);
+  // "Pick a date" (#1709): the calendar is open while choosing, and closes on
+  // a pick so the chip can show the day that was chosen.
+  const [fuPicking, setFuPicking] = useState(false);
   const [burden, setBurden] = useState('');
   // Off by default, as the design draws it: what you write here sits with that
   // person until you say otherwise. Held after saving so the done row can name
@@ -707,10 +714,27 @@ function LogSheetBody({
                               key={p.key}
                               label={p.label}
                               on={fuPreset === p.key}
-                              onPress={() => setFuPreset(p.key)}
+                              onPress={() => {
+                                setFuPreset(p.key);
+                                setFuPicking(false);
+                              }}
                             />
                           ))}
+                          <Chip
+                            label={typeof fuPreset === 'object' ? reminderDateLabel(fuPreset.date) : 'Pick a date'}
+                            on={typeof fuPreset === 'object' || fuPicking}
+                            onPress={() => setFuPicking(!fuPicking)}
+                          />
                         </View>
+                        {fuPicking && (
+                          <ReminderCalendar
+                            selected={typeof fuPreset === 'object' ? fuPreset.date : null}
+                            onPick={(date) => {
+                              setFuPreset({ date });
+                              setFuPicking(false);
+                            }}
+                          />
+                        )}
                         <PrimaryButton
                           title={saving ? 'Setting…' : 'Remind me'}
                           onPress={() => void setFollowUp()}
@@ -865,6 +889,100 @@ function DoneRow({ head, sub }: { head: string; sub: string }) {
           {sub}
         </Text>
       </View>
+    </View>
+  );
+}
+
+/** The follow-up's "Pick a date" (#1709): a month of days drawn from plain
+ * views, so it needs no native date-picker module and ships over the air.
+ * Days run from tomorrow on — the earliest preset — since a nudge set for
+ * this morning would already be in the past. */
+export function ReminderCalendar({
+  selected,
+  onPick,
+  now: nowProp,
+}: {
+  selected: string | null;
+  onPick: (date: string) => void;
+  now?: number;
+}) {
+  const { c, font, fs } = useV2Theme();
+  const [now] = useState(() => nowProp ?? Date.now());
+  const earliest = reminderDueDate('tom', now);
+  const firstMonth = startOfMonth(new Date(now));
+  const [month, setMonth] = useState(() => startOfMonth(selected ? new Date(`${selected}T00:00:00`) : new Date(now)));
+  const canGoBack = month > firstMonth;
+  const cell = { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' } as const;
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Pressable
+          onPress={() => setMonth(addMonths(month, -1))}
+          disabled={!canGoBack}
+          accessibilityLabel="Previous month"
+          hitSlop={8}
+          style={{ padding: 6, opacity: canGoBack ? 1 : 0.3 }}
+        >
+          <Ionicons name="chevron-back" size={18} color={c.card.ink2} />
+        </Pressable>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>{format(month, 'MMMM yyyy')}</Text>
+        <Pressable
+          onPress={() => setMonth(addMonths(month, 1))}
+          accessibilityLabel="Next month"
+          hitSlop={8}
+          style={{ padding: 6 }}
+        >
+          <Ionicons name="chevron-forward" size={18} color={c.card.ink2} />
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row' }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <View key={i} style={[cell, { height: 22 }]}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.card.ink3 }}>{d}</Text>
+          </View>
+        ))}
+      </View>
+      {reminderCalendarWeeks(month).map((week, wi) => (
+        <View key={wi} style={{ flexDirection: 'row' }}>
+          {week.map((iso, di) => {
+            if (!iso) return <View key={di} style={cell} />;
+            const open = iso >= earliest;
+            const on = iso === selected;
+            return (
+              <Pressable
+                key={iso}
+                onPress={() => onPick(iso)}
+                disabled={!open}
+                accessibilityLabel={reminderDateLabel(iso)}
+                accessibilityState={{ disabled: !open, selected: on }}
+                style={cell}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: on ? c.card.inverse : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: font.bold,
+                      fontSize: fs(13),
+                      color: on ? c.card.onInverse : open ? c.card.ink : c.card.ink3,
+                      opacity: open ? 1 : 0.4,
+                    }}
+                  >
+                    {Number(iso.slice(8))}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }

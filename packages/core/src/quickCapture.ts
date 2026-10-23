@@ -4,7 +4,7 @@
 // logger, which is a different, multi-contact flow). The Firestore reads/
 // writes reuse the already-existing addContact/addInteraction/addTodo/
 // addPrayer wrappers — see the mobile QuickCaptureSheet component.
-import { format } from "date-fns";
+import { format, getDay, getDaysInMonth, parseISO } from "date-fns";
 import { firstName } from "./history";
 import { daysSince, lastTouchByContact, parseMs, type Touch } from "./myday";
 import { onCampusSummary, type OnCampusWindow } from "./queue";
@@ -99,9 +99,12 @@ export const REMINDER_PRESETS: { key: ReminderPreset; label: string; days: numbe
   { key: "week", label: "Next week", days: 7 },
 ];
 
-// No "pick a date" custom option — matches the app's existing task-due-date
-// composer (packages/core/src/myday.ts's DUE_PRESETS), which also sticks to
-// fixed presets since there's no native date-picker dependency in the app.
+/** A follow-up's when: one of the presets, or a day picked off the in-app
+ * calendar (#1709) as a bare `yyyy-MM-dd`. The calendar is drawn from plain
+ * views (reminderCalendarWeeks below), not a native date-picker dependency, so
+ * it ships over the air like the rest of the sheet. */
+export type ReminderChoice = ReminderPreset | { date: string };
+
 const REMINDER_PRESET_DAYS: Record<ReminderPreset, number> = { tom: 1, few: 3, week: 7 };
 
 /** Due date for a reminder preset ("Tomorrow"/"In a few days"/"Next week"),
@@ -111,7 +114,8 @@ const REMINDER_PRESET_DAYS: Record<ReminderPreset, number> = { tom: 1, few: 3, w
  * datetime (~24 chars) silently fails — reproduced live as a
  * "Missing or insufficient permissions" error the first time a reminder was
  * set. */
-export function reminderDueDate(preset: ReminderPreset, now: number = Date.now()): string {
+export function reminderDueDate(preset: ReminderChoice, now: number = Date.now()): string {
+  if (typeof preset === "object") return preset.date;
   const d = new Date(now);
   d.setDate(d.getDate() + REMINDER_PRESET_DAYS[preset]);
   return format(d, "yyyy-MM-dd");
@@ -132,6 +136,26 @@ export function reminderNotificationTrigger(preset: ReminderPreset, now: number 
   d.setHours(REMINDER_NOTIFICATION_HOUR, 0, 0, 0);
   return d;
 }
+
+/** One month of the follow-up calendar, as Sunday-first weeks of seven cells:
+ * each a `yyyy-MM-dd` (the same bare format reminderDueDate returns, so a
+ * picked cell is a due date as-is), or null for the blanks before the 1st and
+ * after the month's last day. */
+export function reminderCalendarWeeks(month: Date): (string | null)[][] {
+  const y = month.getFullYear();
+  const m = month.getMonth();
+  const cells: (string | null)[] = Array.from({ length: getDay(new Date(y, m, 1)) }, () => null);
+  for (let day = 1; day <= getDaysInMonth(month); day++) {
+    cells.push(format(new Date(y, m, day), "yyyy-MM-dd"));
+  }
+  while (cells.length % 7) cells.push(null);
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+/** "Fri, Aug 14" — a picked follow-up date, on its chip and its done row. */
+export const reminderDateLabel = (iso: string): string => format(parseISO(iso), "EEE, MMM d");
 
 /** Title/body for a reminder's local notification — title mirrors the
  * Firestore task's own title, body is just the contact's name for context. */
@@ -292,9 +316,12 @@ export function logSavedBeat(
 export const followUpDefaultText = (name: string): string => `Follow up with ${firstName(name)}`;
 
 /** "You'll be reminded — in a few days" — the collapsed row, once it's set. */
-export function reminderSetLine(preset: ReminderPreset): string {
-  const label = REMINDER_PRESETS.find((p) => p.key === preset)?.label ?? "soon";
-  return `You'll be reminded — ${label.toLowerCase()}`;
+export function reminderSetLine(preset: ReminderChoice): string {
+  const label =
+    typeof preset === "object"
+      ? reminderDateLabel(preset.date)
+      : (REMINDER_PRESETS.find((p) => p.key === preset)?.label ?? "soon").toLowerCase();
+  return `You'll be reminded — ${label}`;
 }
 
 /** The prayer's collapsed row, once it's written down. The sub-line names
