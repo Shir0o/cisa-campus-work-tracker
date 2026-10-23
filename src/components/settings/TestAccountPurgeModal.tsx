@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import {
-  scanTestAccountTraces,
-  purgeTestAccountTraces,
-  type PurgePlan,
-} from '../../lib/testAccountPurge';
+import { postCombineApi } from '../../lib/combineClient';
+import { purgeTotal, type PurgePlan } from '../../lib/testAccountPurge';
 import { PopupFrame } from '../ui/PopupFrame';
 import { useLanguage } from '../LanguageProvider';
 
@@ -17,6 +13,23 @@ interface Props {
 
 type Step = 'preview' | 'purging' | 'done';
 
+const PURGE_API = '/api/test-account-purge';
+
+/** The preview rows, in display order; contacts are shown under the opt-in. */
+const ROWS: { group: Exclude<keyof PurgePlan, 'keptSelf'>; label: string }[] = [
+  { group: 'accounts', label: 'testAccountPurge.test_accounts' },
+  { group: 'logins', label: 'testAccountPurge.sign_in_logins' },
+  { group: 'invitations', label: 'testAccountPurge.pending_invitations' },
+  { group: 'personal', label: 'testAccountPurge.personal' },
+  { group: 'interactions', label: 'testAccountPurge.interaction_logs' },
+  { group: 'notes', label: 'testAccountPurge.notes' },
+  { group: 'chats', label: 'testAccountPurge.chats' },
+  { group: 'activity', label: 'testAccountPurge.activity' },
+  { group: 'asks', label: 'testAccountPurge.asks' },
+  { group: 'feedback', label: 'testAccountPurge.feedback' },
+  { group: 'contacts', label: 'testAccountPurge.contacts_created' },
+];
+
 export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Props) {
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>('preview');
@@ -24,6 +37,7 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
   const [plan, setPlan] = useState<PurgePlan | null>(null);
   const [deleteTestContacts, setDeleteTestContacts] = useState(false);
   const [deletedCount, setDeletedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   // Scan on open
@@ -40,9 +54,13 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
       setLoading(true);
       setError(null);
       try {
-        const discovered = await scanTestAccountTraces(db);
+        const res = await postCombineApi<{ plan: PurgePlan }>(
+          PURGE_API,
+          { dryRun: true },
+          'Failed to scan test accounts.',
+        );
         if (isMounted) {
-          setPlan(discovered);
+          setPlan(res.plan);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -68,8 +86,13 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
     setStep('purging');
     setError(null);
     try {
-      const res = await purgeTestAccountTraces(db, plan, { deleteTestContacts });
+      const res = await postCombineApi<{ deletedCount: number; failed: unknown[] }>(
+        PURGE_API,
+        { deleteTestContacts },
+        'Failed to purge test account traces.',
+      );
       setDeletedCount(res.deletedCount);
+      setFailedCount(res.failed?.length ?? 0);
       setStep('done');
       if (onSuccess) onSuccess(res.deletedCount);
     } catch (err: any) {
@@ -78,12 +101,7 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
     }
   };
 
-  const totalToDelete =
-    (plan?.testUsers.length || 0) +
-    (plan?.invitations.length || 0) +
-    (plan?.personalPrayers.length || 0) +
-    (plan?.interactions.length || 0) +
-    (deleteTestContacts ? plan?.contactsCreatedByTestAccounts.length || 0 : 0);
+  const totalToDelete = plan ? purgeTotal(plan, deleteTestContacts) : 0;
 
   return (
     <PopupFrame
@@ -122,29 +140,20 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
         ) : step === 'preview' ? (
           <div className="space-y-4">
             <div className="space-y-2.5 rounded border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface">
-              <div className="flex items-center justify-between border-b border-outline-variant py-1">
-                <span className="text-on-surface-variant">{t('testAccountPurge.test_accounts')}</span>
-                <span className="font-semibold">{plan?.testUsers.length ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-outline-variant py-1">
-                <span className="text-on-surface-variant">{t('testAccountPurge.pending_invitations')}</span>
-                <span className="font-semibold">{plan?.invitations.length ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-outline-variant py-1">
-                <span className="text-on-surface-variant">{t('testAccountPurge.personal_prayers')}</span>
-                <span className="font-semibold">{plan?.personalPrayers.length ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-outline-variant py-1">
-                <span className="text-on-surface-variant">{t('testAccountPurge.interaction_logs')}</span>
-                <span className="font-semibold">{plan?.interactions.length ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-on-surface-variant">{t('testAccountPurge.contacts_created')}</span>
-                <span className="font-semibold">{plan?.contactsCreatedByTestAccounts.length ?? 0}</span>
-              </div>
+              {ROWS.map(({ group, label }, i) => (
+                <div
+                  key={group}
+                  className={`flex items-center justify-between py-1${
+                    i < ROWS.length - 1 ? ' border-b border-outline-variant' : ''
+                  }`}
+                >
+                  <span className="text-on-surface-variant">{t(label)}</span>
+                  <span className="font-semibold">{plan?.[group].length ?? 0}</span>
+                </div>
+              ))}
             </div>
 
-            {plan && plan.contactsCreatedByTestAccounts.length > 0 && (
+            {plan && plan.contacts.length > 0 && (
               <label className="flex cursor-pointer select-none items-start gap-3 rounded border border-outline-variant bg-surface-container-low p-3">
                 <input
                   type="checkbox"
@@ -156,12 +165,18 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
                   <span className="block font-medium text-on-surface">
                     {t('testAccountPurge.also_delete_contacts').replace(
                       '{n}',
-                      String(plan.contactsCreatedByTestAccounts.length),
+                      String(plan.contacts.length),
                     )}
                   </span>
                   {t('testAccountPurge.contacts_note')}
                 </div>
               </label>
+            )}
+
+            {plan && plan.keptSelf.length > 0 && (
+              <p className="text-xs text-on-surface-variant">
+                {t('testAccountPurge.kept_self').replace('{who}', plan.keptSelf.join(', '))}
+              </p>
             )}
 
             <div className="flex items-center gap-2 rounded border border-error/20 bg-error/5 p-3 text-xs text-on-surface-variant">
@@ -184,6 +199,11 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
               <p className="mt-1 text-sm text-on-surface-variant">
                 {t('testAccountPurge.removed').replace('{n}', String(deletedCount))}
               </p>
+              {failedCount > 0 && (
+                <p className="mt-1 text-sm text-error">
+                  {t('testAccountPurge.partial').replace('{n}', String(failedCount))}
+                </p>
+              )}
             </div>
           </div>
         )}

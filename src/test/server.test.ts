@@ -1388,6 +1388,18 @@ describe("authorizeAdmin role enforcement", () => {
     expect(res.body.error).toContain("User does not exist");
   });
 
+  it("refuses the test account purge to anyone but a Full-timer", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "trainee@example.com" });
+    seedDoc("users", "trainee-1", { role: "operator" });
+    const res = await request(app)
+      .post("/api/test-account-purge")
+      .set("Authorization", "Bearer tok")
+      .send({ dryRun: true });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("not an administrator");
+  });
+
   it("returns 403 when user has non-admin role", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "trainee@example.com" });
     seedDoc("users", "trainee-1", { role: "trainee" });

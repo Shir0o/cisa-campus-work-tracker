@@ -1,11 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
-import {
-  isTestAccount,
-  scanTestAccountTraces,
-  purgeTestAccountTraces,
-  type PurgePlan,
-} from '../lib/testAccountPurge';
-import type { Firestore } from 'firebase/firestore';
+import { describe, it, expect } from 'vitest';
+import { isTestAccount, selectedPurgePaths, purgeTotal, type PurgePlan } from '../lib/testAccountPurge';
+
+const emptyPlan = (): PurgePlan => ({
+  accounts: [],
+  logins: [],
+  invitations: [],
+  personal: [],
+  interactions: [],
+  notes: [],
+  chats: [],
+  activity: [],
+  asks: [],
+  feedback: [],
+  contacts: [],
+  keptSelf: [],
+});
 
 describe('testAccountPurge', () => {
   describe('isTestAccount', () => {
@@ -20,7 +29,13 @@ describe('testAccountPurge', () => {
     it('identifies cisa service/test accounts by email or name', () => {
       expect(isTestAccount({ email: 'cisa-admin@test.com' })).toBe(true);
       expect(isTestAccount({ email: 'cisa-trainee@gmail.com' })).toBe(true);
+      expect(isTestAccount({ email: 'cisa.qa@gmail.com' })).toBe(true);
       expect(isTestAccount({ displayName: 'cisa-test' })).toBe(true);
+    });
+
+    it('does not match a real address that merely starts with "cisa"', () => {
+      expect(isTestAccount({ email: 'cisacampus@gmail.com', displayName: 'Campus Office' })).toBe(false);
+      expect(isTestAccount({ email: 'cisaleader@campus.edu' })).toBe(false);
     });
 
     it('returns false for real campus users and team members', () => {
@@ -30,158 +45,33 @@ describe('testAccountPurge', () => {
     });
   });
 
-  describe('scanTestAccountTraces', () => {
-    it('scans and builds a PurgePlan targeting test users, invites, prayers, interactions, and contacts', async () => {
-      const mockUsers = [
-        { id: 'u-real', data: () => ({ email: 'real@campus.edu', displayName: 'Real Person' }) },
-        { id: 'u-reviewer', data: () => ({ email: 'reviewer-1@gmail.com', displayName: 'Reviewer One' }) },
-        { id: 'u-cisa', data: () => ({ email: 'cisa-qa@gmail.com', displayName: 'Cisa QA' }) },
-      ];
-
-      const mockInvitations = [
-        { id: 'real-inv@campus.edu', data: () => ({ email: 'real-inv@campus.edu' }) },
-        { id: 'reviewer-inv@gmail.com', data: () => ({ email: 'reviewer-inv@gmail.com' }) },
-      ];
-
-      const mockContacts = [
-        { id: 'c-real', data: () => ({ name: 'Real Contact', createdBy: 'u-real' }) },
-        { id: 'c-test', data: () => ({ name: 'Test Contact', createdBy: 'u-reviewer' }) },
-      ];
-
-      const mockPrayers = [
-        { id: 'p1', data: () => ({ title: 'Reviewer Prayer' }) },
-      ];
-
-      const mockInteractions = [
-        { id: 'i-real', data: () => ({ userId: 'u-real', content: 'Real interaction' }) },
-        { id: 'i-test', data: () => ({ userId: 'u-reviewer', content: 'Test interaction' }) },
-      ];
-
-      // Mock Firestore reader functions
-      const mockGetDocs = vi.fn((q: any) => {
-        const path = q?.path || q?._path || '';
-        if (path === 'users') return Promise.resolve({ docs: mockUsers });
-        if (path === 'invitations') return Promise.resolve({ docs: mockInvitations });
-        if (path === 'contacts') return Promise.resolve({ docs: mockContacts });
-        if (path === 'users/u-reviewer/personalPrayers') return Promise.resolve({ docs: mockPrayers });
-        if (path === 'contacts/c-test/interactions') return Promise.resolve({ docs: mockInteractions });
-        return Promise.resolve({ docs: [] });
-      });
-
-      const mockCollection = vi.fn((_db: any, path: string) => ({ path }));
-
-      const plan = await scanTestAccountTraces({} as Firestore, {
-        getDocs: mockGetDocs as any,
-        collection: mockCollection as any,
-      });
-
-      expect(plan.testUsers).toHaveLength(2);
-      expect(plan.testUsers.map((u) => u.id)).toEqual(['u-reviewer', 'u-cisa']);
-      expect(plan.invitations).toHaveLength(1);
-      expect(plan.invitations[0].id).toBe('reviewer-inv@gmail.com');
-      expect(plan.interactions).toHaveLength(1);
-      expect(plan.interactions[0].id).toBe('i-test');
-      expect(plan.contactsCreatedByTestAccounts).toHaveLength(1);
-      expect(plan.contactsCreatedByTestAccounts[0].id).toBe('c-test');
-      expect(plan.totalDeletionsCount).toBe(6); // 2 users + 1 invite + 1 prayer + 1 interaction + 1 test contact
+  describe('selectedPurgePaths / purgeTotal', () => {
+    it('leaves contacts out unless they are opted in', () => {
+      const plan = { ...emptyPlan(), accounts: ['users/u1'], contacts: ['contacts/c1'], logins: ['u1'] };
+      expect(selectedPurgePaths(plan, false)).toEqual(['users/u1']);
+      expect(purgeTotal(plan, false)).toBe(2);
+      expect(selectedPurgePaths(plan, true)).toEqual(['contacts/c1', 'users/u1']);
+      expect(purgeTotal(plan, true)).toBe(3);
     });
 
-    it('detects interactions authored via createdById (server Quick Add path) as test traces', async () => {
-      const mockUsers = [
-        { id: 'u-cisa', data: () => ({ email: 'cisa-ft@gmail.com', displayName: 'Cisa FT' }) },
-      ];
-
-      const mockContacts = [
-        { id: 'c-edgar', data: () => ({ name: 'Edgar', createdBy: 'u-cisa' }) },
-      ];
-
-      const mockInteractions = [
-        { id: 'i-quick-add', data: () => ({ createdById: 'u-cisa', content: 'Quick add interaction' }) },
-        { id: 'i-real-user', data: () => ({ userId: 'u-real', content: 'Real interaction' }) },
-        { id: 'i-real-created', data: () => ({ createdById: 'u-real', content: 'Real interaction' }) },
-      ];
-
-      const mockGetDocs = vi.fn((q: any) => {
-        const path = q?.path || q?._path || '';
-        if (path === 'users') return Promise.resolve({ docs: mockUsers });
-        if (path === 'invitations') return Promise.resolve({ docs: [] });
-        if (path === 'contacts') return Promise.resolve({ docs: mockContacts });
-        if (path === 'contacts/c-edgar/interactions') return Promise.resolve({ docs: mockInteractions });
-        return Promise.resolve({ docs: [] });
-      });
-
-      const mockCollection = vi.fn((_db: any, path: string) => ({ path }));
-
-      const plan = await scanTestAccountTraces({} as Firestore, {
-        getDocs: mockGetDocs as any,
-        collection: mockCollection as any,
-      });
-
-      expect(plan.interactions.map((i) => i.id)).toContain('i-quick-add');
-      expect(plan.interactions.map((i) => i.id)).not.toContain('i-real-user');
-      expect(plan.interactions.map((i) => i.id)).not.toContain('i-real-created');
-      expect(plan.totalDeletionsCount).toBe(3); // 1 test user + 1 interaction + 1 test contact
-    });
-  });
-
-  describe('purgeTestAccountTraces', () => {
-    it('executes batch deletions for all targeted documents in the plan', async () => {
-      const plan: PurgePlan = {
-        testUsers: [{ id: 'u-test', path: 'users/u-test' }],
-        invitations: [{ id: 'inv-test', path: 'invitations/inv-test' }],
-        personalPrayers: [{ id: 'p1', path: 'users/u-test/personalPrayers/p1' }],
-        interactions: [{ id: 'i-test', path: 'contacts/c1/interactions/i-test' }],
-        contactsCreatedByTestAccounts: [{ id: 'c-test', path: 'contacts/c-test' }],
-        totalDeletionsCount: 5,
+    it('drops targets nested under an opted-in contact, which the contact delete already covers', () => {
+      const plan = {
+        ...emptyPlan(),
+        interactions: ['contacts/c1/interactions/i1', 'contacts/c2/interactions/i2', 'contacts/c10/interactions/i3'],
+        notes: ['contacts/c1/comments/m1'],
+        contacts: ['contacts/c1'],
       };
-
-      const deletedPaths: string[] = [];
-      const mockDeleteDoc = vi.fn((ref: any) => {
-        deletedPaths.push(ref.path);
-        return Promise.resolve();
-      });
-
-      const mockDoc = vi.fn((_db: any, path: string) => ({ path }));
-
-      const result = await purgeTestAccountTraces({} as Firestore, plan, {
-        deleteTestContacts: true,
-        deleteDoc: mockDeleteDoc as any,
-        doc: mockDoc as any,
-      });
-
-      expect(result.deletedCount).toBe(5);
-      expect(deletedPaths).toContain('users/u-test');
-      expect(deletedPaths).toContain('invitations/inv-test');
-      expect(deletedPaths).toContain('users/u-test/personalPrayers/p1');
-      expect(deletedPaths).toContain('contacts/c1/interactions/i-test');
-      expect(deletedPaths).toContain('contacts/c-test');
+      expect(selectedPurgePaths(plan, true)).toEqual([
+        'contacts/c2/interactions/i2',
+        'contacts/c10/interactions/i3',
+        'contacts/c1',
+      ]);
+      expect(purgeTotal(plan, false)).toBe(4);
     });
 
-    it('skips deleting test contacts if deleteTestContacts is false', async () => {
-      const plan: PurgePlan = {
-        testUsers: [{ id: 'u-test', path: 'users/u-test' }],
-        invitations: [],
-        personalPrayers: [],
-        interactions: [],
-        contactsCreatedByTestAccounts: [{ id: 'c-test', path: 'contacts/c-test' }],
-        totalDeletionsCount: 2,
-      };
-
-      const deletedPaths: string[] = [];
-      const mockDeleteDoc = vi.fn((ref: any) => {
-        deletedPaths.push(ref.path);
-        return Promise.resolve();
-      });
-      const mockDoc = vi.fn((_db: any, path: string) => ({ path }));
-
-      const result = await purgeTestAccountTraces({} as Firestore, plan, {
-        deleteTestContacts: false,
-        deleteDoc: mockDeleteDoc as any,
-        doc: mockDoc as any,
-      });
-
-      expect(result.deletedCount).toBe(1);
-      expect(deletedPaths).toEqual(['users/u-test']);
+    it('deletes traces before the account docs that own them', () => {
+      const plan = { ...emptyPlan(), accounts: ['users/u1'], personal: ['userPreferences/u1'], invitations: ['invitations/x'] };
+      expect(selectedPurgePaths(plan, false)).toEqual(['userPreferences/u1', 'invitations/x', 'users/u1']);
     });
   });
 });
