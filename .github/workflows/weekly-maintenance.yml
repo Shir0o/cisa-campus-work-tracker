@@ -61,7 +61,7 @@ jobs:
         run: npx tsx scripts/agent/runner.ts --publish
 
       - name: Upload maintenance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: maintenance-artifacts-${{ github.run_id }}
