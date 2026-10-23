@@ -229,12 +229,12 @@ export default function BibleStudyRead() {
     </>
   );
 
-  // The same phone frame the public route uses on desktop, full-bleed on a
-  // phone — but inside the app's shell, so the nav and the way back are the
-  // app's own rather than a dead end.
+  // The reader fills the app shell's content area so it can measure a wide
+  // box and page (#1590); the nav and the way back are the app's own rather
+  // than a dead end.
   return (
-    <div className="flex-1 min-h-0 flex items-center justify-center p-0 sm:p-4">
-      <div className="w-full max-w-[420px] h-full sm:h-[844px] sm:max-h-[92dvh] sm:rounded-3xl sm:border sm:border-outline-variant bg-background text-on-surface relative overflow-hidden flex flex-col sm:shadow-xl">
+    <div className="flex-1 min-h-0 flex">
+      <div className="w-full h-full bg-background text-on-surface relative overflow-hidden flex flex-col">
         <StudyReaderView
           meeting={meeting!}
           staleDateLabel={staleDateLabel}
