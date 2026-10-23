@@ -13,7 +13,8 @@ import {
   Sparkles,
   Combine,
   Users,
-  ChevronDown
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -144,7 +145,7 @@ const KIND_SEGMENTS: { value: KindSegment; labelKey: string }[] = [
 ];
 
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
-  const dim = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-12 h-12 text-sm';
+  const dim = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-10 h-10 text-xs sm:w-12 sm:h-12 sm:text-sm';
   const initials = contact.initials || getUserInitials(contact.name);
   if (contact.avatar) {
     return (
@@ -796,6 +797,22 @@ export default function Directory() {
   };
 
   const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterSpiritualBackground !== 'All' || filterInterest !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterHasPhone || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+
+  // Narrowing the list must not leave bulk actions pointed at rows the reader
+  // can no longer see — on a phone the selection bar is the only place Remove
+  // lives, and it sits above an empty list (#1762).
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filteredContacts.map((c) => c.id));
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (visible.has(id)) next.add(id);
+      });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredContacts]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -1063,7 +1080,7 @@ export default function Directory() {
       <div
         role="group"
         aria-label={t('directory.kind')}
-        className="inline-flex flex-wrap items-center gap-1 mt-8 p-1 bg-surface-container rounded-xl border border-outline-variant/40"
+        className="flex flex-wrap items-center gap-1 w-full mt-8 p-1 bg-surface-container rounded-xl border border-outline-variant/40 sm:w-auto"
       >
         {KIND_SEGMENTS.map((segment) => {
           const active = !filterUnsorted && kindSegment === segment.value;
@@ -1077,7 +1094,7 @@ export default function Directory() {
                 setFilterUnsorted(false);
               }}
               className={cn(
-                'px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors min-h-[36px]',
+                'px-2 sm:px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors min-h-[44px] sm:min-h-[36px]',
                 active
                   ? 'bg-primary text-on-primary shadow-xs'
                   : 'text-on-surface-variant hover:text-on-surface',
@@ -1090,8 +1107,8 @@ export default function Directory() {
       </div>
 
       {/* ── Search + filters ── */}
-      <div className="flex flex-wrap items-center gap-3 mt-4">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex items-center gap-3 mt-4">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" aria-hidden="true" />
           <input
             type="text"
@@ -1099,8 +1116,18 @@ export default function Directory() {
             placeholder={t('directory.find_someone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-sm border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-colors"
+            className="w-full h-11 pl-10 pr-11 rounded-sm border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-colors"
           />
+          {searchQuery !== '' && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label={t('directory.clear_search')}
+              className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center rounded-r-sm text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="relative">
           <button
@@ -1128,14 +1155,14 @@ export default function Directory() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-3xl shadow-xl p-4 min-w-[240px] max-w-[calc(100vw-2rem)] space-y-4"
+                  className="max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[60] max-sm:max-h-[80dvh] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:rounded-b-none max-sm:pb-[max(env(safe-area-inset-bottom),16px)] sm:absolute sm:top-[calc(100%+8px)] sm:right-0 sm:z-40 bg-surface-container-high border border-outline-variant rounded-3xl shadow-xl p-4 sm:min-w-[240px] sm:max-w-[calc(100vw-2rem)] space-y-4"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="sticky top-0 z-10 -mx-4 -mt-4 px-4 pt-4 pb-2 bg-surface-container-high flex items-center justify-between">
                     <span className="text-sm font-medium text-on-surface">{t('directory.narrow_it_down')}</span>
                     {hasActiveFilters && (
                       <button
                         onClick={clearFilters}
-                        className="text-xs font-medium text-accent hover:underline"
+                        className="text-xs font-medium text-accent hover:underline min-h-[44px] px-2"
                       >
                         {t('directory.clear_all')}
                       </button>
@@ -1148,7 +1175,7 @@ export default function Directory() {
                       <Select
                         value={filterStage}
                         onChange={(e) => setFilterStage(e.target.value)}
-                        className="h-10 text-sm"
+                        className="h-11 sm:h-10 text-sm"
                       >
                         {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? t('directory.all_stages') : s}</option>)}
                       </Select>
@@ -1159,7 +1186,7 @@ export default function Directory() {
                       <Select
                         value={filterSpiritualBackground}
                         onChange={(e) => setFilterSpiritualBackground(e.target.value)}
-                        className="h-10 text-sm"
+                        className="h-11 sm:h-10 text-sm"
                       >
                         {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? t('directory.all_backgrounds') : sb}</option>)}
                       </Select>
@@ -1170,7 +1197,7 @@ export default function Directory() {
                       <Select
                         value={filterInterest}
                         onChange={(e) => setFilterInterest(e.target.value)}
-                        className="h-10 text-sm"
+                        className="h-11 sm:h-10 text-sm"
                       >
                         {filterInterests.map(i => <option key={i} value={i}>{i === 'All' ? t('directory.all_interests') : i}</option>)}
                       </Select>
@@ -1178,7 +1205,7 @@ export default function Directory() {
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.kind')}</label>
-                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                      <label className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[40px] px-1 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           data-testid="filter-unsorted"
@@ -1196,7 +1223,7 @@ export default function Directory() {
                             setShowFilterMenu(false);
                             setMovingUpAt(new Date());
                           }}
-                          className="w-full flex items-center justify-between gap-2 min-h-[40px] px-1 text-sm text-on-surface hover:text-accent disabled:text-on-surface-variant disabled:cursor-default transition-colors"
+                          className="w-full flex items-center justify-between gap-2 min-h-[44px] sm:min-h-[40px] px-1 text-sm text-on-surface hover:text-accent disabled:text-on-surface-variant disabled:cursor-default transition-colors"
                         >
                           <span>{t('movingUpAYear.years_to_confirm')}</span>
                           <span className="tabular-nums text-on-surface-variant">{toConfirm.length}</span>
@@ -1206,7 +1233,7 @@ export default function Directory() {
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.reach')}</label>
-                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                      <label className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[40px] px-1 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           data-testid="filter-not-reached"
@@ -1216,7 +1243,7 @@ export default function Directory() {
                         />
                         <span className="text-sm text-on-surface">{t('directory.not_reached_yet')}</span>
                       </label>
-                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                      <label className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[40px] px-1 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           data-testid="filter-has-phone"
@@ -1233,7 +1260,7 @@ export default function Directory() {
                       <Select
                         value={filterAddedWhen}
                         onChange={(e) => setFilterAddedWhen(e.target.value as 'all' | 'today' | 'week' | 'month')}
-                        className="h-10 text-sm"
+                        className="h-11 sm:h-10 text-sm"
                       >
                         <option value="all">{t('directory.all_time')}</option>
                         <option value="today">{t('directory.added_today')}</option>
@@ -1248,7 +1275,7 @@ export default function Directory() {
                             aria-label={t('directory.from')}
                             value={customRange.from}
                             onChange={(e) => updateCustomRange({ ...customRange, from: e.target.value })}
-                            className="flex-1 min-w-0 h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
+                            className="flex-1 min-w-0 h-11 sm:h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
                           />
                           <span className="text-on-surface-variant">–</span>
                           <input
@@ -1256,7 +1283,7 @@ export default function Directory() {
                             aria-label={t('directory.to')}
                             value={customRange.to}
                             onChange={(e) => updateCustomRange({ ...customRange, to: e.target.value })}
-                            className="flex-1 min-w-0 h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
+                            className="flex-1 min-w-0 h-11 sm:h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
                           />
 
                         </div>
@@ -1272,7 +1299,7 @@ export default function Directory() {
 
       {/* ── Tag chips filter ── */}
       {allTags.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4" role="group" aria-label={t('directory.filter_by_tag')}>
           {allTags.some(tag => (tagNotReachedCounts.get(tag) ?? 0) > 0) && (
             <p className="text-xs text-on-surface-variant mb-2">{t('directory.tag_counts_note')}</p>
           )}
@@ -1284,13 +1311,16 @@ export default function Directory() {
                 <button
                   key={tag}
                   onClick={() => toggleTagFilter(tag)}
+                  aria-pressed={selected}
                   aria-label={
                     notReached > 0
                       ? t('directory.tag_not_reached_label').replace('{tag}', tag).replace('{n}', String(notReached))
                       : undefined
                   }
                   className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 inline-flex items-center gap-1.5",
+                    // The chip keeps its 26px shape; a pseudo-element gives the
+                    // thumb the repo's 44px target without moving the row (#1762).
+                    "relative px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 inline-flex items-center gap-1.5 after:absolute after:-inset-y-[9px] after:inset-x-0 after:content-['']",
                     selected
                       ? "bg-primary text-on-primary border-primary"
                       : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
@@ -1353,7 +1383,7 @@ export default function Directory() {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
-              className="flex items-center gap-1 max-w-full overflow-x-auto"
+              className="flex items-center gap-1 max-w-full flex-wrap"
             >
               {isAdmin && (
                 <button
@@ -1417,12 +1447,29 @@ export default function Directory() {
 
       {/* ── People cards ── */}
       {filteredContacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-full bg-surface-variant flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center justify-center py-10 sm:py-20 text-center">
+          <div className="hidden sm:flex w-14 h-14 rounded-full bg-surface-variant items-center justify-center mb-4">
             <Search className="w-7 h-7 text-on-surface-variant opacity-40" />
           </div>
           <h3 className="font-serif text-xl text-on-surface mb-1">{t('directory.no_matches_title')}</h3>
           <p className="text-sm text-on-surface-variant">{t('directory.no_matches_body')}</p>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-4 inline-flex items-center gap-2 px-4 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity min-h-[44px]"
+            >
+              {t('directory.clear_search_filters')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openNewContact()}
+              className="mt-4 inline-flex items-center gap-2 px-4 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity min-h-[44px]"
+            >
+              <Plus className="w-4 h-4" /> {t('actions.add_someone')}
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -1456,12 +1503,25 @@ export default function Directory() {
                   selected && "border-primary bg-primary/5"
                 )}
               >
-                <div className="flex gap-4 min-w-0">
+                {/* The card is a click target, but a div cannot be tabbed to, so
+                    this overlay carries the row for keyboard and screen readers.
+                    It sits under the content, so the text stays selectable and
+                    the card's own onClick still opens the person. */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedContact(contact);
+                  }}
+                  aria-label={t('directory.open_person').replace('{name}', contact.name)}
+                  className="absolute inset-0 z-0 rounded-3xl cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                />
+                <div className="relative z-10 flex gap-3 sm:gap-4 min-w-0">
                   {/* Select checkbox */}
                   <button
                     onClick={(e) => toggleSelect(contact.id, e)}
                     className={cn(
-                      "mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all",
+                      "relative after:absolute after:-inset-3 after:content-[''] mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all",
                       selected
                         ? "bg-primary border-primary opacity-100"
                         : "border-outline opacity-40 group-hover:opacity-100 hover:border-primary"
@@ -1474,18 +1534,20 @@ export default function Directory() {
                   <Avatar contact={contact} />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2 sm:flex-wrap">
                       <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
-                      <KindChip contact={contact} showAll />
-                      <span
-                        style={tStyle}
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
-                          isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
-                        )}
-                      >
-                        {isStage ? contact.stage : t('directory.unassigned')}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <KindChip contact={contact} showAll />
+                        <span
+                          style={tStyle}
+                          className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
+                            isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
+                          )}
+                        >
+                          {isStage ? contact.stage : t('directory.unassigned')}
+                        </span>
+                      </div>
                     </div>
                     {sub && (
                       <div className="text-sm text-on-surface-variant mt-0.5 truncate">{sub}</div>
@@ -1496,7 +1558,7 @@ export default function Directory() {
                       </div>
                     )}
                     {!reached ? (
-                      <div className="text-sm text-on-surface-variant/70 italic mt-1">{t('directory.not_reached_yet')}</div>
+                      <div className="text-sm text-on-surface-variant italic mt-1">{t('directory.not_reached_yet')}</div>
                     ) : days != null ? (
                       <div className={cn(
                         "flex items-center gap-1.5 text-sm mt-1",
@@ -1506,11 +1568,11 @@ export default function Directory() {
                         <Translate text={connectedLabel(days)} />
                       </div>
                     ) : (
-                      <div className="text-sm text-on-surface-variant/70 italic mt-1">{t('directory.no_contact_logged')}</div>
+                      <div className="text-sm text-on-surface-variant italic mt-1">{t('directory.no_contact_logged')}</div>
                     )}
                     {note && (
                       <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-                        <span className="text-on-surface-variant/70">{t('directory.lately')}</span> <Translate text={truncate(note, 120)} />
+                        <span className="text-on-surface-variant">{t('directory.lately')}</span> <Translate text={truncate(note, 120)} />
                       </p>
                     )}
                     {tags.length > 0 && (
@@ -1540,7 +1602,7 @@ export default function Directory() {
                   )}
 
                   <RowActions
-                    className="self-start"
+                    className="self-start max-sm:[&>button]:h-11 max-sm:[&>button]:w-11 max-sm:[&>button]:grid max-sm:[&>button]:place-items-center"
                     label={`${t('directory.more_for')} ${contact.name}`}
                     items={buildContactRowActions({
                       contact,
