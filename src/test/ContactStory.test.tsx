@@ -112,6 +112,24 @@ describe('ContactStory — changes and attendance (#1291)', () => {
     expect(screen.getByText('changed group from Student to Faculty')).toBeInTheDocument();
   });
 
+  // #1761: a field that was never set, or is being cleared, has no both-sides
+  // sentence. "changed major from to History" is not English.
+  it('phrases a first value and a cleared value without an empty side (#1761)', () => {
+    const change = (id: string, field: string, from: string, to: string) => ({
+      kind: 'change' as const,
+      id,
+      at: '2026-08-01T09:00:00.000Z',
+      byId: 'anna',
+      byName: 'Anna',
+      changes: [{ type: 'field' as const, field, from, to }],
+    });
+    renderStory([change('set', 'major', '', 'History'), change('clear', 'phone', '555-0100', '')]);
+
+    expect(screen.getByText('set major to History')).toBeInTheDocument();
+    expect(screen.getByText('cleared phone')).toBeInTheDocument();
+    expect(screen.queryByText(/from {2}to/)).toBeNull();
+  });
+
   it('labels year and major changes in words (#1348)', () => {
     const change = (id: string, field: string, from: string, to: string) => ({
       kind: 'change' as const,

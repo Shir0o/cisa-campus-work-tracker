@@ -1372,6 +1372,7 @@
     },
     "contactDetails": {
       "access_restricted": "Acceso restringido",
+      "back_to_people": "Volver a Personas",
       "no_permission": "No tienes permiso para ver este registro de contacto.",
       "close": "Cerrar",
       "cancel": "Cancelar",
@@ -1574,6 +1575,8 @@
       "story_change_step": "movió el paso {from} → {to}",
       "story_change_kind": "cambió el tipo de {from} a {to}",
       "story_change_field": "cambió {field} de {from} a {to}",
+      "story_change_field_set": "puso {field} en {to}",
+      "story_change_field_cleared": "borró {field}",
       "story_change_notes": "actualizó las notas",
       "story_change_graduated": "marcó que se graduó o dejó los estudios",
       "story_change_tag_added": "añadió la etiqueta {tag}",

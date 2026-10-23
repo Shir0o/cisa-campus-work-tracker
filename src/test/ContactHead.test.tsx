@@ -127,6 +127,52 @@ describe('ContactHead', () => {
     expect(actions.onOpenDelegate).toHaveBeenCalled();
   });
 
+  // #1761: on a phone the More menu is a layer over the page, so Escape is
+  // the menu's to answer — not the page's.
+  it('announces the More trigger as a menu and reflects its open state', () => {
+    render(
+      <ContactHead model={defaultModel} actions={createActions()} isMobile={true} isEditing={false} />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'More actions' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('closes More actions on Escape and returns focus to its trigger', () => {
+    const actions = createActions();
+    render(<ContactHead model={defaultModel} actions={actions} isMobile={true} isEditing={false} />);
+
+    const trigger = screen.getByRole('button', { name: 'More actions' });
+    fireEvent.click(trigger);
+    expect(screen.getByText('Add prayer')).toBeInTheDocument();
+
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+
+    expect(screen.queryByText('Add prayer')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  // #1761: a 7px dot is not an accessible signal — the unread state has to be
+  // in the Conversation button's name.
+  it('names the unread state of the Conversation button on a phone', () => {
+    render(
+      <ContactHead
+        model={{ ...defaultModel, conversationUnread: true }}
+        actions={createActions()}
+        isMobile={true}
+        isEditing={false}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Conversation, New in Full-timers' }),
+    ).toBeInTheDocument();
+  });
+
   it('omits the Delegate item for a viewer who cannot share', () => {
     render(
       <ContactHead

@@ -1372,6 +1372,7 @@
     },
     "contactDetails": {
       "access_restricted": "Access Restricted",
+      "back_to_people": "Back to People",
       "no_permission": "You do not have permission to view this contact record.",
       "close": "Close",
       "cancel": "Cancel",
@@ -1574,6 +1575,8 @@
       "story_change_step": "moved step {from} → {to}",
       "story_change_kind": "changed kind from {from} to {to}",
       "story_change_field": "changed {field} from {from} to {to}",
+      "story_change_field_set": "set {field} to {to}",
+      "story_change_field_cleared": "cleared {field}",
       "story_change_notes": "updated notes",
       "story_change_graduated": "marked them graduated or left school",
       "story_change_tag_added": "added tag {tag}",

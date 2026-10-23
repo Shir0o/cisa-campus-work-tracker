@@ -3849,12 +3849,13 @@ body.msgs-fullscreen .msgs-rail { display: none; }
      and an "About" section that folds in the desktop aside.                   */
   .detail-main { border-right: 0; }
 
-  .cdm-top { padding: 14px 16px 4px; }
+  .cdm-top { padding: 12px 20px 4px; }
   .cdm-back {
     display: inline-flex; align-items: center; gap: 3px;
     background: none; border: 0; cursor: pointer; padding: 6px 6px 6px 0;
-    font-family: var(--font-sans); font-size: 14px; color: var(--text-mute);
-    margin-bottom: 10px;
+    min-height: 44px;
+    font-family: var(--font-sans); font-size: 14px; color: var(--on-surface-variant);
+    margin-bottom: 4px;
   }
   .cdm-back:active { color: var(--accent); }
   .cdm-back-ico { transform: rotate(180deg); }
@@ -3864,10 +3865,10 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .cdm-hero .cd-name { font-size: 24px; }
   .cdm-name-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .cdm-chip-row { margin: 8px 0 6px; }
-  .cdm-meta { font-size: 13px; color: var(--text-mute); line-height: 1.5; margin-top: 14px; text-wrap: pretty; }
+  .cdm-meta { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; margin-top: 14px; text-wrap: pretty; }
 
   /* communication tiles */
-  .cdm-comm { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .cdm-comm { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .cdm-comm button {
     display: flex; flex-direction: column; align-items: center; gap: 7px;
     padding: 12px 0 11px; min-height: 62px;
@@ -3907,6 +3908,20 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .cdm-select-caret { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); color: var(--text-mute); pointer-events: none; }
 
   .cdm-about .cd-aside-sec:first-child { padding-top: 20px; }
+
+  /* 44px hit areas without changing the drawn size: the tag ×, the "+ add"
+     chip and the composer's switch are small on purpose, but a phone still has
+     to be able to hit them (#1761). */
+  .cd-tag-x,
+  .cd-tag-add,
+  .cd-composer-switch button { position: relative; }
+  .cd-tag-x::after,
+  .cd-tag-add::after,
+  .cd-composer-switch button::after {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    width: max(100%, 44px); height: 44px;
+    transform: translate(-50%, -50%);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -3963,7 +3978,9 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 /* Mobile keeps the full-screen sheet (no popup card); same body reflow. */
 .cdm-page {
   position: fixed; inset: 0; z-index: 100;
-  background: var(--surface);
+  /* Pure Paper is the page canvas; `--surface` is the card fill and made the
+     whole page read as one slab (#1761). */
+  background: var(--bg);
   display: flex; flex-direction: column;
   overflow: hidden;
 }
@@ -4311,7 +4328,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 /* The thread line joins each entry's dot to the next one. */
 .cd-story-entry:not(:last-child)::after {
   content: ""; position: absolute; left: calc(84px + 14px + 6px); top: 18px; bottom: 0;
-  width: 2px; background: var(--outline-variant);
+  width: 2px; background: var(--outline);
 }
 .cd-story-date { font-size: 12.5px; color: var(--on-surface-variant); text-align: right; padding-top: 3px; }
 .cd-story-dot {
@@ -5089,3 +5106,37 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 
 
 
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Contact detail on a phone (#1761).
+   These come after the shared `.cd-story` / `.cd-composer` rules so the phone
+   layout wins on source order — the same declarations inside the earlier
+   720px block lost to rules defined further down this file.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  /* One gutter: the head, tiles and primaries sit at 20px, so the body owns
+     20px and the section adds none. The story's text used to start at 52px. */
+  .cdm-page-body { padding: 24px 20px; }
+  .cdm-page-body .cd-story { padding: 0 0 24px; }
+
+  /* The timeline keeps its 84px date column on a desk. On a phone the date
+     becomes the entry's caption so the words get the width. */
+  .cd-story-entry {
+    grid-template-columns: 12px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .cd-story-entry:not(:last-child)::after { left: 5px; }
+  .cd-story-date {
+    grid-column: 2; grid-row: 1;
+    text-align: left; padding-top: 0; margin-bottom: 4px; font-size: 11.5px;
+  }
+  .cd-story-dot { grid-column: 1; grid-row: 1; margin: 2px 1px 0; }
+  .cd-story-body { grid-column: 2; grid-row: 2; }
+  .cd-story-change-more {
+    display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0;
+  }
+
+  /* At rest the composer was one row, so the 156px switch cluster left the
+     text field 49px of its 245px box. Stacked, the field owns the width. */
+  .cd-composer.is-rest .cd-composer-box { flex-direction: column; align-items: stretch; }
+}
