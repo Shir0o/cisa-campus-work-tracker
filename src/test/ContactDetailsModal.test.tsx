@@ -594,9 +594,7 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('leaves a removed contact hidden when a prayer is added on the contact tab (#1406)', async () => {
-    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['contact-abc', 'other-contact']));
-
+  it('leaves a team-removed contact off the list when a prayer is added on the contact tab (#1406)', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click Add prayer button in header
@@ -616,13 +614,13 @@ describe('ContactDetailsModal Component', () => {
       expect(firestore.addDoc).toHaveBeenCalled();
     });
 
-    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
-    // A prayer typed on the contact's own tab does not put them back on
-    // "On our hearts" (#1406); only an explicit add on /prayer does.
-    expect(hidden).toContain('contact-abc');
-    expect(hidden).toContain('other-contact');
-
-    localStorage.removeItem('cisa.prayer.hidden');
+    // A prayer typed on the contact's own tab belongs to the contact and must
+    // not touch the team's list: only an explicit add on /prayer clears a
+    // removal (#1406, #1692).
+    const touchedRemoval = vi.mocked(firestore.updateDoc).mock.calls.some(
+      ([, data]) => !!data && typeof data === 'object' && 'prayerListRemoved' in (data as object),
+    );
+    expect(touchedRemoval).toBe(false);
   });
 
   it('handles phone number formatting and error display on blur', async () => {

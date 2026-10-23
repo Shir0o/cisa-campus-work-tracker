@@ -468,6 +468,99 @@ describeRules('Firestore Security Rules', () => {
       updatedByName: "Operator Three",
     }));
   });
+
+    // #1692: "On our hearts" is the team's list, so the removal lives on the
+    // contact. Any approved operator who can see the person may set it with
+    // their own uid or clear it; nobody may pin it on someone else.
+    describe('team prayer list removal (#1692)', () => {
+      const seed = async (contact: Record<string, unknown> = {}) => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          const adminDb = context.firestore();
+          await setDoc(doc(adminDb, 'users', 'operator1'), { role: 'operator', approved: true });
+          await setDoc(doc(adminDb, 'users', 'operator2'), { role: 'operator', approved: true });
+          await setDoc(doc(adminDb, 'users', 'viewer1'), { role: 'viewer', approved: true });
+          await setDoc(doc(adminDb, 'contacts', 'contact1'), {
+            name: 'Test',
+            email: 'test@example.com',
+            visibleTo: ['operator1'],
+            ...contact,
+          });
+        });
+      };
+
+      const removal = (by: string) => ({
+        prayerListRemoved: {
+          at: '2026-10-22T00:00:00.000Z',
+          by,
+          byName: 'Operator One',
+        },
+        updatedAt: serverTimestamp(),
+        updatedBy: by,
+        updatedByName: 'Operator One',
+      });
+
+      it('lets an operator set the removal naming themselves', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'operator1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator1')));
+      });
+
+      it('lets an operator who is not in visibleTo set it, because Students see everyone', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'operator2' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator2')));
+      });
+
+      it('denies a removal that names someone else', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'operator1' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator2')));
+      });
+
+      it('denies a removal carrying a fifth key', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'operator1' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), {
+          prayerListRemoved: {
+            at: '2026-10-22T00:00:00.000Z',
+            by: 'operator1',
+            byName: 'Operator One',
+            extra: 'nope',
+          },
+          updatedAt: serverTimestamp(),
+          updatedBy: 'operator1',
+          updatedByName: 'Operator One',
+        }));
+      });
+
+      it('denies a viewer, even naming themselves', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'viewer1' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('viewer1')));
+      });
+
+      it('lets an operator who can see the person clear it', async () => {
+        await seed({
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'operator2', byName: 'Operator Two' },
+        });
+        const db = getFirestore({ uid: 'operator1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+          prayerListRemoved: deleteField(),
+          updatedAt: serverTimestamp(),
+          updatedBy: 'operator1',
+          updatedByName: 'Operator One',
+        }));
+      });
+
+      it('denies an unauthenticated create that arrives already removed', async () => {
+        const db = getFirestore();
+        await assertFails(setDoc(doc(db, 'contacts', 'stranger'), {
+          name: 'Stranger',
+          email: 'stranger@example.com',
+          prayerListRemoved: { at: '2026-10-22T00:00:00.000Z', by: 'someone' },
+        }));
+      });
+    });
   });
 
   describe('Your sheep carers (#1051)', () => {

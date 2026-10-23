@@ -297,7 +297,15 @@ service cloud.firestore {
                (!('kindSetBy' in data) || data.kindSetBy == null || (data.kindSetBy is string && data.kindSetBy.size() <= 128)) &&
                (!('kindSetAt' in data) || data.kindSetAt == null || (data.kindSetAt is string && data.kindSetAt.size() <= 40)) &&
                (!('visibleTo' in data) || data.visibleTo == null ||
-                (data.visibleTo is list && data.visibleTo.size() <= 200));
+                (data.visibleTo is list && data.visibleTo.size() <= 200)) &&
+               (!('prayerListRemoved' in data) || data.prayerListRemoved == null ||
+                (data.prayerListRemoved is map &&
+                 data.prayerListRemoved.keys().hasOnly(['at', 'by', 'byName']) &&
+                 data.prayerListRemoved.keys().hasAll(['at', 'by']) &&
+                 data.prayerListRemoved.at is string && data.prayerListRemoved.at.size() <= 40 &&
+                 data.prayerListRemoved.by is string && data.prayerListRemoved.by.size() <= 128 &&
+                 (!('byName' in data.prayerListRemoved) || data.prayerListRemoved.byName == null ||
+                  (data.prayerListRemoved.byName is string && data.prayerListRemoved.byName.size() <= 128))));
       }
 
       // Read the tie server-side: a Trainee must appear in `visibleTo`, and
@@ -330,6 +338,9 @@ service cloud.firestore {
       }
 
       allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming()) &&
+                      // #1692: the public sign-up form is filled in by a stranger,
+                      // so a create may not arrive already off the team's list.
+                      !('prayerListRemoved' in incoming()) &&
                       reachSafeOnCreate(incoming());
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
@@ -417,6 +428,14 @@ service cloud.firestore {
         let exSeen = ex.get('visibleTo', []).toSet();
         let incSeen = incoming().get('visibleTo', []).toSet();
         return
+          // #1692: "On our hearts" is the team's list. Any approved operator
+          // who can see the person may put someone back (the clear names
+          // nobody), while setting the removal must name the caller, so the
+          // flag cannot be pinned on someone else. First so this small write
+          // short-circuits before the role and tie branches.
+          (keys.hasOnly(['prayerListRemoved', 'updatedAt', 'updatedBy', 'updatedByName']) &&
+           (incoming().get('prayerListRemoved', null) == null ||
+            incoming().prayerListRemoved.by == uid)) ||
           // #1526: Release from my queue. The caller appends only their own uid
           // to `unfollowedBy`, drops only their own tie from
           // carers/coCreators/founders, and rewrites `visibleTo` to match — the

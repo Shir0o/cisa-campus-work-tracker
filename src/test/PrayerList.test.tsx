@@ -1,12 +1,18 @@
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
+import { onSnapshot, updateDoc } from 'firebase/firestore';
 import PrayerList from '../views/PrayerList';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
-import { logActivity } from '../lib/firebase';
+import { logActivity, handleFirestoreError } from '../lib/firebase';
 import { uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import React from 'react';
+
+const batch = vi.hoisted(() => ({
+  set: vi.fn(),
+  update: vi.fn(),
+  commit: vi.fn(() => Promise.resolve()),
+}));
 
 // Mock dependencies
 vi.mock('react-router-dom', () => ({
@@ -35,7 +41,18 @@ vi.mock('firebase/firestore', () => ({
   }),
   updateDoc: vi.fn(() => Promise.resolve()),
   addDoc: vi.fn(() => Promise.resolve({ id: 'new-prayer-id' })),
-  doc: vi.fn((_db, path, id) => ({ path, id })),
+  deleteField: vi.fn(() => ({ __deleteField: true })),
+  writeBatch: vi.fn(() => ({
+    set: batch.set,
+    update: batch.update,
+    commit: batch.commit,
+  })),
+  doc: vi.fn((_db, ...parts) => {
+    if (parts.length === 0 && _db?.path) return { path: _db.path, id: 'new-prayer-id' };
+    if (parts.length === 1 && parts[0]?.path) return { path: parts[0].path, id: 'new-prayer-id' };
+    const [path, id] = parts;
+    return { path, id };
+  }),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
 }));
 
@@ -478,12 +495,12 @@ describe('PrayerList', () => {
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      expect(addDoc).toHaveBeenCalled();
+      expect(batch.set).toHaveBeenCalled();
       expect(logActivity).toHaveBeenCalled();
     });
     // The prayer page is the one place a burden is the team's — said out loud,
     // not left to the "absent means team" default (#1406).
-    expect(vi.mocked(addDoc).mock.calls[0][1]).toMatchObject({
+    expect(batch.set.mock.calls[0][1]).toMatchObject({
       prayerPage: true,
       teamPrayer: true,
     });
@@ -499,7 +516,7 @@ describe('PrayerList', () => {
 
     fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
-    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    await waitFor(() => expect(batch.set).toHaveBeenCalled());
     // On success the field clears and the composer closes.
     await waitFor(() => {
       expect(screen.queryByPlaceholderText(/What are we praying for Alice this week/i)).not.toBeInTheDocument();
@@ -516,7 +533,7 @@ describe('PrayerList', () => {
 
     fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
-    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    await waitFor(() => expect(batch.set).toHaveBeenCalled());
   });
 
   it('does not submit the week composer on plain Enter (#1402)', async () => {
@@ -529,7 +546,7 @@ describe('PrayerList', () => {
 
     fireEvent.keyDown(textarea, { key: 'Enter' });
 
-    expect(addDoc).not.toHaveBeenCalled();
+    expect(batch.set).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText(/What are we praying for Alice this week/i)).toBeInTheDocument();
   });
 
@@ -543,16 +560,16 @@ describe('PrayerList', () => {
 
     fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
-    expect(addDoc).not.toHaveBeenCalled();
+    expect(batch.set).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText(/What are we praying for Alice this week/i)).toBeInTheDocument();
   });
 
   it('does not fire a second save while the week composer is saving (#1402)', async () => {
     let resolveAdd!: (value: unknown) => void;
-    vi.mocked(addDoc).mockReturnValueOnce(
+    batch.commit.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveAdd = resolve;
-      }) as any,
+      }),
     );
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
@@ -564,9 +581,9 @@ describe('PrayerList', () => {
     fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
     fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
 
-    expect(addDoc).toHaveBeenCalledTimes(1);
-    resolveAdd({ id: 'new-prayer-id' });
-    await waitFor(() => expect(addDoc).toHaveBeenCalledTimes(1));
+    expect(batch.set).toHaveBeenCalledTimes(1);
+    resolveAdd(undefined);
+    await waitFor(() => expect(batch.set).toHaveBeenCalledTimes(1));
   });
 
   it('handles editing an existing prayer burden and canceling edits', async () => {
@@ -969,16 +986,14 @@ describe('PrayerList', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
-      expect(addDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          contactId: 'c3',
-          teamPrayer: true,
-          prayerPage: true,
-          status: 'pending',
-          burden: expect.any(String),
-        }),
-      );
+      const picked = batch.set.mock.calls.find(([, data]: any[]) => data?.contactId === 'c3');
+      expect(picked?.[1]).toMatchObject({
+        contactId: 'c3',
+        teamPrayer: true,
+        prayerPage: true,
+        status: 'pending',
+        burden: expect.any(String),
+      });
     });
   });
 
@@ -1036,12 +1051,11 @@ describe('PrayerList', () => {
 
     fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
     fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
-    expect(addDoc).not.toHaveBeenCalled();
+    expect(batch.set).not.toHaveBeenCalled();
   });
 
   it('logs and swallows failures when adding a burden fails', async () => {
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(addDoc).mockRejectedValueOnce(new Error('write failed'));
+    batch.commit.mockRejectedValueOnce(new Error('write failed'));
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
 
@@ -1051,8 +1065,11 @@ describe('PrayerList', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
-    await waitFor(() => expect(errSpy).toHaveBeenCalledWith('Error adding burden:', expect.any(Error)));
-    errSpy.mockRestore();
+    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      'CREATE',
+      'prayers',
+    ));
   });
 
   it('logs failures when marking a prayer status fails', async () => {
@@ -1157,41 +1174,104 @@ describe('PrayerList', () => {
     );
   });
 
-  it('auto-unhides a hidden contact when a prayer burden is added for them (#565)', async () => {
-    // Seed localStorage with c1 hidden
-    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1']));
-
+  it('clears a team removal when a team burden is added (#565, #1692)', async () => {
     render(<PrayerList />);
-    await waitFor(() => {
-      // Bob is visible (not hidden), Alice is hidden
-      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
-      expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    fireEvent.change(screen.getByPlaceholderText(/What are we praying for Alice this week/i), {
+      target: { value: 'Peace in her studies' },
     });
-
-    // Search for Alice (she'll appear as a suggestion since she's not held)
-    const searchInput = screen.getByPlaceholderText('Find someone…');
-    fireEvent.change(searchInput, { target: { value: 'Alice' } });
-
-    // Start holding Alice (this unhides her and opens compose)
-    const startBtn = await screen.findByRole('button', { name: /Start praying for Alice/i });
-    fireEvent.click(startBtn);
-
-    // Fill in the burden and submit
-    const textarea = await screen.findByPlaceholderText(/What are we praying for Alice this week/i);
-    fireEvent.change(textarea, { target: { value: 'Peace in her studies' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
-    await waitFor(() => {
-      expect(addDoc).toHaveBeenCalled();
+    // Adding on /prayer is the team adding, so the prayer and the contact's
+    // cleared removal go in one batch (#1692).
+    await waitFor(() => expect(batch.set).toHaveBeenCalled());
+    expect(batch.set).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'prayers' }),
+      expect.objectContaining({ contactId: 'c1', burden: 'Peace in her studies', teamPrayer: true, prayerPage: true }),
+    );
+    expect(batch.update).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts', id: 'c1' }),
+      expect.objectContaining({ prayerListRemoved: expect.anything() }),
+    );
+    expect(batch.commit).toHaveBeenCalled();
+  });
+
+  it('draws the list from the shared contact, so a team removal hides the person (#1692)', async () => {
+    let contactsCb: any;
+    const alice = {
+      id: 'c1',
+      data: () => ({
+        name: 'Alice Johnson',
+        email: 'alice@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        tags: ['Year 2'],
+        gender: 'Female',
+      }),
+    };
+    const aliceRemoved = {
+      id: 'c1',
+      data: () => ({
+        ...alice.data(),
+        prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'u-other', byName: 'Other Admin' },
+      }),
+    };
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        contactsCb = callback;
+        callback({ docs: [aliceRemoved], size: 1 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: mockPrayers, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
     });
 
-    // Alice is now visible and localStorage no longer contains her ID
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
-    expect(hidden).not.toContain('c1');
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument());
 
-    // Clean up
-    localStorage.removeItem('cisa.prayer.hidden');
+    // Another teammate clearing it is enough: no local state to undo, the
+    // shared contact now says she belongs on the list.
+    act(() => contactsCb({ docs: [alice], size: 1 }));
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+  });
+
+  it('removes a person for the whole team from the row menu (#715, #1692)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
+
+    expect(await screen.findByText("Removed Alice from the team's prayer list")).toBeInTheDocument();
+    const patch = vi.mocked(updateDoc).mock.calls.find(([ref]) => (ref as any).path === 'contacts')?.[1] as Record<string, any>;
+    expect(patch.prayerListRemoved).toMatchObject({ by: 'u-test', byName: 'Test User' });
+  });
+
+  it('puts the person back for the whole team when the removal is undone (#715, #1692)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
+
+    expect(await screen.findByText("Removed Alice from the team's prayer list")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => {
+      const patches = vi.mocked(updateDoc).mock.calls
+        .filter(([ref]) => (ref as any).path === 'contacts')
+        .map(([, data]) => data as Record<string, any>);
+      expect(patches.some((p) => 'prayerListRemoved' in p && p.prayerListRemoved?.__deleteField)).toBe(true);
+    });
   });
 
   it('renders stale badge and quick actions for stale contacts (>30 days or no interaction)', async () => {
@@ -1218,48 +1298,6 @@ describe('PrayerList', () => {
     const logBtns = screen.getAllByRole('button', { name: /Log Interaction/i });
     fireEvent.click(logBtns[0]);
     expect(mockOpenLog).toHaveBeenCalledWith('c1');
-  });
-
-  it('removes a person straight from the row menu (#715)', async () => {
-    localStorage.clear();
-    render(<PrayerList />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
-
-    // No confirm step: she leaves at once and the hidden set records it.
-    await waitFor(() => {
-      expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
-    });
-    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
-    expect(hidden).toContain('c1');
-
-    localStorage.removeItem('cisa.prayer.hidden');
-  });
-
-  it('puts the person back when the removal is undone (#715)', async () => {
-    localStorage.clear();
-    render(<PrayerList />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
-
-    expect(await screen.findByText('Removed Alice from your prayer list')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
-    expect(hidden).not.toContain('c1');
-
-    localStorage.removeItem('cisa.prayer.hidden');
   });
 
   it('no longer spells removal as archiving on the stale strip (#714)', async () => {

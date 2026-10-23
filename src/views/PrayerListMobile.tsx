@@ -162,6 +162,9 @@ export default function PrayerListMobile({
             "."
           )}
         </p>
+        <p className="text-xs text-on-surface-variant/70 mt-1 prm-line">
+          {t('prayers.team_list_note')}
+        </p>
 
         {/* Hold someone button */}
         {isOperator && (
