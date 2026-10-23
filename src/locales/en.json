@@ -1056,6 +1056,12 @@
     "no_one_yet": "no one yet",
     "one_person": "1 person",
     "n_people": "{n} people",
+    "eyebrow": "the journey",
+    "mobile_summary_one": "1 student, moving from a first hello toward a church family.",
+    "mobile_summary_many": "{n} students, moving from a first hello toward a church family.",
+    "move_to_another_step": "Move {name} to another step",
+    "move_sheet_title": "Where is {name} now?",
+    "move_sheet_subtitle": "Move them to the step that fits today.",
     "stage_captions": {
       "first_contact": "We've only just met — a name, a face, a first hello.",
       "second_contact": "Following up — a coffee, a text, learning who they are.",

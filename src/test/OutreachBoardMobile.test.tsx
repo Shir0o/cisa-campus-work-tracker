@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import OutreachBoardMobile from '../views/OutreachBoardMobile';
+import { LanguageProvider } from '../components/LanguageProvider';
 
 // jsdom does not implement Element.scrollTo (used by the tab auto-scroll effect).
 beforeAll(() => {
@@ -43,9 +44,91 @@ describe('OutreachBoardMobile', () => {
   it('renders stage tabs with contact counts', () => {
     render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} />);
     expect(screen.getByText('Stages')).toBeInTheDocument();
-    expect(screen.getByText('1 students')).toBeInTheDocument();
+    expect(
+      screen.getByText('1 student, moving from a first hello toward a church family.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('First Contact')).toBeInTheDocument();
     expect(screen.getByText('Regular')).toBeInTheDocument();
+  });
+
+  it('opens a person with Enter or Space from the keyboard (#1763)', () => {
+    const onOpenContact = vi.fn();
+    render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} onOpenContact={onOpenContact} />);
+    const card = screen.getByRole('button', { name: /Alice Smith/i });
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+
+    onOpenContact.mockClear();
+    fireEvent.keyDown(card, { key: ' ' });
+    expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it('does not open the person when Enter is pressed on their Move button (#1763)', () => {
+    const onOpenContact = vi.fn();
+    render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} onOpenContact={onOpenContact} />);
+    fireEvent.keyDown(screen.getByLabelText('Move Alice to another step'), { key: 'Enter' });
+    expect(onOpenContact).not.toHaveBeenCalled();
+  });
+
+  it('exposes the steps as tabs and moves between them with arrow keys (#1763)', () => {
+    render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[0]).toHaveAttribute('tabindex', '0');
+    expect(tabs[1]).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
+    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Add to Regular');
+
+    fireEvent.keyDown(screen.getAllByRole('tab')[1], { key: 'Home' });
+    expect(screen.getAllByRole('tab')[0]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('does not change step on a mostly vertical swipe (#1763)', () => {
+    render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} />);
+    const panel = screen.getByRole('tabpanel');
+    fireEvent.touchStart(panel, { touches: [{ clientX: 300, clientY: 600 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 230, clientY: 440 }] });
+    expect(screen.getAllByRole('tab')[0]).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.touchStart(panel, { touches: [{ clientX: 300, clientY: 600 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 190, clientY: 610 }] });
+    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows one empty message and no duplicate count (#1763)', () => {
+    render(<OutreachBoardMobile {...baseProps} />);
+    expect(screen.getByText('No one here just now.')).toBeInTheDocument();
+    expect(screen.queryByText('No one at this step just now.')).not.toBeInTheDocument();
+    expect(screen.queryByText('no one here yet')).not.toBeInTheDocument();
+  });
+
+  it('treats the move sheet as a modal dialog and closes it on Escape (#1763)', () => {
+    render(<OutreachBoardMobile {...baseProps} contacts={[contact()]} />);
+    const trigger = screen.getByLabelText('Move Alice to another step');
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('Where is Alice now?');
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('localizes the stage chrome in Spanish (#1763)', () => {
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <OutreachBoardMobile {...baseProps} contacts={[contact()]} />
+      </LanguageProvider>,
+    );
+    expect(
+      screen.getByText('1 estudiante, avanzando desde un primer saludo hacia una familia de iglesia.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/moving from a first hello/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Mover a Alice a otro paso')).toBeInTheDocument();
   });
 
   it('adds an Unassigned tab when there are unmapped contacts', () => {
@@ -118,12 +201,11 @@ describe('OutreachBoardMobile', () => {
 
   it('shows the empty state for a stage with no contacts', () => {
     render(<OutreachBoardMobile {...baseProps} />);
-    expect(screen.getByText('No one at this step just now.')).toBeInTheDocument();
+    expect(screen.getByText('No one here just now.')).toBeInTheDocument();
   });
 
   it('renders translated contact notes in Spanish mode when cached', async () => {
     const { setCachedTranslation } = await import('../lib/translator');
-    const { LanguageProvider } = await import('../components/LanguageProvider');
 
     setCachedTranslation('Coffee chat', 'Charla de café', 'es');
 

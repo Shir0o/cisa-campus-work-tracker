@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { collection, collectionGroup, onSnapshot, writeBatch } from 'firebase/firestore';
 import OutreachBoard, { __resetOutreachBoardStageCache } from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
@@ -7,6 +7,12 @@ import { useLayout } from '../App';
 import React from 'react';
 
 // ── Module-level mocks ──────────────────────────────────────────────────────
+
+// jsdom does not implement Element.scrollTo (used by the phone board's stage
+// switcher when it recentres the active pill).
+beforeAll(() => {
+  Element.prototype.scrollTo = vi.fn();
+});
 
 vi.mock('motion/react', () => ({
   motion: {
@@ -1076,6 +1082,52 @@ describe('OutreachBoard', () => {
     render(<OutreachBoard />);
     await waitFor(() => {
       expect(document.querySelector('.jrnm')).toBeTruthy();
+    });
+  });
+
+  it('shows only the people in the viewer\'s journey on the phone board (#1763)', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    (useAuth as any).mockReturnValue({
+      isAdmin: false,
+      user: { uid: 'trainee-1' },
+      role: 'manager',
+      effectiveUserId: 'trainee-1',
+    });
+    const inCare = {
+      id: 'c1',
+      data: () => ({ ...mockContacts[0].data(), createdBy: 'trainee-1' }),
+    };
+    const notYours = {
+      id: 'c9',
+      data: () => ({
+        ...mockContacts[0].data(),
+        name: 'Not Yours',
+        createdBy: 'someone-else',
+        coCreators: [],
+      }),
+    };
+    setupOnSnapshotWith({ stages: mockStages, contacts: [inCare, notYours] });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    expect(await screen.findByText('Alice Chen')).toBeInTheDocument();
+    expect(screen.queryByText('Not Yours')).not.toBeInTheDocument();
+  });
+
+  it('opens the stage editor from the phone board (#1763)', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    setupOnSnapshotWith({ stages: mockStages, contacts: [] });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Shape the journey/i }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/e\.g\. Following up/i)).toBeInTheDocument();
     });
   });
 

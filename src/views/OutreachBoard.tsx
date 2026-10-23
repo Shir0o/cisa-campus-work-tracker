@@ -652,19 +652,200 @@ export default function OutreachBoard() {
     return <DataLoadError label={error} />;
   }
 
+  // The stage dialogs belong to the board, not the desktop layout: the phone
+  // board opens the same editor from its Shape button (#1763).
+  const stageDialogs = (
+    <>
+    {/* Shape the journey — add / edit a step */}
+    <AnimatePresence>
+      {showAddStage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAddStage(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
+          >
+            <div className="p-6 border-b border-outline-variant flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
+                  <Settings2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-serif text-xl text-on-surface">{editingStage ? t('outreachBoard.rename_step_title') : t('outreachBoard.shape_the_journey')}</h2>
+                  <p className="text-xs text-on-surface-variant">{editingStage ? t('outreachBoard.rename_step_subtitle') : t('outreachBoard.add_step_subtitle')}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddStage(false)}
+                className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
+                aria-label={t('actions.close')}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStage} className="p-6 space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-on-surface-variant px-1">
+                  {t('outreachBoard.step_name')}
+                </label>
+                <input
+                  required
+                  autoFocus
+                  type="text"
+                  value={newStageName}
+                  onChange={e => setNewStageName(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                  placeholder={t('outreachBoard.step_name_placeholder')}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-on-surface-variant px-1">
+                  {t('outreachBoard.colour')}
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {colors.map(color => (
+                    <button
+                      key={color.class}
+                      type="button"
+                      style={toneStyle(color.class)}
+                      onClick={() => setNewStageColor(color.class)}
+                      className={cn(
+                        "h-10 rounded-xl transition-all border-2 bg-[var(--tone)]",
+                        newStageColor === color.class ? "border-on-surface ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-70 hover:opacity-100"
+                      )}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStage(false)}
+                  className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
+                >
+                  {t('actions.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newStageName.trim()}
+                  className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium    hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
+                >
+                  {editingStage ? t('outreachBoard.save_changes') : t('outreachBoard.add_this_step')}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+
+    {/* Delete stage reassign modal */}
+    <AnimatePresence>
+      {stageToDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setStageToDeleteModal(null)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant p-6 space-y-6"
+          >
+            <div className="flex items-center justify-between border-b border-outline-variant pb-4">
+              <h2 className="font-serif text-xl text-on-surface">{t('outreachBoard.remove_step_title')} {stageToDeleteModal.stage.label}</h2>
+              <button
+                onClick={() => setStageToDeleteModal(null)}
+                className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
+                aria-label={t('actions.close')}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDeleteStageWithReassign} className="space-y-5">
+              <p className="text-sm text-on-surface leading-relaxed">
+                <b className="font-semibold">{stageToDeleteModal.count} {stageToDeleteModal.count === 1 ? t('outreachBoard.person_is') : t('outreachBoard.people_are')}</b> {t('outreachBoard.at_this_step_where_go')}
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-on-surface-variant px-1  ">
+                  {t('outreachBoard.destination_step')}
+                </label>
+                <select
+                  value={stageToDeleteModal.targetStage}
+                  onChange={(e) =>
+                    setStageToDeleteModal((prev) => prev ? { ...prev, targetStage: e.target.value } : null)
+                  }
+                  className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline text-on-surface font-medium outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {stages
+                    .filter((s) => s.id !== stageToDeleteModal.stage.id)
+                    .map((s) => (
+                      <option key={s.id} value={s.label}>
+                        {s.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStageToDeleteModal(null)}
+                  className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
+                >
+                  {t('actions.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!stageToDeleteModal.targetStage}
+                  className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium   disabled:opacity-50 transition-all"
+                >
+                  {t('outreachBoard.reassign_remove_step')}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+
+    </>
+  );
+
   if (isMobile) {
     return (
-      <OutreachBoardMobile
-        stages={stages}
-        contacts={boardContacts}
-        unmappedContacts={unmappedContacts}
-        lastTouchByContact={lastTouchByContact}
-        onOpenContact={setSelectedContact}
-        onMove={handleUpdateContactStage}
-        onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
-        isAdmin={isAdmin}
-        onAddContact={openNewContact}
-      />
+      <>
+        <OutreachBoardMobile
+          stages={stages}
+          contacts={filteredContacts}
+          unmappedContacts={unmappedContacts}
+          lastTouchByContact={lastTouchByContact}
+          onOpenContact={setSelectedContact}
+          onMove={handleUpdateContactStage}
+          onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
+          isAdmin={isAdmin}
+          onAddContact={openNewContact}
+        />
+        {stageDialogs}
+      </>
     );
   }
 
@@ -818,176 +999,7 @@ export default function OutreachBoard() {
           </div>
         </div>
 
-        {/* Shape the journey — add / edit a step */}
-        <AnimatePresence>
-          {showAddStage && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowAddStage(false)}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
-              >
-                <div className="p-6 border-b border-outline-variant flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-                      <Settings2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="font-serif text-xl text-on-surface">{editingStage ? t('outreachBoard.rename_step_title') : t('outreachBoard.shape_the_journey')}</h2>
-                      <p className="text-xs text-on-surface-variant">{editingStage ? t('outreachBoard.rename_step_subtitle') : t('outreachBoard.add_step_subtitle')}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowAddStage(false)}
-                    className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                    aria-label={t('actions.close')}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddStage} className="p-6 space-y-6">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-on-surface-variant px-1">
-                      {t('outreachBoard.step_name')}
-                    </label>
-                    <input
-                      required
-                      autoFocus
-                      type="text"
-                      value={newStageName}
-                      onChange={e => setNewStageName(e.target.value)}
-                      className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                      placeholder={t('outreachBoard.step_name_placeholder')}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-on-surface-variant px-1">
-                      {t('outreachBoard.colour')}
-                    </label>
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                      {colors.map(color => (
-                        <button
-                          key={color.class}
-                          type="button"
-                          style={toneStyle(color.class)}
-                          onClick={() => setNewStageColor(color.class)}
-                          className={cn(
-                            "h-10 rounded-xl transition-all border-2 bg-[var(--tone)]",
-                            newStageColor === color.class ? "border-on-surface ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-70 hover:opacity-100"
-                          )}
-                          title={color.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddStage(false)}
-                      className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
-                    >
-                      {t('actions.cancel')}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!newStageName.trim()}
-                      className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium    hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
-                    >
-                      {editingStage ? t('outreachBoard.save_changes') : t('outreachBoard.add_this_step')}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Delete stage reassign modal */}
-        <AnimatePresence>
-          {stageToDeleteModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setStageToDeleteModal(null)}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant p-6 space-y-6"
-              >
-                <div className="flex items-center justify-between border-b border-outline-variant pb-4">
-                  <h2 className="font-serif text-xl text-on-surface">{t('outreachBoard.remove_step_title')} {stageToDeleteModal.stage.label}</h2>
-                  <button
-                    onClick={() => setStageToDeleteModal(null)}
-                    className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                    aria-label={t('actions.close')}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleConfirmDeleteStageWithReassign} className="space-y-5">
-                  <p className="text-sm text-on-surface leading-relaxed">
-                    <b className="font-semibold">{stageToDeleteModal.count} {stageToDeleteModal.count === 1 ? t('outreachBoard.person_is') : t('outreachBoard.people_are')}</b> {t('outreachBoard.at_this_step_where_go')}
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant px-1  ">
-                      {t('outreachBoard.destination_step')}
-                    </label>
-                    <select
-                      value={stageToDeleteModal.targetStage}
-                      onChange={(e) =>
-                        setStageToDeleteModal((prev) => prev ? { ...prev, targetStage: e.target.value } : null)
-                      }
-                      className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline text-on-surface font-medium outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      {stages
-                        .filter((s) => s.id !== stageToDeleteModal.stage.id)
-                        .map((s) => (
-                          <option key={s.id} value={s.label}>
-                            {s.label}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  <div className="pt-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStageToDeleteModal(null)}
-                      className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
-                    >
-                      {t('actions.cancel')}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!stageToDeleteModal.targetStage}
-                      className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium   disabled:opacity-50 transition-all"
-                    >
-                      {t('outreachBoard.reassign_remove_step')}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        {stageDialogs}
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeStageId ? (
