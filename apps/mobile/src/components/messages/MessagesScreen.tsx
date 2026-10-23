@@ -42,11 +42,13 @@ function ConversationRow({
   name,
   preview,
   unread,
+  onLongPress,
 }: {
   room: ChatRoom;
   name: string;
   preview: string;
   unread: boolean;
+  onLongPress: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -60,6 +62,7 @@ function ConversationRow({
   return (
     <Pressable
       onPress={() => router.push(`/messages/${room.id}`)}
+      onLongPress={onLongPress}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
@@ -159,18 +162,23 @@ function Messages() {
         ) : (
           data.rooms.map((room) => {
             const canDeleteForEveryone = canRemoveConvForEveryone(room, uid, role === 'admin');
+            const name = getRoomName(room, uid, data.usersCache);
             return (
               <View key={room.id} style={styles.row}>
                 <SwipeToDelete
+                  title={name}
                   onHide={() => hide(room)}
                   onDeleteForEveryone={canDeleteForEveryone ? () => removeForEveryone(room) : undefined}
                 >
-                  <ConversationRow
-                    room={room}
-                    name={getRoomName(room, uid, data.usersCache)}
-                    preview={chatRowPreview(room, uid)}
-                    unread={data.isUnread(room)}
-                  />
+                  {(openActions) => (
+                    <ConversationRow
+                      room={room}
+                      name={name}
+                      preview={chatRowPreview(room, uid)}
+                      unread={data.isUnread(room)}
+                      onLongPress={openActions}
+                    />
+                  )}
                 </SwipeToDelete>
               </View>
             );
