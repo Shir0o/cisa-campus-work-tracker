@@ -2732,7 +2732,10 @@ body.bdoc-fs-on main { overflow: hidden; }
   --border-soft: var(--outline-variant);
   --text: var(--on-surface);
   --text-dim: var(--on-surface-variant);
-  --text-mute: var(--outline);
+  /* Times, previews and section heads were resolving to the hairline border
+     (1.15:1 on the panel): they use the dim reading ink now, which clears AA
+     in both themes (#1764). */
+  --text-mute: var(--on-surface-variant);
   --accent: var(--primary);
   --accent-soft: color-mix(in srgb, var(--primary) 10%, transparent);
   --accent-line: color-mix(in srgb, var(--primary) 24%, transparent);
@@ -2803,7 +2806,9 @@ body.bdoc-fs-on main { overflow: hidden; }
   padding: 5px 11px; cursor: pointer; transition: all 120ms ease;
 }
 .msgs-pill:hover { border-color: var(--accent-line); color: var(--text); }
-.msgs-pill.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+/* Selection is the Inversion Rule: solid ink with paper text, not a wash. */
+.msgs-pill.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+.msgs-pill.on:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
 .msgs-pill .pn { color: var(--text-mute); font-variant-numeric: tabular-nums; }
 .msgs-pill.on .pn { color: var(--accent); }
 
@@ -2817,15 +2822,16 @@ body.bdoc-fs-on main { overflow: hidden; }
 .msgs-item-main { min-width: 0; }
 .msgs-item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .msgs-item-name { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.msgs-item.unread .msgs-item-name { font-weight: 600; }
+.msgs-item.unread .msgs-item-name { font-weight: 700; }
 .msgs-item-time { font-size: 11.5px; color: var(--text-mute); flex: none; }
+.msgs-item.unread .msgs-item-time { color: var(--accent); font-weight: 600; }
 .msgs-item-bot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .msgs-item-preview {
   font-size: 13px; color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;
 }
-.msgs-item.unread .msgs-item-preview { color: var(--text-dim); }
-.msgs-item-preview b { color: var(--text-dim); font-weight: 600; }
-.msgs-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.msgs-item.unread .msgs-item-preview { color: var(--text); }
+.msgs-item-preview b { color: var(--text); font-weight: 600; }
+.msgs-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 
 .msgs-cluster {
   width: 40px; height: 40px; border-radius: 50%; flex: none;
@@ -2896,11 +2902,23 @@ body.bdoc-fs-on main { overflow: hidden; }
   border: 0; background: none; font: inherit; font-size: 14px; line-height: 1; color: var(--text-mute);
   padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity 120ms ease;
 }
-.msgs-item:hover .msgs-item-more > button, .msgs-item-more.on > button { opacity: 1; }
+.msgs-item:hover .msgs-item-more > button, .msgs-item-more.on > button,
+.msgs-item:focus-within .msgs-item-more > button { opacity: 1; }
 .msgs-item-more > button:hover { background: var(--panel-2); color: var(--text); }
 .msgs-item-more .msgb-menu { top: 24px; right: 0; }
 .msgs-item-more .msgb-menu.up { top: auto; bottom: 24px; }
 .msgs-hidden-convs { margin: 8px 20px 0; }
+
+/* An empty list is a place to stand, not a shrug: say what happened and, where
+   there is something to do about it, offer it (#1764). */
+.msgs-people-empty p { margin: 0 0 10px; }
+.msgs-list-failed { font-style: normal; color: var(--text-dim); }
+.msgs-retry {
+  min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.msgs-retry:hover { border-color: var(--accent-line); }
 
 .msgs-item-gone { font-style: italic; color: var(--text-mute); }
 .msgs-hidden-note {
@@ -3048,11 +3066,32 @@ body.bdoc-fs-on main { overflow: hidden; }
   .page.msgs { grid-template-columns: 1fr; }
   .msgs-rail { border-right: 0; }
 }
+/* One pane at a time below the phone breakpoint, chosen by whether a
+   conversation is open — the same 768px the view uses for `isMobile`. These
+   two rules have to outweigh the base `display:flex` on each pane; the desktop
+   placeholder is not a second half of the phone screen (#1764). */
+@media (max-width: 768px) {
+  body.msgs-fullscreen .page.msgs .msgs-rail { display: none; }
+  body:not(.msgs-fullscreen) .page.msgs .msgs-thread { display: none; }
+}
 @media (max-width: 720px) {
-  .page.msgs { padding-bottom: 62px; }
+  .page.msgs { padding-bottom: 64px; }
   .msgs-thread-head { padding: 12px 16px; }
   .msgs-stream { padding: 16px; }
   .msgs-composer { padding: 10px 16px; }
+  /* The rail's own controls grow to thumb size. */
+  .msgs-new { height: 40px; }
+  .msgs-pill { min-height: 40px; }
+
+  /* The thread owns the screen on a phone: the room name must not be squeezed
+     to three lines by the header's own controls (#1764). */
+  .msgs-thread-head { gap: 8px; padding: 10px 12px; }
+  .msgs-thread-head > .avatar, .msgs-thread-head > .msgs-cluster { display: none; }
+  .msgs-thread-head .icon-btn { width: 44px; height: 44px; }
+  .msgs-thread-title { font-size: 17px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .msgs-thread-actions { gap: 0; }
+  /* "⌘↵ to send" is a keyboard hint on a screen without a keyboard. */
+  .strm-hint { display: none; }
 }
 
 /* ====================================================================
@@ -3612,15 +3651,16 @@ body.bdoc-fs-on main { overflow: hidden; }
    pad collapses, and the composer pins to the safe-area so there's no dead gap
    between it and the bottom of the screen. Toggled by the msgs-fullscreen body
    class (set in messages.jsx while a thread is open on mobile). */
-body.msgs-fullscreen .bottom-nav { display: none; }
+body.msgs-fullscreen .bottom-nav,
+body.msgs-fullscreen .app-mobile-nav { display: none; }
 body.msgs-fullscreen .content { padding-bottom: 0 !important; }
 body.msgs-fullscreen .msgs-rail { display: none; }
 @media (max-width: 720px) {
   body.msgs-fullscreen .page.msgs { padding-bottom: 0; }
-  body.msgs-fullscreen .msgs-composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  body.msgs-fullscreen .strm-composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
   body.msgs-fullscreen .msgs-readonly { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   /* send button: comfortable touch target */
-  .msgs-send { width: 40px; height: 40px; flex: none; }
+  body.msgs-fullscreen .strm-send { width: 44px; height: 44px; }
 }
 
 /* ── A3: touch tap-target floor ──────────────────────────────────────────────
@@ -3658,6 +3698,13 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 
   /* filter / stage pills — comfortable min-height */
   .ppl-pill, .msgs-pill, .tt-pill, .hism-fpill, .ans-toggle-opt { min-height: 40px; }
+
+  /* Messages: the actions that a pointer finds on hover are one tap away —
+     and the row that owns them says so (#1764). */
+  .msgs-item-more > button { opacity: 1; width: 44px; height: 44px; font-size: 18px; }
+  .strm-tool { width: 44px; height: 44px; }
+  .strm-btn { min-height: 40px; }
+  .strm-thr { height: 40px; }
 
   /* Settings — dense desktop controls grow to the 40px floor on touch.
      (Approve / Not now on join requests, and the team modal buttons.) */
@@ -4432,6 +4479,16 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-list.strm-top { padding-top: 8px; }
 /* Oldest at the top, but a short stream sits down on the composer. */
 .strm-flow { margin-top: auto; display: flex; flex-direction: column; }
+/* A reader scrolled up into history is told that something new landed below,
+   instead of being pulled out of what they were reading (#1764). */
+.strm-newbelow {
+  position: sticky; bottom: 6px; align-self: center; margin: 6px 0 2px;
+  min-height: 34px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--accent-strong); background: var(--accent-strong); color: var(--accent-on);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; z-index: 2;
+  box-shadow: 0 4px 12px rgba(10, 10, 11, 0.16);
+}
+.strm-newbelow:hover { background: var(--accent-hover); }
 .strm-empty { font-size: 14px; color: var(--text-dim); padding: 12px 0; margin: 0; }
 .strm-day { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
 .strm-day::before, .strm-day::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
@@ -4484,9 +4541,11 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-minis { display: flex; }
 .strm-minis .strm-av + .strm-av { margin-left: -6px; }
 
-/* The toolbar grows on hover (or keyboard focus) and floats over the row's top edge. */
-.strm-tools { position: absolute; top: -14px; right: 8px; display: none; gap: 2px; padding: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 12px rgba(10, 10, 11, 0.08); z-index: 3; }
-.strm-m:hover .strm-tools, .strm-m:focus-within .strm-tools, .strm-m-menu .strm-tools { display: flex; }
+/* The toolbar grows on hover (or keyboard focus) and floats over the row's top
+   edge. It stays in the tree — opacity, not display — so a keyboard can tab
+   into it, and a tap can reveal it where there is no hover (#1764). */
+.strm-tools { position: absolute; top: -14px; right: 8px; display: flex; gap: 2px; padding: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 12px rgba(10, 10, 11, 0.08); z-index: 3; opacity: 0; pointer-events: none; transition: opacity 100ms ease; }
+.strm-m:hover .strm-tools, .strm-m:focus-within .strm-tools, .strm-m-menu .strm-tools, .strm-m-revealed .strm-tools { opacity: 1; pointer-events: auto; }
 .strm-tool { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--text-dim); background: transparent; border: 0; cursor: pointer; }
 .strm-tool:hover, .strm-tool.on { background: var(--panel); color: var(--text); }
 .strm-menu { position: absolute; top: calc(100% + 4px); right: 0; min-width: 168px; display: flex; flex-direction: column; padding: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop); }

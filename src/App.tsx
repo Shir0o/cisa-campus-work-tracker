@@ -596,7 +596,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <StandardTagsProvider>
-      <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
+      <div className={cn("flex min-h-screen bg-background relative", !isMessagesPage && "pb-16 md:pb-0")}>
         {/* Single shell wrapper. The chrome inside it varies with the viewport
             (rail vs top-bar), but the wrapper and the inner content column are
             always present at the same tree position, so the routed <main>

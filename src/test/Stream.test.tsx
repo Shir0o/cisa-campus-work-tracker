@@ -757,6 +757,65 @@ describe("Stream — an adapter that is itself one Thread (an Interaction's)", (
 
 // The adapter's optional hooks a chat room needs (#1259). Each is generic: a
 // source that leaves one out keeps the behaviour above.
+describe("Stream — a message's actions without a pointer (#1764)", () => {
+  it("reveals the row's toolbar on a tap, because a phone has no hover", () => {
+    renderStream(fakeAdapter({ messages: [message({ body: "tap me" })] }));
+    const r = row("tap me");
+    expect(r.className).not.toContain("strm-m-revealed");
+    fireEvent.click(r);
+    expect(r.className).toContain("strm-m-revealed");
+  });
+
+  it("does not treat a tap on one of those actions as a request to reveal the row", () => {
+    renderStream(fakeAdapter({ messages: [message({ body: "tap me" })] }), { onMakeTodo: vi.fn() });
+    fireEvent.click(within(row("tap me")).getByRole("button", { name: "Make a to-do" }));
+    expect(row("tap me").className).not.toContain("strm-m-revealed");
+  });
+});
+
+describe("Stream — reading history while new messages arrive (#1764)", () => {
+  const sizeList = (list: HTMLElement, scrollHeight: number, clientHeight = 400) => {
+    Object.defineProperty(list, "scrollHeight", { configurable: true, value: scrollHeight });
+    Object.defineProperty(list, "clientHeight", { configurable: true, value: clientHeight });
+  };
+  const twoMessages = () =>
+    fakeAdapter({
+      messages: [
+        message({ id: "a", body: "older note", at: yesterdayAt(9) }),
+        message({ id: "b", body: "newer note", at: yesterdayAt(9, 5) }),
+      ],
+    });
+
+  it("leaves a reader who is scrolled up where they are, and offers a way down", () => {
+    const adapter = twoMessages();
+    const { container, rerender } = renderStream(adapter);
+    const list = container.querySelector(".strm-list") as HTMLElement;
+    sizeList(list, 1000);
+    list.scrollTop = 120;
+
+    sizeList(list, 1080);
+    rerender(<Stream adapter={{ ...adapter, messages: [...adapter.messages, message({ id: "c", body: "fresh word", at: yesterdayAt(9, 9) })] }} viewer={MARIA} threadMode="replace" />);
+
+    expect(list.scrollTop).toBe(120);
+    fireEvent.click(screen.getByRole("button", { name: /New messages/i }));
+    expect(list.scrollTop).toBe(1080);
+  });
+
+  it("follows the newest message when the reader is already at the bottom", () => {
+    const adapter = twoMessages();
+    const { container, rerender } = renderStream(adapter);
+    const list = container.querySelector(".strm-list") as HTMLElement;
+    sizeList(list, 1000);
+    list.scrollTop = 600;
+
+    sizeList(list, 1080);
+    rerender(<Stream adapter={{ ...adapter, messages: [...adapter.messages, message({ id: "c", body: "fresh word", at: yesterdayAt(9, 9) })] }} viewer={MARIA} threadMode="replace" />);
+
+    expect(list.scrollTop).toBe(1080);
+    expect(screen.queryByRole("button", { name: /New messages/i })).toBeNull();
+  });
+});
+
 describe("Stream — what a chat room adds", () => {
   const chat = (over: Partial<StreamAdapter> = {}) =>
     fakeAdapter({ capabilities: { kinds: false, attachments: true, canPost: true, canReply: true }, audience: "", ...over });
