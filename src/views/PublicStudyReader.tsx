@@ -52,14 +52,16 @@ export default function PublicStudyReader() {
   // Blanks — is the shared StudyReaderView (ADR 0014, one rendering path),
   // which the editor's preview also renders. The parallax washes retired with
   // tap-to-advance: they animated on a section index nothing owns anymore.
-  // The phone frame stays (a student's viewport on desktop, full-bleed on
-  // mobile), but it is no longer the scroll container.
+  // The reader fills the viewport: it measures its own box to choose the
+  // scrolling deck (phone) or the paged deck (wide screens, #1590), so a fixed
+  // phone frame here would pin it to the scrolling deck. It is not the scroll
+  // container.
   //
   // No header actions here: this is the scan, and a student who scanned has
   // no app to go back to and no week to edit.
   return (
-    <div className="min-h-screen bg-black/95 sm:bg-background flex items-center justify-center p-0 sm:p-4">
-      <div className="w-full max-w-[420px] h-[100dvh] sm:h-[844px] sm:max-h-[92dvh] sm:rounded-3xl bg-background text-on-surface relative overflow-hidden flex flex-col shadow-2xl">
+    <div className="min-h-screen bg-background">
+      <div className="w-full h-[100dvh] bg-background text-on-surface relative overflow-hidden flex flex-col">
         <StudyReaderView meeting={meeting!} staleDateLabel={staleDateLabel} />
       </div>
     </div>
