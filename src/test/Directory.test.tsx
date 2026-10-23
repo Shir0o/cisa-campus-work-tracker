@@ -1955,3 +1955,111 @@ describe('Directory — Moving up a year', () => {
     expect(screen.queryByRole('button', { name: /Years to confirm/ })).toBeNull();
   });
 });
+
+// ── The phone directory at 375×812 (#1762) ──────────────────────────────────
+// The list is the screen, and on a phone it is tapped with a thumb while
+// walking. These assert the behaviours the critique found missing; layout-only
+// changes (the filter sheet, the search row) are checked in the live render.
+describe('Directory — the phone list (#1762)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __resetDirectoryFilters();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 3 });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
+    });
+
+    (useLayout as any).mockReturnValue({
+      openNewContact: vi.fn(),
+      setSelectedContact: vi.fn(),
+    });
+  });
+
+  it('gives every person row a focusable control that opens them (#1762)', async () => {
+    const setSelectedContact = vi.fn();
+    (useLayout as any).mockReturnValue({ openNewContact: vi.fn(), setSelectedContact });
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // The card is a div with onClick, so without this control a keyboard or
+    // screen-reader user has no way to open a person from the list.
+    const open = screen.getByRole('button', { name: "Open Alice Johnson's page" });
+    fireEvent.click(open);
+    expect(setSelectedContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it('drops the selection when a filter hides the selected person (#1762)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    // Bob's name does not match Alice, so Alice leaves the list. Bulk Remove
+    // must not stay pointed at a row the reader can no longer see.
+    fireEvent.change(screen.getByPlaceholderText(/Find someone by name/i), { target: { value: 'Bob' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+    });
+  });
+
+  it('offers a way back out of the no-results state and it clears the search (#1762)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText(/Find someone by name/i), { target: { value: 'zzzznobody' } });
+    expect(screen.getByText('No one matches that just yet')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
+
+    expect(screen.queryByText('No one matches that just yet')).not.toBeInTheDocument();
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+  });
+
+  it('names the tag filter group and exposes each chip as pressed (#1762)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const group = screen.getByRole('group', { name: 'Filter by tag' });
+    const chip = within(group).getByRole('button', { name: 'Freshman' });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('clears the search from inside the field (#1762)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(input, { target: { value: 'Alice' } });
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(input).toHaveValue('');
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+  });
+});
