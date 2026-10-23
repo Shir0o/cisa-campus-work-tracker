@@ -71,8 +71,8 @@ export function SwipeToDelete({
                   backgroundColor: colors.error,
                 }}
               >
-                <Ionicons name="trash-outline" size={20} color="#fff" />
-                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>{t('mobile.common.delete')}</Text>
+                <Ionicons name="trash-outline" size={20} color={colors.onError} />
+                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: colors.onError }}>{t('mobile.common.delete')}</Text>
               </Pressable>
             </View>
           );
