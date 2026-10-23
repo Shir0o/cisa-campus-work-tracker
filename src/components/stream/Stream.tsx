@@ -611,7 +611,9 @@ export default function Stream<M extends StreamSourceMessage>({
   // app does (#1764).
   const [newBelow, setNewBelow] = useState(false);
   const countSeen = useRef(0);
-  const nearBottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_SLACK_PX;
+  const nearBottom = (el: HTMLElement) => {
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_SLACK_PX;
+  };
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
