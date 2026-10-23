@@ -39,6 +39,9 @@ function MemberThread({ roomId }: { roomId: string }) {
     displayName: data.usersCache[id]?.displayName ?? '',
     role: roleOf.get(id),
   }));
+  // Both header lines hold their height before the room lands (a blank, not
+  // "Loading"), so the header doesn't swap its title or grow a line, shoving
+  // the stream down, a beat after the room opens (#1710).
   const subtitle = data.room ? chatRoomSubtitle(data.room, { members, meIsFullTimer: role === 'admin', t }) : '';
 
   return (
@@ -66,9 +69,6 @@ function MemberThread({ roomId }: { roomId: string }) {
           >
             {name || ' '}
           </Text>
-          {/* Both lines hold their height before the room lands, so the header
-              doesn't swap "Loading…" for the name or grow a line, shoving the
-              stream down, a beat after the room opens (#1710). */}
           <Text numberOfLines={1} style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
             {subtitle || ' '}
           </Text>
