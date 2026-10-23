@@ -216,6 +216,8 @@ describe('FeedbackPipeline', () => {
       expect(issueArgs.body).toContain('- **Submitted By:** Grace');
       expect(issueArgs.body).not.toContain('Hopper');
       expect(issueArgs.body).not.toContain('data:image');
+      // ...but triage is told a capture exists in-app.
+      expect(issueArgs.body).toContain('- **Screenshot:** Captured (see the admin feedback list)');
       // Privacy: redacted URL in GitHub issue
       expect(issueArgs.body).toContain('https://cisa.app/people/:id');
       expect(issueArgs.body).not.toContain('a1b2C3d4E5f6G7h8');
@@ -239,6 +241,19 @@ describe('FeedbackPipeline', () => {
       const userProfile = db.getDoc('users', 'user_456');
       expect(userProfile?.reporterLabel).toBe('reporter:grace-h-2');
       expect(mockGitHub.ensureLabel).toHaveBeenCalledWith('reporter:grace-h-2');
+    });
+
+    it('mobile notes carry the screen route and say when no screenshot was captured', async () => {
+      await pipeline.submitNote({
+        userId: 'user_321',
+        userName: 'Ada Lovelace',
+        message: 'Keyboard closes',
+        url: 'Mobile App /more',
+      });
+
+      const issueArgs = (mockGitHub.createIssue as any).mock.calls[0][0];
+      expect(issueArgs.body).toContain('- **Page URL:** Mobile App /more');
+      expect(issueArgs.body).toContain('- **Screenshot:** None');
     });
 
     it('falls back cleanly when GitHub is unreachable', async () => {
