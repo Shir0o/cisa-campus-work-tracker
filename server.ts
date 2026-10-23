@@ -18,6 +18,7 @@ import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
 import { type TagCombine } from "./src/lib/tags";
 import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
+import { TestAccountPurgeEngine } from "./src/server/testAccountPurgeEngine";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 import {
@@ -1942,6 +1943,33 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to combine contacts" });
+    }
+  });
+
+  // Test Account Purge (Settings → Danger Zone). Full-timers only. Both the
+  // preview (`dryRun`) and the purge scan on the server, so the client never
+  // names what gets deleted.
+  app.post("/api/test-account-purge", standardRateLimiter, async (req, res) => {
+    const actor = await requireFullTimerActor(req, res);
+    if (!actor) return;
+
+    try {
+      const engine = new TestAccountPurgeEngine({
+        db: getAdminDb() as any,
+        auth: getAdminAuth() as any,
+        ownerEmail: OWNER_EMAIL_SERVER,
+      });
+      const plan = await engine.scan(actor.actorId);
+      if (req.body?.dryRun === true) {
+        return res.status(200).json({ success: true, dryRun: true, plan });
+      }
+      const result = await engine.purge(plan, { deleteTestContacts: req.body?.deleteTestContacts === true });
+      return res.status(200).json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Test Account Purge Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: error.message || "Failed to purge test accounts" });
     }
   });
 
