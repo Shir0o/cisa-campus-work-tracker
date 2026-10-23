@@ -30,7 +30,8 @@
     "close_menu": "Close menu",
     "profile": "Profile",
     "trail": "Breadcrumb",
-    "back_to": "Back to {place}"
+    "back_to": "Back to {place}",
+    "mobile_navigation": "Mobile Navigation"
   },
   "actions": {
     "add_someone": "Add someone",
@@ -1261,7 +1262,14 @@
     "show_all": "Show all {n}",
     "set_stack_aside": "Set stack aside",
     "set_aside": "Set aside",
-    "notifications_on": "{n} notifications on {title}"
+    "notifications_on": "{n} notifications on {title}",
+    "whats_stirring": "What's stirring",
+    "mark_all_read": "Mark all read",
+    "caught_up": "You're all caught up",
+    "things_since": "{n} things since you last looked",
+    "one_thing_since": "1 thing since you last looked",
+    "nothing_needs_you": "Nothing needs you right now",
+    "quiet_inbox": "A quiet inbox is a kind of grace. We'll let you know when something stirs."
   },
   "search": {
     "go_to": "Go to",

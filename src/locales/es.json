@@ -30,7 +30,8 @@
     "close_menu": "Cerrar menú",
     "profile": "Perfil",
     "trail": "Ruta de navegación",
-    "back_to": "Volver a {place}"
+    "back_to": "Volver a {place}",
+    "mobile_navigation": "Navegación móvil"
   },
   "actions": {
     "add_someone": "Añadir persona",
@@ -1261,7 +1262,14 @@
     "show_all": "Mostrar todo ({n})",
     "set_stack_aside": "Apartar la pila",
     "set_aside": "Apartar",
-    "notifications_on": "{n} notificaciones sobre {title}"
+    "notifications_on": "{n} notificaciones sobre {title}",
+    "whats_stirring": "Lo que se mueve",
+    "mark_all_read": "Marcar todo leído",
+    "caught_up": "Estás al día",
+    "things_since": "{n} cosas desde la última vez que miraste",
+    "one_thing_since": "1 cosa desde la última vez que miraste",
+    "nothing_needs_you": "Nada te necesita ahora",
+    "quiet_inbox": "Una bandeja tranquila es una gracia. Te avisaremos cuando algo se mueva."
   },
   "search": {
     "go_to": "Ir a",

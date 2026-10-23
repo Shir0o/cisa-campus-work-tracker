@@ -327,38 +327,39 @@ describe('TopNav primary tabs per role', () => {
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows Home and Prayer, no search FAB', () => {
+  it('viewer: shows Home and On our hearts, no search FAB', () => {
     currentUser = TEST_USERS.viewer;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    // The destination is "On our hearts" everywhere else in the shell (#1775).
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-    expect(screen.queryByText('Contacts')).not.toBeInTheDocument();
+    expect(screen.queryByText('People')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
   });
 
-  it('operator: shows Home and Contacts with search FAB', () => {
+  it('operator: shows Home and People with search FAB', () => {
     currentUser = TEST_USERS.operator;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('manager: shows Home and Contacts with search FAB', () => {
+  it('manager: shows Home and People with search FAB', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('admin: shows Home and Contacts with search FAB', () => {
+  it('admin: shows My Day and People with search FAB', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
+    expect(screen.getByText('My Day')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 });

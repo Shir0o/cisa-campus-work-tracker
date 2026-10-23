@@ -1141,3 +1141,84 @@ describe('NotificationCenter Component', () => {
     }
   });
 });
+
+// ── Phone-width critique findings (#1775) ───────────────────────────────────
+//
+// At 375×812 the panel's secondary copy was painted with `text-outline` — the
+// border token, #E4E4E7 on a #EAEAEC panel (1.1:1) — and the "set aside"
+// controls were hover-only, so a phone could not clear a notification at all.
+describe('NotificationCenter — phone shell (#1775)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ role: 'admin' });
+    (auth as any).currentUser = { uid: 'mock-user-id' };
+  });
+
+  const oneUnread = {
+    id: 'n1',
+    userId: 'mock-user-id',
+    title: 'New Prayer Request',
+    message: 'Please pray for Bob',
+    type: 'success',
+    read: false,
+    createdAt: { toDate: () => new Date() },
+  };
+
+  function renderWithSnapshot(rows: any[]) {
+    let call = 0;
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      call += 1;
+      // Only the personal subscription carries this user's rows.
+      cb({
+        docs: (call === 1 ? rows : []).map((n) => ({ id: n.id, data: () => n })),
+      });
+      return vi.fn();
+    });
+    return render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+  }
+
+  it('gives the bell a 44px tap target', () => {
+    renderWithSnapshot([]);
+    const bell = screen.getByLabelText(/notifications/i);
+    expect(bell.className).toContain('w-11');
+    expect(bell.className).toContain('h-11');
+  });
+
+  it('paints secondary copy in reading ink, not the border token', () => {
+    renderWithSnapshot([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText(/thing since you last looked/i).className).not.toContain('text-outline');
+    expect(screen.getByText('Worth a look').className).not.toContain('text-outline');
+    expect(screen.getByText(/ago|just now|now/i).className).not.toContain('text-outline');
+  });
+
+  it('says "1 thing" rather than "1 things"', () => {
+    renderWithSnapshot([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText('1 thing since you last looked')).toBeInTheDocument();
+  });
+
+  it('keeps set-aside reachable without a hover', () => {
+    renderWithSnapshot([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const setAside = screen.getByRole('button', { name: /Set aside/i });
+    expect(setAside.className).toContain('opacity-100');
+    expect(setAside.className).toContain('sm:opacity-0');
+  });
+
+  it('moves focus into the panel and returns it to the bell on Escape', async () => {
+    renderWithSnapshot([oneUnread]);
+    const bell = screen.getByLabelText(/notifications/i);
+    fireEvent.click(bell);
+
+    const panel = screen.getByRole('dialog');
+    await waitFor(() => expect(panel).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(bell).toHaveFocus());
+  });
+});
