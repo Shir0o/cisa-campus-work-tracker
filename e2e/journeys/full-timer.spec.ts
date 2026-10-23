@@ -85,6 +85,16 @@ async function waitForDurablePrayer(burden: string) {
   }).toPass({ timeout: 15_000 });
 }
 
+/** The contact write behind a team-list removal (or its Undo) is optimistic in
+ *  the browser, so poll the emulator for the field before a reload reads it. */
+async function waitForContactRemoval(removed: boolean) {
+  await expect(async () => {
+    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+    const snap = await adminFS().collection('contacts').doc('e2e-contact-held').get();
+    expect(!!snap.data()?.prayerListRemoved).toBe(removed);
+  }).toPass({ timeout: 15_000 });
+}
+
 test.describe('Full-timer journey (#1477)', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -398,6 +408,56 @@ test.describe('Full-timer journey — a private burden stays off On our hearts (
     await waitForShell(page);
     await expect(page.getByRole('main').getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(CARE_CONTACT)).toHaveCount(0);
+    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
+  });
+});
+
+/**
+ * #1692: "On our hearts" is the team's list, so taking someone off it is a
+ * write on the shared contact, not a per-browser hide. A reload proves the
+ * difference: the local set would have been cleared with the page's storage,
+ * while the contact field survives and keeps the person off for everyone.
+ */
+test.describe('Full-timer journey — a removal belongs to the team (#1692)', () => {
+  test('removing a person survives a reload, and adding them back clears it', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await page.goto('/prayer');
+    await waitForShell(page);
+    await expect(page.getByRole('heading', { name: 'On our hearts' })).toBeVisible({ timeout: 15_000 });
+
+    const main = page.getByRole('main');
+    await expect(main.getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Everyone on the team sees this list.')).toBeVisible();
+
+    await page.getByRole('button', { name: `More for ${HELD_CONTACT}` }).click();
+    await page.getByRole('menuitem', { name: /Remove Held from prayer list/ }).click();
+    await expect(page.getByText("Removed Held from the team's prayer list")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(main.getByText(HELD_CONTACT)).toHaveCount(0, { timeout: 10_000 });
+
+    // The bar and the row move optimistically; wait for the emulator to hold
+    // the write before a reload reads the doc back from it.
+    await waitForContactRemoval(true);
+
+    await page.reload();
+    await waitForShell(page);
+    await expect(main.getByText(HELD_CONTACT)).toHaveCount(0, { timeout: 15_000 });
+
+    // "Choose people" is the way back: the team burden clears the removal.
+    await page.getByRole('button', { name: 'Choose people' }).click();
+    const picker = page.getByRole('dialog');
+    await picker.getByRole('button', { name: new RegExp(HELD_CONTACT) }).click();
+    await picker.getByRole('button', { name: 'Done' }).click();
+    // The picker stays up while its batch commits; wait for it to close before
+    // reading the page, or its own row shadows the card.
+    await expect(picker).toBeHidden({ timeout: 15_000 });
+    await expect(main.getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
+    await waitForContactRemoval(false);
+
+    await page.reload();
+    await waitForShell(page);
+    await expect(main.getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 });

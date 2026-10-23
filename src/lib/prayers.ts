@@ -1,7 +1,48 @@
-import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, deleteField, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db, handleFirestoreError, logActivity, OperationType } from "./firebase";
 import { carerNamesOf } from "./carers";
 import { PrayerRecord } from "../types";
+
+// A burden on "On our hearts" is the team's, and it puts the person back on
+// that list in the same write: a contact carrying `prayerListRemoved` is
+// off the page for everyone (#1692). `prayerPage` marks a write from the
+// prayer page itself; callers elsewhere leave it off.
+export async function addTeamPrayer(
+  contactId: string,
+  burden: string,
+  by: { uid?: string | null; name?: string | null },
+  opts: { prayerPage?: boolean } = {},
+): Promise<string | null> {
+  const text = burden.trim();
+  if (!contactId || !text) return null;
+  try {
+    const now = new Date().toISOString();
+    const prayerRef = doc(collection(db, "prayers"));
+    const batch = writeBatch(db);
+    batch.set(prayerRef, {
+      contactId,
+      date: now,
+      burden: text,
+      status: "pending",
+      teamPrayer: true,
+      ...(opts.prayerPage ? { prayerPage: true } : {}),
+      updatedAt: now,
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+    batch.update(doc(db, "contacts", contactId), {
+      prayerListRemoved: deleteField(),
+      updatedAt: now,
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+    await batch.commit();
+    return prayerRef.id;
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, "prayers");
+    return null;
+  }
+}
 
 // Start carrying something for a contact from somewhere other than the prayer
 // page (Log a visit, say) — callers that already log their own action
@@ -17,6 +58,8 @@ export async function addPrayerBurden(
   by: { uid?: string | null; name?: string | null },
   teamPrayer: boolean,
 ): Promise<string | null> {
+  if (teamPrayer) return addTeamPrayer(contactId, burden, by);
+
   const text = burden.trim();
   if (!contactId || !text) return null;
   try {
@@ -193,21 +236,47 @@ export function sortPrayerEntries<
 }
 
 /**
- * Remove a contact from the `cisa.prayer.hidden` localStorage set so they
- * reappear on the "On our hearts" page. Safe to call from any surface — the
- * Prayer page will pick it up on next mount, and when the page is already
- * mounted the component also updates its own React state.
+ * Take a person off "On our hearts" for the whole team (#1692): the flag lives
+ * on the contact, not in this browser, so every Full-timer sees the same list.
+ * Nothing is deleted; Undo clears the flag.
  */
-export function unhidePrayerContact(contactId: string): void {
+export async function removeFromTeamPrayerList(
+  contactId: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
   try {
-    const raw = localStorage.getItem('cisa.prayer.hidden');
-    if (!raw) return;
-    const ids: string[] = JSON.parse(raw);
-    const filtered = ids.filter((id) => id !== contactId);
-    if (filtered.length !== ids.length) {
-      localStorage.setItem('cisa.prayer.hidden', JSON.stringify(filtered));
-    }
-  } catch (e) { /* corrupt storage — ignore */ }
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, "contacts", contactId), {
+      prayerListRemoved: {
+        at: now,
+        by: by.uid || "",
+        byName: by.name || null,
+      },
+      updatedAt: now,
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}`);
+  }
+}
+
+/** Put a person back on "On our hearts" by clearing the team-wide removal. */
+export async function restoreToTeamPrayerList(
+  contactId: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, "contacts", contactId), {
+      prayerListRemoved: deleteField(),
+      updatedAt: now,
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}`);
+  }
 }
 
 /**

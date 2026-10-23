@@ -104,6 +104,9 @@ export interface Contact {
    *  that can read the contact sees the "Combined from …" banner. Cleared when
    *  the combine is undone (a later combine's undo restores the earlier one). */
   combinedFrom?: CombinedFrom;
+  /** Set when the team took this person off "On our hearts". Absent/null means
+   *  they belong on it. Written by a Student or above; see CONTEXT.md. */
+  prayerListRemoved?: { at: string; by: string; byName?: string | null } | null;
 }
 
 /** The "Combined from X on date by person" note a combine leaves on the kept

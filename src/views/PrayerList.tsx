@@ -5,7 +5,6 @@ import {
   query,
   orderBy,
   doc,
-  addDoc,
   updateDoc,
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -23,6 +22,9 @@ import {
   sortPrayerEntries,
   isContactStale,
   getDaysSinceLastInteraction,
+  addTeamPrayer,
+  removeFromTeamPrayerList,
+  restoreToTeamPrayerList,
 } from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
@@ -158,14 +160,6 @@ export default function PrayerList() {
   // Brothers/Sisters filter (#265) — filter the roster by the contact's gender.
   const [genderFilter, setGenderFilter] = useState<'all' | 'brothers' | 'sisters'>('all');
 
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
-    try {
-      const s = localStorage.getItem('cisa.prayer.hidden');
-      if (s) return new Set(JSON.parse(s));
-    } catch (e) {}
-    return new Set();
-  });
-
   // Team for the "make a to-do" affordance — who can be assigned the follow-up.
   const [team, setTeam] = useState<TodoPerson[]>([]);
   const [todoFor, setTodoFor] = useState<{ prayer: PrayerRecord; contact: Contact } | null>(null);
@@ -260,34 +254,17 @@ export default function PrayerList() {
     updatedByName: user?.displayName || user?.email?.split('@')[0],
   });
 
-  // Remove a contact from the hidden set (React state + localStorage).
-  // Extracted so both startHolding and handleAddBurden can reuse it.
-  const unhideContact = (contactId: string) => {
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.delete(contactId);
-      try {
-        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
-      } catch (e) {}
-      return next;
-    });
-  };
+  const actor = () => ({
+    uid: user?.uid,
+    name: user?.displayName || user?.email?.split('@')[0],
+  });
 
   const handleAddBurden = async (contactId: string, burden: string): Promise<boolean> => {
     const text = burden.trim();
     if (!contactId || !text) return false;
     try {
-      await addDoc(collection(db, 'prayers'), {
-        contactId,
-        date: new Date().toISOString(),
-        burden: text,
-        status: 'pending',
-        prayerPage: true,
-        // The prayer page is the one place a burden is the team's. Written out
-        // rather than left to the "absent means team" default (#1406).
-        teamPrayer: true,
-        ...stamp(),
-      } as Omit<PrayerRecord, 'id'>);
+      const id = await addTeamPrayer(contactId, text, actor(), { prayerPage: true });
+      if (!id) return false;
       logActivity({
         action: 'added a prayer burden for',
         targetId: contactId,
@@ -296,11 +273,9 @@ export default function PrayerList() {
         type: 'comment',
         description: text,
       });
-      // Auto-unhide the contact so they appear in the roster (#565)
-      unhideContact(contactId);
       return true;
-    } catch (error) {
-      console.error('Error adding burden:', error);
+    } catch {
+      // addTeamPrayer already logged the failure; keep the composer open.
       return false;
     }
   };
@@ -419,24 +394,24 @@ export default function PrayerList() {
   // One entry per person we're holding (has a prayer, or we just started),
   // sorted by last name then first name — a stable, roster-style order that
   // marking a prayer never disturbs, so no display-order freeze is needed.
+  // `prayerListRemoved` is the team's own removal (#1692), so it filters the
+  // shared contact rather than anything held in this browser.
   const sortedEntries = useMemo(() => {
     const ids = new Set<string>();
     teamPrayers.forEach((p) => {
-      if (!hiddenIds.has(p.contactId)) ids.add(p.contactId);
+      ids.add(p.contactId);
     });
-    startedIds.forEach((id) => {
-      if (!hiddenIds.has(id)) ids.add(id);
-    });
+    startedIds.forEach((id) => ids.add(id));
 
     const list: { contact: Contact; prayers: PrayerRecord[] }[] = [];
     ids.forEach((id) => {
       const contact = contacts.find((c) => c.id === id);
-      if (!contact) return;
+      if (!contact || contact.prayerListRemoved) return;
       list.push({ contact, prayers: teamPrayers.filter((p) => p.contactId === id) });
     });
 
     return sortPrayerEntries(list);
-  }, [teamPrayers, contacts, startedIds, hiddenIds]);
+  }, [teamPrayers, contacts, startedIds]);
 
   const entries = useMemo(() => sortedEntries, [sortedEntries]);
 
@@ -480,74 +455,52 @@ export default function PrayerList() {
 
   const startHolding = (contact: Contact) => {
     setStartedIds((prev) => new Set(prev).add(contact.id));
-    unhideContact(contact.id);
     setComposeFor(contact.id);
     setSearchQuery('');
   };
 
-  const stopHolding = (contactId: string) => {
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.add(contactId);
-      try {
-        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
-      } catch (e) {}
-      return next;
-    });
-  };
-
-  // Taking someone off the page (#715). Nothing is deleted — the id joins the
-  // `cisa.prayer.hidden` set in this browser, the same bookkeeping "Choose
-  // people" does when you untick a name — so it happens at once and the Undo
-  // snackbar holds the way back, rather than costing every removal a confirm.
+  // Taking someone off the page (#715, #1692). Nothing is deleted — the
+  // removal is written on the contact, so it clears for the whole team, and
+  // the Undo snackbar holds the way back. The bar goes up at once; Undo waits
+  // for the write so a slow removal cannot land after the restore.
   const removeFromPrayerList = (contact: Contact) => {
-    stopHolding(contact.id);
+    const by = actor();
+    const removal = removeFromTeamPrayerList(contact.id, by).catch(() => {});
     showUndoSnack(
-      t('prayers.removed_from_your_list').replace('{name}', firstNameOf(contact.name)),
-      () => unhideContact(contact.id),
+      t('prayers.removed_from_team_list').replace('{name}', firstNameOf(contact.name)),
+      () => {
+        void removal
+          .then(() => restoreToTeamPrayerList(contact.id, by))
+          .catch(() => {});
+      },
     );
   };
 
-  // "Choose people" — chosen contacts are unhidden and persisted to Firestore
-  // with an initial team prayer burden, so they stay on the page permanently across
+  // "Choose people" — chosen contacts get an initial team prayer burden, which
+  // also clears any team removal, so they stay on the page permanently across
   // clients and reloads (#1600).
   const applyPick = async (added: string[]) => {
     if (added.length) {
       setStartedIds((prev) => new Set([...prev, ...added]));
-      setHiddenIds((prev) => {
-        const next = new Set(prev);
-        added.forEach((id) => next.delete(id));
-        try {
-          localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
-        } catch (e) {}
-        return next;
-      });
 
-      const now = new Date().toISOString();
       const burdenText = t('prayers.holding_in_prayer', 'Holding in prayer');
       await Promise.all(
         added.map(async (contactId) => {
-          try {
-            await addDoc(collection(db, 'prayers'), {
-              contactId,
-              date: now,
-              burden: burdenText,
-              status: 'pending',
-              prayerPage: true,
-              teamPrayer: true,
-              ...stamp(),
-            } as Omit<PrayerRecord, 'id'>);
-            logActivity({
-              action: 'added a prayer burden for',
-              targetId: contactId,
-              targetName: contactName(contactId),
-              targetType: 'contact',
-              type: 'create',
-              description: burdenText,
-            });
-          } catch (e) {
-            console.error('Failed to add prayer for contact', contactId, e);
+          const id = await addTeamPrayer(contactId, burdenText, actor(), { prayerPage: true }).catch(
+            () => null,
+          );
+          if (!id) {
+            console.error('Failed to add prayer for contact', contactId);
+            return;
           }
+          logActivity({
+            action: 'added a prayer burden for',
+            targetId: contactId,
+            targetName: contactName(contactId),
+            targetType: 'contact',
+            type: 'create',
+            description: burdenText,
+          });
         }),
       );
     }
@@ -637,6 +590,9 @@ export default function PrayerList() {
                   {awaiting} {awaiting === 1 ? t('prayers.awaiting_update_one_below') : t('prayers.awaiting_update_many_below')}
                 </span>
               )}
+            </p>
+            <p className="text-xs text-on-surface-variant/70 mt-1">
+              {t('prayers.team_list_note')}
             </p>
           </div>
         </div>

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { addDoc, collection, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteField, updateDoc } from 'firebase/firestore';
 import {
   addPrayerBurden,
+  addTeamPrayer,
   isTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
@@ -10,18 +11,39 @@ import {
   isContactBrother,
   isContactSister,
   sortPrayerEntries,
-  unhidePrayerContact,
+  removeFromTeamPrayerList,
+  restoreToTeamPrayerList,
   STALE_INTERACTION_DAYS,
   getDaysSinceLastInteraction,
   isContactStale,
 } from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
+const hoisted = vi.hoisted(() => {
+  const removed = { __deleteField: true };
+  return {
+    removed,
+    batchSet: vi.fn(),
+    batchUpdate: vi.fn(),
+    batchCommit: vi.fn(() => Promise.resolve()),
+  };
+});
+
 vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(() => Promise.resolve({ id: 'p-new' })),
   collection: vi.fn((_db, path) => ({ path })),
-  doc: vi.fn((_db, ...path) => ({ path: path.join('/') })),
+  doc: vi.fn((_db, ...parts) => {
+    if (parts.length === 0 && _db?.path) return { path: _db.path, id: 'p-new' };
+    if (parts.length === 1 && parts[0]?.path) return { path: parts[0].path, id: 'p-new' };
+    return { path: parts.join('/') };
+  }),
+  deleteField: vi.fn(() => hoisted.removed),
   updateDoc: vi.fn(() => Promise.resolve()),
+  writeBatch: vi.fn(() => ({
+    set: hoisted.batchSet,
+    update: hoisted.batchUpdate,
+    commit: hoisted.batchCommit,
+  })),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -36,15 +58,11 @@ const by = { uid: 'u1', name: 'Mei Tanaka' };
 beforeEach(() => {
   vi.clearAllMocks();
   mock(addDoc).mockResolvedValue({ id: 'p-new' });
+  hoisted.batchCommit.mockResolvedValue(undefined);
 });
 
 describe('addPrayerBurden', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('saves a visit prayer as the contact’s own, hands back its id, and leaves the hidden set alone (#1406)', async () => {
-    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2']));
+  it('saves a visit prayer as the contact’s own and writes nothing to the contact (#1406)', async () => {
     const id = await addPrayerBurden('c1', '  Peace for her dad  ', by, false);
     expect(id).toBe('p-new');
     expect(collection).toHaveBeenCalledWith({}, 'prayers');
@@ -60,18 +78,32 @@ describe('addPrayerBurden', () => {
     // `prayerPage` means "written on the prayer page"; a visit isn't that page.
     expect(mock(addDoc).mock.calls[0][1]).not.toHaveProperty('prayerPage');
     // Logging a visit must not put the person back on "On our hearts" (#1406).
-    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1', 'c2']);
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(hoisted.batchUpdate).not.toHaveBeenCalled();
   });
 
-  it('writes whichever team flag the caller chose', async () => {
-    await addPrayerBurden('c1', 'Peace', by, true);
-    expect(mock(addDoc).mock.calls[0][1]).toMatchObject({ teamPrayer: true });
+  it('delegates a team burden to addTeamPrayer, clearing any team removal (#1692)', async () => {
+    const id = await addPrayerBurden('c1', 'Peace', by, true);
+    expect(id).toBe('p-new');
+    expect(addDoc).not.toHaveBeenCalled();
+    expect(hoisted.batchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'prayers' }),
+      expect.objectContaining({ contactId: 'c1', burden: 'Peace', teamPrayer: true, status: 'pending' }),
+    );
+    // A burden added off the prayer page keeps no `prayerPage` stamp.
+    expect(hoisted.batchSet.mock.calls[0][1]).not.toHaveProperty('prayerPage');
+    expect(hoisted.batchUpdate).toHaveBeenCalledWith(
+      { path: 'contacts/c1' },
+      expect.objectContaining({ prayerListRemoved: hoisted.removed }),
+    );
+    expect(hoisted.batchCommit).toHaveBeenCalled();
   });
 
   it('writes nothing for an empty burden or a missing person', async () => {
     expect(await addPrayerBurden('c1', '   ', by, false)).toBeNull();
     expect(await addPrayerBurden('', 'Something', by, false)).toBeNull();
     expect(addDoc).not.toHaveBeenCalled();
+    expect(hoisted.batchSet).not.toHaveBeenCalled();
   });
 
   it('reports a failed write instead of pretending it worked', async () => {
@@ -233,31 +265,47 @@ describe('sortPrayerEntries', () => {
   });
 });
 
-describe('unhidePrayerContact', () => {
-  beforeEach(() => {
-    localStorage.clear();
+describe('team prayer list removal (#1692)', () => {
+  it('writes the team-wide removal on the contact, naming the caller', async () => {
+    await removeFromTeamPrayerList('c1', by);
+    expect(mock(updateDoc).mock.calls[0][0]).toEqual({ path: 'contacts/c1' });
+    const patch = mock(updateDoc).mock.calls[0][1] as Record<string, any>;
+    expect(patch.prayerListRemoved).toMatchObject({ by: 'u1', byName: 'Mei Tanaka' });
+    expect(typeof patch.prayerListRemoved.at).toBe('string');
+    expect(patch.updatedBy).toBe('u1');
+    expect(patch.updatedByName).toBe('Mei Tanaka');
   });
 
-  it('removes a hidden contact ID from localStorage', () => {
-    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2', 'c3']));
-    unhidePrayerContact('c2');
-    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1', 'c3']);
+  it('puts the person back by deleting the field, not by writing a boolean', async () => {
+    await restoreToTeamPrayerList('c1', by);
+    const patch = mock(updateDoc).mock.calls[0][1] as Record<string, any>;
+    expect(patch.prayerListRemoved).toBe(hoisted.removed);
+    expect(deleteField).toHaveBeenCalled();
+    expect(patch.updatedBy).toBe('u1');
   });
 
-  it('is a no-op when the contact is not in the hidden set', () => {
-    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1']));
-    unhidePrayerContact('c99');
-    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1']);
+  it('reports a failed removal instead of pretending it worked', async () => {
+    mock(updateDoc).mockRejectedValueOnce(new Error('permission-denied'));
+    await removeFromTeamPrayerList('c1', by);
+    expect(handleFirestoreError).toHaveBeenCalled();
+  });
+});
+
+describe('addTeamPrayer', () => {
+  it('stamps prayerPage only when the caller is the prayer page', async () => {
+    await addTeamPrayer('c1', 'Peace', by, { prayerPage: true });
+    expect(hoisted.batchSet.mock.calls[0][1]).toMatchObject({ prayerPage: true });
+
+    vi.clearAllMocks();
+    hoisted.batchCommit.mockResolvedValue(undefined);
+    await addTeamPrayer('c1', 'Peace', by);
+    expect(hoisted.batchSet.mock.calls[0][1]).not.toHaveProperty('prayerPage');
   });
 
-  it('is a no-op when localStorage has no hidden key', () => {
-    expect(() => unhidePrayerContact('c1')).not.toThrow();
-    expect(localStorage.getItem('cisa.prayer.hidden')).toBeNull();
-  });
-
-  it('handles corrupt JSON gracefully without throwing', () => {
-    localStorage.setItem('cisa.prayer.hidden', '{not-valid-json');
-    expect(() => unhidePrayerContact('c1')).not.toThrow();
+  it('leaves the contact alone when the batch fails', async () => {
+    hoisted.batchCommit.mockRejectedValueOnce(new Error('permission-denied'));
+    expect(await addTeamPrayer('c1', 'Peace', by)).toBeNull();
+    expect(handleFirestoreError).toHaveBeenCalled();
   });
 });
 
