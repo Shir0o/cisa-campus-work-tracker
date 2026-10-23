@@ -92,6 +92,8 @@ export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
   const currentUserId = effectiveUserId || auth.currentUser?.uid;
   const seesTeamBroadcasts = role === 'admin';
 
@@ -168,6 +170,20 @@ export default function NotificationCenter() {
       document.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey);
     };
+  }, [isOpen]);
+
+  // Focus follows the sheet: into the panel when it opens, back to the bell
+  // when it closes. Without this the panel opened under the reader's focus and
+  // Escape closed a dialog they were never inside (#1775).
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (isOpen) {
+      wasOpen.current = true;
+      panelRef.current?.focus({ preventScroll: true });
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      bellRef.current?.focus();
+    }
   }, [isOpen]);
 
   const markAsRead = async (id: string) => {
@@ -265,9 +281,10 @@ export default function NotificationCenter() {
     <div className="relative flex-none inline-flex" ref={dropdownRef}>
       {/* Bell button */}
       <button
+        ref={bellRef}
         onClick={() => setIsOpen(o => !o)}
         className={cn(
-          'relative w-[38px] h-[38px] grid place-items-center rounded-[10px] border transition-all duration-120',
+          'relative w-11 h-11 grid place-items-center rounded-[10px] border transition-all duration-120',
           isOpen
             ? 'bg-primary text-on-primary border-primary'
             // `bg-surface` reads the same as transparent inside the top bar
@@ -289,6 +306,8 @@ export default function NotificationCenter() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            ref={panelRef}
+            tabIndex={-1}
             initial={{ y: -6, scale: 0.985 }}
             animate={{ y: 0, scale: 1 }}
             exit={{ y: -6, scale: 0.985 }}
@@ -296,33 +315,36 @@ export default function NotificationCenter() {
             role="dialog"
             aria-label={t('notifications.notifications')}
             className={cn(
-              'absolute right-0 top-[calc(100%+12px)] z-50',
+              'absolute right-0 top-[calc(100%+12px)] z-50 outline-none',
               'w-96 max-w-[calc(100vw-28px)]',
               'flex flex-col max-h-[min(640px,78vh)]',
               'bg-surface-container border border-outline-variant rounded-[16px] overflow-hidden',
               'shadow-xl',
-              // mobile: fixed full-width strip
-              'max-sm:fixed max-sm:top-16 max-sm:right-3 max-sm:left-3 max-sm:w-auto',
+              // mobile: fixed full-width strip, set below the sticky header's
+              // breadcrumb row (h-14 + h-10 + rule) so it never covers it.
+              'max-sm:fixed max-sm:top-[calc(4rem+2.5rem+1px)] max-sm:right-3 max-sm:left-3 max-sm:w-auto',
             )}
           >
             {/* Header */}
             <div className="flex items-start justify-between gap-3 px-[18px] py-4 border-b border-outline-variant flex-none">
               <div className="min-w-0">
                 <div className="font-serif text-[19px] font-medium tracking-[-0.01em] text-on-surface leading-tight">
-                  What's stirring
+                  {t('notifications.whats_stirring')}
                 </div>
-                <div className="text-[12.5px] text-outline mt-0.5">
+                <div className="text-[12.5px] text-on-surface-variant mt-0.5">
                   {unreadCount > 0
-                    ? `${unreadCount} ${unreadCount === 1 ? 'thing' : 'things'} since you last looked`
-                    : "You're all caught up"}
+                    ? unreadCount === 1
+                      ? t('notifications.one_thing_since')
+                      : t('notifications.things_since').replace('{n}', String(unreadCount))
+                    : t('notifications.caught_up')}
                 </div>
               </div>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex-none whitespace-nowrap text-accent text-[12.5px] font-semibold px-1.5 py-1 rounded-[7px] hover:bg-accent-soft transition-colors"
+                  className="flex-none inline-flex items-center min-h-11 whitespace-nowrap text-accent text-[12.5px] font-semibold px-1.5 rounded-[7px] hover:bg-accent-soft transition-colors"
                 >
-                  Mark all read
+                  {t('notifications.mark_all_read')}
                 </button>
               )}
             </div>
@@ -335,10 +357,10 @@ export default function NotificationCenter() {
                     <Heart className="w-5 h-5" />
                   </div>
                   <div className="font-serif text-[17px] font-medium text-on-surface">
-                    Nothing needs you right now
+                    {t('notifications.nothing_needs_you')}
                   </div>
-                  <div className="text-[13px] text-outline mt-1.5 leading-[1.55] [text-wrap:pretty]">
-                    A quiet inbox is a kind of grace. We'll let you know when something stirs.
+                  <div className="text-[13px] text-on-surface-variant mt-1.5 leading-[1.55] [text-wrap:pretty]">
+                    {t('notifications.quiet_inbox')}
                   </div>
                 </div>
               ) : (
@@ -403,7 +425,7 @@ function NtfGroup({
 
   return (
     <div className={cn('py-1.5', bordered && 'border-t border-outline-variant')}>
-      <div className="text-xs font-medium text-outline px-[18px] pt-2.5 pb-1.5">
+      <div className="text-xs font-medium text-on-surface-variant px-[18px] pt-2.5 pb-1.5">
         {label}
       </div>
       {feedItems.map(item => {
@@ -481,7 +503,7 @@ function NtfStack({
         </span>
 
         {/* Content */}
-        <div className="min-w-0 flex-1 pr-[36px]">
+        <div className="min-w-0 flex-1 pr-[46px] sm:pr-[36px]">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={cn(
               'text-[14px] leading-[1.35]',
@@ -498,11 +520,11 @@ function NtfStack({
             {latest.message || (latest as any).body}
           </div>
 
-          <div className="flex items-center gap-3 text-[11.5px] text-outline mt-1.5">
+          <div className="flex items-center gap-3 text-[11.5px] text-on-surface-variant mt-1.5">
             <span>{ntfWhen(latest.createdAt)}</span>
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-accent hover:underline font-medium cursor-pointer"
+              className="inline-flex items-center gap-1 -my-2 py-2 text-accent hover:underline font-medium cursor-pointer"
               onClick={e => {
                 e.stopPropagation();
                 setExpanded(exp => !exp);
@@ -516,12 +538,12 @@ function NtfStack({
 
         {/* Unread dot */}
         {anyUnread && (
-          <span className="absolute top-[17px] right-4 w-[7px] h-[7px] rounded-full bg-primary" aria-hidden />
+          <span className="absolute top-[17px] right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden" aria-hidden />
         )}
 
         {/* Set-aside entire stack button */}
         <button
-          className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover/stack:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all"
+          className="absolute top-[8px] right-2 w-9 h-9 grid place-items-center rounded-[6px] bg-surface-container text-on-surface-variant opacity-100 sm:opacity-0 sm:group-hover/stack:opacity-100 after:absolute after:-inset-1 after:content-[''] hover:text-on-surface hover:bg-surface-container-high transition-all"
           title={t('notifications.set_stack_aside')}
           aria-label={t('notifications.set_stack_aside')}
           onClick={e => {
@@ -589,7 +611,7 @@ function NtfItem({
       </span>
 
       {/* Content */}
-      <div className="min-w-0 flex-1 pr-[18px]">
+      <div className="min-w-0 flex-1 pr-[46px] sm:pr-[18px]">
         <div className={cn(
           'leading-[1.35]',
           isChild ? 'text-[13px]' : 'text-[14px]',
@@ -605,7 +627,7 @@ function NtfItem({
         )}>
           <Translate text={notif.message || (notif as any).body} />
         </div>
-        <div className="text-[11.5px] text-outline mt-1.5">
+        <div className="text-[11.5px] text-on-surface-variant mt-1.5">
           {ntfWhen(notif.createdAt)}
         </div>
       </div>
@@ -613,7 +635,7 @@ function NtfItem({
       {/* Unread dot */}
       {!notif.read && (
         <span className={cn(
-          "absolute right-4 w-[7px] h-[7px] rounded-full bg-primary",
+          "absolute right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden",
           isChild ? "top-[14px]" : "top-[17px]"
         )} aria-hidden />
       )}
@@ -621,7 +643,7 @@ function NtfItem({
       {/* Set-aside button (hover-reveal, sits on top of unread dot) */}
       <button
         className={cn(
-          "absolute right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all",
+          "absolute right-2 w-9 h-9 grid place-items-center rounded-[6px] bg-surface-container text-on-surface-variant opacity-100 sm:opacity-0 sm:group-hover:opacity-100 after:absolute after:-inset-1 after:content-[''] hover:text-on-surface hover:bg-surface-container-high transition-all",
           isChild ? "top-[9px]" : "top-[11px]"
         )}
         title={t('notifications.set_aside')}

@@ -119,9 +119,34 @@ describe('Responsive Layout Components', () => {
     expect(mockLogOut).toHaveBeenCalled();
   });
 
-  it('Accessibility: MobileNav shows Home and Contacts links for admin', () => {
+  it('Accessibility: MobileNav shows Home and People links for admin', () => {
     renderWithRouter(<MobileNav />);
-    expect(screen.getByText(/Home/i)).toBeInTheDocument();
-    expect(screen.getByText(/Contacts/i)).toBeInTheDocument();
+    // "My Day" is the full-timer's name for Home; the second destination is
+    // called "People" everywhere else in the shell (#1775).
+    expect(screen.getByText(/My Day/i)).toBeInTheDocument();
+    expect(screen.getByText(/People/i)).toBeInTheDocument();
+  });
+});
+
+// ── Phone-width chrome (#1775) ──────────────────────────────────────────────
+// At 375×812 the header controls measured 36–38px and the drawer's scrim
+// resolved to `rgba(0,0,0,0)` — `bg-scrim/50` names a token the theme never
+// defines — so the menu opened over an undimmed page.
+describe('phone-width chrome (#1775)', () => {
+  it('keeps the header controls at a 44px tap target', () => {
+    renderWithRouter(<TopNav />);
+    for (const label of ['Open navigation', 'Search', 'Profile']) {
+      const el = screen.getByLabelText(label);
+      expect(el.className).toContain('w-11');
+      expect(el.className).toContain('h-11');
+    }
+  });
+
+  it('dims the page behind the mobile drawer with a real colour', () => {
+    renderWithRouter(<TopNav />);
+    const scrim = document.querySelector('.fixed.inset-0');
+    expect(scrim).not.toBeNull();
+    expect(scrim!.className).not.toContain('bg-scrim');
+    expect(scrim!.className).toContain('bg-on-surface/');
   });
 });

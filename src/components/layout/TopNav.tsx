@@ -141,7 +141,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
           {/* Mobile menu trigger */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="lg:hidden p-2 -ml-1 text-on-surface hover:bg-surface-container-high rounded-full transition-colors shrink-0"
+            className="lg:hidden w-11 h-11 -ml-1 grid place-items-center text-on-surface hover:bg-surface-container-high rounded-full transition-colors shrink-0"
             aria-label={t('nav.open_navigation', 'Open navigation')}
           >
             <MenuIcon />
@@ -323,8 +323,8 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="lg:hidden p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors shrink-0"
-            aria-label="Search"
+            className="lg:hidden w-11 h-11 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors shrink-0"
+            aria-label={t('nav.search', 'Search')}
           >
             <Search className="w-5 h-5" />
           </button>
@@ -338,7 +338,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               type="button"
               onClick={onOpenImpersonateModal}
               className={cn(
-                'relative p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors focus:outline-none shrink-0',
+                'relative w-11 h-11 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors focus:outline-none shrink-0',
                 (impersonateTarget || ownerViewRole) &&
                   'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/40',
               )}
@@ -367,7 +367,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 setMoreOpen(false);
               }}
               aria-label="Profile"
-              className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
+              className="w-11 h-11 lg:w-10 lg:h-10 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
             >
               <UserAvatar
                 name={impersonateTarget ? impersonateTarget.name : profileName}
@@ -448,7 +448,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-scrim/50 z-[60] lg:hidden"
+            className="fixed inset-0 bg-on-surface/40 z-[60] lg:hidden"
           />
         )}
       </AnimatePresence>
@@ -467,7 +467,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                className="w-11 h-11 -mr-2 grid place-items-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
