@@ -43,7 +43,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 jest.mock('expo-router', () => {
   const push = jest.fn();
-  return { useRouter: () => ({ push }) };
+  return { useRouter: () => ({ push }), usePathname: () => '/more' };
 });
 
 const renderSheet = async (targetRef?: any) =>
@@ -99,6 +99,14 @@ describe('FeedbackSheet', () => {
 
     const body = await submit(getByPlaceholderText, getByText);
     expect(body).not.toHaveProperty('userEmail');
+  });
+
+  it('records the screen the reporter was on', async () => {
+    const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
+
+    const body = await submit(getByPlaceholderText, getByText);
+    expect(body.url).toBe('Mobile App /more');
+    expect(body.userAgent).toMatch(/^CISA Campus Mobile App \(React Native; (ios|android) /);
   });
 
   it('submits without a screenshot when no targetRef is given', async () => {

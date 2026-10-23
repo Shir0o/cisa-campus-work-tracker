@@ -497,7 +497,10 @@ describe("POST /api/feedback", () => {
       expect(raw).not.toContain(SHOT);
       expect(raw).not.toContain("abc123");
       expect(raw).not.toContain("base64");
-      expect(JSON.parse(raw).body).not.toMatch(/screenshot/i);
+      // The body only says one was captured; no embed, link or image data.
+      const body = JSON.parse(raw).body as string;
+      expect(body.match(/screenshot/gi)).toHaveLength(1);
+      expect(body).toContain("- **Screenshot:** Captured (see the admin feedback list)");
     });
 
     it.each([

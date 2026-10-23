@@ -697,6 +697,8 @@ export class FeedbackPipeline {
           `- **Page URL:** ${redactRecordIds(url || '') || 'N/A'}`,
           `- **Viewport:** ${viewport || 'N/A'}`,
           `- **User Agent:** ${userAgent || 'N/A'}`,
+          // The image itself stays in-app; this only tells triage one exists.
+          `- **Screenshot:** ${feedbackData.screenshot ? 'Captured (see the admin feedback list)' : 'None'}`,
           '',
           '### Message',
           `${fence}text`,

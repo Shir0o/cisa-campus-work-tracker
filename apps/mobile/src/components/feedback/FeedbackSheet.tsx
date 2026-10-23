@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { captureRef } from 'react-native-view-shot';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -35,6 +35,9 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
   const { t } = useLanguage();
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
+  // The sheet renders inside the screen it was opened from, so this is the
+  // screen the reporter was on — the triage context a bare "Mobile App" lost.
+  const pathname = usePathname();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<string>('');
@@ -116,8 +119,11 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
       kind,
       message: message.trim(),
       screenshot,
-      url: 'Mobile App',
-      userAgent: 'CISA Campus Mobile App (React Native)',
+      url: Platform.OS === 'web' ? window.location.href : `Mobile App ${pathname || '/'}`,
+      userAgent:
+        Platform.OS === 'web'
+          ? navigator.userAgent
+          : `CISA Campus Mobile App (React Native; ${Platform.OS} ${Platform.Version})`,
       viewport: `${Math.round(width)}x${Math.round(height)}`,
     };
 
