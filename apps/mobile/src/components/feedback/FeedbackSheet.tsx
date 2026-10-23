@@ -184,47 +184,52 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
         </Text>
 
         {submitted ? (
-          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <View style={{ paddingVertical: 24 }}>
             <Text style={{ fontFamily: font.bold, fontSize: fs(18), color: c.card.ink, marginBottom: 8 }}>
               {t('feedback.we_got_your_note', 'We got your note!')}
             </Text>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.card.ink2, textAlign: 'center', marginBottom: 20 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.card.ink2, marginBottom: 20 }}>
               {t('feedback.saved_body', 'Thank you for taking the time to share your thoughts with the team.').replace('{name}', user?.displayName ?? 'there')}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                handleClose();
-                router.push('/your-notes');
-              }}
-              style={({ pressed }) => ({
-                backgroundColor: c.card.inverse,
-                paddingVertical: 11,
-                paddingHorizontal: 24,
-                borderRadius: radius.button,
-                opacity: pressed ? 0.75 : 1,
-                marginBottom: 10,
-              })}
-            >
-              <Text style={{ fontFamily: font.bold, color: c.card.onInverse, fontSize: fs(14) }}>
-                {t('feedback.see_your_notes', 'See your notes')}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleClose}
-              style={({ pressed }) => ({
-                backgroundColor: c.card.inverse,
-                paddingVertical: 11,
-                paddingHorizontal: 24,
-                borderRadius: radius.button,
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <Text style={{ fontFamily: font.bold, color: c.card.onInverse, fontSize: fs(14) }}>
-                {t('common.done', 'Done')}
-              </Text>
-            </Pressable>
+            {/* Mirrors the form's footer row, with Done where Send was (#1705). */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  handleClose();
+                  router.push('/your-notes');
+                }}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: radius.button,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: font.bold, color: c.card.ink2, fontSize: fs(14) }}>
+                  {t('feedback.see_your_notes', 'See your notes')}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleClose}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  backgroundColor: c.card.inverse,
+                  paddingVertical: 10,
+                  paddingHorizontal: 22,
+                  borderRadius: radius.button,
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                <Text style={{ fontFamily: font.bold, color: c.card.onInverse, fontSize: fs(14) }}>
+                  {t('common.done', 'Done')}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={{ gap: 16 }}>
