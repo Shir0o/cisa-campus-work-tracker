@@ -356,6 +356,39 @@ describe('App Component', () => {
     });
   });
 
+  it('pins the shell to the viewport on phones so the document never scrolls behind the bottom bar (#1795)', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+
+    const { container } = render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+
+    const shell = container.firstElementChild as HTMLElement;
+    const shellClasses = shell.className.split(/\s+/);
+    // The page is exactly one dynamic viewport tall and clipped, so there is
+    // no document scroll left for the 64px bottom bar to reveal.
+    expect(shellClasses).toContain('h-[100dvh]');
+    expect(shellClasses).toContain('overflow-hidden');
+    // `min-h-screen` is 100vh, which is taller than 100dvh while browser
+    // chrome is visible, and min-height would win. It stays desktop-only.
+    expect(shellClasses).not.toContain('min-h-screen');
+    expect(shellClasses).toContain('md:min-h-screen');
+    // The bar's clearance lives in the scrolling pane (`pb-36` on <main>), not
+    // in the shell's page height — this padding was the 64px defect.
+    expect(shellClasses).not.toContain('pb-16');
+
+    // The inner pane matches the shell's height token instead of its own
+    // `h-screen` (100vh), so it cannot overflow and get clipped.
+    const pane = shell.firstElementChild as HTMLElement;
+    const paneClasses = pane.className.split(/\s+/);
+    expect(paneClasses).toContain('h-full');
+    expect(paneClasses).not.toContain('h-screen');
+    expect(paneClasses).toContain('md:h-screen');
+  });
+
   it('does not render the legacy ReleaseSheet with Carry on button', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
