@@ -152,13 +152,19 @@ function NoteCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const meta = kindMeta(note.kind ?? 'thought');
   const tone = TONE_CLASSES[meta.tone];
 
+  // `awaitingReply` is the one reply fact stored on the note: a Follow-up from
+  // the team writes false, one from the submitter writes true. So a reader can
+  // see that an answer is waiting inside the thread without the page having to
+  // subscribe to every thread on the list.
+  const teamReplied = note.awaitingReply === false;
+
   const formattedDate = (() => {
     try {
-      return new Date(note.createdAt).toLocaleDateString(undefined, {
+      return new Date(note.createdAt).toLocaleDateString(language, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -186,28 +192,35 @@ function NoteCard({
 
       <div className="flex items-center justify-between gap-3 text-xs pl-1">
         <span className={`inline-flex items-center gap-1 font-semibold py-0.5 px-2 rounded ${tone.chip}`}>
-          {meta.label}
+          {t(`feedback.kind_${meta.id}`, meta.label)}
         </span>
         <span className="text-on-surface-variant">{formattedDate}</span>
       </div>
 
-      <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed pl-1">{note.message}</p>
+      <p className="text-sm text-on-surface whitespace-pre-wrap break-words leading-relaxed pl-1">{note.message}</p>
 
       <div className="pt-2 border-t border-outline-variant/40 pl-1 text-xs">
         {note.outcome ? (
           <div className="space-y-1">
             <div className={`flex items-center gap-1.5 font-semibold ${OUTCOME_TEXT[note.outcome]}`}>
               {OUTCOME_ICONS[note.outcome]}
-              {outcomeLabel(note.outcome)}
+              {t(`feedback.outcome_${note.outcome.replace(/-/g, '_')}`, outcomeLabel(note.outcome))}
             </div>
             <p className="text-on-surface-variant leading-relaxed">
               {/* The written-at-close message when there is one; the canned
                   sentence is the guarantee that something always arrives. */}
-              {asSubmitter ? (note.outcomeMessage || outcomeCopy(note.outcome)) : outcomeCopy(note.outcome)}
+              {asSubmitter
+                ? note.outcomeMessage || t(`feedback.outcome_copy_${note.outcome.replace(/-/g, '_')}`, outcomeCopy(note.outcome))
+                : outcomeCopy(note.outcome)}
             </p>
           </div>
+        ) : teamReplied ? (
+          <div className="flex items-center gap-1.5 font-semibold text-stage-accent">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>{t('feedback.team_replied')}</span>
+          </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-on-surface-variant/80">
+          <div className="flex items-center gap-1.5 text-on-surface-variant">
             <Clock className="w-3.5 h-3.5" />
             {/* Deliberately promises no future event: a Note with no linked
                 issue can never reach an outcome, and only a Full-timer can
@@ -222,10 +235,13 @@ function NoteCard({
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+          aria-label={`${teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups')} · ${formattedDate}`}
+          className="flex w-full min-h-11 items-center justify-between gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
         >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>{t('feedback.follow_ups')}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>{teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups')}</span>
+          </span>
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </button>
       </div>
