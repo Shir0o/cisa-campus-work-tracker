@@ -8,6 +8,9 @@ import {
   applyAttendance,
   cancelGathering,
   uncancelGathering,
+  heldGatherings,
+  averageAttendance,
+  localDay,
 } from '../lib/attendanceRoster';
 import type { Contact, Gathering, Rhythm } from '../types';
 
@@ -326,5 +329,58 @@ describe('resolveRoster - live overrides rebase against later Rhythm changes (st
     };
     const changed: Rhythm = { ...rhythm, roster: ['c9'] };
     expect(resolveRoster(occasion, changed, NOW)).toEqual(['c1', 'c3']);
+  });
+});
+
+// The season figures and the phone's date column (#1769): a page that says
+// "we've come together N times" must not count a week that has not happened or
+// one that was called off, and a date-only gathering is a LOCAL day.
+describe('heldGatherings and averageAttendance (#1769)', () => {
+  const NOW = new Date(2026, 9, 24, 9, 0, 0); // 24 Oct 2026, local morning
+  const g = (id: string, date: string, present: number, cancelled = false): Gathering => ({
+    id,
+    name: id,
+    date,
+    order: 0,
+    createdAt: '',
+    ...(cancelled ? { cancelled: true } : {}),
+    attendance: { present: Array.from({ length: present }, (_, i) => `c${i}`), absent: [] },
+  });
+
+  it('keeps a gathering dated today and drops the future', () => {
+    const held = heldGatherings([g('today', '2026-10-24', 3), g('soon', '2026-10-27', 0)], NOW);
+    expect(held.map((x) => x.id)).toEqual(['today']);
+  });
+
+  it('drops a cancelled week even when it is in the past', () => {
+    const held = heldGatherings([g('past', '2026-10-21', 0, true), g('met', '2026-10-16', 2)], NOW);
+    expect(held.map((x) => x.id)).toEqual(['met']);
+  });
+
+  it('averages only the weeks somebody recorded: an unrecorded one is unknown, not zero', () => {
+    const unrecorded: Gathering = { id: 'u', name: 'u', date: '2026-10-20', order: 0, createdAt: '' };
+    const all = [g('a', '2026-10-02', 6), g('b', '2026-10-09', 2), g('c', '2026-10-16', 3), g('d', '2026-10-23', 4), unrecorded, g('e', '2026-10-21', 0, true), g('f', '2026-10-27', 0)];
+    const held = heldGatherings(all, NOW);
+    // Five meetings happened; one of them nobody recorded.
+    expect(held).toHaveLength(5);
+    expect(averageAttendance(held)).toBe(4); // (6+2+3+4)/4 = 3.75
+    expect(averageAttendance([])).toBe(0);
+  });
+
+  it('reads a date-only string as a local day, at noon, in any timezone', () => {
+    const d = localDay('2026-09-14');
+    expect(d?.getDate()).toBe(14);
+    expect(d?.getMonth()).toBe(8);
+    expect(d?.getHours()).toBe(12);
+    // The naive parse this replaced: UTC midnight, which is the previous day
+    // anywhere west of Greenwich.
+    expect(d?.getTime()).toBe(new Date(2026, 8, 14, 12).getTime());
+  });
+
+  it('passes a Date through and returns null for nothing', () => {
+    const date = new Date(2026, 9, 27, 12);
+    expect(localDay(date)).toBe(date);
+    expect(localDay(undefined)).toBeNull();
+    expect(localDay('')).toBeNull();
   });
 });
