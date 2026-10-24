@@ -1195,6 +1195,40 @@ describe('OutreachBoard', () => {
     expect(screen.queryByText('Not Yours')).not.toBeInTheDocument();
   });
 
+  it('finds a person across steps from the phone board (#1787)', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    (useAuth as any).mockReturnValue({
+      isAdmin: false,
+      user: { uid: 'trainee-1' },
+      role: 'manager',
+      effectiveUserId: 'trainee-1',
+    });
+    const inCare = (id: string, data: (typeof mockContacts)[number]['data']) => ({
+      id,
+      data: () => ({ ...data(), createdBy: 'trainee-1' }),
+    });
+    setupOnSnapshotWith({
+      stages: mockStages,
+      contacts: [inCare('c1', mockContacts[0].data), inCare('c2', mockContacts[1].data)],
+    });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    // Alice is on First Contact, Bob on Regular. Searching from First Contact
+    // must say where the other match is, and take you there.
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Find someone in this step' }), {
+      target: { value: 'bob' },
+    });
+    expect(screen.queryByText('Alice Chen')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '1 more in Regular' }));
+
+    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('Bob Park')).toBeInTheDocument();
+  });
+
   it('opens the stage editor from the phone board (#1763)', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
