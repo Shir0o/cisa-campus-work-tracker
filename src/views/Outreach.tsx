@@ -79,16 +79,20 @@ interface AppUser {
 // so day/month/days-since are read straight off the string / parsed as UTC —
 // parsing them as local time would shift days near midnight boundaries.
 const DAY_MS = 86_400_000;
-const MO_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const otDayNum = (s: string) => parseInt(s.slice(8, 10), 10);
-const otMonth = (s: string) => MO_SHORT[parseInt(s.slice(5, 7), 10) - 1] ?? '';
+// Month names follow the reader's language — a Spanish page reading "Aug 14"
+// is a date in the wrong language, not a style choice.
+const otMonth = (s: string, language: string) =>
+  new Date(s + 'T12:00:00Z').toLocaleDateString(language, { month: 'short', timeZone: 'UTC' });
+const otShortDate = (s: string, language: string) =>
+  new Date(s + 'T12:00:00Z').toLocaleDateString(language, { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const outreachDaysSince = (dateStr: string) => Math.round((Date.now() - new Date(dateStr + 'T12:00:00Z').getTime()) / DAY_MS);
-const otWhen = (s: string, t: (key: string, fallback?: string) => string) => {
+export const otWhen = (s: string, t: (key: string, fallback?: string) => string, language = 'en') => {
   const n = outreachDaysSince(s);
   if (n <= 0) return t('outreach.today');
   if (n === 1) return t('outreach.yesterday');
   if (n < 21) return t('outreach.days_ago').replace('{n}', String(n));
-  return `${otMonth(s)} ${otDayNum(s)}`;
+  return otShortDate(s, language);
 };
 const otFirst = (n: string) => (n || '').split(' ')[0];
 const otAnd = (a: string[], t: (key: string, fallback?: string) => string) =>
@@ -227,7 +231,7 @@ const INPUT =
 const BTN_PRIMARY =
   'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-on-primary font-semibold   text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all hover: active:scale-[0.98]';
 const BTN_GHOST = 'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-semibold text-accent hover:bg-primary/5 text-sm cursor-pointer';
-const BTN_SM = 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-full font-semibold text-xs cursor-pointer transition-all';
+const BTN_SM = 'inline-flex items-center justify-center gap-1.5 h-11 sm:h-9 px-4 rounded-full font-semibold text-xs cursor-pointer transition-all';
 const BTN_SM_PRIMARY = cn(BTN_SM, 'bg-primary text-on-primary   hover: active:scale-[0.98]');
 const BTN_SM_GHOST = cn(BTN_SM, 'text-accent hover:bg-primary/5');
 
@@ -260,7 +264,7 @@ const dueTomorrow = () => {
   d.setDate(d.getDate() + 1);
   return d.toISOString();
 };
-const initialsOf = (name?: string, fallback?: string) => getUserInitials(name) || (fallback || '?').slice(0, 2).toUpperCase();
+const initialsOf = (name?: string, fallback?: string) => getUserInitials(name || fallback || '?');
 
 // ── the queue: names still waiting on a first call ─────────────────────────
 function PendingRow({
@@ -298,7 +302,7 @@ function PendingRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-semibold text-on-surface">{n.name}</span>
-            <span className={cn('text-xs', cold ? 'text-warning' : 'text-on-surface-variant')}>
+            <span className={cn('text-xs', cold ? 'text-on-surface font-medium' : 'text-on-surface-variant')}>
               {days <= 0 ? t('outreach.met_today') : days === 1 ? t('outreach.met_yesterday') : t('outreach.days_waiting').replace('{n}', String(days))}
             </span>
           </div>
@@ -390,7 +394,7 @@ function OutreachCard({
   contactById: (id?: string | null) => Contact | undefined;
   userById: (id?: string | null) => AppUser | undefined;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [confirm, setConfirm] = useState(false);
   const names = item.names || [];
   const reached = names.filter((n) => outreachReached(item, n, touches)).length;
@@ -398,15 +402,20 @@ function OutreachCard({
   const went = item.went || [];
   return (
     <article className={cn('rounded-3xl border bg-surface-container  overflow-hidden', open ? 'border-stage-accent' : 'border-outline-variant')}>
-      <button className="w-full text-left px-4 sm:px-5 py-4 flex items-start gap-4 hover:bg-surface-container-high/40" onClick={onToggle}>
+      <button
+        aria-expanded={open}
+        aria-controls={`outreach-record-${item.id}`}
+        className="relative w-full text-left px-4 sm:px-5 py-4 flex flex-wrap items-start gap-x-4 gap-y-3 hover:bg-surface-container-high/40"
+        onClick={onToggle}
+      >
         <div className="flex flex-col items-center pt-0.5 w-[52px] shrink-0">
           <span className="font-serif text-[26px] leading-none text-on-surface">{otDayNum(item.date)}</span>
-          <span className="text-[11px]   text-on-surface-variant">{otMonth(item.date)}</span>
+          <span className="text-[11px]   text-on-surface-variant">{otMonth(item.date, language)}</span>
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pr-8 sm:pr-0">
           <h3 className="font-serif text-[19px] font-medium text-on-surface leading-snug">{item.where}</h3>
           <div className="flex items-center gap-2 flex-wrap text-[13px] text-on-surface-variant mt-1">
-            <span>{otWhen(item.date, t)}</span>
+            <span>{otWhen(item.date, t, language)}</span>
             <span>·</span>
             <span>{t('outreach.of_us_went').replace('{n}', String(went.length + (item.others || 0)))}</span>
             {otHandedLine(item.handed, t) && (
@@ -418,7 +427,10 @@ function OutreachCard({
           </div>
           {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2"><Translate text={item.how.split('\n')[0]} /></p>}
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        {/* On a phone the faces and counts drop to their own row: sharing the
+            header row with the title squeezed "Cedar Park" into a 22px column,
+            one word per line. */}
+        <div className="flex w-full flex-row items-center justify-between gap-2 pr-6 sm:w-auto sm:flex-col sm:items-end sm:gap-2 sm:shrink-0 sm:pr-0">
           <div className="flex">
             {went.slice(0, 4).map((id) => (
               <span key={id} className="-ml-1.5 first:ml-0">
@@ -446,11 +458,11 @@ function OutreachCard({
             )}
           </div>
         </div>
-        <ChevronDown className={cn('w-4 h-4 text-on-surface-variant shrink-0 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('absolute right-3 top-4 w-4 h-4 text-on-surface-variant shrink-0 transition-transform sm:static', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="px-4 sm:px-5 pb-4 pt-3 border-t border-outline-variant space-y-4">
+        <div id={`outreach-record-${item.id}`} className="px-4 sm:px-5 pb-4 pt-3 border-t border-outline-variant space-y-4">
           <div>
             <div className="text-[11px]   text-on-surface-variant mb-1.5">{t('outreach.how_it_went')}</div>
             {item.how ? (
@@ -537,7 +549,7 @@ function OutreachCard({
 
           {isAdmin && (
             <div className="flex items-center gap-4 pt-1">
-              <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface" onClick={onEdit}>
+              <button className="inline-flex items-center gap-1 min-h-11 sm:min-h-0 text-xs font-medium text-on-surface-variant hover:text-on-surface" onClick={onEdit}>
                 <Pencil className="w-3 h-3" /> {t('outreach.edit_this_one')}
               </button>
               {confirm ? (
@@ -551,7 +563,7 @@ function OutreachCard({
                   </button>
                 </span>
               ) : (
-                <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-error" onClick={() => setConfirm(true)}>
+                <button className="inline-flex items-center gap-1 min-h-11 sm:min-h-0 text-xs font-medium text-on-surface-variant hover:text-error" onClick={() => setConfirm(true)}>
                   <Trash2 className="w-3 h-3" /> {t('outreach.remove')}
                 </button>
               )}
@@ -585,6 +597,36 @@ function LogOutreachModal({
 }) {
   const { t } = useLanguage();
   const editing = !!item;
+  const sheetRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    sheetRef.current?.focus();
+    // Return the keyboard reader to the control that opened the sheet.
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    if (e.key !== 'Tab' || !sheetRef.current) return;
+    const focusable = Array.from(sheetRef.current.querySelectorAll<HTMLElement>('button, input, select, textarea, [href]')).filter(
+      (el) => !(el as HTMLButtonElement).disabled && el.getClientRects().length > 0,
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === sheetRef.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
   const [date, setDate] = useState(item ? item.date : new Date().toISOString().slice(0, 10));
   const [where, setWhere] = useState(item ? item.where : '');
   const [went, setWent] = useState<string[]>(item ? item.went.slice() : [me]);
@@ -680,10 +722,14 @@ function LogOutreachModal({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={editing ? t('outreach.edit_gospel_outing') : t('outreach.log_gospel_outing')}
+      onKeyDown={onKeyDown}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-10"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full">
+      <div ref={sheetRef} tabIndex={-1} className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full outline-none">
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <span className="grid place-items-center h-9 w-9 rounded-xl bg-stage-accent-soft text-stage-accent">
@@ -694,7 +740,11 @@ function LogOutreachModal({
               <div className="text-sm text-on-surface-variant">{editing ? t('outreach.edit_gospel_outing_sub') : t('outreach.log_gospel_outing_sub')}</div>
             </div>
           </div>
-          <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer" onClick={onClose}>
+          <button
+            className="grid place-items-center h-11 w-11 shrink-0 -mr-2 rounded-full transition-colors text-on-surface-variant hover:bg-surface-container-high cursor-pointer"
+            aria-label={t('actions.close', 'Close')}
+            onClick={onClose}
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -717,9 +767,12 @@ function LogOutreachModal({
               {goers.map((u) => (
                 <button
                   key={u.uid}
+                  aria-pressed={went.includes(u.uid)}
                   className={cn(
-                    'h-9 px-3.5 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant cursor-pointer transition-all',
-                    went.includes(u.uid) && 'bg-stage-accent-soft text-stage-accent border-stage-accent',
+                    'h-11 px-3.5 rounded-full text-xs font-semibold border cursor-pointer transition-all sm:h-9',
+                    went.includes(u.uid)
+                      ? 'bg-primary text-on-primary border-primary'
+                      : 'border-outline-variant text-on-surface-variant',
                   )}
                   onClick={() => setWent((w) => (w.includes(u.uid) ? w.filter((x) => x !== u.uid) : w.concat(u.uid)))}
                 >
@@ -772,7 +825,7 @@ function LogOutreachModal({
                     <div className="flex gap-2 flex-wrap">
                       <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.name} placeholder={t('outreach.their_name')} onChange={(e) => setRow(r.key, { name: e.target.value })} />
                       <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.contact} placeholder={t('outreach.number_or_email')} onChange={(e) => setRow(r.key, { contact: e.target.value })} />
-                      <select className={cn(INPUT, 'appearance-none cursor-pointer flex-1 min-w-[160px]')} value={r.spokeWith} onChange={(e) => setRow(r.key, { spokeWith: e.target.value })}>
+                      <select aria-label={t('outreach.spoke_with_who')} className={cn(INPUT, 'appearance-none cursor-pointer flex-1 min-w-[160px]')} value={r.spokeWith} onChange={(e) => setRow(r.key, { spokeWith: e.target.value })}>
                         {goers.map((u) => (
                           <option key={u.uid} value={u.uid}>
                             {u.displayName} {t('outreach.spoke_with_them')}
@@ -789,7 +842,7 @@ function LogOutreachModal({
                   </div>
                 ))}
               </div>
-              <button className="inline-flex items-center gap-1 text-sm font-semibold text-accent mt-3 cursor-pointer hover:underline" onClick={() => setRows((rs) => rs.concat({ key: nextKey.current++, name: '', contact: '', spokeWith: me, note: '' }))}>
+              <button className="inline-flex items-center gap-1 min-h-11 sm:min-h-0 text-sm font-semibold text-accent mt-3 cursor-pointer hover:underline" onClick={() => setRows((rs) => rs.concat({ key: nextKey.current++, name: '', contact: '', spokeWith: me, note: '' }))}>
                 <Plus className="w-3 h-3" /> {t('outreach.another_name')}
               </button>
               {filled.length > 0 && (
@@ -801,14 +854,16 @@ function LogOutreachModal({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low/50">
-          <span className="flex-1 text-sm text-on-surface-variant">{where.trim() ? t('outreach.names_become_contacts') : t('outreach.say_where_you_went')}</span>
-          <button className={BTN_GHOST} onClick={onClose}>
-            {t('outreach.cancel')}
-          </button>
-          <button className={BTN_PRIMARY} disabled={!where.trim() || saving} onClick={submit}>
-            {saving ? t('outreach.saving') : editing ? t('outreach.save_changes') : t('outreach.log_the_outing')}
-          </button>
+        <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex flex-wrap items-center gap-3 bg-surface-container-low/50">
+          <span className="w-full text-sm text-on-surface-variant sm:w-auto sm:flex-1">{where.trim() ? t('outreach.names_become_contacts') : t('outreach.say_where_you_went')}</span>
+          <div className="ml-auto flex items-center gap-3">
+            <button className={BTN_GHOST} onClick={onClose}>
+              {t('outreach.cancel')}
+            </button>
+            <button className={BTN_PRIMARY} disabled={!where.trim() || saving} onClick={submit}>
+              {saving ? t('outreach.saving') : editing ? t('outreach.save_changes') : t('outreach.log_the_outing')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -818,7 +873,7 @@ function LogOutreachModal({
 // ── the page ───────────────────────────────────────────────────────────────
 export default function Outreach() {
   const { user, role } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const me = user?.uid || '';
   const userName = user?.displayName || 'Someone';
   // Outreach is full-timer + community: both see and log (canLog); only the
@@ -924,7 +979,7 @@ export default function Outreach() {
           <p className="text-on-surface-variant mt-2 max-w-2xl">
             {last ? (
               <>
-                {t('outreach.last_time_out').replace('{when}', otWhen(last.date, t)).replace('{where}', last.where)}{' '}
+                {t('outreach.last_time_out').replace('{when}', otWhen(last.date, t, language)).replace('{where}', last.where)}{' '}
                 {pending.length > 0 ? (
                   <>
                     <b className="text-on-surface">

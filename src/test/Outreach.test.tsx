@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Outreach from '../views/Outreach';
+import Outreach, { otWhen } from '../views/Outreach';
 import { useAuth } from '../components/AuthProvider';
 import { canAccessRoute } from '../lib/permissions';
 
@@ -232,6 +232,71 @@ describe('Outreach', () => {
     expect(await screen.findByText(/Nothing here yet/)).toBeTruthy();
     // Both the header and the empty-state card carry a Log button.
     expect(screen.getAllByRole('button', { name: 'Log a gospel outing' }).length).toBeGreaterThan(0);
+  });
+
+  it('gives the queue a person, not a pair of question marks', async () => {
+    render(<Outreach />);
+    // The row's face is the person's initials — "??" is what the avatar shows
+    // for a name the app does not know, and every name here is known.
+    expect((await screen.findByTitle('Chloe Baptiste')).textContent).toBe('CB');
+  });
+
+  it('counts who is still waiting without claiming they all left a number', async () => {
+    const names = [
+      ...SEED_NAMES,
+      { id: 'ON-3', name: 'Nadia Halim', contact: '', spokeWith: 'u1', note: '', contactId: 'C-3', takenBy: null },
+    ];
+    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (s: unknown) => void) => {
+      if ((ref?.path ?? '') === 'outreach') {
+        callback({ docs: [{ id: 'OT-1', data: () => ({ ...SEED_OUTREACH, names }), ref: { path: 'outreach/OT-1' } }], size: 1, empty: false });
+        return () => {};
+      }
+      return (defaultOnSnapshot as unknown as (ref: unknown, callback: unknown) => () => void)(ref, callback);
+    }) as never);
+    render(<Outreach />);
+    // Nadia never left a number, so two people are waiting but only one can be
+    // rung — the header must not say "2 people left us a number".
+    const header = (await screen.findByText(/still haven't heard back yet/)).closest('p');
+    expect(header?.textContent).toMatch(/2 people still haven't heard back yet/);
+    expect(header?.textContent).not.toMatch(/left us a number/);
+  });
+
+  it('announces whether an outing is expanded', async () => {
+    render(<Outreach />);
+    const toggle = await screen.findByRole('button', { name: /Cedar Park — the north lawn/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: /Cedar Park — the north lawn/ }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('opens the log sheet as a dialog that Escape closes', async () => {
+    render(<Outreach />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-label')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+    // The "who spoke with them" select had no accessible name at all.
+    expect(screen.getByLabelText('Who spoke with them')).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('exposes the who-went chips as pressed or not', async () => {
+    render(<Outreach />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
+    expect((await screen.findByRole('button', { name: 'Tony Wang' })).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Ana Reyes' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('formats a date in the reader’s language', () => {
+    const iso = '2026-08-14';
+    const inSpanish = otWhen(iso, (_k, fallback) => fallback ?? _k, 'es');
+    const expected = new Intl.DateTimeFormat('es', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+      new Date(iso + 'T12:00:00Z'),
+    );
+    expect(inSpanish).toBe(expected);
+    expect(otWhen(iso, (_k, fallback) => fallback ?? _k, 'en')).toBe('Aug 14');
   });
 
   it('is full-timer + community — trainees and students are locked out', () => {
