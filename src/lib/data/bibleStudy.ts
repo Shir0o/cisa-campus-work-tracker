@@ -64,7 +64,13 @@ function mapEntryPoint(d: { id: string; data: () => Record<string, unknown> }): 
 export function subscribePublishedStudyMeetings(
   db: Firestore,
   studyId: string,
-  cb: (meetings: Meeting[]) => void,
+  /**
+   * `fromCache` is the SDK's "this answer did not come from the server" flag.
+   * With no persistence configured it is true only while the listen has not
+   * connected, so an empty cached answer means "not loaded", never "this Study
+   * has published nothing" (#1777).
+   */
+  cb: (meetings: Meeting[], fromCache: boolean) => void,
   onError?: (e: unknown) => void,
 ): () => void {
   const q = query(
@@ -76,7 +82,7 @@ export function subscribePublishedStudyMeetings(
 
   return onSnapshot(
     q,
-    (snap) => cb(snap.docs.map(mapMeeting)),
+    (snap) => cb(snap.docs.map(mapMeeting), snap.metadata.fromCache),
     (e) => (onError ? onError(e) : console.error('published study meetings sub error', e)),
   );
 }
@@ -193,12 +199,12 @@ export async function deleteMeeting(db: Firestore, meetingId: string): Promise<v
 export function subscribeStudy(
   db: Firestore,
   studyId: string,
-  cb: (study: Study | null) => void,
+  cb: (study: Study | null, fromCache: boolean) => void,
   onError?: (e: unknown) => void,
 ): () => void {
   return onSnapshot(
     doc(db, 'bible_study_studies', studyId),
-    (snap) => cb(snap.exists() ? mapStudy(snap) : null),
+    (snap) => cb(snap.exists() ? mapStudy(snap) : null, snap.metadata.fromCache),
     (e) => (onError ? onError(e) : console.error('study sub error', e)),
   );
 }
@@ -210,12 +216,12 @@ export function subscribeStudy(
 export function subscribeEntryPoint(
   db: Firestore,
   slug: string,
-  cb: (entryPoint: EntryPoint | null) => void,
+  cb: (entryPoint: EntryPoint | null, fromCache: boolean) => void,
   onError?: (e: unknown) => void,
 ): () => void {
   return onSnapshot(
     doc(db, 'bible_study_entry_points', slug),
-    (snap) => cb(snap.exists() ? mapEntryPoint(snap) : null),
+    (snap) => cb(snap.exists() ? mapEntryPoint(snap) : null, snap.metadata.fromCache),
     (e) => (onError ? onError(e) : console.error('entry point sub error', e)),
   );
 }

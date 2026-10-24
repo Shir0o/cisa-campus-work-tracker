@@ -703,7 +703,12 @@
     "previous": "Previous",
     "next": "Next",
     "end_of": "End of {title}",
-    "section_announce": "Section {n} of {total}: {title}"
+    "section_announce": "Section {n} of {total}: {title}",
+    "open_index": "Open section index",
+    "index": "Section index",
+    "close_hint": "Tap anywhere to close",
+    "blank_reveal": "Blank, tap to reveal",
+    "no_sections": "This week has no sections yet."
   },
   "ask": {
     "questions_for_team": "Questions for the team",
@@ -2163,6 +2168,9 @@
     "nothing_yet": "Nothing yet",
     "never_published": "The study has never published a week",
     "never_published_body": "A brand-new study, or a code shown before the first week went up. There is nothing to fall back to.",
+    "load_failed": "Couldn't load this week",
+    "load_failed_body": "The study is still there — this device couldn't reach it. Check your connection and try again.",
+    "try_again": "Try again",
     "bold": "Bold",
     "italic": "Italic",
     "numbered_list": "Numbered list",

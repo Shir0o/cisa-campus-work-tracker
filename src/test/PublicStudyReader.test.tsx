@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PublicStudyReader from '../views/PublicStudyReader';
@@ -66,15 +66,15 @@ describe('PublicStudyReader (above the seam)', () => {
     study: Study | null = STUDY,
   ) {
     vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, cb) => {
-      cb(entryPoint);
+      cb(entryPoint, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _studyId, cb) => {
-      cb(study);
+      cb(study, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _studyId, cb) => {
-      cb(meetings);
+      cb(meetings, false);
       return () => {};
     });
   }
@@ -102,6 +102,56 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(screen.getAllByText(/Peace that holds/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Plain point with no blanks/i)).toBeInTheDocument();
     expect(screen.getByText('Discuss')).toBeInTheDocument();
+  });
+
+  it('says the week could not be loaded — and offers a way out — instead of claiming the term is over (#1777)', async () => {
+    // A permissions slip or a rejected query reaches the hook's error
+    // callback; without a failure state the resolution looks exactly like an
+    // empty term and the page tells a student who scanned a code on Wednesday
+    // night that nothing is running.
+    vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, _cb, onError) => {
+      onError?.(new Error('permission-denied'));
+      return () => {};
+    });
+    vi.mocked(bibleData.subscribeStudy).mockImplementation(() => () => {});
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation(() => () => {});
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Couldn't load this week/i);
+    expect(screen.queryByText('Nothing running right now')).not.toBeInTheDocument();
+    // The action reloads (a re-subscribe keeps answering from the failed
+    // cache while Firestore holds its reconnect backoff), so the assertion is
+    // that a way out exists rather than that this client recovers.
+    expect(within(screen.getByRole('alert')).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('treats an empty snapshot that never reached the server as a failed load (#1777)', async () => {
+    // Measured with every Firestore request blocked: the SDK resolves the
+    // listen with `exists(): false, fromCache: true`, so "no entry point" is
+    // indistinguishable from "no study" unless the cache flag is read. The
+    // page then told a student the term was over.
+    vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, cb) => {
+      cb(null, true);
+      return () => {};
+    });
+    vi.mocked(bibleData.subscribeStudy).mockImplementation(() => () => {});
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation(() => () => {});
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Couldn't load this week/i);
+    expect(screen.queryByText('Nothing running right now')).not.toBeInTheDocument();
+  });
+
+  it('still says between-terms for a snapshot the server answered (#1777)', async () => {
+    // The same empty answer, but authoritative: a genuinely quiet term.
+    mockChain([], null, null);
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByText('Nothing running right now')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('renders the between-terms state when the entry point has no active Study', async () => {

@@ -18,13 +18,14 @@
  *     container, not the viewport. The viewport-sized `100dvh` / `844px`
  *     measurements must not return.
  *   - The empty-Meeting placeholder is sized the same way as a panel.
- *   - Proximity snapping is retained: the deck keeps `snap-proximity` (ADR
- *     0014 §1 — proximity, not mandatory, so a Section taller than the deck
- *     can never be skipped or trapped), and the `snap-mandatory` utility
- *     must not be introduced on the deck.
+ *   - The deck does not snap (#1777). Proximity snapping was retained for the
+ *     same reason this file was written — "so a Section taller than the deck
+ *     can never be skipped or trapped" — and the browser disagreed: a tall
+ *     panel could not be scrolled to its end. See the third test for the
+ *     measurements.
  *
- * If a future change re-introduces viewport-sized panels, this test fails
- * before the change merges.
+ * If a future change re-introduces viewport-sized panels or snapping, this
+ * test fails before the change merges.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -62,11 +63,26 @@ describe('study-reader panel sizing guardrail (#913)', () => {
     expect(placeholderLine!).not.toMatch(/100dvh|844px/);
   });
 
-  it('retains proximity snapping on the deck and never applies snap-mandatory', () => {
-    // ADR 0014 §1: proximity, not mandatory — mandatory snapping can skip or
-    // trap on a Section taller than the deck. The deck's className is the
-    // contract; the `snap-mandatory` utility must not be applied to it.
-    expect(source).toMatch(/snap-proximity/);
-    expect(source).not.toMatch(/snap-mandatory/);
+  it('leaves the deck unsnapped, because proximity still traps a tall Section (#1777)', () => {
+    // ADR 0014 §1 asked for proximity snapping "so a Section taller than the
+    // deck can never be skipped or trapped". Measured in Chromium at 375×812
+    // with Section 1 at 924px in a 744px deck: eight wheel gestures of 120px
+    // all returned `scrollTop` to 180 (the deepest position where the panel
+    // still fills the deck), and every programmatic position from 680 to 900
+    // settled at 924 — the next Section's top. The tail of a long Section was
+    // unreadable, so the deck no longer snaps at all: the peek, the counter
+    // and the rail carry position instead.
+    const lines = source.split('\n');
+    const deckIdx = lines.findIndex((line) => line.includes('data-testid="reader-deck"'));
+    expect(deckIdx, 'deck element should exist').toBeGreaterThanOrEqual(0);
+    const deckClassLine = lines
+      .slice(deckIdx, deckIdx + 12)
+      .find((line) => line.includes('className'));
+    expect(deckClassLine, 'deck className should exist').toBeDefined();
+    expect(deckClassLine!).not.toMatch(/snap-y|snap-mandatory|snap-proximity/);
+    // Panels still fill the deck, so a short Section settles and the peek
+    // stays at the bottom of the panel.
+    expect(source).toMatch(/min-h-full/);
+    expect(source).not.toMatch(/snap-always/);
   });
 });

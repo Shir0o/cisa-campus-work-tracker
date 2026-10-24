@@ -4,7 +4,7 @@
 // reader SEES for a Section's ordered content — authored order, real
 // formatting, Blanks that tap to reveal — never the block internals.
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { Section } from '../lib/bibleStudy';
 import SectionBody from '../components/bibleStudy/SectionBody';
 
@@ -52,8 +52,54 @@ describe('SectionBody (ordered content, read as written)', () => {
     });
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
 
-    expect(document.querySelector('script')).toBeNull();
+    // Scoped to the rendered body: other scripts on the page (app-check's
+    // reCAPTCHA loader) are not this renderer's business.
+    expect(screen.getByTestId('section-body').querySelector('script')).toBeNull();
     expect(screen.getByText(/alert\(1\)/)).toBeInTheDocument();
+  });
+
+  it('keeps a sentence with a Blank in one flow, not one line per fragment (#1777)', () => {
+    // Measured defect: the prose container was a column flex box, so every
+    // contiguous inline run (a text node, a <strong>, a Blank) became an
+    // anonymous flex item — a 149-character sentence rendered as 10 line boxes
+    // with the blank alone on its own line and the next line starting with a
+    // comma. jsdom has no layout, so the guardrail is the container's display
+    // mode: a block keeps inline children inline.
+    const s = section({
+      content: [
+        {
+          kind: 'prose',
+          md: 'It is a **standing** — a position we hold because of [[someone else]] , not because we earned it.',
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const prose = document.querySelector('[data-block-kind="prose"]')!;
+    expect(prose.className).not.toMatch(/\bflex\b/);
+    expect(prose.className).not.toMatch(/flex-col/);
+    // The blank and the words around it are siblings inside that one block.
+    const blank = within(prose as HTMLElement).getByRole('button', { name: /Blank, tap to reveal/i });
+    expect(blank.closest('[data-block-kind="prose"]')).toBe(prose);
+    expect(prose).toHaveTextContent(/a position we hold because of/);
+    expect(prose).toHaveTextContent(/not because we earned it/);
+  });
+
+  it('reveals a Blank from the keyboard, not only from a tap (#1777)', () => {
+    const onReveal = vi.fn();
+    const s = section({
+      content: [{ kind: 'prose', md: 'Peace with God is a [[standing]], not a mood.' }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={onReveal} />);
+
+    const blank = screen.getByRole('button', { name: /Blank, tap to reveal/i });
+    fireEvent.keyDown(blank, { key: 'Enter' });
+    fireEvent.keyDown(blank, { key: ' ' });
+
+    // A span with role=button gets no activation from the browser, so the
+    // component must provide it; without this the study could be reached by
+    // keyboard but never answered.
+    expect(onReveal).toHaveBeenCalledTimes(2);
   });
 
   it('renders a bullet list with visible disc markers', () => {

@@ -10,6 +10,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Section, SectionBlock, Blank, Text, ListItem } from '../../lib/bibleStudy';
+import { useLanguage } from '../LanguageProvider';
 
 type BlankPart = { kind: 'blank'; blank: Blank; n: number };
 type MdPart = { kind: 'md'; text: string };
@@ -65,26 +66,47 @@ const BlankSpan: React.FC<{
   part: BlankPart;
   isOpen: boolean;
   onReveal: () => void;
-}> = ({ part, isOpen, onReveal }) => (
-  <span>
-    <span
-      className={`inline-block border-b-2 cursor-pointer transition-all duration-200 mx-1 ${
-        isOpen
-          ? 'border-transparent bg-[var(--t-sage-soft)] text-on-surface px-1.5 rounded-md font-medium'
-          : 'min-w-[64px] border-[var(--accent-line)]'
-      }`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onReveal();
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={isOpen ? part.blank.word : 'Blank, tap to reveal'}
-    >
-      {isOpen ? part.blank.word : ''}
+}> = ({ part, isOpen, onReveal }) => {
+  const { t } = useLanguage();
+  const reveal = () => {
+    if (!isOpen) onReveal();
+  };
+  return (
+    <span>
+      <span
+        // The blank's own box is only as tall as its 2px underline, so the
+        // `after:` layer is what a thumb actually hits: it extends the target
+        // to the whole line box (#1777 — the measured box was 64×2 inside a
+        // 34px line). It is a pseudo-element so the line never reflows, and the
+        // focus ring rides the same layer because a 2px-tall ring is no ring.
+        className={`relative inline-block border-b-2 cursor-pointer transition-all duration-200 mx-1 after:absolute after:inset-x-0 after:-inset-y-[0.45em] after:content-[''] focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[var(--t-sage)] ${
+          isOpen
+            ? 'border-transparent bg-[var(--t-sage-soft)] text-on-surface px-1.5 rounded-md font-medium'
+            : 'min-w-[64px] border-[var(--accent-line)]'
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          reveal();
+        }}
+        onKeyDown={(e) => {
+          // A span with role=button gets no Enter/Space activation from the
+          // browser; without this the study could be reached by keyboard but
+          // never answered (#1777).
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            reveal();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={isOpen ? part.blank.word : t('reader.blank_reveal')}
+      >
+        {isOpen ? part.blank.word : ''}
+      </span>
     </span>
-  </span>
-);
+  );
+};
 
 /**
  * The first verse number of a reference, e.g. 24 for `mark 3:24-27`,
@@ -288,8 +310,14 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
           }
           case 'prose': {
             const parts = splitInline(block.md);
+            // A block, never a column flex container: in `display:flex` every
+            // contiguous inline run (a text node, a <strong>, a Blank) becomes
+            // an anonymous flex item and therefore a block, so a sentence with
+            // a Blank fell apart one fragment per line (#1777 — 149 characters
+            // rendered as 10 line boxes). Keeping it a block keeps the Blank
+            // inside the sentence the author wrote.
             return (
-              <div key={bIdx} data-block-kind="prose" className="flex flex-col gap-2 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
+              <div key={bIdx} data-block-kind="prose" className="text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
                 {parts.map((part, pIdx) => {
                   if (part.kind === 'blank') {
                     const key = `${sectionIndex}:b${part.n}`;

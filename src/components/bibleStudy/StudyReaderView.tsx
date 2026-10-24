@@ -148,6 +148,7 @@ const Panel: React.FC<{
   onRevealBlank: (key: string) => void;
   ref?: React.Ref<HTMLElement>;
 }> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank, ref }) => {
+  const { t } = useLanguage();
   const [settles, setSettles] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const peekRef = useRef<HTMLDivElement>(null);
@@ -182,7 +183,7 @@ const Panel: React.FC<{
     <section
       ref={ref}
       data-section-panel={index}
-      className="min-h-full snap-start snap-always flex flex-col px-6 pt-[18px] pb-0"
+      className="min-h-full flex flex-col px-6 pt-[18px] pb-0"
     >
       <div
         ref={cardRef}
@@ -214,13 +215,13 @@ const Panel: React.FC<{
             className="flex flex-col items-center gap-2 text-xs text-on-surface-variant font-medium py-4"
           >
             <span className="h-px w-12 bg-outline-variant" />
-            <span>End of {meetingTitle}</span>
+            <span>{t('reader.end_of').replace('{title}', meetingTitle)}</span>
           </div>
         ) : (
           <button
             type="button"
             data-testid={`peek-${index}`}
-            className="text-sm text-on-surface-variant/60 py-4 truncate max-w-full"
+            className="text-sm text-on-surface-variant py-4 truncate max-w-full"
             onClick={(e) => {
               e.stopPropagation();
               onPeekNext();
@@ -377,6 +378,17 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     }
   };
 
+  // The index is a full-screen overlay; Escape closes it, so a keyboard user
+  // who opened it is never stuck behind a "tap anywhere" hint (#1777).
+  useEffect(() => {
+    if (!state.navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dispatch({ type: 'closeIndex' });
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [state.navOpen]);
+
   // When the Meeting's Section count changes, the read model follows.
   useEffect(() => {
     if (sections.length > 0 && state.totalSections !== sections.length) {
@@ -530,18 +542,23 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           the stale-week date chip. */}
       <div
         data-testid="reader-header"
-        className={`shrink-0 sticky top-0 z-20 flex items-center gap-2 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
+        className={`shrink-0 sticky top-0 z-20 flex flex-wrap md:flex-nowrap items-center gap-2 pt-[calc(env(safe-area-inset-top)+2px)] pb-1 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
           showPaged ? 'px-8' : 'px-5 border-b border-outline-variant'
         }`}
       >
         {staleDateLabel && (
-          <span
-            data-testid="stale-date-chip"
-            className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full bg-surface border border-outline-variant text-[10px] text-on-surface-variant"
-          >
-            <ChevronIcon />
-            {staleDateLabel}
-          </span>
+          // Its own row on a phone (#1777): side by side with the title it took
+          // 206 of 335 px and squeezed the week's name into a 38px column —
+          // three stacked words. On the paged deck it can sit inline again.
+          <div className="w-full md:w-auto min-w-0 flex">
+            <span
+              data-testid="stale-date-chip"
+              className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-full bg-surface border border-outline-variant text-[11px] text-on-surface-variant"
+            >
+              <ChevronIcon />
+              <span className="truncate">{staleDateLabel}</span>
+            </span>
+          </div>
         )}
         {/* The Meeting title. It wraps rather than truncates: capping the
             text at the header's width hides the week's name exactly where
@@ -552,7 +569,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           className={`min-w-0 leading-snug ${
             showPaged
               ? 'font-serif font-bold text-[22px] tracking-tight text-on-surface'
-              : 'text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80'
+              : 'text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant'
           }`}
         >
           {meeting.title}
@@ -567,7 +584,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
               type="button"
               aria-label={t('reader.text_size')}
               aria-expanded={typeMenuOpen}
-              className="w-7 h-7 flex items-center justify-center rounded-full text-sm font-serif font-bold text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-sm font-serif font-bold text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
               onClick={() => setTypeMenuOpen((open) => !open)}
             >
               A
@@ -584,7 +601,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
                     key={size}
                     type="button"
                     aria-pressed={typeSize === size}
-                    className={`w-7 h-7 rounded-full text-xs font-medium transition-colors ${
+                    className={`w-11 h-11 rounded-full text-xs font-medium transition-colors ${
                       typeSize === size
                         ? 'bg-on-surface text-background'
                         : 'text-on-surface-variant hover:bg-surface-variant/60'
@@ -719,7 +736,14 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
       <div
         ref={scrollRef}
         data-testid="reader-deck"
-        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar snap-y snap-proximity"
+        // Deliberately unsnapped (#1777). `snap-y snap-proximity` is meant to
+        // let a Section taller than the deck scroll freely, but Chromium rests
+        // only at the deepest position where the panel still fills the deck
+        // (measured: eight 120px wheel gestures all returned to 180, and every
+        // position from 680 to 900 snapped to the next panel at 924), so the
+        // end of a long Section could never be read. The peek, the counter and
+        // the rail carry position instead.
+        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
       >
         {sections.map((section, idx) => (
           <Panel
@@ -739,7 +763,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
         ))}
         {sections.length === 0 && (
           <div data-testid="reader-end" className="min-h-full flex items-center justify-center text-sm text-on-surface-variant px-6">
-            This week has no sections yet.
+            {t('reader.no_sections')}
           </div>
         )}
       </div>
@@ -761,23 +785,24 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
       </div>
 
       {/* Auto-hidden edge grip → the Section index overlay. jump is its one
-          navigation action; the chevron-and-tap deck is gone. */}
+          navigation action. A real button, not a div: at 32×120 it is the only
+          way into the index and it has to be focusable (#1777). */}
       {!state.navOpen && (
-        <div
+        <button
+          type="button"
           className="absolute top-1/2 right-0 -translate-y-1/2 w-8 min-h-[120px] flex flex-col items-end justify-center gap-2 pr-2 z-20 cursor-pointer"
           onClick={() => dispatch({ type: 'openIndex' })}
-          role="button"
-          aria-label="Open section index"
+          aria-label={t('reader.open_index')}
         >
           {sections.map((_, sIdx) => (
             <i
               key={sIdx}
               className={`block h-0.5 rounded-full transition-all duration-200 ${
-                sIdx === state.sectionIndex ? 'w-5 bg-on-surface' : 'w-2.5 bg-outline-variant'
+                sIdx === state.sectionIndex ? 'w-5 bg-on-surface' : 'w-2.5 bg-on-surface-variant/60'
               }`}
             />
           ))}
-        </div>
+        </button>
       )}
 
       {state.navOpen && (
@@ -785,17 +810,18 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           className="absolute inset-0 z-30 p-6 flex flex-col justify-center bg-background/90 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => dispatch({ type: 'closeIndex' })}
           role="dialog"
-          aria-label="Section index"
+          aria-label={t('reader.index')}
         >
           <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant px-3 pb-3">
-            {meeting.title} · Index
+            {meeting.title} · {t('reader.index')}
           </div>
           <div className="flex flex-col gap-1 max-h-[70%] overflow-y-auto custom-scrollbar">
             {sections.map((sec, sIdx) => (
-              <div
+              <button
                 key={sec.id || sIdx}
+                type="button"
                 data-current={sIdx === state.sectionIndex}
-                className={`flex items-center gap-3.5 min-h-[52px] px-3.5 py-2 rounded-xl cursor-pointer transition-colors ${
+                className={`flex w-full items-center gap-3.5 min-h-[52px] px-3.5 py-2 rounded-xl text-left cursor-pointer transition-colors ${
                   sIdx === state.sectionIndex
                     ? 'bg-surface-variant text-on-surface font-medium'
                     : 'hover:bg-surface-variant/50 text-on-surface-variant'
@@ -805,16 +831,14 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
                   handleJump(sIdx);
                 }}
               >
-                <div className="font-serif font-bold text-xs text-on-surface-variant w-5 shrink-0">
+                <span className="font-serif font-bold text-xs text-on-surface-variant w-5 shrink-0">
                   {padOneBased(sIdx)}
-                </div>
-                <div className="min-w-0 flex flex-col">
-                  <div className="text-[15px] font-medium text-on-surface truncate">{sec.title}</div>
-                </div>
-              </div>
+                </span>
+                <span className="min-w-0 text-[15px] font-medium text-on-surface truncate">{sec.title}</span>
+              </button>
             ))}
           </div>
-          <div className="mt-4 px-3 text-xs text-on-surface-variant/60">Tap anywhere to close</div>
+          <div className="mt-4 px-3 text-xs text-on-surface-variant">{t('reader.close_hint')}</div>
         </div>
       )}
       </>
