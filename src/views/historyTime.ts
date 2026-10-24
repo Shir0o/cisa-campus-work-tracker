@@ -60,7 +60,12 @@ export function clockLabel(createdAt: unknown, locale: string): string {
   });
 }
 
-export type HistoryRow<A extends { id: string; createdAt: unknown }> =
+export interface HistoryEntry {
+  id: string;
+  createdAt: unknown;
+}
+
+export type HistoryRow<A extends HistoryEntry> =
   | { type: "date"; at: A["createdAt"]; key: string }
   | { type: "item"; a: A; key: string };
 
@@ -74,7 +79,9 @@ export type HistoryRow<A extends { id: string; createdAt: unknown }> =
  * Ordering here by the parsed instant fixes the sequence and the markers with
  * it. A row the app cannot date still appears — it just carries no marker.
  */
-export function historyRows<A extends { id: string; createdAt: unknown }>(items: A[]): HistoryRow<A>[] {
+export function historyRows<A extends HistoryEntry>(
+  items: A[],
+): HistoryRow<A>[] {
   const ordered = [...items].sort((a, b) => {
     const am = historyMs(a.createdAt);
     const bm = historyMs(b.createdAt);
