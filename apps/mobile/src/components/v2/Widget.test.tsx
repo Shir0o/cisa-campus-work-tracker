@@ -47,6 +47,12 @@ describe('Sech', () => {
     );
     expect(queryByText('0')).toBeNull();
   });
+
+  it('shows a link with no handler as plain text, not a button (#1800)', async () => {
+    const { getByText, queryByRole } = await renderV2(<Sech label="Needs you today" link="2 more later this week" />);
+    expect(getByText('2 more later this week')).toBeTruthy();
+    expect(queryByRole('button')).toBeNull();
+  });
 });
 
 describe('Widget / WidgetRow / WidgetAction', () => {

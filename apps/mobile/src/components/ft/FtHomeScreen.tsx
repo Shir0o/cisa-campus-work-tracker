@@ -247,7 +247,6 @@ function FtHome() {
             void data.markTodoDone(t);
             setToast('Done. One less thing.');
           }}
-          onOpenBoard={() => router.push('/journey')}
         />
 
         {data.inboxRows.length > 0 && (

@@ -1,7 +1,7 @@
 // Mobile v2 — the trainee's ☰ drawer (`.m2-drawer` in views/mobile/m2.jsx).
 //
 // The trainee's shell has no tab bar: the queue IS the app, and everything else
-// — People, The Journey, Gatherings, The Board, Messages, Settings — lives
+// — People, Gatherings, The Board, Messages, Settings — lives
 // behind this one button. The list is exactly TRAINEE_DRAWER from @cisa/core,
 // in the design's order, and the foot line says why it's short.
 import React from 'react';
@@ -65,7 +65,6 @@ export function QueueDrawer({
   const drawerLabel = (key: string) => {
     const labels: Record<string, string> = {
       people: t('mobile.nav.people'),
-      journey: t('mobile.nav.the_journey'),
       messages: t('mobile.nav.messages'),
       ask: t('mobile.ask.title', 'Ask the team'),
       signup: t('mobile.nav.sign_up_form'),

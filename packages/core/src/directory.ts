@@ -5,7 +5,7 @@
 // not just the ones personally held).
 import { daysSince, lastTouchByContact, parseMs, type Leader, type Touch } from "./myday";
 import { matchContact, matchTier, type ContactMatch } from "./contactMatch";
-import type { Contact } from "./types";
+import type { Contact, Stage } from "./types";
 
 export interface DirectoryFilters {
   search: string;
@@ -106,6 +106,46 @@ export function splitDirectory(
       .sort((a, b) => order(a, b, false))
       .map(({ leader }) => leader),
   };
+}
+
+/** The pill row under the phone People search (ADR 0047): *Everyone* is the
+ *  whole directory, any other pill narrows it to one Step. */
+export const EVERYONE_PILL = "everyone";
+export const UNPLACED_PILL = "unplaced";
+
+export interface StepPill {
+  /** `EVERYONE_PILL`, `UNPLACED_PILL`, or the stage's id. */
+  id: string;
+  label: string;
+  count: number;
+}
+
+/** Someone on no Step yet: no stage, or a stage label that no longer exists.
+ *  Unplaced, not off The Journey (ADR 0047). */
+export function isUnplaced(c: Pick<Contact, "stage">, stages: Pick<Stage, "label">[]): boolean {
+  return !c.stage || !stages.some((s) => s.label === c.stage);
+}
+
+/** Whether a contact belongs under a pill. A stage pill is keyed by the
+ *  stage's id; a contact carries the stage's label. */
+export function onStepPill(c: Pick<Contact, "stage">, pillId: string, stages: Stage[]): boolean {
+  if (pillId === EVERYONE_PILL) return true;
+  if (pillId === UNPLACED_PILL) return isUnplaced(c, stages);
+  return !!c.stage && stages.find((s) => s.id === pillId)?.label === c.stage;
+}
+
+/** *Everyone*, then *Not on a step* only while someone is unplaced, then each
+ *  Step in `order`. Pass the search-filtered contacts, so each count is that
+ *  pill's number of matches. */
+export function stepPills(contacts: Pick<Contact, "stage">[], stages: Stage[]): StepPill[] {
+  const unplaced = contacts.filter((c) => isUnplaced(c, stages)).length;
+  return [
+    { id: EVERYONE_PILL, label: "Everyone", count: contacts.length },
+    ...(unplaced > 0 ? [{ id: UNPLACED_PILL, label: "Not on a step", count: unplaced }] : []),
+    ...[...stages]
+      .sort((a, b) => a.order - b.order)
+      .map((s) => ({ id: s.id, label: s.label, count: contacts.filter((c) => c.stage === s.label).length })),
+  ];
 }
 
 /** The four dots the design paints a stage with (`m2StageTone`), as v2 tone

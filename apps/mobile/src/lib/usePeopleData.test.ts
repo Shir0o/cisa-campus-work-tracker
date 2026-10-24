@@ -1,8 +1,7 @@
 // #1411: the phone People page's last-touch feed must carry the same
 // role/tie read scope as its contacts. Without it a Trainee asks for the
 // collection-group touches feed, which the rules deny, and the page shows
-// "Couldn't load touches." The Journey hook already passes the scope; the two
-// must not diverge.
+// "Couldn't load touches."
 import { renderHook } from '@testing-library/react-native';
 import { usePeopleData } from './usePeopleData';
 import { subscribeContacts, subscribeTouches } from './data/contacts';

@@ -20,7 +20,7 @@ import { translate } from '../../src/lib/i18n';
 //   Full-timer Today · People · Messages · More
 //
 // Which route each tab sits on lives in @cisa/core's `tabsForRole`, so the
-// screens that need a back row when they're NOT a tab (people, journey) read
+// screens that need a back row when they're NOT a tab (people) read
 // the same source rather than repeating the role checks.
 //
 // The bar is the design's `.mbr-tabs` (mobile.css), rendered as a CUSTOM tab
@@ -184,7 +184,7 @@ function RoleTabs() {
 
   // A tab this role doesn't have drops out of the bar — `href: null` keeps the
   // route reachable by push and by deep link, which is how the drawer and the
-  // full-timer's More reach People, The Journey and the rest.
+  // full-timer's More reach People and the rest.
   const slot = (name: string, fallback: string) => {
     const tab = tabs.find((t) => t.name === name);
     return tab ? { title: mobileTitle(name), href: undefined } : { title: fallback, href: null };
@@ -211,8 +211,8 @@ function RoleTabs() {
         }}
       />
       <Tabs.Screen name="more" options={slot('more', mobileTitle('more'))} />
-      {/* Nobody has The Journey as a tab: the trainee reaches it from the
-          drawer, the full-timer from More. */}
+      {/* Not a screen any more: this route only redirects old links to People,
+          where The Journey is the Step pills (ADR 0047). */}
       <Tabs.Screen name="journey" options={{ title: translate('mobile.nav.the_journey', language === 'es' ? 'es' : 'en'), href: null }} />
     </Tabs>
   );

@@ -47,13 +47,14 @@ describe('FtMoreScreen', () => {
   });
 
   it('renders More screen items including Tell us how it\'s going', async () => {
-    const { getByText, queryByTestId } = await render(
+    const { getByText, queryByText, queryByTestId } = await render(
       <ThemeProvider>
         <FtMoreScreen />
       </ThemeProvider>,
     );
 
-    expect(getByText('The Journey')).toBeTruthy();
+    // The Journey is People's Step pills now, not a More row (ADR 0047).
+    expect(queryByText('The Journey')).toBeNull();
     expect(getByText('Gatherings')).toBeTruthy();
     expect(getByText("Tell us how it's going")).toBeTruthy();
     expect(queryByTestId('feedback-sheet')).toBeNull();

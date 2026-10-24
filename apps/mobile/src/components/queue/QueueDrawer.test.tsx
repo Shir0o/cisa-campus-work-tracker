@@ -27,14 +27,15 @@ describe('QueueDrawer', () => {
   });
 
   it('renders menu items including Tell us how it\'s going', async () => {
-    const { getByText } = await render(
+    const { getByText, queryByText } = await render(
       <ThemeProvider>
         <QueueDrawer visible={true} onClose={jest.fn()} onFeedback={jest.fn()} />
       </ThemeProvider>,
     );
 
     expect(getByText('People')).toBeTruthy();
-    expect(getByText('The Journey')).toBeTruthy();
+    // People is the one door; The Journey is its Step pills (ADR 0047).
+    expect(queryByText('The Journey')).toBeNull();
     expect(getByText('Messages')).toBeTruthy();
     expect(getByText('Ask the team')).toBeTruthy();
     expect(getByText('Sign-up form')).toBeTruthy();

@@ -76,6 +76,10 @@ export function Sech({
           <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.room.ink2 }}>{count}</Text>
         </View>
       )}
+      {/* A link with nowhere to go reads as a plain line in the same place. */}
+      {!!link && !onLink && (
+        <Text style={{ marginLeft: 'auto', fontFamily: font.bold, fontSize: fs(12.5), color: c.room.ink3 }}>{link}</Text>
+      )}
       {!!link && onLink && (
         <Pressable
           onPress={onLink}

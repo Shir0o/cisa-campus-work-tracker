@@ -39,7 +39,6 @@ function FtMore() {
 
   const moreLabel = (key: string) => {
     const labels: Record<string, string> = {
-      journey: t('mobile.nav.the_journey'),
       gatherings: t('nav.gatherings'),
       prayers: t('mobile.nav.prayer_log'),
       board: t('mobile.nav.the_board'),

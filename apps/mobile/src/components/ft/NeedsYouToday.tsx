@@ -9,11 +9,9 @@ import { WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
 export function NeedsYouToday({
   todos,
   onDone,
-  onOpenBoard,
 }: {
   todos: FtTodoSplit;
   onDone: (task: Task) => void;
-  onOpenBoard: () => void;
 }) {
   const { c, font, fs } = useV2Theme();
   const later = todos.laterThisWeek.length;
@@ -21,8 +19,8 @@ export function NeedsYouToday({
     <Widget
       label="Needs you today"
       count={todos.today.length}
-      link={later ? `${later} more later this week →` : null}
-      onLink={onOpenBoard}
+      // Plain text, not a link: the phone has no to-do list to open (#1800).
+      link={later ? `${later} more later this week` : null}
     >
       {todos.today.length === 0 && <WidgetEmpty>Nothing due today.</WidgetEmpty>}
       {todos.today.map((t, i) => {

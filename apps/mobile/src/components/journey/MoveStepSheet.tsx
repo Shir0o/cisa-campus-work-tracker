@@ -8,7 +8,13 @@ import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { SecondaryButton } from '../queue/atoms';
 import { Room } from '../v2/Widget';
-import type { JourneyStage } from '../../lib/useJourneyData';
+
+/** A step the sheet can move someone to — a real stage, or the synthetic
+ * "Unassigned" (`id: 'uncategorized'`) for someone on no step yet. */
+export interface JourneyStage {
+  id: string;
+  label: string;
+}
 
 interface MoveStepSheetProps {
   visible: boolean;

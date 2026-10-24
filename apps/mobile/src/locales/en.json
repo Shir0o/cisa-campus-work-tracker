@@ -1806,6 +1806,10 @@
       "added_this_window": "Added or logged this window",
       "new_suffix": " · new",
       "people_to_reach": "{count} people to reach today"
+    },
+    "people": {
+      "everyone": "Everyone",
+      "not_on_a_step": "Not on a step"
     }
   }
 }
