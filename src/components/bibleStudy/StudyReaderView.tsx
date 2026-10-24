@@ -786,7 +786,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
 
       {/* Auto-hidden edge grip → the Section index overlay. jump is its one
           navigation action. A real button, not a div: at 32×120 it is the only
-          way into the index and it has to be focusable (#1777). */}
+          way into the index and it has to be focusable (issue 1777). */}
       {!state.navOpen && (
         <button
           type="button"
