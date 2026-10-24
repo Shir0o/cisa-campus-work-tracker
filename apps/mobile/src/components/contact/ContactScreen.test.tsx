@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ContactScreen } from './ContactScreen';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { useAuth } from '../../lib/AuthProvider';
+import { InboxReads } from '../../lib/data/inboxReads';
 import type { Interaction, PrayerRecord, ThreadMessage } from '@cisa/core';
 
 jest.mock('../../lib/AuthProvider', () => ({
@@ -863,6 +864,23 @@ describe('ContactScreen', () => {
 
       const trainee = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, staffOnly]);
       expect(trainee.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
+    });
+
+    it('reads the side it shows, and only that stream, so Today drops its card (#1793)', async () => {
+      const reader = 'reader-1793';
+      const read = (id: string) => InboxReads.isRead(reader, 'thread:' + id);
+      const story = await renderAs({ uid: reader, role: 'admin' }, [graceSays, onInteraction, staffOnly], 'story');
+      expect(read('m-grace')).toBe(false);
+      await story.unmount();
+
+      const ft = await renderAs({ uid: reader, role: 'admin' }, [graceSays, onInteraction, staffOnly]);
+      expect(read('m-grace')).toBe(true);
+      expect(read('m-int')).toBe(false);
+      expect(read('m-team')).toBe(false);
+
+      await fireEvent.press(ft.getByRole('tab', { name: /Full-timers/ }));
+      expect(read('m-team')).toBe(true);
+      expect(read('m-int')).toBe(false);
     });
 
     it('a discussion deep link opens Conversation on the Full-timers side for a Full-timer, plain Conversation for anyone else (#1303)', async () => {

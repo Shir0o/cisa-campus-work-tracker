@@ -13,7 +13,7 @@ import { DAY_MS, daysSince, parseMs, toLocalDate } from "./myday";
 import { traineeMyPeople } from "./landing";
 import { firstName } from "./history";
 import type { Contact, Event, Interaction, PrayerRecord, Task } from "./types";
-import { inTheConversation, type ThreadKind, type ThreadMessageWithContact } from "./threads";
+import { inTheConversation, sameStream, type ThreadKind, type ThreadMessageWithContact } from "./threads";
 
 export type QueueKind = "due" | "msg" | "follow" | "quiet" | "pray";
 export type QueueTone = "due" | "ask" | "follow" | "pray" | "note";
@@ -33,7 +33,12 @@ export interface QueueCard {
   title: string;
   contact?: Contact;
   task?: Task;
+  /** A msg card's featured text: the newest question or nudge, else the newest. */
   msg?: ThreadMessageWithContact;
+  /** Every unread text in a msg card's stream, oldest → newest. */
+  msgs?: ThreadMessageWithContact[];
+  /** A msg card's stream holds a question or nudge. */
+  needsReply?: boolean;
   prayer?: PrayerRecord;
   /** The most recent logged conversation with this person, if any. */
   last?: Interaction | null;
@@ -226,7 +231,9 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
   }
 
   // 2 — anything a full-timer wrote, still unacknowledged. No pairing: accept
-  // from any full-timer and name the writer (#549).
+  // from any full-timer and name the writer (#549). Each text's label and title
+  // are worked out here; the card is dealt per stream below.
+  const unread: { m: ThreadMessageWithContact; label: string; title: string }[] = [];
   if (input.fullTimers && input.fullTimers.length > 0) {
     const fts = new Set(input.fullTimers);
     // The queue only surfaces the trainee's OWN people — created by or
@@ -234,66 +241,74 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
     // follow cards and the "what's waiting" feed use. A contact they merely
     // share `visibleTo` with (founder/carer) must not leak a card (#1087).
     const myContactIds = new Set(traineeMyPeople(input.contacts, input.uid).map((p) => p.contact.id));
-    const mine = input.threads
-      .filter(
-        (m) =>
-          m.from &&
-          fts.has(m.from) &&
-          m.scope !== "team" &&
-          MSG_KINDS.includes(m.kind) &&
-          byId.has(m.contactId) &&
-          myContactIds.has(m.contactId) &&
-          !input.isRead("thread:" + m.id),
-      )
-      .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
+    const mine = input.threads.filter(
+      (m) =>
+        m.from &&
+        fts.has(m.from) &&
+        m.scope !== "team" &&
+        MSG_KINDS.includes(m.kind) &&
+        byId.has(m.contactId) &&
+        myContactIds.has(m.contactId) &&
+        !input.isRead("thread:" + m.id),
+    );
     for (const m of mine) {
-      const c = byId.get(m.contactId);
-      if (!c) continue;
       const ftName = firstName(m.fromName ?? "The team");
-      out.push({
-        id: "ftmsg:" + m.id,
-        kind: "msg",
-        tone: "ask",
-        group: 1,
+      unread.push({
+        m,
         label: (MSG_LABEL[m.kind] || MSG_LABEL.note)(ftName),
-        ago: daysAgoWords(m.at, now),
         title: `${ftName}: ${m.body.slice(0, 60)}`,
-        msg: m,
-        contact: c,
       });
     }
   }
 
   // 2b — what others wrote where you are In the Conversation (#1604): you wrote
   // in that stream in the 14 days before it. Reaches you on any person you can
-  // see, own or not; a full-timer's message already carded above stays once.
-  const carded = new Set(out.map((c) => c.id));
+  // see, own or not; a full-timer's message already taken above stays once.
+  const taken = new Set(unread.map((u) => u.m.id));
   const mineWritten = input.threads.filter((m) => m.from === input.uid);
-  const heard = input.threads
-    .filter(
-      (m) =>
-        m.from &&
-        m.from !== input.uid &&
-        m.scope !== "team" &&
-        MSG_KINDS.includes(m.kind) &&
-        byId.has(m.contactId) &&
-        !carded.has("ftmsg:" + m.id) &&
-        !input.isRead("thread:" + m.id) &&
-        inTheConversation(mineWritten, m).includes(input.uid),
-    )
-    .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
+  const heard = input.threads.filter(
+    (m) =>
+      m.from &&
+      m.from !== input.uid &&
+      m.scope !== "team" &&
+      MSG_KINDS.includes(m.kind) &&
+      byId.has(m.contactId) &&
+      !taken.has(m.id) &&
+      !input.isRead("thread:" + m.id) &&
+      inTheConversation(mineWritten, m).includes(input.uid),
+  );
   for (const m of heard) {
     const who = firstName(m.fromName ?? "A teammate");
+    unread.push({ m, label: `${who} wrote back`, title: `${who}: ${m.body.slice(0, 60)}` });
+  }
+
+  // One card per stream (#1793): one reply answers the lot. The card features
+  // the newest question or nudge, else the newest text, and is keyed on the
+  // newest text so a fresh one re-opens it. Streams fall newest first.
+  unread.sort((a, b) => (parseMs(a.m.at) ?? 0) - (parseMs(b.m.at) ?? 0));
+  const streams: (typeof unread)[] = [];
+  for (const u of unread) {
+    const s = streams.find((g) => sameStream(g[0].m, u.m));
+    if (s) s.push(u);
+    else streams.push([u]);
+  }
+  const asks = (u: (typeof unread)[number]) => u.m.kind === "question" || u.m.kind === "nudge";
+  const newestOf = (g: typeof unread) => parseMs(g[g.length - 1].m.at) ?? 0;
+  for (const g of streams.sort((a, b) => newestOf(b) - newestOf(a))) {
+    const newest = g[g.length - 1];
+    const featured = [...g].reverse().find(asks) ?? newest;
     out.push({
-      id: "ftmsg:" + m.id,
+      id: "ftmsg:" + newest.m.id,
       kind: "msg",
       tone: "ask",
       group: 1,
-      label: `${who} wrote back`,
-      ago: daysAgoWords(m.at, now),
-      title: `${who}: ${m.body.slice(0, 60)}`,
-      msg: m,
-      contact: byId.get(m.contactId),
+      label: featured.label,
+      ago: daysAgoWords(newest.m.at, now),
+      title: featured.title,
+      msg: featured.m,
+      msgs: g.map((u) => u.m),
+      needsReply: g.some(asks),
+      contact: byId.get(featured.m.contactId),
     });
   }
 

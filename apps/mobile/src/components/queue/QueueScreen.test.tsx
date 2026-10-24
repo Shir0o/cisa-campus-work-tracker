@@ -6,6 +6,8 @@ import { QueueScreen } from './QueueScreen';
 import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 import { deleteTodo, setTodoDone } from '../../lib/data/todos';
 import { deleteInteraction } from '../../lib/data/interactions';
+import { addThreadMessage } from '../../lib/data/threads';
+import { InboxReads } from '../../lib/data/inboxReads';
 
 jest.mock('../../lib/data/bibleStudy', () => ({
   subscribeEntryPoints: jest.fn(() => () => {}),
@@ -37,7 +39,7 @@ jest.mock('../../lib/data/threads', () => ({
 }));
 
 jest.mock('../../lib/data/inboxReads', () => ({
-  InboxReads: { markRead: jest.fn() },
+  InboxReads: { markRead: jest.fn(), markUnread: jest.fn() },
 }));
 
 // The shared mock drops a sheet's pinned footer; this screen's sheet pins the
@@ -68,6 +70,10 @@ jest.mock('expo-router', () => ({
 // Captures the props the screen hands the log sheet, so a test can "save" a log.
 const mockLogSheet = jest.fn((_props: { onSaved: (message: string, cardId?: string | null) => void }) => null);
 jest.mock('../log/LogSheet', () => ({ LogSheet: (props: never) => mockLogSheet(props) }));
+
+// Same for the reply sheet, so a test can "send" a reply.
+const mockReplySheet = jest.fn((_props: { message: object | null; onSend: (body: string) => void }) => null);
+jest.mock('./ReplySheet', () => ({ ReplySheet: (props: never) => mockReplySheet(props) }));
 
 const LONG_NOTES =
   'Met at the welcome fair. Studies biology, wants to be a doctor. Grew up near the coast and misses it. ' +
@@ -119,6 +125,45 @@ const anonymousPrayerCard = {
   label: 'A prayer to carry',
   contact: undefined,
   prayer: { ...prayer, id: 'p2', contactId: '' },
+};
+
+const text = (id: string, kind: string, body: string, from = 'ft1', fromName = 'Mei Tanaka') => ({
+  id,
+  contactId: 'c1',
+  interactionId: null,
+  from,
+  fromName,
+  kind,
+  body,
+  at: '2026-10-20T08:00:00Z',
+});
+
+// One card per stream (#1793): the question leads, the comment folds beneath.
+const askCard = {
+  id: 'ftmsg:m3',
+  kind: 'msg',
+  tone: 'ask',
+  group: 1,
+  label: 'Mei asked you something',
+  ago: 'today',
+  title: 'Mei: Can you bring him Friday?',
+  contact: sam,
+  msg: text('m2', 'question', 'Can you bring him Friday?'),
+  msgs: [
+    text('m1', 'comment', 'Good to hear from Sam.'),
+    text('m2', 'question', 'Can you bring him Friday?'),
+    text('m3', 'comment', 'No rush on it.'),
+  ],
+  needsReply: true,
+};
+
+const commentCard = {
+  ...askCard,
+  id: 'ftmsg:m5',
+  label: 'Mei encouraged you',
+  msg: text('m5', 'encouragement', 'Proud of you for following up.'),
+  msgs: [text('m4', 'comment', 'Sounds good.', 'peer', 'Ana Ruiz'), text('m5', 'encouragement', 'Proud of you for following up.')],
+  needsReply: false,
 };
 
 const queueOf = (...cards: object[]) => Object.assign([...cards], { held: 0 });
@@ -280,6 +325,89 @@ describe('QueueScreen', () => {
       expect(deleteInteraction).not.toHaveBeenCalled();
       expect(deleteTodo).not.toHaveBeenCalled();
       expect(setTodoDone).toHaveBeenCalledWith('t1', false);
+    });
+  });
+
+  describe('a msg card, one per stream (#1793)', () => {
+    const renderCard = async (card: object) => {
+      const queueState = { handled: {}, handledCount: 0, handle: jest.fn(), pushLater: jest.fn(), unhandle: jest.fn() };
+      (useTraineeLandingData as jest.Mock).mockReturnValue({
+        ...baseData,
+        loading: false,
+        queue: queueOf(card),
+        queueState,
+        interactions: [],
+      });
+      const screen = await render(
+        <ThemeProvider>
+          <QueueScreen />
+        </ThemeProvider>,
+      );
+      return { ...screen, queueState };
+    };
+    const readIds = (fn: jest.Mock) => fn.mock.calls.map(([, id]) => id);
+
+    beforeEach(async () => {
+      jest.clearAllMocks();
+      await AsyncStorage.clear();
+    });
+
+    it('leads with Write back when a text asks something, and Seen it otherwise', async () => {
+      // The full-width primary renders above the row of two.
+      const order = (r: Awaited<ReturnType<typeof renderCard>>) =>
+        r.getAllByRole('button').map((b) => b.props.accessibilityLabel).filter((l) => ['Write back', 'Seen it'].includes(l));
+      const ask = await renderCard(askCard);
+      expect(order(ask)).toEqual(['Write back', 'Seen it']);
+      expect(ask.queryByText('Open Sam')).toBeNull();
+      await ask.unmount();
+
+      const comment = await renderCard(commentCard);
+      expect(order(comment)).toEqual(['Seen it', 'Write back']);
+    });
+
+    it('folds the other texts under the featured one', async () => {
+      const ask = await renderCard(askCard);
+      expect(ask.getByText('2 more from Mei')).toBeTruthy();
+      expect(ask.getByText('No rush on it.')).toBeTruthy();
+      await ask.unmount();
+
+      const comment = await renderCard(commentCard);
+      expect(comment.getByText('1 more from Ana')).toBeTruthy();
+    });
+
+    it('Seen it reads every text in the stream, and Undo marks them unread', async () => {
+      const { getByLabelText, getByText, queueState } = await renderCard(commentCard);
+      await fireEvent.press(getByLabelText('Seen it'));
+
+      expect(readIds(InboxReads.markRead as jest.Mock)).toEqual(['thread:m4', 'thread:m5']);
+      expect(queueState.handle).toHaveBeenCalledWith('ftmsg:m5');
+      expect(getByText('Sam — done for today')).toBeTruthy();
+
+      await fireEvent.press(getByText('Undo'));
+      expect(queueState.unhandle).toHaveBeenCalledWith('ftmsg:m5');
+      expect(readIds(InboxReads.markUnread as jest.Mock)).toEqual(['thread:m4', 'thread:m5']);
+    });
+
+    it('sending a reply reads every text, and answers the featured one on its stream', async () => {
+      const { getByLabelText } = await renderCard(askCard);
+      await fireEvent.press(getByLabelText('Write back'));
+      const reply = mockReplySheet.mock.calls.at(-1)![0];
+      expect(reply.message).toMatchObject({ id: 'm2' });
+      await act(() => reply.onSend('Yes, Friday works.'));
+
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ interactionId: null, kind: 'note', body: 'Yes, Friday works.' }),
+        expect.objectContaining({ to: 'ft1' }),
+      );
+      expect(readIds(InboxReads.markRead as jest.Mock)).toEqual(['thread:m1', 'thread:m2', 'thread:m3']);
+    });
+
+    it('opening the person from the About chip reads every text', async () => {
+      const { getByText } = await renderCard(askCard);
+      await fireEvent.press(getByText('Sam Lee'));
+      expect(mockPush).toHaveBeenCalledWith('/contact/c1?tab=thread');
+      expect(readIds(InboxReads.markRead as jest.Mock)).toEqual(['thread:m1', 'thread:m2', 'thread:m3']);
     });
   });
 

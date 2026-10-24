@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ContactThreadScreen } from './ContactThreadScreen';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { useAuth } from '../../lib/AuthProvider';
+import { InboxReads } from '../../lib/data/inboxReads';
 
 jest.mock('../../lib/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../lib/useContactDetailData', () => ({ useContactDetailData: jest.fn() }));
@@ -121,6 +122,13 @@ describe('a Thread on the phone (#1261)', () => {
     await fireEvent.changeText(getByLabelText('Reply in thread'), 'Ask him Sunday');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
     expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: 'int-coffee', parentId: null, scope: null, kind: 'comment', body: 'Ask him Sunday', mentionedUserIds: [] });
+  });
+
+  it("reads an Interaction's Thread when it is shown, so Today drops its card (#1793)", async () => {
+    const reader = 'thread-reader-1793';
+    await renderThread({ contactId: 'c1', interactionId: 'int-coffee' }, undefined, { uid: reader, role: 'admin' });
+    expect(InboxReads.isRead(reader, 'thread:ic1')).toBe(true);
+    expect(InboxReads.isRead(reader, 'thread:p1')).toBe(false);
   });
 
   it('says the message is gone once its parent is deleted', async () => {
