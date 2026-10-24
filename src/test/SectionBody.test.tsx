@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { Section } from '../lib/bibleStudy';
 import SectionBody from '../components/bibleStudy/SectionBody';
+import { LanguageProvider } from '../components/LanguageProvider';
 
 function section(over: Partial<Section>): Section {
   return { id: 'sec', title: 'Section', content: [], points: [], ...over };
@@ -600,5 +601,29 @@ describe('SectionBody (ordered content, read as written)', () => {
     const s = section({ content: [] });
     const { container } = render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
     expect(container.querySelector('[data-testid="section-body"]')?.children).toHaveLength(0);
+  });
+
+  // The four kind labels were hard-coded English while the rest of the reader's
+  // chrome (its page name, its index, its close hint, every Blank) followed the
+  // session language: a Spanish reader got "DISCUSS" over every prompt (#1770).
+  it('labels every prompt kind in the reader’s language (#1770)', () => {
+    const s = section({
+      content: [
+        { kind: 'prompt', prompt: { kind: 'discuss', text: 'Uno' } },
+        { kind: 'prompt', prompt: { kind: 'activity', text: 'Dos' } },
+        { kind: 'prompt', prompt: { kind: 'apply', text: 'Tres' } },
+        { kind: 'prompt', prompt: { kind: 'question', text: 'Cuatro' } },
+      ],
+    });
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />
+      </LanguageProvider>,
+    );
+    expect(screen.getByText('Conversar')).toBeInTheDocument();
+    expect(screen.getByText('Actividad')).toBeInTheDocument();
+    expect(screen.getByText('Aplicar')).toBeInTheDocument();
+    expect(screen.getByText('Pregunta')).toBeInTheDocument();
+    expect(screen.queryByText('Discuss')).not.toBeInTheDocument();
   });
 });

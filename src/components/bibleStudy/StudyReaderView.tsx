@@ -183,12 +183,17 @@ const Panel: React.FC<{
     <section
       ref={ref}
       data-section-panel={index}
-      className="min-h-full flex flex-col px-6 pt-[18px] pb-0"
+      // 12px of ground, not 24 (#1770): at 375×812 the old 24px panel + 22px
+      // card inset spent 92px of the screen on margins and left a 270px
+      // column — 26 characters on the rendered first line, which turns a
+      // paragraph into a column of phrases. 12 + 16 leaves a 306px column and
+      // 34 characters, and the card still reads as an object on ground.
+      className="min-h-full flex flex-col px-3 pt-[18px] pb-0"
     >
       <div
         ref={cardRef}
         data-reader-card
-        className={`flex flex-col gap-5 rounded-[24px] px-[22px] py-6 bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)] ${
+        className={`flex flex-col gap-5 rounded-[24px] px-4 py-6 bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)] ${
           settles ? 'mt-auto' : ''
         }`}
       >

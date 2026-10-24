@@ -804,7 +804,11 @@
     "index": "Section index",
     "close_hint": "Tap anywhere to close",
     "blank_reveal": "Blank, tap to reveal",
-    "no_sections": "This week has no sections yet."
+    "no_sections": "This week has no sections yet.",
+    "prompt_discuss": "Discuss",
+    "prompt_activity": "Activity",
+    "prompt_apply": "Apply",
+    "prompt_question": "Question"
   },
   "ask": {
     "questions_for_team": "Questions for the team",

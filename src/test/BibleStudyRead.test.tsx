@@ -171,4 +171,36 @@ describe("This week's study (#946)", () => {
     renderAt();
     expect(await screen.findByText('No study set up yet')).toBeInTheDocument();
   });
+
+  // Measured at 375×812 with the meetings listen aborted: at 5s the page read
+  // "Loading Bible Study…", and at 15s it settled on "Between terms — Nothing
+  // running right now" — the SDK's retries exhausted and `useResolvedStudy`
+  // (correctly) reported `loadError`, but this route never read it. A Trainee
+  // standing in the room on campus wifi was told the study was over (#1770).
+  it('reports a failed load instead of telling the room the study is over (#1770)', async () => {
+    mockChain({ entryPoints: [WEDNESDAY] });
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, _cb, onError) => {
+      onError?.(new Error('offline'));
+      return () => {};
+    });
+    renderAt();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this week");
+    expect(screen.queryByText('Nothing running right now')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  // The entry-point list had no error callback at all, so a rejected listen
+  // left `entryPointsLoaded` false and the page pulsed "Loading Bible Study…"
+  // forever with no way out.
+  it('reports a failed entry-point list instead of pulsing forever (#1770)', async () => {
+    vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, _cb, onError) => {
+      onError?.(new Error('permission-denied'));
+      return () => {};
+    });
+    renderAt();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this week");
+    expect(document.querySelector('.animate-pulse')).toBeNull();
+  });
 });
