@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { ChevronRight, Clock, MessageSquare, Plus, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
-import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
+import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction, prayerCarrySummary, isPlaceholderPrayerBurden } from '../lib/prayers';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
@@ -17,6 +17,11 @@ interface PrayerListMobileProps {
   contacts: Contact[];
   prayers: PrayerRecord[];
   entries: { contact: Contact; prayers: PrayerRecord[] }[];
+  /** Everyone on the team's list, before the gender filter (#1765). */
+  heldTotal?: number;
+  /** Their ids, so the picker still knows who is already held while a filter
+   *  is active (#1765). */
+  heldIds?: string[];
   team?: { uid?: string; id?: string; name?: string }[];
   suggestions: Contact[];
   genderFilter?: 'all' | 'brothers' | 'sisters';
@@ -73,9 +78,9 @@ const STATUS_TONE: Record<Status, string> = {
 
 const firstNameOf = (name: string) => name.split(' ')[0];
 
-function formatDate(isoString: string) {
+function formatDate(isoString: string, locale = 'en-US') {
   const d = new Date(isoString);
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d);
+  return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(d);
 }
 
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' | 'lg' }) {
@@ -100,6 +105,8 @@ export default function PrayerListMobile({
   contacts,
   prayers,
   entries,
+  heldTotal,
+  heldIds,
   team,
   suggestions,
   genderFilter = 'all',
@@ -123,6 +130,8 @@ export default function PrayerListMobile({
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const heldCount = heldTotal ?? entries.length;
+  const heldIdList = heldIds ?? entries.map((e) => e.contact.id);
 
   // The picker only adds; taking someone off stays the card's × (ticket #1450).
   const applyPick = async (added: string[]) => {
@@ -142,11 +151,11 @@ export default function PrayerListMobile({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page page-prayer prm" data-role="ft">
+    <div className="flex flex-col min-h-screen bg-surface-container-lowest md-page md-mobile page page-prayer prm" data-role="ft">
       {/* ── Mobile Hero ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 prm-hero">
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 prm-eyebrow">
-          {t('nav.prayer')}
+          {t('nav.prayers')}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface prm-title">
           {t('prayers.who_we_are_carrying')}
@@ -170,14 +179,15 @@ export default function PrayerListMobile({
         {isOperator && (
           <button
             onClick={() => setPickerOpen(true)}
+            aria-label={`${t('prayers.hold_someone_in_prayer')} — ${t('prayers.people_on_our_hearts').replace('{count}', String(heldCount))}`}
             className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-accent-soft border border-accent-line text-accent rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
           >
             <div className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               <span>{t('prayers.hold_someone_in_prayer')}</span>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-accent font-semibold  prm-choose-n">
-              {entries.length}
+            <span aria-hidden className="text-xs px-2.5 py-1 rounded-full bg-surface text-accent font-semibold  prm-choose-n">
+              {heldCount}
             </span>
           </button>
         )}
@@ -204,7 +214,7 @@ export default function PrayerListMobile({
               key={v}
               onClick={() => setGenderFilter(v)}
               className={cn(
-                'px-3.5 h-9 rounded-full text-[13px] font-medium border transition-colors cursor-pointer',
+                'px-3.5 h-9 rounded-full text-[13px] font-medium border transition-colors cursor-pointer prt-filter',
                 genderFilter === v
                   ? 'bg-primary text-on-primary border-primary'
                   : 'bg-surface text-on-surface-variant border-outline-variant hover:text-on-surface',
@@ -219,9 +229,26 @@ export default function PrayerListMobile({
       {/* ── Prayer Threads List ── */}
       <div className="mt-4 px-5 flex flex-col gap-4 prt-list">
         {entries.length === 0 && (
-          <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 pr-picker-empty shadow-inner">
-            {t('prayers.no_one_here_yet')}
-          </div>
+          genderFilter !== 'all' ? (
+            <div className="py-10 px-5 text-center bg-surface rounded-xl pr-picker-empty">
+              <p className="text-sm text-on-surface-variant">
+                {t('prayers.empty_filter').replace(
+                  '{group}',
+                  t(genderFilter === 'brothers' ? 'prayers.brothers' : 'prayers.sisters').toLowerCase(),
+                )}
+              </p>
+              <button
+                onClick={() => setGenderFilter?.('all')}
+                className="mt-3 inline-flex items-center min-h-[40px] px-4 rounded-full border border-outline-variant text-sm font-semibold text-on-surface"
+              >
+                {t('prayers.show_everyone')}
+              </button>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface rounded-xl border border-dashed border-outline-variant/60 pr-picker-empty">
+              {t('prayers.no_one_here_yet')}
+            </div>
+          )
         )}
 
         {entries.map((e) => (
@@ -249,7 +276,7 @@ export default function PrayerListMobile({
       <PickHeldModal
         open={pickerOpen}
         contacts={contacts}
-        heldIds={entries.map((e) => e.contact.id)}
+        heldIds={heldIdList}
         onClose={() => setPickerOpen(false)}
         onApply={applyPick}
       />
@@ -311,26 +338,26 @@ function PrayerThreadCard({
   const lastItemIsLastWeek = !!lastItem && prayerMs(lastItem) >= LAST_WEEK_START && prayerMs(lastItem) < THIS_WEEK_START;
   const earlier = rest.slice(1);
 
-  const ongoingCount = prayers.filter((p) => p.status === 'ongoing').length;
   const needsMark = !!lastItem && lastItem.status === 'pending';
   const firstName = firstNameOf(contact.name);
 
-  // carry summary reduced to one tone-coded label for the mobile header
-  const carry = ongoingCount > 0
-    ? { label: t('prayers.ongoing_count').replace('{n}', String(ongoingCount)), tone: 'accent' }
-    : prayers.length === 0
-    ? { label: t('prayers.no_prayers_yet'), tone: 'muted' }
-    : { label: t('prayers.all_answered'), tone: 'rest' };
+  // One tone-coded sentence for the card header. `prayerCarrySummary` orders
+  // the statuses so an unmarked prayer can never be summarised as answered
+  // (#1765).
+  const carry = prayerCarrySummary(prayers);
+  const carryLabel = carry.count !== undefined
+    ? t(carry.key).replace('{n}', String(carry.count))
+    : t(carry.key);
 
   return (
-    <article className="bg-surface border border-outline rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
+    <article className="bg-surface border border-transparent rounded-xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 prt-head prt-head--m">
         <button onClick={onOpenProfile} className="flex items-center gap-3 text-left min-w-0 flex-1 prt-person">
           <Avatar contact={contact} size="lg" />
           <div className="min-w-0 flex-1 prt-person-id">
             <h4 className="font-serif text-lg text-on-surface leading-tight truncate prt-name">{contact.name}</h4>
-            <div className="text-xs text-on-surface-variant truncate mt-0.5 prt-meta">
+            <div className="text-xs text-on-surface-variant mt-0.5 prt-meta">
               {[
                 getContactGrade(contact),
                 carers.length ? t('prayers.cared_for_by_name', `Cared for by ${carers.join(', ')}`).replace('{name}', carers.join(', ')) : undefined,
@@ -338,13 +365,8 @@ function PrayerThreadCard({
               ].filter(Boolean).join(' · ')}
             </div>
             <div className="flex items-center gap-2 mt-2 prt-substatus flex-wrap">
-              <span className={cn(
-                "text-[10px] font-semibold   px-2 py-0.5 rounded-full prt-statuspill",
-                carry.tone === 'accent' && "bg-stage-accent-soft text-stage-accent",
-                carry.tone === 'rest' && "bg-success/15 text-success",
-                carry.tone === 'muted' && "bg-surface-variant text-on-surface-variant"
-              )}>
-                {carry.label}
+              <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full prt-statuspill', `tone-${carry.tone}`)}>
+                {carryLabel}
               </span>
               {isStale && (
                 <span
@@ -377,7 +399,7 @@ function PrayerThreadCard({
       {isStale && isOperator && (
         <div
           data-testid="stale-quick-actions"
-          className="mt-1 p-2.5 bg-surface-container-low/60 rounded-2xl border border-outline-variant/60 flex items-center justify-between gap-2 flex-wrap text-xs"
+          className="mt-1 p-2.5 bg-surface-container-low/60 rounded-lg border border-outline-variant/60 flex items-center justify-between gap-2 flex-wrap text-xs"
         >
           <div className="text-on-surface-variant font-medium flex items-center gap-1.5 text-[11px]">
             <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -391,7 +413,7 @@ function PrayerThreadCard({
             <button
               type="button"
               onClick={() => openLogInteraction(contact.id)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 hover:bg-primary/15 text-primary text-[11px] font-semibold transition-colors"
+              className="prt-log-interaction inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 hover:bg-primary/15 text-primary text-[11px] font-semibold transition-colors"
             >
               <MessageSquare className="w-3 h-3" />
               <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
@@ -413,6 +435,7 @@ function PrayerThreadCard({
         {weekItem ? (
           <PrayerItemMobile
             prayer={weekItem}
+            firstName={firstName}
             variant="week"
             label={t('prayers.this_week')}
             onUpdateStatus={onUpdateStatus}
@@ -447,6 +470,7 @@ function PrayerThreadCard({
         {lastItem && (
           <PrayerItemMobile
             prayer={lastItem}
+            firstName={firstName}
             variant="last"
             label={lastItemIsLastWeek ? t('prayers.last_week') : t('prayers.earlier')}
             nudge={needsMark ? t('prayers.needs_update') : undefined}
@@ -487,6 +511,7 @@ function PrayerThreadCard({
                   <PrayerItemMobile
                     key={p.id}
                     prayer={p}
+                    firstName={firstName}
                     variant="earlier"
                     onUpdateStatus={onUpdateStatus}
                     onUpdateBurden={onUpdateBurden}
@@ -538,6 +563,7 @@ function SectionEyebrow({ label, current }: { label: string; current?: boolean }
 // Mobile individual prayer item with drop-down mark selector
 function PrayerItemMobile({
   prayer,
+  firstName,
   variant,
   label,
   nudge,
@@ -550,6 +576,7 @@ function PrayerItemMobile({
   onClearPrayer,
 }: {
   prayer: PrayerRecord;
+  firstName: string;
   variant: 'week' | 'last' | 'earlier';
   /** Inline eyebrow — "This week" / "Last week". Absent inside the fold. */
   label?: string;
@@ -562,7 +589,7 @@ function PrayerItemMobile({
   isManager?: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
@@ -583,6 +610,10 @@ function PrayerItemMobile({
   };
 
   const dimmed = prayer.status === 'answered' || variant === 'earlier';
+  // A stand-in burden ("Holding in prayer") is not content: the card asks the
+  // question instead of printing it as prose, in the reader's own language
+  // (#1691, #1765).
+  const isPlaceholder = isPlaceholderPrayerBurden(prayer.burden);
 
   const MARK_OPTIONS: Status[] = ['ongoing', 'answered', 'unanswered'];
 
@@ -593,9 +624,11 @@ function PrayerItemMobile({
       }
     >
       <div className="py-1 prt-prayer prt-prayer--m">
-        <div className="flex items-baseline gap-2 flex-wrap">
+        <div className="flex items-baseline gap-2 flex-wrap prt-prayer-tools">
           {label && <SectionEyebrow label={label} current={variant === 'week'} />}
-          <span className="text-[12px] text-on-surface-variant/80">{formatDate(prayer.date)}</span>
+          <span className="text-[12px] text-on-surface-variant/80">
+            {formatDate(prayer.date, language === 'es' ? 'es' : 'en-US')}
+          </span>
           {nudge && (
             <span className={cn(EYEBROW, 'text-error')}>{nudge}</span>
           )}
@@ -608,7 +641,7 @@ function PrayerItemMobile({
               {t('prayers.status_pending')}
             </span>
           ) : null}
-          {!editing && isOperator && (
+          {!editing && isOperator && !isPlaceholder && (
             <button
               onClick={startEdit}
               className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
@@ -617,15 +650,27 @@ function PrayerItemMobile({
             </button>
           )}
           {!editing && onMakeTodo && (
-            <button
-              onClick={() => onMakeTodo(prayer)}
-              title={t('prayers.make_todo_from_prayer')}
-              className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
-            >
-              {t('prayers.make_a_todo')}
-            </button>
+            <span className="inline-flex items-center gap-2">
+              <button
+                onClick={() => onMakeTodo(prayer)}
+                title={t('prayers.make_todo_from_prayer')}
+                className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
+              >
+                {t('prayers.make_a_todo')}
+              </button>
+              {isManager && onClearPrayer && (
+                <button
+                  onClick={() => onClearPrayer(prayer)}
+                  title={t('prayers.clear_prayer')}
+                  className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80 hover:text-error transition-colors prt-prayer-clear prt-prayer-clear--m"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>{t('prayers.clear_prayer')}</span>
+                </button>
+              )}
+            </span>
           )}
-          {!editing && isManager && onClearPrayer && (
+          {!editing && !onMakeTodo && isManager && onClearPrayer && (
             <button
               onClick={() => onClearPrayer(prayer)}
               title={t('prayers.clear_prayer')}
@@ -644,7 +689,8 @@ function PrayerItemMobile({
               rows={3}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+              aria-label={t('prayers.edit_prayer_label', 'Prayer')}
+              className="w-full p-2.5 rounded-sm bg-surface-container-low border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
             />
             <div className="flex gap-2 justify-end">
               <button
@@ -664,6 +710,20 @@ function PrayerItemMobile({
                 {saving ? t('prayers.saving') : t('actions.save')}
               </button>
             </div>
+          </div>
+        ) : isPlaceholder ? (
+          <div className="mt-1 prt-prayer-placeholder">
+            <p className="text-sm italic text-on-surface-variant/80">
+              {t('prayers.what_praying_for').replace('{name}', firstName)}
+            </p>
+            {isOperator && (
+              <button
+                onClick={startEdit}
+                className="mt-0.5 inline-flex items-center min-h-[40px] text-sm font-semibold text-accent"
+              >
+                {t('prayers.add_prayer')}
+              </button>
+            )}
           </div>
         ) : (
           <p className={cn('text-sm leading-relaxed mt-1 whitespace-pre-wrap prt-prayer-text', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
@@ -821,6 +881,7 @@ function PrayerItemMobile({
             )}>
               <select
                 value={prayer.status || ""}
+                aria-label={variant === 'last' && needsMark ? t('prayers.where_did_it_land') : t('prayers.mark_status')}
                 onChange={(e) => {
                   const val = e.target.value as Status | '';
                   if (!val) {
@@ -940,7 +1001,7 @@ function AddThisWeekMobile({
           }}
           className="px-3.5 py-1.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface"
         >
-          Cancel
+          {translate('actions.cancel', 'Cancel')}
         </button>
         <button
           onClick={save}

@@ -92,9 +92,7 @@ export default function PickHeldModal({ open, contacts, heldIds, onClose, onAppl
           </b>
           <span>
             {' · '}
-            {t('prayers.people_on_our_hearts')
-              .replace('{count}', String(total))
-              .replace('{unit}', total === 1 ? t('prayers.person') : t('prayers.people'))}
+            {t('prayers.people_on_our_hearts').replace('{count}', String(total))}
           </span>
         </>
       }

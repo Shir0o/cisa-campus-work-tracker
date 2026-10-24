@@ -946,7 +946,7 @@ describe('PrayerList', () => {
     // Carol is not held, so ticking her counts in the footer.
     fireEvent.click(within(dialog).getByText('Carol Lee').closest('button')!);
     expect(within(dialog).getByText('1 added')).toBeInTheDocument();
-    expect(within(dialog).getByText(/3 people on our hearts/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/3 on our hearts/)).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
 
@@ -1247,7 +1247,7 @@ describe('PrayerList', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from the team's prayer list/i }));
 
     expect(await screen.findByText("Removed Alice from the team's prayer list")).toBeInTheDocument();
     const patch = vi.mocked(updateDoc).mock.calls.find(([ref]) => (ref as any).path === 'contacts')?.[1] as Record<string, any>;
@@ -1261,7 +1261,7 @@ describe('PrayerList', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from the team's prayer list/i }));
 
     expect(await screen.findByText("Removed Alice from the team's prayer list")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
@@ -1399,6 +1399,123 @@ describe('PrayerList', () => {
     await waitFor(() => {
       expect(document.querySelector('.prm')).toBeTruthy();
     });
+  });
+});
+
+// ── The phone card at 375×812 (#1765) ───────────────────────────────────────
+describe('PrayerList — phone card', () => {
+  beforeEach(async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+  });
+
+  afterEach(async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(false);
+  });
+
+  /** Serve a contacts/prayers snapshot for one test without touching the rest. */
+  function seed(contacts: any[], prayers: any[]) {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: contacts, size: contacts.length });
+      else if (ref?.path === 'prayers') callback({ docs: prayers, size: prayers.length });
+      else if (ref?.path === 'users') {
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'operator' }) }], size: 1 });
+      } else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  }
+
+  const alice = {
+    id: 'c1',
+    data: () => ({ name: 'Alice Johnson', gender: 'Female' }),
+  };
+
+  it('never calls an unmarked prayer “All answered”', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'pending' }),
+    }]);
+
+    render(<PrayerList />);
+
+    expect(await screen.findByText('Needs marking')).toBeInTheDocument();
+    expect(screen.queryByText('All answered')).toBeNull();
+  });
+
+  it('asks what we are praying for instead of printing the placeholder burden', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Holding in prayer', date: '2026-10-20T00:00:00.000Z', status: 'pending' }),
+    }]);
+
+    render(<PrayerList />);
+
+    expect(await screen.findByText('What are we praying for Alice this week?')).toBeInTheDocument();
+    expect(screen.queryByText('Holding in prayer')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add prayer' })).toBeInTheDocument();
+  });
+
+  it('prints a real burden as prose', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'ongoing' }),
+    }]);
+
+    render(<PrayerList />);
+
+    expect(await screen.findByText('Strength for finals')).toBeInTheDocument();
+    expect(screen.queryByText(/What are we praying for Alice/)).toBeNull();
+  });
+
+  it('names the status control for assistive tech', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'pending' }),
+    }]);
+
+    render(<PrayerList />);
+
+    const select = await screen.findByLabelText('Mark status');
+    expect(select.tagName).toBe('SELECT');
+  });
+
+  it('says an empty filter is empty, offers everyone, and keeps the team count', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'ongoing' }),
+    }]);
+
+    render(<PrayerList />);
+    await screen.findByText('Alice Johnson');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Brothers' }));
+
+    expect(await screen.findByText('No brothers on our hearts yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show everyone' })).toBeInTheDocument();
+    // The badge is the team list, not the filter: one person is still held.
+    expect(screen.getByRole('button', { name: /Pray for someone — 1 on our hearts/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show everyone' }));
+    expect(await screen.findByText('Alice Johnson')).toBeInTheDocument();
+  });
+
+  it('still knows who is already held while a filter is active', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'ongoing' }),
+    }]);
+
+    render(<PrayerList />);
+    await screen.findByText('Alice Johnson');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Brothers' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pray for someone/ }));
+
+    // Alice is on the list even though the Brothers filter hides her, so the
+    // picker must not offer her as someone to add (#1765).
+    expect(await screen.findByText('already on our prayer list')).toBeInTheDocument();
+    expect(screen.getByText(/1 on our hearts/)).toBeInTheDocument();
   });
 });
 
