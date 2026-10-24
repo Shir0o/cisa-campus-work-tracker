@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Plus,
   Settings2,
+  Check,
   X,
   Edit3,
   Trash2,
@@ -59,6 +60,7 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
+import { PopupFrame } from '../components/ui/PopupFrame';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
 import OutreachBoardMobile from './OutreachBoardMobile';
@@ -239,16 +241,6 @@ export default function OutreachBoard() {
   );
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowAddStage(false);
-    };
-    if (showAddStage) {
-      window.addEventListener('keydown', handleEsc);
-    }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [showAddStage]);
-
-  useEffect(() => {
     const q = query(collection(db, 'stages'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const stagesData = snapshot.docs.map(doc => ({
@@ -284,8 +276,7 @@ export default function OutreachBoard() {
     return () => unsubscribe();
   }, [isAdmin]);
 
-  const handleAddStage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddStage = async () => {
     if (!newStageName.trim() || !isAdmin) return;
 
     try {
@@ -653,103 +644,88 @@ export default function OutreachBoard() {
   }
 
   // The stage dialogs belong to the board, not the desktop layout: the phone
-  // board opens the same editor from its Shape button (#1763).
+  // board opens the same editor from its Shape button (#1763). They also use
+  // the app's dialog standard, so the phone gets a bottom sheet rather than a
+  // centred desktop card, with a focus trap and an Escape (#1788).
+  const closeStageEditor = () => setShowAddStage(false);
+
   const stageDialogs = (
     <>
     {/* Shape the journey — add / edit a step */}
-    <AnimatePresence>
-      {showAddStage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowAddStage(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+    <PopupFrame
+      open={showAddStage}
+      onClose={closeStageEditor}
+      size="sm"
+      title={editingStage ? t('outreachBoard.rename_step_title') : t('outreachBoard.shape_the_journey')}
+      subtitle={editingStage ? t('outreachBoard.rename_step_subtitle') : t('outreachBoard.add_step_subtitle')}
+      cancelLabel={t('actions.cancel')}
+      onCancel={closeStageEditor}
+      primary={{
+        label: editingStage ? t('outreachBoard.save_changes') : t('outreachBoard.add_this_step'),
+        onClick: handleAddStage,
+        disabled: !newStageName.trim(),
+        savingLabel: t('actions.saving'),
+      }}
+    >
+      <form
+        onSubmit={(e) => { e.preventDefault(); void handleAddStage(); }}
+        className="space-y-5 px-7 pb-6 pt-1"
+      >
+        <div className="space-y-1.5">
+          <label htmlFor="stage-editor-name" className="block text-[13px] font-medium text-on-surface">
+            {t('outreachBoard.step_name')}
+          </label>
+          <input
+            id="stage-editor-name"
+            required
+            type="text"
+            value={newStageName}
+            onChange={e => setNewStageName(e.target.value)}
+            className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+            placeholder={t('outreachBoard.step_name_placeholder')}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
-          >
-            <div className="p-6 border-b border-outline-variant flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-                  <Settings2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="font-serif text-xl text-on-surface">{editingStage ? t('outreachBoard.rename_step_title') : t('outreachBoard.shape_the_journey')}</h2>
-                  <p className="text-xs text-on-surface-variant">{editingStage ? t('outreachBoard.rename_step_subtitle') : t('outreachBoard.add_step_subtitle')}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddStage(false)}
-                className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                aria-label={t('actions.close')}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddStage} className="p-6 space-y-6">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-on-surface-variant px-1">
-                  {t('outreachBoard.step_name')}
-                </label>
-                <input
-                  required
-                  autoFocus
-                  type="text"
-                  value={newStageName}
-                  onChange={e => setNewStageName(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                  placeholder={t('outreachBoard.step_name_placeholder')}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-on-surface-variant px-1">
-                  {t('outreachBoard.colour')}
-                </label>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                  {colors.map(color => (
-                    <button
-                      key={color.class}
-                      type="button"
-                      style={toneStyle(color.class)}
-                      onClick={() => setNewStageColor(color.class)}
-                      className={cn(
-                        "h-10 rounded-xl transition-all border-2 bg-[var(--tone)]",
-                        newStageColor === color.class ? "border-on-surface ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-70 hover:opacity-100"
-                      )}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStage(false)}
-                  className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
-                >
-                  {t('actions.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newStageName.trim()}
-                  className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium    hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
-                >
-                  {editingStage ? t('outreachBoard.save_changes') : t('outreachBoard.add_this_step')}
-                </button>
-              </div>
-            </form>
-          </motion.div>
         </div>
-      )}
-    </AnimatePresence>
+
+        <div>
+          <p id="stage-editor-colour" className="mb-2 text-[13px] font-medium text-on-surface">
+            {t('outreachBoard.colour')}
+          </p>
+          {/* Eight honest tones, each a 44px target. The selected one carries a
+              check mark as well as its ring, so selection is never colour-only. */}
+          <div
+            role="group"
+            aria-labelledby="stage-editor-colour"
+            className="grid grid-cols-4 gap-2.5 sm:grid-cols-8"
+          >
+            {colors.map(color => {
+              const selected = newStageColor === color.class;
+              return (
+                <button
+                  key={color.class}
+                  type="button"
+                  style={toneStyle(color.class)}
+                  onClick={() => setNewStageColor(color.class)}
+                  aria-pressed={selected}
+                  aria-label={color.name}
+                  title={color.name}
+                  className={cn(
+                    "grid h-11 min-w-11 place-items-center rounded-xl transition-all border-2 bg-[var(--tone)]",
+                    selected ? "border-on-surface opacity-100 ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-70 hover:opacity-100",
+                  )}
+                >
+                  {selected && (
+                    <Check
+                      aria-hidden="true"
+                      className="h-5 w-5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </form>
+    </PopupFrame>
 
     {/* Delete stage reassign modal */}
     <AnimatePresence>
