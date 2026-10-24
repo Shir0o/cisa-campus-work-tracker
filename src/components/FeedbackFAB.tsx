@@ -38,9 +38,10 @@ export default function FeedbackFAB() {
   // The note button is a convenience, not the page's primary action, and on a
   // phone it floats over the bottom-right corner of whichever row passes
   // beneath it (#1785). Tuck it away while the list is being scrolled down and
-  // bring it back on an upward scroll, at the top, at the end of the list, and
-  // when the scrolling stops — so it is never sitting over the row a thumb is
-  // reaching for, and is still there whenever the reader pauses.
+  // bring it back on an upward scroll, at the top, and at the end of the list.
+  // It deliberately stays tucked while the reader pauses: a pause is the moment
+  // a thumb reaches for a row, so restoring on a timer would put the button
+  // back under that thumb.
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     // Phone only. The desktop button keeps its fixed corner and its place;
@@ -50,7 +51,6 @@ export default function FeedbackFAB() {
 
     let raf = 0;
     let framePending = false;
-    let stopTimer: ReturnType<typeof setTimeout> | null = null;
     let target: HTMLElement | null = null;
     // `main` is the shell's only scroller on a phone (issue 1795).
     const main = document.querySelector('main');
@@ -59,24 +59,8 @@ export default function FeedbackFAB() {
     let lastEl: HTMLElement | null = main;
     let lastY = lastEl?.scrollTop ?? 0;
 
-    const show = () => {
-      if (stopTimer) {
-        clearTimeout(stopTimer);
-        stopTimer = null;
-      }
-      setTucked(false);
-    };
-
-    const hide = () => {
-      setTucked(true);
-      if (stopTimer) clearTimeout(stopTimer);
-      // A pause is the reader looking at the list, not scrolling it: put the
-      // button back so it is reachable without a scroll-up.
-      stopTimer = setTimeout(() => {
-        stopTimer = null;
-        setTucked(false);
-      }, 350);
-    };
+    const show = () => setTucked(false);
+    const hide = () => setTucked(true);
 
     const apply = () => {
       framePending = false;
@@ -118,7 +102,6 @@ export default function FeedbackFAB() {
     return () => {
       document.removeEventListener('scroll', onScroll, true);
       if (raf) cancelAnimationFrame(raf);
-      if (stopTimer) clearTimeout(stopTimer);
     };
   }, [setTucked]);
 

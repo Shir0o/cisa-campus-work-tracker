@@ -152,7 +152,7 @@ describe('User Feedback Feature', () => {
       expect(fabBtn.className).not.toContain('pointer-events-none');
 
       // Scrolling down again hides it, but the end of the list always brings
-      // it back — it must be reachable where the reading stops.
+      // it back — it must be reachable where the list runs out.
       scrollTo(500);
       expect(fabBtn.className).toContain('pointer-events-none');
 
@@ -162,6 +162,51 @@ describe('User Feedback Feature', () => {
       raf.mockRestore();
       media.mockRestore();
       main.remove();
+    });
+
+    it('keeps the note button tucked across a long pause, restoring it only on scroll-up (#1785)', () => {
+      const main = document.createElement('main');
+      Object.defineProperty(main, 'scrollTop', { value: 0, writable: true, configurable: true });
+      Object.defineProperty(main, 'scrollHeight', { value: 2000, configurable: true });
+      Object.defineProperty(main, 'clientHeight', { value: 700, configurable: true });
+      document.body.appendChild(main);
+
+      const media = phoneViewport();
+      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+      vi.useFakeTimers();
+
+      render(<FeedbackFAB />);
+      const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
+      const scrollTo = (y: number) =>
+        act(() => {
+          main.scrollTop = y;
+          main.dispatchEvent(new Event('scroll'));
+        });
+
+      try {
+        scrollTo(300);
+        expect(fabBtn.className).toContain('pointer-events-none');
+
+        // A pause is exactly when a reader reaches for a row, so the button
+        // must not come back on its own — however long the pause lasts.
+        act(() => {
+          vi.advanceTimersByTime(10_000);
+        });
+        expect(fabBtn.className).toContain('pointer-events-none');
+        expect(fabBtn.className).toContain('opacity-0');
+
+        // Only an upward scroll restores it.
+        scrollTo(200);
+        expect(fabBtn.className).not.toContain('pointer-events-none');
+      } finally {
+        vi.useRealTimers();
+        raf.mockRestore();
+        media.mockRestore();
+        main.remove();
+      }
     });
 
     it('never tucks the note button away while its own panel is open (#1785)', async () => {
