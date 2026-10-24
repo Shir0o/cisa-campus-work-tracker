@@ -1659,7 +1659,9 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
       render(<CoordinationNotes />);
 
-      expect(screen.getByText(/what we're praying for/i)).toBeInTheDocument();
+      // #1772: this section holds the team's to-dos, not its prayers.
+      expect(screen.getByText(/what we're holding/i)).toBeInTheDocument();
+      expect(screen.getByText(/every to-do the team is carrying/i)).toBeInTheDocument();
       expect(screen.getByText(/1 still open/i)).toBeInTheDocument();
     });
 
@@ -2624,6 +2626,83 @@ describe('CoordinationNotes', () => {
       await waitFor(() => {
         expect(document.querySelector('.bdm')).toBeTruthy();
       });
+    });
+
+    // ── #1772: the mobile surface lost every confirmation and undo ───────────
+    it('keeps delete feedback and Undo on the mobile surface (#1772)', async () => {
+      const { useMediaQuery } = await import('../lib/useMediaQuery');
+      vi.mocked(useMediaQuery).mockReturnValue(true);
+      setupSnapshots({ docs: mockDocs, team: mockTeam });
+      render(
+        <LanguageProvider>
+          <CoordinationNotes />
+        </LanguageProvider>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: /Monday/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /delete this page/i }));
+
+      // The page is gone; the way back must be on screen too.
+      expect(await screen.findByRole('button', { name: /^undo$/i })).toBeInTheDocument();
+      expect(screen.getByText(/moved to trash/i)).toBeInTheDocument();
+    });
+
+    // ── #1772: a shared page has to say whose it is ─────────────────────────
+    it('names the last editor on the mobile page (#1772)', async () => {
+      const { useMediaQuery } = await import('../lib/useMediaQuery');
+      vi.mocked(useMediaQuery).mockReturnValue(true);
+      const authored = [
+        {
+          id: 'doc-authored',
+          data: () => ({
+            title: 'Monday kickoff',
+            date: today,
+            weekday: 'Monday',
+            md: '# Monday kickoff\n\nBody.',
+            createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
+            updatedByName: 'Zion Adeyemi',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: authored, team: mockTeam });
+      render(
+        <LanguageProvider>
+          <CoordinationNotes />
+        </LanguageProvider>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: /Monday kickoff/i }));
+      expect(await screen.findByText(/last edited by zion adeyemi/i)).toBeInTheDocument();
+    });
+
+    // ── #1772: the title printed twice on every page ────────────────────────
+    it('prints the page title once when the body repeats it (#1772)', async () => {
+      const { useMediaQuery } = await import('../lib/useMediaQuery');
+      vi.mocked(useMediaQuery).mockReturnValue(true);
+      const titled = [
+        {
+          id: 'doc-titled',
+          data: () => ({
+            title: 'Monday kickoff',
+            date: today,
+            weekday: 'Monday',
+            md: '# Monday kickoff\n\nBody.',
+            createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: titled, team: mockTeam });
+      render(
+        <LanguageProvider>
+          <CoordinationNotes />
+        </LanguageProvider>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: /Monday kickoff/i }));
+      expect(await screen.findAllByRole('heading', { name: /monday kickoff/i })).toHaveLength(1);
     });
   });
 

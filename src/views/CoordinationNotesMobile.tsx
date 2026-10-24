@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, Check, Plus, Search, X, CheckSquare, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
+import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup, type DocSaveState, type DocMarkdownWriter } from '../lib/board';
 import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 import { useLanguage } from '../components/LanguageProvider';
@@ -32,7 +32,7 @@ interface CoordinationNotesMobileProps {
   pagesCollapsed: boolean;
   togglePages: () => void;
   setLiveActiveMd: (md: string | null) => void;
-  saveMarkdown: (id: string, md: string) => void;
+  saveMarkdown: DocMarkdownWriter;
   saveTitle: (id: string, title: string) => void;
   saveAudience: (id: string, audience: Audience) => void;
   deleteBoardDoc: (d: BoardDoc) => void;
@@ -86,6 +86,9 @@ export default function CoordinationNotesMobile({
   const { t } = useLanguage();
   const [mReading, setMReading] = useState(false);
   const [mEditing, setMEditing] = useState(false);
+  // The save state lives here, not only in the toolbar, so it stays on screen
+  // while the document scrolls under the sticky Pages/Done bar (#1772).
+  const [saveState, setSaveState] = useState<DocSaveState>('saved');
 
   const openMobileDoc = (id: string) => {
     setActiveId(id);
@@ -111,29 +114,48 @@ export default function CoordinationNotesMobile({
             <ChevronLeft className="w-5 h-5 bdm-back-ico" />
             <span>{t('coordination.pages')}</span>
           </button>
-          {canEdit && (
-            <button
-              onClick={() => setMEditing((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bdm-edit",
-                mEditing
-                  ? "bg-primary text-on-primary border-primary on"
-                  : "bg-surface border-outline-variant/80 text-on-surface-variant"
-              )}
-            >
-              {mEditing ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>{t('coordination.done')}</span>
-                </>
-              ) : (
-                <>
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>{t('coordination.edit')}</span>
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {mEditing && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  'inline-flex items-center gap-1 text-xs whitespace-nowrap',
+                  saveState === 'saved' ? 'text-tertiary' : saveState === 'saving' ? 'text-on-surface-variant/70' : 'text-error',
+                )}
+                title={saveState === 'failed' ? t('coordination.save_failed_hint') : undefined}
+              >
+                {saveState === 'saved'
+                  ? t('coordination.saved')
+                  : saveState === 'saving'
+                    ? t('coordination.saving')
+                    : t('coordination.save_failed')}
+              </span>
+            )}
+            {canEdit && (
+              <button
+                onClick={() => setMEditing((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all bdm-edit',
+                  mEditing
+                    ? 'bg-primary text-on-primary border-primary on'
+                    : 'bg-surface border-outline-variant/80 text-on-surface-variant',
+                )}
+              >
+                {mEditing ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{t('coordination.done')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('coordination.edit')}</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Document view wrapper */}
@@ -157,6 +179,7 @@ export default function CoordinationNotesMobile({
               contacts={contacts}
               onSelectContact={setSelectedContact}
               onOpenContactModal={setIsDetailsModalOpen}
+              onSaveStateChange={setSaveState}
             />
           ) : (
             <ReadOnlyDoc
@@ -179,7 +202,7 @@ export default function CoordinationNotesMobile({
       {/* Hero */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 mdm-hero bdm-hero">
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 mdm-eyebrow">
-          The Board
+          {t('coordination.eyebrow_board')}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">{heading}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 bdm-state">{intro}</p>
@@ -212,7 +235,7 @@ export default function CoordinationNotesMobile({
         <div className="flex flex-col gap-3 bdm-list">
           {docs.length === 0 && (
             <div className="py-8 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 bdm-empty">
-              No pages are open to you just yet.
+              {t('coordination.pages_empty')}
             </div>
           )}
 
@@ -233,12 +256,12 @@ export default function CoordinationNotesMobile({
                   <div className="flex flex-wrap items-center gap-1.5 mb-1.5 bdm-card-tags">
                     {d.pinned && (
                       <span className="text-[10px] font-semibold   px-2 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent bdm-pinned">
-                        Pinned
+                        {t('coordination.pinned')}
                       </span>
                     )}
                     {isToday && (
                       <span className="text-[10px] font-semibold   px-2 py-0.5 rounded-full bg-primary text-on-primary bdm-today">
-                        Today
+                        {t('coordination.today')}
                       </span>
                     )}
                     {d.audience && (canEdit || d.audience !== 'everyone') && (
@@ -246,7 +269,7 @@ export default function CoordinationNotesMobile({
                         "text-[10px] font-semibold   px-2 py-0.5 rounded-full bdoc-row-aud",
                         d.audience === 'everyone' ? "bg-surface-variant text-on-surface-variant" : "bg-stage-amber-soft text-stage-amber"
                       )}>
-                        {BOARD_AUDIENCE[d.audience]?.label || d.audience}
+                        {t(`coordination.audience_${d.audience}`, BOARD_AUDIENCE[d.audience]?.label || d.audience)}
                       </span>
                     )}
                   </div>

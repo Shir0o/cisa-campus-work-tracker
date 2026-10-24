@@ -15,6 +15,8 @@ import {
   parseDocTasks,
   collectDocTaskNodes,
   newDocMarkdown,
+  bodyMarkdownForDisplay,
+  persistDocEdit,
   audienceOf,
   boardLevelForRole,
   canSeeBoardDoc,
@@ -202,7 +204,47 @@ describe('Board Pure Helpers', () => {
 
   describe('newDocMarkdown', () => {
     it('returns the starter markdown content', () => {
-      expect(newDocMarkdown()).toContain('# Untitled page');
+      expect(newDocMarkdown()).toContain('Start writing');
+    });
+
+    // #1772: a page carries its name in the title field, so seeding a matching
+    // `# Untitled page` heading made every new page print its title twice.
+    it('does not seed a heading that duplicates the page title', () => {
+      expect(newDocMarkdown()).not.toMatch(/^#\s/m);
+    });
+  });
+
+  describe('bodyMarkdownForDisplay', () => {
+    it('drops a leading heading that only repeats the page title', () => {
+      expect(bodyMarkdownForDisplay('# Monday kickoff\n\nBody text.', 'Monday kickoff')).toBe('Body text.');
+    });
+
+    it('keeps a leading heading that says something else', () => {
+      expect(bodyMarkdownForDisplay('# Agenda\n\nBody text.', 'Monday kickoff')).toBe('# Agenda\n\nBody text.');
+    });
+
+    it('leaves markdown without a leading heading alone', () => {
+      expect(bodyMarkdownForDisplay('Body text.', 'Monday kickoff')).toBe('Body text.');
+    });
+  });
+
+  describe('persistDocEdit', () => {
+    // #1772: the toolbar said "Saved" 1.2s after a keystroke whether or not the
+    // write landed. The state must follow the write's outcome.
+    it('reports saved only when the write resolved true', async () => {
+      await expect(persistDocEdit(async () => true)).resolves.toBe('saved');
+    });
+
+    it('reports failed when the write resolved false', async () => {
+      await expect(persistDocEdit(async () => false)).resolves.toBe('failed');
+    });
+
+    it('reports failed when the write rejects', async () => {
+      await expect(
+        persistDocEdit(async () => {
+          throw new Error('offline');
+        }),
+      ).resolves.toBe('failed');
     });
   });
 
