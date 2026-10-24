@@ -111,6 +111,39 @@ describe("check-hardcoded-colors — findRawHits", () => {
     expect(findRawHits(``)).toHaveLength(0);
     expect(findRawHits(`  `)).toHaveLength(0);
   });
+
+  // ── A border token may not carry text (#1779) ──────────────────────────
+  //
+  // The 1.1:1 P0 in #1775 was `text-outline` resolving to `--outline`, the
+  // #E4E4E7 border colour, on a #EAEAEC panel. Ink has reading inks
+  // (`--on-surface`, `--on-surface-variant`); `--outline*` is structure.
+  it("flags a text utility bound to --outline", () => {
+    expect(findRawHits(`className="text-outline"`)).toEqual([
+      { match: "text-outline", kind: "token-misuse" },
+    ]);
+  });
+
+  it("flags text-outline-variant, which is the same border token family", () => {
+    expect(findRawHits(`className="mt-1 text-outline-variant"`)).toEqual([
+      { match: "text-outline-variant", kind: "token-misuse" },
+    ]);
+  });
+
+  it("does not flag the outline token doing its real job — borders and rings", () => {
+    expect(findRawHits(`className="border-outline-variant"`)).toHaveLength(0);
+    expect(findRawHits(`className="border-outline"`)).toHaveLength(0);
+    expect(findRawHits(`className="ring-outline"`)).toHaveLength(0);
+    expect(findRawHits(`className="bg-outline"`)).toHaveLength(0);
+  });
+
+  it("does not flag a class that merely starts with text-outline", () => {
+    expect(findRawHits(`className="text-outlineish"`)).toHaveLength(0);
+  });
+
+  it("does not flag the reading inks", () => {
+    expect(findRawHits(`className="text-on-surface"`)).toHaveLength(0);
+    expect(findRawHits(`className="text-on-surface-variant"`)).toHaveLength(0);
+  });
 });
 
 describe("check-hardcoded-colors — isCommentLine", () => {

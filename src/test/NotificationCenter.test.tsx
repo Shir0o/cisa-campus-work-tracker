@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import NotificationCenter, { groupNotificationsIntoStacks } from '../components/layout/NotificationCenter';
 import * as firestore from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
@@ -859,9 +860,14 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/people/c_999');
   });
 
-  // ── Enter key opens a notification ─────────────────────────────────
+  // ── Row semantics (#1779) ───────────────────────────────────────────
+  //
+  // The row used to be a `div[role="button"]` handling Enter only, with the
+  // "set aside" control nested inside it. The rotor read one flattened node and
+  // a phone could not activate the row with Space. It is a real button now, and
+  // the dismissal is a sibling.
 
-  it('selects a notification when Enter is pressed', () => {
+  function renderOneRow() {
     triggerOnSnapshotCallbacks([
       { id: 'n1', userId: 'mock-user-id', title: 'Key item', body: 'b', type: 'success', link: '/myday', read: true, createdAt: { toDate: () => new Date() } },
     ]);
@@ -870,11 +876,42 @@ describe('NotificationCenter Component', () => {
         <NotificationCenter />
       </MemoryRouter>
     );
-
     fireEvent.click(screen.getByLabelText(/notifications/i));
-    const item = screen.getByText('Key item').closest('[role="button"]')!;
-    fireEvent.keyDown(item, { key: 'Enter' });
+  }
+
+  it('is a real button with its dismissal as a sibling, not a nested control', () => {
+    renderOneRow();
+    const row = screen.getByRole('button', { name: /Key item/ });
+    expect(row.tagName).toBe('BUTTON');
+    // Nothing focusable inside the row: the rotor sees one node, not three.
+    expect(row.querySelector('button, [role="button"], a')).toBeNull();
+    const dismiss = screen.getByRole('button', { name: /Set aside/i });
+    expect(row.contains(dismiss)).toBe(false);
+  });
+
+  it('selects a notification when Enter is pressed', async () => {
+    const user = userEvent.setup();
+    renderOneRow();
+    screen.getByRole('button', { name: /Key item/ }).focus();
+    await user.keyboard('{Enter}');
     expect(mockNavigate).toHaveBeenCalledWith('/myday');
+  });
+
+  it('selects a notification when Space is pressed', async () => {
+    const user = userEvent.setup();
+    renderOneRow();
+    screen.getByRole('button', { name: /Key item/ }).focus();
+    await user.keyboard(' ');
+    expect(mockNavigate).toHaveBeenCalledWith('/myday');
+  });
+
+  it('keeps the dismissal operable on its own', async () => {
+    renderOneRow();
+    fireEvent.click(screen.getByRole('button', { name: /Set aside/i }));
+    await waitFor(() => {
+      expect(firestore.deleteDoc).toHaveBeenCalled();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   // ── Target Stacking (#331) ──────────────────────────────────────────
@@ -1220,5 +1257,130 @@ describe('NotificationCenter — phone shell (#1775)', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => expect(bell).toHaveFocus());
+  });
+
+  it('gives the stack\'s "Show all" control a 44px hit area', () => {
+    renderWithSnapshot([
+      { ...oneUnread, id: 's1', title: 'Sarah: New check-in', targetId: 'contact-sarah' },
+      { ...oneUnread, id: 's2', title: 'Sarah: Prayer request', targetId: 'contact-sarah' },
+    ]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const showAll = screen.getByRole('button', { name: /Show all 2/i });
+    expect(showAll.className).toContain('min-h-11');
+  });
+});
+
+// ── The phone sheet is a sheet (#1779) ──────────────────────────────────────
+//
+// At 375×812 the panel was a 299px `role="dialog"` strip pinned below the
+// header: no scrim, no modal semantics, and the page behind stayed live. On a
+// phone it is now the same bottom sheet as every other dialog in the app
+// (PopupFrame): a scrim, dismissal under the thumb, and the shell behind it
+// out of the accessibility tree and out of reach.
+describe('NotificationCenter — the phone sheet is a sheet (#1779)', () => {
+  const originalMatchMedia = window.matchMedia;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ role: 'admin' });
+    (auth as any).currentUser = { uid: 'mock-user-id' };
+    window.matchMedia = ((query: string) => ({
+      matches: /max-width:\s*768px/.test(query),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  function renderOnPhone(rows: any[]) {
+    let call = 0;
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      call += 1;
+      cb({ docs: (call === 1 ? rows : []).map((n) => ({ id: n.id, data: () => n })) });
+      return vi.fn();
+    });
+    // The sheet renders into a portal, so the app shell it covers is the
+    // render container — the same `data-app-shell` element the real App
+    // mounts around the whole authenticated tree.
+    const shell = document.createElement('div');
+    shell.setAttribute('data-app-shell', '');
+    document.body.appendChild(shell);
+    return render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>,
+      { container: shell },
+    );
+  }
+
+  const oneUnread = {
+    id: 'n1',
+    userId: 'mock-user-id',
+    title: 'New Prayer Request',
+    message: 'Please pray for Bob',
+    type: 'success',
+    read: false,
+    createdAt: { toDate: () => new Date() },
+  };
+
+  it('opens a modal bottom sheet on a scrim, not a floating strip', () => {
+    renderOnPhone([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByTestId('popup-scrim')).toBeInTheDocument();
+    // The grabber is the bottom-sheet shell, not the old header-pinned strip.
+    expect(screen.getByTestId('popup-sheet-grabber')).toBeInTheDocument();
+    expect(screen.getByText("What's stirring")).toBeInTheDocument();
+  });
+
+  it('takes the page behind out of reach while the sheet is open', () => {
+    renderOnPhone([oneUnread]);
+    const shell = document.querySelector('[data-app-shell]')!;
+    expect(shell).not.toHaveAttribute('inert');
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(shell).toHaveAttribute('inert');
+    expect(shell).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('closes on Escape and gives the shell back', async () => {
+    renderOnPhone([oneUnread]);
+    const bell = screen.getByLabelText(/notifications/i);
+    fireEvent.click(bell);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const shell = document.querySelector('[data-app-shell]')!;
+    expect(shell).not.toHaveAttribute('inert');
+    expect(shell).not.toHaveAttribute('aria-hidden');
+    await waitFor(() => expect(bell).toHaveFocus());
+  });
+
+  it('closes on a backdrop tap', async () => {
+    renderOnPhone([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByTestId('popup-scrim'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('leaves "Mark all read" in the sheet footer, under the thumb', () => {
+    renderOnPhone([oneUnread]);
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const markAll = screen.getByRole('button', { name: /Mark all read/i });
+    // Inside the dialog, and inside its footer (the last child), so it is not
+    // scrolled away with the list.
+    expect(screen.getByRole('dialog').contains(markAll)).toBe(true);
   });
 });
