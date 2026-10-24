@@ -139,7 +139,10 @@ describe('OutreachBoardMobile', () => {
   it('shows Shape the journey only for admins', () => {
     const onShapeJourney = vi.fn();
     const { rerender } = render(<OutreachBoardMobile {...baseProps} isAdmin onShapeJourney={onShapeJourney} />);
-    fireEvent.click(screen.getByText('Shape the journey'));
+    const shape = screen.getByRole('button', { name: /Shape the journey/i });
+    // The editor's trigger is a 44px phone target (#1788).
+    expect(shape.className).toMatch(/(^|\s)min-h-11(\s|$)/);
+    fireEvent.click(shape);
     expect(onShapeJourney).toHaveBeenCalled();
 
     rerender(<OutreachBoardMobile {...baseProps} isAdmin={false} />);

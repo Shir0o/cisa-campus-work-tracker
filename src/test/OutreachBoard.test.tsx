@@ -1,9 +1,10 @@
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { collection, collectionGroup, onSnapshot, writeBatch } from 'firebase/firestore';
 import OutreachBoard, { __resetOutreachBoardStageCache } from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import React from 'react';
 
 // ── Module-level mocks ──────────────────────────────────────────────────────
@@ -333,6 +334,84 @@ describe('OutreachBoard', () => {
 
     // Cancel button
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
+  });
+
+  // ── 8b. The stage editor is a real dialog, not a bare card (#1788) ────
+  it('opens the stage editor as a named modal dialog and moves focus into it (#1788)', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+    shapeBtn.focus();
+    fireEvent.click(shapeBtn);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Shape the journey' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    // Focus is pulled off the page behind the scrim into the editor.
+    await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(shapeBtn).toHaveFocus();
+  });
+
+  it('opens the stage editor as the shared phone sheet on a phone (#1788)', async () => {
+    vi.mocked(useMediaQuery).mockImplementation((q: string) => q === '(max-width: 768px)');
+    try {
+      setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+      render(<OutreachBoard />);
+      vi.advanceTimersByTime(900);
+
+      const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+      shapeBtn.focus();
+      fireEvent.click(shapeBtn);
+
+      const dialog = await screen.findByRole('dialog', { name: 'Shape the journey' });
+      expect(dialog).toHaveAttribute('aria-modal', 'true');
+      // PopupFrame's bottom-sheet shape, not a centred desktop card.
+      expect(within(dialog).getByTestId('popup-sheet-grabber')).toBeInTheDocument();
+      await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
+
+      fireEvent.keyDown(dialog, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(shapeBtn).toHaveFocus();
+    } finally {
+      vi.mocked(useMediaQuery).mockImplementation(() => false);
+    }
+  });
+
+  it('gives every stage colour a 44px target and a non-colour selected cue (#1788)', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Shape the journey/i }));
+
+    // All eight tones survive the sheet.
+    const swatches = screen.getAllByRole('button', { name: /^(Slate|Clay|Ochre|Sage|Teal|Indigo|Plum|Rose)$/ });
+    expect(swatches).toHaveLength(8);
+
+    // Selection is not signalled by colour alone: aria-pressed plus a check.
+    const indigo = screen.getByRole('button', { name: 'Indigo' });
+    expect(indigo).toHaveAttribute('aria-pressed', 'true');
+    expect(indigo.querySelector('svg')).not.toBeNull();
+    const sage = screen.getByRole('button', { name: 'Sage' });
+    expect(sage).toHaveAttribute('aria-pressed', 'false');
+    expect(sage.querySelector('svg')).toBeNull();
+
+    // Every swatch is at least 44px in each axis (the repo's phone rule).
+    for (const swatch of swatches) {
+      expect(swatch.className).toMatch(/(^|\s)h-11(\s|$)/);
+      expect(swatch.className).toMatch(/(^|\s)min-w-11(\s|$)/);
+    }
+
+    fireEvent.click(sage);
+    expect(screen.getByRole('button', { name: 'Sage' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Indigo' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   // ── 9. Unmapped contacts appear in "Unassigned" column ────────────────
