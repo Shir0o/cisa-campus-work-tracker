@@ -1,5 +1,6 @@
 import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { collection, collectionGroup, onSnapshot, writeBatch } from 'firebase/firestore';
 import OutreachBoard, { __resetOutreachBoardStageCache } from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
@@ -8,12 +9,6 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import React from 'react';
 
 // ── Module-level mocks ──────────────────────────────────────────────────────
-
-// jsdom does not implement Element.scrollTo (used by the phone board's stage
-// switcher when it recentres the active pill).
-beforeAll(() => {
-  Element.prototype.scrollTo = vi.fn();
-});
 
 vi.mock('motion/react', () => ({
   motion: {
@@ -164,6 +159,24 @@ function setupOnSnapshotWith({
 }
 
 // ── Test suite ──────────────────────────────────────────────────────────────
+
+/** Renders the board at `/board` with a location spy, so a redirect is observable. */
+function BoardRoute() {
+  return (
+    <MemoryRouter initialEntries={['/board']}>
+      <LocationProbe />
+      <Routes>
+        <Route path="/board" element={<OutreachBoard />} />
+        <Route path="/directory" element={<p>People, everyone</p>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="pathname">{location.pathname}</div>;
+}
 
 describe('OutreachBoard', () => {
   beforeEach(async () => {
@@ -355,32 +368,6 @@ describe('OutreachBoard', () => {
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(shapeBtn).toHaveFocus();
-  });
-
-  it('opens the stage editor as the shared phone sheet on a phone (#1788)', async () => {
-    vi.mocked(useMediaQuery).mockImplementation((q: string) => q === '(max-width: 768px)');
-    try {
-      setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
-
-      render(<OutreachBoard />);
-      vi.advanceTimersByTime(900);
-
-      const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
-      shapeBtn.focus();
-      fireEvent.click(shapeBtn);
-
-      const dialog = await screen.findByRole('dialog', { name: 'Shape the journey' });
-      expect(dialog).toHaveAttribute('aria-modal', 'true');
-      // PopupFrame's bottom-sheet shape, not a centred desktop card.
-      expect(within(dialog).getByTestId('popup-sheet-grabber')).toBeInTheDocument();
-      await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
-
-      fireEvent.keyDown(dialog, { key: 'Escape' });
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-      expect(shapeBtn).toHaveFocus();
-    } finally {
-      vi.mocked(useMediaQuery).mockImplementation(() => false);
-    }
   });
 
   it('gives every stage colour a 44px target and a non-colour selected cue (#1788)', async () => {
@@ -1154,60 +1141,19 @@ describe('OutreachBoard', () => {
     await waitFor(() => expect(collectionGroup).toHaveBeenCalledWith(expect.anything(), 'threads'));
   });
 
-  it('renders OutreachBoardMobile on mobile viewport even while loading', async () => {
+  // ADR 0047: in the phone app The Journey is not a screen; People is the one
+  // door. `/board` therefore has no phone view, and a phone that lands on it
+  // is sent to People rather than shown a board with no search of its own.
+  it('sends a phone /board to People instead of rendering a board (#1787)', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
-    setupOnSnapshotWith({ stages: [], contacts: [] });
-    render(<OutreachBoard />);
-    await waitFor(() => {
-      expect(document.querySelector('.jrnm')).toBeTruthy();
-    });
-  });
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
 
-  it('shows only the people in the viewer\'s journey on the phone board (#1763)', async () => {
-    const { useMediaQuery } = await import('../lib/useMediaQuery');
-    vi.mocked(useMediaQuery).mockReturnValue(true);
-    (useAuth as any).mockReturnValue({
-      isAdmin: false,
-      user: { uid: 'trainee-1' },
-      role: 'manager',
-      effectiveUserId: 'trainee-1',
-    });
-    const inCare = {
-      id: 'c1',
-      data: () => ({ ...mockContacts[0].data(), createdBy: 'trainee-1' }),
-    };
-    const notYours = {
-      id: 'c9',
-      data: () => ({
-        ...mockContacts[0].data(),
-        name: 'Not Yours',
-        createdBy: 'someone-else',
-        coCreators: [],
-      }),
-    };
-    setupOnSnapshotWith({ stages: mockStages, contacts: [inCare, notYours] });
+    render(<BoardRoute />);
 
-    render(<OutreachBoard />);
-    vi.advanceTimersByTime(900);
-
-    expect(await screen.findByText('Alice Chen')).toBeInTheDocument();
-    expect(screen.queryByText('Not Yours')).not.toBeInTheDocument();
-  });
-
-  it('opens the stage editor from the phone board (#1763)', async () => {
-    const { useMediaQuery } = await import('../lib/useMediaQuery');
-    vi.mocked(useMediaQuery).mockReturnValue(true);
-    setupOnSnapshotWith({ stages: mockStages, contacts: [] });
-
-    render(<OutreachBoard />);
-    vi.advanceTimersByTime(900);
-
-    fireEvent.click(await screen.findByRole('button', { name: /Shape the journey/i }));
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/e\.g\. Following up/i)).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByTestId('pathname')).toHaveTextContent('/directory'));
+    expect(screen.getByText('People, everyone')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /The Journey/i })).not.toBeInTheDocument();
   });
 
   it('scopes contacts query to visibleTo for a Trainee', async () => {

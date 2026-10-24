@@ -1,8 +1,8 @@
 // Stage tone lookup — the eight Field Notes hues the board paints stages
-// with. `OutreachBoard`, `OutreachBoardMobile` and `Directory` each carry
-// their own copy of this map; this module exists so the contact page's stage
-// picker (#677) can paint the same tones without importing a whole view.
-// The three view-local copies are left alone deliberately.
+// with. `OutreachBoard` and `Directory` each carry their own copy of this map;
+// this module exists so the contact page's stage picker (#677) can paint the
+// same tones without importing a whole view.
+// The two view-local copies are left alone deliberately.
 export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
 
 const TONE_KEY_MAP: Record<string, ToneKey> = {

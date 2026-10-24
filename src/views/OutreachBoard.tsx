@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
 import {
   Search,
   GripVertical,
@@ -63,7 +64,6 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import { PopupFrame } from '../components/ui/PopupFrame';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
-import OutreachBoardMobile from './OutreachBoardMobile';
 
 // ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
 const DAY_MS = 86_400_000;
@@ -806,23 +806,10 @@ export default function OutreachBoard() {
     </>
   );
 
+  // ADR 0047: in the phone app The Journey is not a screen; People is the one
+  // door, for Trainees and Full-timers alike. `/board` keeps no phone view.
   if (isMobile) {
-    return (
-      <>
-        <OutreachBoardMobile
-          stages={stages}
-          contacts={filteredContacts}
-          unmappedContacts={unmappedContacts}
-          lastTouchByContact={lastTouchByContact}
-          onOpenContact={setSelectedContact}
-          onMove={handleUpdateContactStage}
-          onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
-          isAdmin={isAdmin}
-          onAddContact={openNewContact}
-        />
-        {stageDialogs}
-      </>
-    );
+    return <Navigate to="/directory" replace />;
   }
 
   if (loading) {

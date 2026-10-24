@@ -27,3 +27,5 @@ Six were drawn on a canvas: two doors as today; one door with an *Everyone / By 
 ## Consequences
 
 The Journey survives as a concept and as the Steps, but loses its phone screen and its rows in the Trainee drawer and the Full-timer's More. Anything that linked to it — the Full-timer home's *Needs you today* card — must point somewhere else.
+
+**Amended 2026-10-24 by [#1787](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1787):** decision 2 was only half built. [#1799](https://github.com/Shir0o/cisa-campus-work-tracker/pull/1799) deleted the Trainee's phone Journey and made People the one door, with its search and the Step pills beneath it, but the Full-timer's `/board` still drew a screen of its own at phone width — the last place The Journey survived as a phone screen, and the only one with no search. The phone `/board` is removed too: at phone width the route now lands on People, so "find a person across steps" is answered by the search there, and in the phone app by the Step pills, rather than by a field added to a board. `/board` stays a desktop surface, separate from `/directory`, until the web-app question in decision 8 is settled.
