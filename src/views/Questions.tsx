@@ -26,7 +26,8 @@ import {
   askRepliesOf,
   askAnswered,
   askOrigin,
-  askWaitedWords,
+  askTakenBy,
+  askWaitedDays,
   addAsk,
   addAskFor,
   addAskReply,
@@ -38,13 +39,38 @@ type Filter = 'waiting' | 'answered' | 'mine' | 'all';
 
 const AVATAR = 'rounded-full grid place-items-center font-semibold bg-accent-soft text-accent border border-outline-variant/40 shrink-0';
 
-/** The origin mark (#611) — asked here, or written down in person. */
+/** The waiting, said in the reader's language (1767). The home's two
+ *  surfaces each carry this helper; `askWaitedWords` returns English only. */
+function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
+  const d = askWaitedDays(m);
+  return d === 0
+    ? t('ask.waited_today', 'asked today')
+    : d === 1
+      ? t('ask.waited_yesterday', 'waiting since yesterday')
+      : t('ask.waited_days', `waiting ${d} days`).replace('{n}', String(d));
+}
+
+/** The origin mark (#611) — asked here, or written down in person. The words
+ *  are composed here rather than read off `askOrigin().text`: that string is
+ *  English only, and this page renders in the reader's language (1767). */
 function OriginMark({ m, me }: { m: AskMessage; me: string }) {
+  const { t } = useI18n();
   const org = askOrigin(m, me);
+  const pen = askTakenBy(m);
+  const mine = Boolean(me && m.from === me);
+  const first = (pen?.name || 'Someone').trim().split(' ')[0] || 'Someone';
+  const wrote = pen && pen.uid === me ? t('ask.origin_you', 'you') : first;
+  const text = !pen
+    ? mine
+      ? t('ask.origin_you_here', 'You asked this here, in your own words')
+      : t('ask.origin_here', 'Asked here, in their own words')
+    : mine
+      ? t('ask.origin_in_person_you', 'Asked in person · {first} wrote it down for you').replace('{first}', first)
+      : t('ask.origin_in_person', 'Asked in person · written down by {first}').replace('{first}', wrote);
   return (
     <div className={cn('flex items-center gap-1.5 mt-2 text-xs', org.written ? 'text-accent' : 'text-on-surface-variant')}>
       {org.written ? <Pencil className="w-3 h-3 shrink-0" /> : <MessageCircleQuestion className="w-3 h-3 shrink-0" />}
-      {org.text}
+      {text}
     </div>
   );
 }
@@ -133,24 +159,21 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
         open ? 'border-accent-line ring-4 ring-accent-soft' : 'border-outline-variant',
       )}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <span className={cn(AVATAR, 'w-7 h-7 text-[10px]')}>{getUserInitials(m.fromName || 'Someone')}</span>
         <span className="text-sm font-semibold text-on-surface">{m.fromName || 'Someone'}</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant bg-surface-container border border-outline-variant rounded-full px-2 py-0.5">
-          {t('ask.role_trainee', 'Trainee')}
-        </span>
         <span className="flex-1" />
         {answered ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success bg-success-container rounded-full px-2.5 py-1">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success bg-success-container rounded-full px-2 py-1 whitespace-nowrap">
             <Check className="w-3 h-3" />
             {replies.length === 1
               ? t('ask.one_answer', '1 answer')
               : t('ask.n_answers', '{n} answers').replace('{n}', String(replies.length))}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning bg-warning-container rounded-full px-2.5 py-1">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning bg-warning-container rounded-full px-2 py-1 whitespace-nowrap">
             <Clock className="w-3 h-3" />
-            {askWaitedWords(m)}
+            {waitedWords(m, t)}
           </span>
         )}
         {canDelete && (
@@ -160,7 +183,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
             title={t('ask.delete_aria', 'Delete this question')}
             onClick={() => setConfirmingDelete(true)}
             className={cn(
-              'grid place-items-center w-7 h-7 rounded-lg transition-colors shrink-0',
+              'grid place-items-center w-7 h-7 rounded-lg transition-colors shrink-0 max-sm:w-11 max-sm:h-11 max-sm:-m-2',
               confirmingDelete
                 ? 'text-error bg-error/10'
                 : 'text-on-surface-variant hover:text-error hover:bg-error/10',
@@ -171,7 +194,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
         )}
       </div>
 
-      <p className="text-base leading-relaxed text-on-surface mt-3 text-pretty">{m.body}</p>
+      <p className="text-base leading-relaxed text-on-surface mt-3 text-pretty [overflow-wrap:anywhere]">{m.body}</p>
       <OriginMark m={m} me={me} />
 
       <div className="h-px bg-outline-variant my-4" />
@@ -196,7 +219,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
                         type="button"
                         disabled={deletingReply === r.id}
                         onClick={() => void removeReply(r.id)}
-                        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default"
+                        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default max-sm:h-11"
                       >
                         <Trash2 className="w-3 h-3" />
                         {t('ask.delete_reply', 'Delete answer')}
@@ -204,7 +227,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
                       <button
                         type="button"
                         onClick={() => setConfirmingReplyDelete(null)}
-                        className="h-7 px-2.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface"
+                        className="h-7 px-2.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface max-sm:h-11"
                       >
                         {t('ask.delete_reply_keep', 'Keep it')}
                       </button>
@@ -222,13 +245,13 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
                           aria-label={t('ask.delete_reply_aria', 'Delete this answer')}
                           title={t('ask.delete_reply_aria', 'Delete this answer')}
                           onClick={() => setConfirmingReplyDelete(r.id)}
-                          className="grid place-items-center w-6 h-6 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
+                          className="grid place-items-center w-6 h-6 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0 max-sm:w-11 max-sm:h-11 max-sm:-m-[10px]"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
-                    <p className="text-sm leading-relaxed text-on-surface-variant mt-0.5 text-pretty">{r.body}</p>
+                    <p className="text-sm leading-relaxed text-on-surface-variant mt-0.5 text-pretty [overflow-wrap:anywhere]">{r.body}</p>
                   </>
                 )}
               </div>
@@ -256,7 +279,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
               type="button"
               disabled={deleting}
               onClick={() => void remove()}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-error text-on-error text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-error text-on-error text-sm font-semibold disabled:opacity-40 disabled:cursor-default max-sm:h-11"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {t('ask.delete_question', 'Delete question')}
@@ -264,16 +287,21 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="h-8 px-3 rounded-lg border border-outline-variant text-sm font-semibold text-on-surface-variant hover:text-on-surface"
+              className="h-8 px-3 rounded-lg border border-outline-variant text-sm font-semibold text-on-surface-variant hover:text-on-surface max-sm:h-11"
             >
               {t('ask.delete_keep', 'Keep it')}
             </button>
           </div>
         </div>
       ) : !canAnswer ? (
-        <p className="text-xs italic text-on-surface-variant">
-          {t('ask.fulltimer_will_answer', 'A full-timer will answer this.')}
-        </p>
+        // An answered question needs no line under it: the answers are the line.
+        // Telling a trainee "a full-timer will answer this" under a card that
+        // already says "5 answers" reads as a contradiction (1767).
+        answered ? null : (
+          <p className="text-xs italic text-on-surface-variant">
+            {t('ask.fulltimer_will_answer', 'A full-timer will answer this.')}
+          </p>
+        )
       ) : open ? (
         <div>
           <label className="block text-xs font-semibold text-accent mb-1.5" htmlFor={`answer-${m.id}`}>
@@ -304,7 +332,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
               type="button"
               disabled={!draft.trim() || sending}
               onClick={() => void send()}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default max-sm:h-11"
             >
               <Send className="w-3.5 h-3.5" />
               {mine ? t('ask.add', 'Add') : t('ask.send_answer', 'Send answer')}
@@ -312,7 +340,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
             <button
               type="button"
               onClick={() => { setDraft(''); close(); }}
-              className="text-sm text-on-surface-variant hover:text-on-surface"
+              className="inline-flex items-center text-sm text-on-surface-variant hover:text-on-surface max-sm:h-11"
             >
               {t('actions.cancel', 'Cancel')}
             </button>
@@ -327,7 +355,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-semibold text-accent bg-accent-soft border border-accent-line hover:brightness-95"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-semibold text-accent bg-accent-soft border border-accent-line hover:brightness-95 max-sm:h-11"
         >
           <CornerUpLeft className="w-3.5 h-3.5" />
           {mine
@@ -453,10 +481,28 @@ export default function Questions() {
     { id: 'all', label: t('ask.filter_all', 'All'), n: counts.all },
   ];
 
+  // Every empty filter used to borrow one of two sentences, and the default
+  // (Waiting) one claimed "Every question has an answer on it" on a board where
+  // nothing had ever been asked (1767). Each empty state now says what is true
+  // of it: an empty board on any tab is still an empty board.
+  const emptyCopy =
+    counts.all === 0
+      ? { title: t('ask.empty_none_title', 'Nothing asked yet'), sub: t('ask.empty_none_sub', 'A question with no person attached belongs here.') }
+      : filter === 'waiting'
+        ? { title: t('ask.empty_waiting_title', 'Nothing waiting'), sub: t('ask.empty_waiting_sub', 'Every question has an answer on it.') }
+        : filter === 'answered'
+          ? { title: t('ask.empty_answered_title', 'Nothing answered yet'), sub: t('ask.empty_answered_sub', 'A question lands here once someone answers it.') }
+          : filter === 'mine'
+            ? { title: t('ask.empty_mine_title', "You haven't asked anything yet"), sub: t('ask.empty_mine_sub', 'A question with no person attached belongs here.') }
+            : { title: t('ask.empty_none_title', 'Nothing asked yet'), sub: t('ask.empty_none_sub', 'A question with no person attached belongs here.') };
+
   return (
     <PageContainer variant="wide">
-      <header className="flex flex-wrap items-end gap-4 mb-5">
-        <div className="flex-1 min-w-0">
+      {/* On a phone the title, the sub and the action stack. Sharing one row
+          squeezed the title to 179px and the sub to seven lines, putting the
+          first card 402px down an 812px screen (1767). */}
+      <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl lg:text-[26px] font-medium tracking-tight text-on-surface">
             {t('ask.questions_for_team', 'Questions for the team')}
           </h1>
@@ -470,7 +516,7 @@ export default function Questions() {
         <button
           type="button"
           onClick={() => setAskOpen((o) => !o)}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-on-primary text-sm font-semibold shrink-0"
+          className="inline-flex w-full items-center justify-center gap-2 h-11 px-4 rounded-[14px] bg-primary text-on-primary text-sm font-semibold shrink-0 sm:w-auto"
         >
           {askOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {askOpen ? t('actions.close', 'Close') : t('ask.ask_the_team', 'Ask the team')}
@@ -510,7 +556,7 @@ export default function Questions() {
                   type="button"
                   onClick={() => setForWho(s.uid)}
                   className={cn(
-                    'inline-flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-full border text-[13px] transition-colors',
+                    'inline-flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-full border text-[13px] transition-colors max-sm:h-11',
                     forWho === s.uid
                       ? 'border-primary bg-primary text-on-primary'
                       : 'border-outline-variant bg-surface text-on-surface-variant hover:text-on-surface',
@@ -524,6 +570,8 @@ export default function Questions() {
           )}
 
           <textarea
+            id="ask-composer"
+            aria-label={t('ask.composer_label', 'Your question for the team')}
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -545,7 +593,7 @@ export default function Questions() {
               type="button"
               disabled={!draft.trim() || posting || (mode === 'for' && !forWho)}
               onClick={() => void post()}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default max-sm:h-11"
             >
               <Send className="w-3.5 h-3.5" />
               {mode === 'for' ? t('ask.write_it_down', 'Write it down') : t('ask.ask_the_team', 'Ask the team')}
@@ -585,16 +633,8 @@ export default function Questions() {
           <span className="w-11 h-11 rounded-full grid place-items-center bg-accent-soft text-accent">
             <MessageCircleQuestion className="w-5 h-5" />
           </span>
-          <div className="text-lg font-medium text-on-surface">
-            {filter === 'waiting'
-              ? t('ask.empty_waiting_title', 'Nothing waiting')
-              : t('ask.empty_none_title', 'Nothing asked yet')}
-          </div>
-          <p className="text-sm text-on-surface-variant max-w-[44ch] text-pretty">
-            {filter === 'waiting'
-              ? t('ask.empty_waiting_sub', 'Every question has an answer on it.')
-              : t('ask.empty_none_sub', 'A question with no person attached belongs here.')}
-          </p>
+          <div className="text-lg font-medium text-on-surface">{emptyCopy.title}</div>
+          <p className="text-sm text-on-surface-variant max-w-[44ch] text-pretty">{emptyCopy.sub}</p>
         </div>
       ) : (
         <div className="columns-1 lg:columns-2 gap-4">

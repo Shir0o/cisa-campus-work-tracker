@@ -197,6 +197,60 @@ describe('Questions for the team page (#646)', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
       expect(screen.getByText('Start with something about their day.')).toBeInTheDocument();
     });
+
+    it('says nothing is waiting only when something has been answered (#1767)', () => {
+      // One answered question and nothing else: the Waiting tab is legitimately
+      // empty, and this is the only state where the sentence is true.
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS.filter((q) => q.id !== 'q1'));
+        return () => {};
+      });
+      renderPage();
+      expect(screen.getByText('Nothing waiting')).toBeInTheDocument();
+      expect(screen.getByText('Every question has an answer on it.')).toBeInTheDocument();
+    });
+
+    it('does not call an empty Answered tab an empty board (#1767)', () => {
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS.filter((q) => q.id !== 'r1'));
+        return () => {};
+      });
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+      expect(screen.getByText('Nothing answered yet')).toBeInTheDocument();
+      expect(screen.queryByText('Nothing asked yet')).not.toBeInTheDocument();
+    });
+  });
+
+  it('a board nobody has written on yet says so on every tab (#1767)', () => {
+    vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+      cb([]);
+      return () => {};
+    });
+    renderPage();
+    // Waiting is the default tab; a first-run reader used to be told every
+    // question had an answer when none had ever been asked.
+    expect(screen.getByText('Nothing asked yet')).toBeInTheDocument();
+    expect(screen.queryByText('Every question has an answer on it.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nothing waiting')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+    expect(screen.getByText('Nothing asked yet')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing answered yet')).not.toBeInTheDocument();
+  });
+
+  it('names the ask composer for assistive tech (#1767)', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+    expect(screen.getByLabelText('Your question for the team')).toBeInTheDocument();
+  });
+
+  it('never stamps the asker with a role the page cannot know (#1767)', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /^All/ }));
+    // The card used to print "Trainee" over every question, including the
+    // full-timer's own ("Where did we land…" above is written by ft1).
+    expect(screen.queryByText('Trainee')).not.toBeInTheDocument();
   });
 
   describe('a trainee', () => {
@@ -223,6 +277,24 @@ describe('Questions for the team page (#646)', () => {
       expect(screen.getByRole('button', { name: /add to your question/i })).toBeInTheDocument();
       // Ana's question is read-only for a fellow trainee.
       expect(screen.queryByRole('button', { name: /answer ana/i })).not.toBeInTheDocument();
+    });
+
+    it('does not tell a trainee a full-timer will answer a question that has answers (#1767)', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^All/ }));
+      // Ana's question already carries Mei's answer, so the footer that says
+      // "A full-timer will answer this" contradicted the "1 answer" pill.
+      expect(screen.getByText('1 answer')).toBeInTheDocument();
+      expect(screen.queryByText('A full-timer will answer this.')).not.toBeInTheDocument();
+    });
+
+    it('still says a full-timer will answer a question nobody has answered yet (#1767)', () => {
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS.filter((q) => q.id !== 'r1'));
+        return () => {};
+      });
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^All/ }));
       expect(screen.getByText('A full-timer will answer this.')).toBeInTheDocument();
     });
 
