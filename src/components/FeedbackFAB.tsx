@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquarePlus, X, Loader2 } from 'lucide-react';
@@ -18,12 +18,109 @@ export default function FeedbackFAB() {
   const { user, role } = useAuth();
   const isMessagesPage = typeof window !== 'undefined' && window.location.pathname === '/messages';
   const [isOpen, setIsOpen] = useState(false);
+  const [tuckedAway, setTuckedAway] = useState(false);
+  const tuckedRef = useRef(false);
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
   const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle');
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tucking is a visual state, so it is only written when it actually changes:
+  // a scroll fires many frames and each one would otherwise re-render.
+  const setTucked = useCallback((next: boolean) => {
+    if (tuckedRef.current === next) return;
+    tuckedRef.current = next;
+    setTuckedAway(next);
+  }, []);
+
+  // The note button is a convenience, not the page's primary action, and on a
+  // phone it floats over the bottom-right corner of whichever row passes
+  // beneath it (#1785). Tuck it away while the list is being scrolled down and
+  // bring it back on an upward scroll, at the top, at the end of the list, and
+  // when the scrolling stops — so it is never sitting over the row a thumb is
+  // reaching for, and is still there whenever the reader pauses.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    // Phone only. The desktop button keeps its fixed corner and its place;
+    // jsdom has no matchMedia, so an absent one reads as "phone".
+    const phone =
+      typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 767px)') : null;
+
+    let raf = 0;
+    let framePending = false;
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
+    let target: HTMLElement | null = null;
+    // `main` is the shell's only scroller on a phone (issue 1795).
+    const main = document.querySelector('main');
+    // Seed the baseline from where it already sits, so the first scroll event
+    // of a session is a direction and not a free pass.
+    let lastEl: HTMLElement | null = main;
+    let lastY = lastEl?.scrollTop ?? 0;
+
+    const show = () => {
+      if (stopTimer) {
+        clearTimeout(stopTimer);
+        stopTimer = null;
+      }
+      setTucked(false);
+    };
+
+    const hide = () => {
+      setTucked(true);
+      if (stopTimer) clearTimeout(stopTimer);
+      // A pause is the reader looking at the list, not scrolling it: put the
+      // button back so it is reachable without a scroll-up.
+      stopTimer = setTimeout(() => {
+        stopTimer = null;
+        setTucked(false);
+      }, 350);
+    };
+
+    const apply = () => {
+      framePending = false;
+      raf = 0;
+      const el = target;
+      target = null;
+      if (!el) return;
+      if (phone && !phone.matches) {
+        show();
+        return;
+      }
+      const y = el.scrollTop;
+      if (el !== lastEl) {
+        lastEl = el;
+        lastY = y;
+        return;
+      }
+      const dy = y - lastY;
+      lastY = y;
+      const atTop = y <= 8;
+      const atEnd = y + el.clientHeight >= el.scrollHeight - 8;
+      if (atTop || atEnd || dy < -2) show();
+      else if (dy > 2) hide();
+    };
+
+    const onScroll = (event: Event) => {
+      const el = event.target;
+      if (!(el instanceof HTMLElement)) return;
+      // Only the page's own scrollers count. A popover or a panel with its own
+      // scrollbar must not tuck the button away.
+      if (main && el !== main && !main.contains(el)) return;
+      target = el;
+      if (framePending) return;
+      framePending = true;
+      raf = requestAnimationFrame(apply);
+    };
+
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('scroll', onScroll, true);
+      if (raf) cancelAnimationFrame(raf);
+      if (stopTimer) clearTimeout(stopTimer);
+    };
+  }, [setTucked]);
 
   // Both timers outlive a render, and the auto-close one runs 2.2s after a
   // successful send — long enough that the FAB can unmount first (a route
@@ -61,6 +158,7 @@ export default function FeedbackFAB() {
   const close = () => {
     clearAutoClose();
     setIsOpen(false);
+    setTucked(false);
     if (resetTimer.current) clearTimeout(resetTimer.current);
     resetTimer.current = setTimeout(resetForm, 320);
   };
@@ -68,6 +166,7 @@ export default function FeedbackFAB() {
   const openFresh = () => {
     clearAutoClose();
     resetForm();
+    setTucked(false);
     setIsOpen(true);
   };
 
@@ -172,6 +271,10 @@ export default function FeedbackFAB() {
   const activeMeta = kindMeta(kind);
   const { t } = useLanguage();
   const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
+  // Never tucked while the panel it owns is open, and never hidden from the
+  // tab order: opacity + pointer-events keep it reachable, and focusing it
+  // (see onFocus) brings it straight back.
+  const tucked = tuckedAway && !isOpen;
 
   return (
     <>
@@ -185,7 +288,10 @@ export default function FeedbackFAB() {
       <button
         id="feedback-fab-btn"
         onClick={() => (isOpen ? close() : openFresh())}
-        className={`fixed right-4 z-40 w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+        onFocus={() => setTucked(false)}
+        className={`fixed right-4 z-40 w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all duration-200 motion-reduce:transition-none flex items-center justify-center border-none cursor-pointer ${
+          tucked ? 'opacity-0 translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
+        } ${
           isMessagesPage ? 'bottom-28 lg:bottom-28 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
         } ${
           isOpen

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
@@ -71,6 +71,23 @@ describe('User Feedback Feature', () => {
   });
 
   describe('FeedbackFAB', () => {
+    // jsdom answers every media query with `matches: false`, so a test that
+    // wants the phone shell has to say so.
+    const phoneViewport = (matches = true) =>
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            matches: matches && query.includes('max-width'),
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+          }) as unknown as MediaQueryList,
+      );
+
     beforeEach(() => {
       (useAuth as any).mockReturnValue({
         user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
@@ -98,6 +115,91 @@ describe('User Feedback Feature', () => {
 
       expect(screen.getByRole('dialog', { name: 'Leave a note for the team' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    });
+
+    it('tucks the note button away while the phone list scrolls down, and brings it back on scroll-up or at the end (#1785)', () => {
+      // The shell's <main> is the phone's only scroller. Stand one in with
+      // fixed metrics so the scroll direction is what the test controls.
+      const main = document.createElement('main');
+      Object.defineProperty(main, 'scrollTop', { value: 0, writable: true, configurable: true });
+      Object.defineProperty(main, 'scrollHeight', { value: 2000, configurable: true });
+      Object.defineProperty(main, 'clientHeight', { value: 700, configurable: true });
+      document.body.appendChild(main);
+
+      const media = phoneViewport();
+      // Synchronous rAF: the listener is throttled through it, so one frame
+      // per dispatched scroll keeps the assertions deterministic.
+      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+
+      render(<FeedbackFAB />);
+      const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
+      expect(fabBtn.className).not.toContain('pointer-events-none');
+
+      const scrollTo = (y: number) =>
+        act(() => {
+          main.scrollTop = y;
+          main.dispatchEvent(new Event('scroll'));
+        });
+
+      scrollTo(300);
+      expect(fabBtn.className).toContain('pointer-events-none');
+      expect(fabBtn.className).toContain('opacity-0');
+
+      scrollTo(100);
+      expect(fabBtn.className).not.toContain('pointer-events-none');
+
+      // Scrolling down again hides it, but the end of the list always brings
+      // it back — it must be reachable where the reading stops.
+      scrollTo(500);
+      expect(fabBtn.className).toContain('pointer-events-none');
+
+      scrollTo(1300);
+      expect(fabBtn.className).not.toContain('pointer-events-none');
+
+      raf.mockRestore();
+      media.mockRestore();
+      main.remove();
+    });
+
+    it('never tucks the note button away while its own panel is open (#1785)', async () => {
+      const main = document.createElement('main');
+      Object.defineProperty(main, 'scrollTop', { value: 0, writable: true, configurable: true });
+      Object.defineProperty(main, 'scrollHeight', { value: 2000, configurable: true });
+      Object.defineProperty(main, 'clientHeight', { value: 700, configurable: true });
+      document.body.appendChild(main);
+
+      const media = phoneViewport();
+      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+
+      const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
+      const scrollTo = (y: number) =>
+        act(() => {
+          main.scrollTop = y;
+          main.dispatchEvent(new Event('scroll'));
+        });
+
+      scrollTo(300);
+      expect(fabBtn.className).not.toContain('pointer-events-none');
+
+      // With the panel closed the same scroll does tuck it away, so the
+      // assertion above is the open-panel guard and not a dead listener.
+      await userAct.click(screen.getByTitle('Close'));
+      scrollTo(600);
+      expect(fabBtn.className).toContain('pointer-events-none');
+
+      raf.mockRestore();
+      media.mockRestore();
+      main.remove();
     });
 
     it('positions the FAB above the message composer on the messages page', () => {
