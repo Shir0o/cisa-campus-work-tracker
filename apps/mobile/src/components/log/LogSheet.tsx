@@ -49,6 +49,7 @@ import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room, V2Input, V2TextArea } from '../v2/Widget';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useLogSheetData } from '../../lib/useLogSheetData';
 import { addContact } from '../../lib/data/contacts';
@@ -140,6 +141,7 @@ function LogSheetBody({
 }: LogSheetProps) {
   const { c, font, radius, fs } = useV2Theme();
   const { uid, user } = useAuth();
+  const { t } = useLanguage();
   const season = useActiveSeason();
   const { contacts, stages, touches } = useLogSheetData(visible);
 
@@ -650,11 +652,11 @@ function LogSheetBody({
               </View>
 
               <View style={{ marginTop: 16, gap: 10 }}>
-                <Kicker>When</Kicker>
+                <Kicker>{t('mobile.contact.log_when')}</Kicker>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <Chip label="Just now" on={draft.whenKind === 'now'} onPress={() => set('whenKind', 'now')} />
+                  <Chip label={t('mobile.contact.log_when_now')} on={draft.whenKind === 'now'} onPress={() => set('whenKind', 'now')} />
                   <Chip
-                    label="Yesterday"
+                    label={t('mobile.contact.log_when_yesterday')}
                     on={draft.whenKind === 'yesterday'}
                     onPress={() => setDraft((d) => ({ ...d, whenKind: 'yesterday', when: addDays(new Date(), -1).toISOString() }))}
                   />
