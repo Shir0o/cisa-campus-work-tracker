@@ -32,9 +32,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const READER_PATH = join(process.cwd(), 'src/components/bibleStudy/StudyReaderView.tsx');
+const ROUTE_PATH = join(process.cwd(), 'src/views/BibleStudyRead.tsx');
 
 describe('study-reader panel sizing guardrail (#913)', () => {
   const source = readFileSync(READER_PATH, 'utf8');
+  const route = readFileSync(ROUTE_PATH, 'utf8');
 
   it('sizes a Section panel to the scroll container, not the viewport', () => {
     // The panel is the element carrying `data-section-panel`; its className
@@ -44,7 +46,7 @@ describe('study-reader panel sizing guardrail (#913)', () => {
     const panelIdx = lines.findIndex((line) => line.includes('data-section-panel'));
     expect(panelIdx, 'panel element should exist').toBeGreaterThanOrEqual(0);
     const panelClassLine = lines
-      .slice(panelIdx, panelIdx + 3)
+      .slice(panelIdx, panelIdx + 10)
       .find((line) => line.includes('className'));
     expect(panelClassLine, 'panel className should exist').toBeDefined();
     expect(panelClassLine!).toMatch(/min-h-full/);
@@ -84,5 +86,44 @@ describe('study-reader panel sizing guardrail (#913)', () => {
     // stays at the bottom of the panel.
     expect(source).toMatch(/min-h-full/);
     expect(source).not.toMatch(/snap-always/);
+  });
+
+  it('gives the reader a definite height inside the shell’s scrolling <main> (#1770)', () => {
+    // The shell's <main> is a *block* that scrolls the page, so the route's
+    // `flex-1` wrapper was inert and the reader's `h-full` resolved against
+    // 3,031px of content instead of the 611px the pane can show. Measured at
+    // 375×812: the deck's clientHeight equalled its scrollHeight (3,031), it
+    // never scrolled, the page's own pane scrolled instead, and every piece of
+    // reader chrome sat at content coordinates — the counter read 02/04 over
+    // Section 1, the progress rail was 2,327px below the fold, the Section
+    // index grip was 1,448px down, and the "sticky" header was 1,143px above
+    // the viewport after one screen of scrolling. With a claimed height the
+    // deck is 539px and scrolls, the rail sits at 647, the grip at 303, and
+    // the counter follows 01 → 04.
+    const readerIdx = route.split('\n').findIndex((line) => line.includes('<StudyReaderView'));
+    expect(readerIdx, 'the route should render StudyReaderView').toBeGreaterThanOrEqual(0);
+    // The wrapper immediately above the reader's own `w-full h-full` box. It
+    // has to be `h-full` (the pane's 611px) and never `flex-1` (inert, because
+    // the shell's <main> is display:block).
+    expect(route).toMatch(/<div className="h-full min-h-0 flex">/);
+    expect(route).not.toMatch(/<div className="flex-1 min-h-0 flex">/);
+  });
+
+  it('keeps a readable measure on a 375px phone (#1770)', () => {
+    // Measured at 375×812 at the 20px default: the 24px panel padding plus the
+    // 22px card inset spent 92px of the 375 on margins and left a 270px column
+    // — 26 characters on the rendered first line and 24 in the 23px Passage.
+    // On the scrolling (phone) deck the insets are now 12 + 16: a 340px card
+    // and a 306px column, 34 characters on the first line.
+    const lines = source.split('\n');
+    const panelIdx = lines.findIndex((line) => line.includes('data-section-panel'));
+    const panelClassLine = lines.slice(panelIdx, panelIdx + 10).find((line) => line.includes('className'))!;
+    expect(panelClassLine).toMatch(/\bpx-3\b/);
+    expect(panelClassLine).not.toMatch(/\bpx-6\b/);
+
+    const cardIdx = lines.findIndex((line) => line.includes('data-reader-card'));
+    const cardClassLine = lines.slice(cardIdx, cardIdx + 6).find((line) => line.includes('className'))!;
+    expect(cardClassLine).toMatch(/\bpx-4\b/);
+    expect(cardClassLine).not.toMatch(/px-\[22px\]/);
   });
 });

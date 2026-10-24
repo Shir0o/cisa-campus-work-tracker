@@ -56,11 +56,13 @@ describe('reader card-on-ground guardrail (#922)', () => {
     const cardIdx = lines.findIndex((line) => line.includes('data-reader-card'));
     expect(cardIdx, 'card element should exist').toBeGreaterThanOrEqual(0);
     const cardClassLine = lines
-      .slice(cardIdx, cardIdx + 3)
+      .slice(cardIdx, cardIdx + 6)
       .find((line) => line.includes('className'));
     expect(cardClassLine, 'card className should exist').toBeDefined();
     expect(cardClassLine!).toMatch(/rounded-\[24px\]/);
-    expect(cardClassLine!).toMatch(/px-\[22px\]/);
+    // 16px, down from 22 (#1770): the card inset plus the panel's 12px ground
+    // is what buys the phone a 306px measure instead of 270.
+    expect(cardClassLine!).toMatch(/px-4\b/);
     expect(cardClassLine!).toMatch(/py-6/);
     expect(cardClassLine!).toMatch(/shadow-\[var\(--reader-elev\)\]/);
     expect(cardClassLine!).toMatch(/bg-\[var\(--reader-card\)\]/);
