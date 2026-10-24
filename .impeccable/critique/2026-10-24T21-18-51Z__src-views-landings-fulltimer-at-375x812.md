@@ -156,8 +156,40 @@ The good news is that the *systems* are sound. ADR 0022's one Reviewed state agr
 - **Screen**: `/visits` (`WhoWeHaventSeen` → `HomeBlock`)
 - **What**: each home renders `min-w-[640px]` — a 140px person column plus twelve 28px month columns plus "since" — inside an `overflow-x-auto` wrapper that is **320px** wide. Measured: **95 elements** past the right edge of the 375px viewport. What you see is Nov→Oct; the "since" column, the visit dots and September–October's context are off-screen.
 - **Why it matters**: the reading's entire question is "how long since we sat with this person", and that column is the one that does not fit. ADR 0031 decision 4 forbids reordering to compensate, so the fix is a phone composition (a shorter window, or a per-person row), not a scrollbar.
-- **Fix**: **none in this pass** — changing the window to six months changes what "never" means under ADR 0031 decision 2/3, which is a design decision. Filed as a follow-up with the measurements.
+- **Fix**: **none in this pass** — changing the window to six months changes what "never" means under ADR 0031 decision 2/3, which is a design decision. Filed as **#1857** with the measurements.
 - **Suggested command**: `/impeccable layout`
+
+### [P2] The home puts other people's work before the reader's own
+- **Screen**: `/` — five trainee questions occupy y=475→2166 (1,691px); "On you" starts at 2166. ADR 0015 calls My Day "a skim dashboard of *your own* work". Filed as **#1859**; options are in the issue (a one-line count, a one-card cap, or a collapsed section).
+- **Suggested command**: `/impeccable layout`
+
+### [P2] The home's section links and prayer pills are still sub-44px
+- **Screen**: `/` — "Your contacts" 99×16 (×2), "Full calendar" 78×16, prayer status pills 25px, "for {name}" 20px, "Prayer Log" 17px. The prayer page already solved this with a coarse-pointer rule; the home rows never got it. Filed as **#1858**.
+- **Suggested command**: `/impeccable adapt`
+
+### [P2] Around reads "8 to work through" over "Nothing here is waiting on you"
+- **Screen**: `/around` — both are true (the team's work is not yours) but they sit 60px apart and read as a contradiction. One of the two lines should carry the distinction, not both.
+- **Suggested command**: `/impeccable clarify`
+
+### [P2] Weeks says the current week twice
+- **Screen**: `/bible-study` — "WHAT A SCAN OPENS RIGHT NOW → Peace that holds, Sat, Oct 24" sits directly above the week row "01 Peace that holds · Sat, Oct 24 · 4 sections · publ…", and the row's meta is truncated by the "Live now" pill. Filed as **#1860**.
+- **Suggested command**: `/impeccable distill`
+
+### [P2] The editor's toolbar and breadcrumb are 16–26px
+- **Screen**: `/bible-study/:meetingId` — "All weeks" 16px, Insert 26px, Prompts 26px, Bold/Italic 24×24, Save/Unpublish 34px; and the title input has no accessible name (placeholder only). Filed as **#1861**.
+- **Suggested command**: `/impeccable adapt`
+
+### [P2] The suggestion queue is owner-only
+- **Screen**: `/suggestions` — `isAppOwner` matches one email; the brief says Full-timer. Filed as **#1862** as a decision, not a defect.
+- **Suggested command**: `/impeccable clarify`
+
+### [P3] Small type below the caption floor
+- **Screens**: `/` (11px "No answer yet…", "EVERYTHING ELSE"), `/visits` (10px month labels and "person"), `/bible-study` (10px week number, 10.5px eyebrow). 10px is below DESIGN's caption floor and is the same token weight as the labels above it.
+- **Suggested command**: `/impeccable typeset`
+
+### [P3] Data-quality names read as names
+- **Screens**: `/around`, `/` — "No Email", "No Owner", "Old Caregiver" are seeded contact names from the legacy fixtures. Not a layout defect, but they make every screenshot of the page look broken; the fixtures should read as people.
+- **Suggested command**: `/impeccable harden`
 
 ## Persona Red Flags
 
