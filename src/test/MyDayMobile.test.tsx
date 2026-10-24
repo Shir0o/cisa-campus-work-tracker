@@ -62,7 +62,7 @@ describe('MyDayMobile', () => {
 
     render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
 
-    expect(screen.getByText('Good morning, John.')).toBeInTheDocument();
+    expect(screen.getByText(/^Good (morning|afternoon|evening), John\.$/)).toBeInTheDocument();
     expect(screen.getByText('Your sheep')).toBeInTheDocument();
     expect(screen.getByText('No contacts in your care yet.')).toBeInTheDocument();
 
@@ -71,6 +71,24 @@ describe('MyDayMobile', () => {
 
     expect(screen.getByText('Your prayers')).toBeInTheDocument();
     expect(screen.getByText('No prayers held currently.')).toBeInTheDocument();
+  });
+
+  it('counts a single prayer as a prayer, not "1 prayers" (#1776)', () => {
+    (useAuth as any).mockReturnValue({
+      user: { displayName: 'John Doe' },
+    });
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[{ id: 'p1', contactId: 'c1', status: 'ongoing' } as any]}
+        stages={[]}
+      />,
+    );
+
+    expect(screen.getByText(/1 prayer to pray for/)).toBeInTheDocument();
+    expect(screen.queryByText(/1 prayers to pray for/)).not.toBeInTheDocument();
   });
 
   it('renders contacts, events, and prayers correctly', () => {
@@ -111,7 +129,7 @@ describe('MyDayMobile', () => {
     });
 
     render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
-    expect(screen.getByText('Good morning, friend.')).toBeInTheDocument();
+    expect(screen.getByText(/^Good (morning|afternoon|evening), friend\.$/)).toBeInTheDocument();
   });
 
   it('renders different event configurations gracefully', () => {
@@ -797,6 +815,6 @@ describe('MyDayMobile', () => {
 
     render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
 
-    expect(screen.getByText(/Good morning, Jordan\./)).toBeInTheDocument();
+    expect(screen.getByText(/^Good (morning|afternoon|evening), Jordan\.$/)).toBeInTheDocument();
   });
 });

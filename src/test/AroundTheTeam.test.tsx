@@ -310,7 +310,41 @@ describe('Around the team page (#943)', () => {
     expect(screen.getByText('Aisha Rahman')).toBeInTheDocument();
   });
 
-  // ── Paged by day (#943) ──────────────────────────────────────────────────
+  it('gives a day from another year its year (#1776)', () => {
+    // "Wednesday, December 31" in a year that is not the current one reads as
+    // a date that has not happened yet.
+    const old = new Date(2025, 11, 31, 12, 0).toISOString();
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact({ id: 'old-year', name: 'Old Year', createdAt: old })]}
+          interactions={[
+            {
+              id: 'i-old-year',
+              contactId: 'old-year',
+              userId: 'mei',
+              content: 'Last December',
+              createdAt: old,
+              dateTime: old,
+              type: 'meetup',
+              title: 'Last December',
+            } as unknown as Interaction,
+          ]}
+          threads={[]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+
+    const expected = new Date(2025, 11, 31).toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    expect(screen.getByRole('heading', { name: expected })).toBeInTheDocument();
+  });
+
   it('groups rows under day headings, newest first', () => {
     const old = new Date(Date.now() - 2 * 86_400_000).toISOString();
     renderPage();

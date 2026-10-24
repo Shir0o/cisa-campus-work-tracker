@@ -77,7 +77,11 @@ describe('VisitsMobile', () => {
   it('opens on the reading and invites the first home', () => {
     render(<VisitsMobile {...baseProps} />);
     expect(screen.getByText('Visits')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: "Who we haven't seen" })).toBeInTheDocument();
+    // On the phone the tab names the reading; repeating it as an h2 under the
+    // page header printed the same two lines twice (#1776).
+    expect(screen.queryByRole('heading', { name: "Who we haven't seen" })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Who we haven't seen" })).toBeInTheDocument();
+    expect(screen.queryByText("Going to where someone lives says something a coffee can't.")).toBeInTheDocument();
     expect(screen.getByText(/No homes yet/)).toBeInTheDocument();
     expect(screen.getByText('Manage homes')).toBeInTheDocument();
   });

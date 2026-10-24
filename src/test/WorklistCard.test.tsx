@@ -417,5 +417,25 @@ describe("the worklist card, through On you (#813, #943)", () => {
     fireEvent.click(noteEl());
     expect(noteEl().className).toContain("line-clamp-2");
   });
+
+  it("never clamps the body on a phone, where the card is not tiling a grid (#1776)", () => {
+    // A 2-line clamp on a 375px card cut the very question the reader has to
+    // answer ("Should we invite her to the small group dinner next Tuesday?").
+    const longNote =
+      "He talked for a long time about his family back home, and about why he stopped going to meetings.";
+    const c = contact({ id: "c_mobile", name: "David Kim", notes: longNote, carers: ["u1"] });
+
+    render(
+      <OnYouCard
+        contacts={[c]}
+        interactions={[]}
+        threads={[]}
+        staffNameMap={{ u3: "Ale" }}
+        mobile
+      />,
+    );
+
+    expect(screen.getByText(longNote).className).not.toContain("line-clamp-2");
+  });
 });
 

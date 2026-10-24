@@ -45,6 +45,16 @@ export const getGreeting = () => {
   return "Good evening";
 };
 
+/** The localized greeting key for a given hour — the phone and desktop must
+ *  never wish someone good morning at 1pm, and a Spanish page must not answer
+ *  in English. */
+export const greetingKey = (now: Date = new Date()) => {
+  const hour = now.getHours();
+  if (hour < 12) return "myDay.good_morning";
+  if (hour < 18) return "myDay.good_afternoon";
+  return "myDay.good_evening";
+};
+
 // Shared input/label classes for the inline editors and composers.
 export const editInputClass =
   "w-full px-3 py-2 rounded-sm border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none";

@@ -64,6 +64,16 @@ function dayLabel(iso: any): string {
   const days = Math.round((startOf(today) - startOf(d)) / 86_400_000);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
+  // A day from another year needs its year: "Wednesday, December 31" on a
+  // phone in October reads as a date that has not happened yet (#1776).
+  if (d.getFullYear() !== today.getFullYear()) {
+    return d.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
   return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
 
@@ -453,7 +463,7 @@ export default function AroundTheTeam({
                 aria-pressed={newOnly}
                 onClick={() => setNewOnly(true)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
+                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer min-h-11 min-w-11",
                   newOnly
                     ? "bg-surface text-on-surface font-semibold shadow-xs"
                     : "text-on-surface-variant font-medium hover:text-on-surface",
@@ -466,7 +476,7 @@ export default function AroundTheTeam({
                 aria-pressed={!newOnly}
                 onClick={() => setNewOnly(false)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
+                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer min-h-11 min-w-11",
                   !newOnly
                     ? "bg-surface text-on-surface font-semibold shadow-xs"
                     : "text-on-surface-variant font-medium hover:text-on-surface",
@@ -479,7 +489,7 @@ export default function AroundTheTeam({
               <button
                 type="button"
                 onClick={handleMarkAllReviewed}
-                className="text-xs font-medium text-accent hover:underline cursor-pointer"
+                className="text-xs font-medium text-accent hover:underline cursor-pointer min-h-11 px-1"
               >
                 {t("whatsNew.mark_all_reviewed")}
               </button>
@@ -518,7 +528,7 @@ export default function AroundTheTeam({
                 onClick={() => setTeam(tm.id)}
                 aria-pressed={team === tm.id}
                 className={cn(
-                  "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
+                  "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer min-h-11",
                   team === tm.id
                     ? "bg-background text-on-surface"
                     : "text-on-surface-variant hover:text-on-surface",
@@ -540,7 +550,7 @@ export default function AroundTheTeam({
               value={effectiveWho ?? "all"}
               onChange={(e) => setWho(e.target.value === "all" ? null : e.target.value)}
               aria-label={t("whatsNew.filter_by_person")}
-              className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
+              className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer h-full"
             >
               <option value="all">
                 {team

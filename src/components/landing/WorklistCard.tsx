@@ -420,7 +420,11 @@ export function WorklistCard({
               onClick={() => setNoteExpanded((v) => !v)}
               className={cn(
                 "text-xs text-on-surface-variant/90 mt-1 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2 cursor-pointer hover:bg-surface-variant/60 transition-colors",
-                !stripOpen && !noteExpanded && "line-clamp-2",
+                // The clamp exists for the desktop three-up grid, where every
+                // tile has to be the same height. A phone stacks one card per
+                // row, so a clamped body there only hides the thing the reader
+                // has to read to answer it (#1776).
+                !mobile && !stripOpen && !noteExpanded && "line-clamp-2",
               )}
               text={latestText}
             />

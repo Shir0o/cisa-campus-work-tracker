@@ -27,6 +27,7 @@ import PointerCard from '../components/landing/PointerCard';
 import AskStack from '../components/landing/AskStack';
 import BnpbReviewCard from '../components/landing/BnpbReviewCard';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
+import { greetingKey } from '../components/landing/helpers';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import KindChip from "../components/ui/KindChip";
@@ -252,10 +253,16 @@ export default function MyDayMobile({
           {format(new Date(), "EEEE, MMMM d")}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">
-          {t('myDay.good_morning').replace('{name}', firstName)}
+          {t(greetingKey()).replace('{name}', firstName)}
         </h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 mdm-line">
-          {t('myDay.caring_for').replace('{people}', String(myLeaders.length)).replace('{tasks}', String(leftToDo)).replace('{prayers}', String(prayersCount))}
+          {t('myDay.caring_for')
+            .replace('{peopleUnit}', t(myLeaders.length === 1 ? 'myDay.unit_person' : 'myDay.unit_people'))
+            .replace('{tasksUnit}', t(leftToDo === 1 ? 'myDay.unit_task' : 'myDay.unit_tasks'))
+            .replace('{prayersUnit}', t(prayersCount === 1 ? 'myDay.unit_prayer' : 'myDay.unit_prayers'))
+            .replace('{people}', String(myLeaders.length))
+            .replace('{tasks}', String(leftToDo))
+            .replace('{prayers}', String(prayersCount))}
         </p>
         <div className="flex gap-2.5 mt-4 mdm-actions">
           <button
@@ -500,7 +507,7 @@ export default function MyDayMobile({
           ) : (
             <button
               onClick={() => setAddingTask(true)}
-              className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
+              className="w-full min-h-11 py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
               <Plus className="w-4 h-4" /> {t('myDay.add_a_task')}
             </button>
@@ -706,7 +713,7 @@ export default function MyDayMobile({
           ) : (
             <button
               onClick={() => setAddPP(true)}
-              className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
+              className="w-full min-h-11 py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
               <Plus className="w-4 h-4" /> {t('myDay.add_a_personal_prayer')}
             </button>
