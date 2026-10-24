@@ -76,12 +76,23 @@ export default function BibleStudyRead() {
 
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
   const [entryPointsLoaded, setEntryPointsLoaded] = useState(false);
+  // The entry-point list is this route's first question; a rejected listen
+  // used to leave `entryPointsLoaded` false and pulse "Loading Bible Study…"
+  // forever with no exit (#1770).
+  const [entryPointsError, setEntryPointsError] = useState(false);
   useEffect(
     () =>
-      subscribeEntryPoints(db, (eps) => {
-        setEntryPoints(eps);
-        setEntryPointsLoaded(true);
-      }),
+      subscribeEntryPoints(
+        db,
+        (eps) => {
+          setEntryPoints(eps);
+          setEntryPointsLoaded(true);
+        },
+        () => {
+          setEntryPointsLoaded(true);
+          setEntryPointsError(true);
+        },
+      ),
     [],
   );
 
@@ -110,7 +121,7 @@ export default function BibleStudyRead() {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const { loading, entryPoint, resolution, meeting, staleDateLabel } = useResolvedStudy(slug);
+  const { loading, entryPoint, resolution, meeting, staleDateLabel, loadError } = useResolvedStudy(slug);
 
   // Restore-on-return (#946): read once, at mount, so it is an opening
   // position rather than an owner of the reader's scroll.
@@ -138,6 +149,31 @@ export default function BibleStudyRead() {
     return (
       <div className="flex-1 flex items-center justify-center text-on-surface-variant">
         <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
+      </div>
+    );
+  }
+
+  // A failed subscription looks exactly like an empty term in `resolution`, so
+  // this is checked before every empty state: a Trainee on campus wifi must not
+  // be told the study is over (#1770 — measured: the meetings listen aborted,
+  // and at 15s the page read "Between terms · Nothing running right now").
+  // Try again reloads rather than re-subscribing, for the same reason the
+  // public route does: the Firestore channel holds its reconnect backoff, so a
+  // second listen on the same client keeps answering from the failed cache.
+  if (loadError || entryPointsError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div role="alert" className="flex flex-col items-center">
+          <h1 className="font-serif text-2xl mb-2 font-medium">{t('study.load_failed')}</h1>
+          <p className="text-on-surface-variant text-sm max-w-sm">{t('study.load_failed_body')}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 h-11 px-5 rounded-full bg-on-surface text-background text-sm font-medium"
+          >
+            {t('study.try_again')}
+          </button>
+        </div>
       </div>
     );
   }
@@ -232,8 +268,16 @@ export default function BibleStudyRead() {
   // The reader fills the app shell's content area so it can measure a wide
   // box and page (#1590); the nav and the way back are the app's own rather
   // than a dead end.
+  //
+  // `h-full`, not `flex-1` (#1770): the shell's <main> is a block that scrolls
+  // the page, so `flex-1` here was inert and the reader's own `h-full`
+  // resolved against its content instead of the pane — measured at 375×812,
+  // a 3,031px deck that never scrolled, a counter reading 02/04 over
+  // Section 1, a progress rail 2,327px below the fold, and a sticky header
+  // that scrolled away. Claiming the pane's height gives the reader back the
+  // scroll it owns.
   return (
-    <div className="flex-1 min-h-0 flex">
+    <div className="h-full min-h-0 flex">
       <div className="w-full h-full bg-background text-on-surface relative overflow-hidden flex flex-col">
         <StudyReaderView
           meeting={meeting!}

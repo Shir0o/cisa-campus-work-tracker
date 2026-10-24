@@ -804,7 +804,11 @@
     "index": "Índice de secciones",
     "close_hint": "Toca en cualquier sitio para cerrar",
     "blank_reveal": "Espacio en blanco, toca para revelar",
-    "no_sections": "Esta semana aún no tiene secciones."
+    "no_sections": "Esta semana aún no tiene secciones.",
+    "prompt_discuss": "Conversar",
+    "prompt_activity": "Actividad",
+    "prompt_apply": "Aplicar",
+    "prompt_question": "Pregunta"
   },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",

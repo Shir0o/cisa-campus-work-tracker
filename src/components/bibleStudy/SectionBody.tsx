@@ -133,6 +133,7 @@ export type SectionBodyProps = {
 };
 
 const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBlanks, onRevealBlank, only }) => {
+  const { t } = useLanguage();
   // Nested sub-points (ADR 0013 §Decision 2) render a nested <ul>/<ol>
   // inside the parent <li>, so the reader and the editor preview — one
   // rendering path — show the author's outline. Blank reveal keys extend
@@ -291,7 +292,16 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 className={`${toneClass.bg} rounded-[20px] p-4 sm:p-5 flex flex-col gap-2`}
               >
                 <div className={`text-[11px] font-bold tracking-widest uppercase ${toneClass.text}`}>
-                  {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
+                  {/* The four kind labels follow the session language (#1770):
+                      a Spanish reader used to get "DISCUSS" over every prompt
+                      while the rest of the chrome was in Spanish. */}
+                  {k === 'discuss'
+                    ? t('reader.prompt_discuss')
+                    : k === 'activity'
+                      ? t('reader.prompt_activity')
+                      : k === 'apply'
+                        ? t('reader.prompt_apply')
+                        : t('reader.prompt_question')}
                 </div>
                 {block.prompt.text && (
                   <p className="m-0 text-[length:var(--reader-fs)] leading-relaxed text-on-surface">{block.prompt.text}</p>
