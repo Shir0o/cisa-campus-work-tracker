@@ -8,6 +8,8 @@ import {
   firstMetDate,
   followUpDefaultText,
   logSavedBeat,
+  logWhenInstant,
+  logWhenLabel,
   logSavedLine,
   logSheetFootLine,
   newContactFromLog,
@@ -370,5 +372,28 @@ describe('interactionKindLabel', () => {
     for (const kind of QUICK_CAPTURE_KINDS) {
       expect(interactionKindLabel(kind.id)).not.toBe('Conversation');
     }
+  });
+});
+
+describe('logWhenInstant / logWhenLabel — backdating a logged conversation', () => {
+  // Mon Jul 20 2026, 2:30pm local.
+  const NOW = new Date(2026, 6, 20, 14, 30).getTime();
+
+  it('composes a picked day and time into a local instant', () => {
+    expect(new Date(logWhenInstant('2026-07-18', 9, 15, NOW)).getTime()).toBe(
+      new Date(2026, 6, 18, 9, 15).getTime(),
+    );
+  });
+
+  it('never lands in the future: a later time today clamps to now', () => {
+    expect(new Date(logWhenInstant('2026-07-20', 18, 0, NOW)).getTime()).toBe(NOW);
+    expect(new Date(logWhenInstant('2026-07-25', 9, 0, NOW)).getTime()).toBe(NOW);
+  });
+
+  it('labels today, yesterday and older days with the time', () => {
+    const at = (d: number, h: number, m = 0) => new Date(2026, 6, d, h, m).toISOString();
+    expect(logWhenLabel(at(20, 9, 5), NOW)).toBe('Today, 9:05 AM');
+    expect(logWhenLabel(at(19, 21), NOW)).toBe('Yesterday, 9:00 PM');
+    expect(logWhenLabel(at(14, 12), NOW)).toBe('Tue, Jul 14, 12:00 PM');
   });
 });

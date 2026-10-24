@@ -3,7 +3,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { ReminderCalendar } from './LogSheet';
+import { ReminderCalendar, WhenPicker } from './LogSheet';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: undefined, user: null, role: null }),
@@ -56,5 +56,67 @@ describe('ReminderCalendar (#1709)', () => {
   it('opens on the month of an already-picked day', async () => {
     const { getByText } = await renderCal(jest.fn(), '2026-09-03');
     expect(getByText('September 2026')).toBeTruthy();
+  });
+});
+
+describe('ReminderCalendar past mode', () => {
+  const renderPast = async (onPick = jest.fn()) =>
+    await render(
+      <ThemeProvider>
+        <ReminderCalendar past selected={null} onPick={onPick} now={NOW} />
+      </ThemeProvider>,
+    );
+
+  it('picks today and earlier, never a later day', async () => {
+    const onPick = jest.fn();
+    const { getByLabelText } = await renderPast(onPick);
+    await fireEvent.press(getByLabelText('Tue, Jul 21'));
+    expect(onPick).not.toHaveBeenCalled();
+    await fireEvent.press(getByLabelText('Mon, Jul 20'));
+    expect(onPick).toHaveBeenLastCalledWith('2026-07-20');
+    await fireEvent.press(getByLabelText('Wed, Jul 1'));
+    expect(onPick).toHaveBeenLastCalledWith('2026-07-01');
+  });
+
+  it('pages back freely, and not forward past the current month', async () => {
+    const { getByLabelText, getByText } = await renderPast();
+    await fireEvent.press(getByLabelText('Next month'));
+    expect(getByText('July 2026')).toBeTruthy();
+    await fireEvent.press(getByLabelText('Previous month'));
+    expect(getByText('June 2026')).toBeTruthy();
+  });
+});
+
+describe('WhenPicker', () => {
+  const renderPicker = async (onChange = jest.fn()) =>
+    await render(
+      <ThemeProvider>
+        <WhenPicker now={NOW} onChange={onChange} />
+      </ThemeProvider>,
+    );
+
+  it('starts at now and reports the picked day at the shown time', async () => {
+    const onChange = jest.fn();
+    const { getByLabelText, getByText } = await renderPicker(onChange);
+    expect(getByText('12:00 PM')).toBeTruthy();
+    await fireEvent.press(getByLabelText('Fri, Jul 10'));
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 6, 10, 12, 0).toISOString());
+  });
+
+  it('steps hours and 5-minute marks', async () => {
+    const onChange = jest.fn();
+    const { getByLabelText, getByText } = await renderPicker(onChange);
+    await fireEvent.press(getByLabelText('Earlier hour'));
+    await fireEvent.press(getByLabelText('Later minute'));
+    expect(getByText('11:05 AM')).toBeTruthy();
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 6, 20, 11, 5).toISOString());
+  });
+
+  it('flips AM/PM', async () => {
+    const onChange = jest.fn();
+    const { getByLabelText, getByText } = await renderPicker(onChange);
+    await fireEvent.press(getByLabelText('Switch to AM'));
+    expect(getByText('12:00 AM')).toBeTruthy();
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 6, 20, 0, 0).toISOString());
   });
 });

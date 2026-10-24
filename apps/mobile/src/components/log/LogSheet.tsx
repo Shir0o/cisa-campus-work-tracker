@@ -15,7 +15,7 @@
 import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { addMonths, format, startOfMonth } from 'date-fns';
+import { addDays, addMonths, format, startOfMonth } from 'date-fns';
 import {
   FIRST_MET_PRESETS,
   QUICK_CAPTURE_KINDS,
@@ -26,6 +26,8 @@ import {
   followUpDefaultText,
   findDuplicateContact,
   logSavedBeat,
+  logWhenInstant,
+  logWhenLabel,
   logSheetFootLine,
   newContactFromLog,
   prayerAddedLine,
@@ -47,6 +49,7 @@ import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room, V2Input, V2TextArea } from '../v2/Widget';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useLogSheetData } from '../../lib/useLogSheetData';
 import { addContact } from '../../lib/data/contacts';
@@ -83,6 +86,9 @@ interface Draft {
   major: string;
   stage: string;
   met: FirstMetPreset;
+  /** When the conversation happened: now (stamped on save), yesterday, or a picked instant. */
+  whenKind: 'now' | 'yesterday' | 'pick';
+  when: string;
 }
 
 export interface LogSheetProps {
@@ -135,6 +141,7 @@ function LogSheetBody({
 }: LogSheetProps) {
   const { c, font, radius, fs } = useV2Theme();
   const { uid, user } = useAuth();
+  const { t } = useLanguage();
   const season = useActiveSeason();
   const { contacts, stages, touches } = useLogSheetData(visible);
 
@@ -154,6 +161,8 @@ function LogSheetBody({
     major: '',
     stage: '',
     met: 'today',
+    whenKind: 'now',
+    when: '',
   });
 
   const [draft, setDraft] = useState<Draft>(blank);
@@ -252,7 +261,7 @@ function LogSheetBody({
       await addInteraction(
         contact.id,
         contact.name,
-        { content: body.trim(), dateTime: new Date().toISOString(), type: kind },
+        { content: body.trim(), dateTime: draft.whenKind === 'now' ? new Date().toISOString() : draft.when, type: kind },
         { uid, name: user?.displayName ?? '', photoURL: user?.photoURL ?? null },
       );
       // A follow-up you said you'd do is a promise; logging it keeps it.
@@ -642,6 +651,30 @@ function LogSheetBody({
                 />
               </View>
 
+              <View style={{ marginTop: 16, gap: 10 }}>
+                <Kicker>{t('mobile.contact.log_when')}</Kicker>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <Chip label={t('mobile.contact.log_when_now')} on={draft.whenKind === 'now'} onPress={() => set('whenKind', 'now')} />
+                  <Chip
+                    label={t('mobile.contact.log_when_yesterday')}
+                    on={draft.whenKind === 'yesterday'}
+                    onPress={() => setDraft((d) => ({ ...d, whenKind: 'yesterday', when: addDays(new Date(), -1).toISOString() }))}
+                  />
+                  <Chip
+                    label={draft.whenKind === 'pick' ? logWhenLabel(draft.when) : 'Pick date & time'}
+                    on={draft.whenKind === 'pick'}
+                    onPress={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        whenKind: 'pick',
+                        when: d.whenKind === 'pick' ? d.when : new Date().toISOString(),
+                      }))
+                    }
+                  />
+                </View>
+                {draft.whenKind === 'pick' && <WhenPicker onChange={(iso) => set('when', iso)} />}
+              </View>
+
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
                 <View style={{ flex: 1 }}>
                   <PrimaryButton
@@ -896,22 +929,27 @@ function DoneRow({ head, sub }: { head: string; sub: string }) {
 /** The follow-up's "Pick a date" (#1709): a month of days drawn from plain
  * views, so it needs no native date-picker module and ships over the air.
  * Days run from tomorrow on — the earliest preset — since a nudge set for
- * this morning would already be in the past. */
+ * this morning would already be in the past. `past` flips it for the log
+ * sheet's "When": today and earlier are open, later days are not. */
 export function ReminderCalendar({
   selected,
   onPick,
   now: nowProp,
+  past = false,
 }: {
   selected: string | null;
   onPick: (date: string) => void;
   now?: number;
+  past?: boolean;
 }) {
   const { c, font, fs } = useV2Theme();
   const [now] = useState(() => nowProp ?? Date.now());
   const earliest = reminderDueDate('tom', now);
   const firstMonth = startOfMonth(new Date(now));
   const [month, setMonth] = useState(() => startOfMonth(selected ? new Date(`${selected}T00:00:00`) : new Date(now)));
-  const canGoBack = month > firstMonth;
+  const today = format(new Date(now), 'yyyy-MM-dd');
+  const canGoBack = past || month > firstMonth;
+  const canGoForward = !past || month < firstMonth;
   const cell = { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' } as const;
   return (
     <View style={{ gap: 6 }}>
@@ -928,9 +966,10 @@ export function ReminderCalendar({
         <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>{format(month, 'MMMM yyyy')}</Text>
         <Pressable
           onPress={() => setMonth(addMonths(month, 1))}
+          disabled={!canGoForward}
           accessibilityLabel="Next month"
           hitSlop={8}
-          style={{ padding: 6 }}
+          style={{ padding: 6, opacity: canGoForward ? 1 : 0.3 }}
         >
           <Ionicons name="chevron-forward" size={18} color={c.card.ink2} />
         </Pressable>
@@ -946,7 +985,7 @@ export function ReminderCalendar({
         <View key={wi} style={{ flexDirection: 'row' }}>
           {week.map((iso, di) => {
             if (!iso) return <View key={di} style={cell} />;
-            const open = iso >= earliest;
+            const open = past ? iso <= today : iso >= earliest;
             const on = iso === selected;
             return (
               <Pressable
@@ -983,6 +1022,50 @@ export function ReminderCalendar({
           })}
         </View>
       ))}
+    </View>
+  );
+}
+
+/** The log sheet's "Pick date & time": a past-only calendar and a stepper for
+ * the time of day. Plain views throughout, like the follow-up calendar. Reports
+ * the instant (an ISO string) on every change; starts at `now`. */
+export function WhenPicker({ now: nowProp, onChange }: { now?: number; onChange: (iso: string) => void }) {
+  const { c, font, fs } = useV2Theme();
+  const [now] = useState(() => nowProp ?? Date.now());
+  const [day, setDay] = useState(() => format(new Date(now), 'yyyy-MM-dd'));
+  const [hour, setHour] = useState(() => new Date(now).getHours());
+  const [minute, setMinute] = useState(() => Math.floor(new Date(now).getMinutes() / 5) * 5);
+  const update = (d: string, h: number, m: number) => {
+    setDay(d);
+    setHour(h);
+    setMinute(m);
+    onChange(logWhenInstant(d, h, m, now));
+  };
+  const pm = hour >= 12;
+  const shown = `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${pm ? 'PM' : 'AM'}`;
+  const step = (label: string, glyph: 'chevron-back' | 'chevron-forward', onPress: () => void) => (
+    <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={8} style={{ padding: 8 }}>
+      <Ionicons name={glyph} size={18} color={c.card.ink2} />
+    </Pressable>
+  );
+  return (
+    <View style={{ gap: 10 }}>
+      <ReminderCalendar past now={now} selected={day} onPick={(d) => update(d, hour, minute)} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+        {step('Earlier hour', 'chevron-back', () => update(day, (hour + 23) % 24, minute))}
+        {step('Later hour', 'chevron-forward', () => update(day, (hour + 1) % 24, minute))}
+        <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink, minWidth: 92, textAlign: 'center' }}>
+          {shown}
+        </Text>
+        {step('Earlier minute', 'chevron-back', () => update(day, hour, (minute + 55) % 60))}
+        {step('Later minute', 'chevron-forward', () => update(day, hour, (minute + 5) % 60))}
+        <Chip
+          label={pm ? 'PM' : 'AM'}
+          on={false}
+          onPress={() => update(day, (hour + 12) % 24, minute)}
+          accessibilityLabel={`Switch to ${pm ? 'AM' : 'PM'}`}
+        />
+      </View>
     </View>
   );
 }
@@ -1057,11 +1140,22 @@ function Tile({
 
 /** The design's `.m2-chip` — a pickable word. Not `V2Seg`, which is a segmented
  * control over a fixed, always-visible set. */
-function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+function Chip({
+  label,
+  on,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
   const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
+      accessibilityLabel={accessibilityLabel}
       style={{
         minHeight: 40,
         justifyContent: 'center',

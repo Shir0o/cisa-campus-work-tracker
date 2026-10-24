@@ -4,7 +4,7 @@
 // logger, which is a different, multi-contact flow). The Firestore reads/
 // writes reuse the already-existing addContact/addInteraction/addTodo/
 // addPrayer wrappers — see the mobile QuickCaptureSheet component.
-import { format, getDay, getDaysInMonth, parseISO } from "date-fns";
+import { format, getDay, getDaysInMonth, isSameDay, parseISO, subDays } from "date-fns";
 import { firstName } from "./history";
 import { daysSince, lastTouchByContact, parseMs, type Touch } from "./myday";
 import { onCampusSummary, type OnCampusWindow } from "./queue";
@@ -156,6 +156,25 @@ export function reminderCalendarWeeks(month: Date): (string | null)[][] {
 
 /** "Fri, Aug 14" — a picked follow-up date, on its chip and its done row. */
 export const reminderDateLabel = (iso: string): string => format(parseISO(iso), "EEE, MMM d");
+
+/** The instant a logged conversation happened: a picked day (`yyyy-MM-dd`) at
+ * a local hour/minute, as an ISO string for `Interaction.dateTime`. A
+ * conversation can't be in the future, so anything past `now` clamps to it. */
+export function logWhenInstant(day: string, hour: number, minute: number, now: number = Date.now()): string {
+  const d = parseISO(day);
+  d.setHours(hour, minute, 0, 0);
+  return new Date(Math.min(d.getTime(), now)).toISOString();
+}
+
+/** "Today, 9:05 AM" / "Yesterday, 9:00 PM" / "Tue, Jul 14, 12:00 PM" — the
+ * log sheet's "When" chip once a time has been picked. */
+export function logWhenLabel(iso: string, now: number = Date.now()): string {
+  const d = new Date(iso);
+  const time = format(d, "h:mm a");
+  if (isSameDay(d, now)) return `Today, ${time}`;
+  if (isSameDay(d, subDays(now, 1))) return `Yesterday, ${time}`;
+  return `${format(d, "EEE, MMM d")}, ${time}`;
+}
 
 /** Title/body for a reminder's local notification — title mirrors the
  * Firestore task's own title, body is just the contact's name for context. */
