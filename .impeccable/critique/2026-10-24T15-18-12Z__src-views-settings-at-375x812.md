@@ -95,6 +95,20 @@ Nothing here needs a concept. It needs an honest phone pass: one section that st
 - **Why it matters**: settings is a lookup task. On a phone the page is a scroll you survive, and density is the only thing standing between a reader and the one control they came for.
 - **Fix**: **none in this pass.** An index, a phone-side collapse, or moving the two developer consoles behind an “Advanced” door are each a structural decision that changes what this page is — larger than a fix, and the instruction for this pass was not to redesign Settings. Filed as **#1816** with these measurements. The P0 above removed the only section on the page that was *wrong* rather than merely long.
 
+### [P2] Forty-eight of sixty-eight phone targets are under 44px — filed
+- **What**: measured on the live page — reminder weekday chips **26px** tall (21 of them), team chips **26px**, both `Switch` tracks **44×24**, the account edit pencil **26×26**, the roster's ⋯ **32×32**, “Generate new token” **24px**, “Copy” **24px**, “Enable browser notifications” **36px**, and “Send test notification”, “Show getting started checklist” and “Scan & Purge…” all **38px**. Only 2 fall under the WCAG 2.2 24px floor (a checkbox inside a larger label, and an inline link).
+- **Why it matters**: one-handed use while walking is the real context, and the weekday chips are the densest control on the page — seven 26px targets in a 296px pill row, repeated once per team.
+- **Fix**: **none in this pass** — it is a sweep of ~40 class sites in a 3,549-line file, larger than the rest of this diff. Filed as **#1817** with the full table. It also carries “Generate new token”, the one unconfirmed destructive control on the page: one tap replaces the credential pasted into the ~/attd app.
+
+### [P2] The radius ladder is inverted, page-wide — filed
+- **What**: every card on the page (`rounded-3xl`) computes **40px** where DESIGN.md §Card says 24px — and the shell it sits in is 32px, so the child is larger than its parent (Monotonic Radius Rule). Every text input (`rounded-xl`) computes **24px** on a 49px field, where §Control/Input says 10px and the No-Stadium-Input Rule forbids `rounded-xl` under 60px. Buttons compute 24px against a 14px spec, and nested panels 32px inside the 40px cards.
+- **Why it matters**: it is the same drift the Prayer list pass fixed for one card, at page scale; nothing about it is unreadable, so it did not distort a heuristic here — it is why Consistency scored 1.
+- **Fix**: **none in this pass.** The cascade is the problem: dropping cards to 24px without dropping the inner `rounded-2xl` panels to `rounded-lg` would invert the ladder the other way, so 28 containers and 24 nested panels have to move together. Filed as **#1817**.
+
+### [P3] Small duplications and mislabels
+- **What**: “Off” is said twice in the Security card (`<p>Off</p>` plus an amber “Off” badge); `On`/`Off` inside every `Switch` track is hardcoded English; the language card's note was written in Spanish on the English page (“Traducción inteligente en vivo”); the flag emoji carried `role="img"` with the same `aria-label` as the visible word beside it, so a screen reader said “English English Default language”; the shared-calendar control is a raw 17×17 `<input type=checkbox>` rather than the shared `Switch` primitive.
+- **Fix**: the two accessibility ones are fixed in this pass (the flag is now decorative, and the language note is keyed). The duplicated “Off”, the `Switch`'s English `On`/`Off` and the raw checkbox are left — the first is a copy decision, and the other two belong with the remaining translation and radius work (**#1818**, **#1817**).
+
 ## Persona Red Flags
 
 - **Alex (Full-timer, one thumb, between meetings)**:
@@ -114,14 +128,9 @@ Nothing here needs a concept. It needs an honest phone pass: one section that st
 
 ## Minor Observations
 
-- “Off” is said twice in the Security card: `<p>Off</p>` under the label, and an amber “Off” badge on the right. One of them is redundant; the badge alone would do.
 - The Appearance cards are 101×118 with a 12px note that wraps to two lines (“Match my device”); the Navigation cards were 101×150 because “The original horizontal bar” wrapped to four lines in a 101px column. Three abreast is right for a desktop shell and tight for a phone.
-- The Spanish flag card's note was written in Spanish on the English page (“Traducción inteligente en vivo”) — now `Live smart translation` in English and the Spanish line in Spanish.
-- `On`/`Off` inside every `Switch` track is hardcoded English; it is `aria-hidden`, so no one hears it, but a Spanish reader sees it. Filed as **#1818**.
 - The roles card's count sentence is “{n} sections accessible” — a plural-only template. It reads “6 sections accessible” today; “1 sections accessible” is unreachable because no role has one, but the template has no singular.
 - The Student/Community render of the same route is **3,985px** and nine sections — a third of the length. The Full-timer's page is long because it carries the whole team's admin, not because Settings is intrinsically long.
-- The account card's edit pencil is **26×26**, the roster's ⋯ is **32×32**, and “Member options” is the only door to edit or remove a person.
-- The shared-calendar checkbox is a raw 17×17 `<input type=checkbox>` inside a `<label>`; the label is the real target and it works, but it is the one control on the page that is not the shared `Switch` primitive.
 - The language switch is immediate and has no undo — choosing Español re-renders the page under the reader's finger, mid-scroll. It is the right behaviour, but there is no “still loading the translation” state.
 - The page title and section headers are set in Plus Jakarta Sans via `font-serif`; DESIGN.md's Scripture Exclusivity Rule reserves Literata for scripture, and this file never uses it — consistent with the rest of the app, noted only.
 - The bottom nav does not cover the last section: at `scrollTop=10046` the “API & webhook console” panel and “A note on access” sit clear of the 64px bar. The shell's clearance (#1795) is doing its job here — not reported.
