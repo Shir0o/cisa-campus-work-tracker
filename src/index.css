@@ -165,8 +165,10 @@
 
     /* Stage tones — Ink chroma and lightness raised; the eight hue angles and
        the legacy `board-*` names are unchanged (board stage colours are
-       persisted in Firestore as class-name strings). */
-    --tone-l: 0.55;
+       persisted in Firestore as class-name strings).
+       11px ink on its own 14% wash clears AA from L 0.44 (#1784); the dark
+       block can sit higher because its page is the darker side of the pair. */
+    --tone-l: 0.44;
     --tone-c: 0.15;
     --tone-a: 0.14;
 
