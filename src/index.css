@@ -975,7 +975,7 @@ body.bdoc-fs-on main { overflow: hidden; }
      relational nudge, compact section heads (verbose subs dropped), and contact
      rows where the whole row opens the person + a trailing Message tap-target. */
   .md-mobile .mdm-hero { margin-bottom: 18px; }
-  .mdm-eyebrow { font-size: 12.5px; color: var(--text-mute);  margin-bottom: 8px; }
+  .mdm-eyebrow { font-size: 12.5px; color: var(--text-dim);  margin-bottom: 8px; }
   .mdm-greet {
     font-family: var(--font-serif); font-size: 29px; font-weight: 500;
     letter-spacing: -0.018em; line-height: 1.1; margin: 0 0 10px;

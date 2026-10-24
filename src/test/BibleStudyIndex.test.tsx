@@ -121,6 +121,14 @@ describe('BibleStudyIndex view', () => {
     });
   });
 
+  it('names the page with a real heading (#1776)', () => {
+    renderIndex();
+
+    // There was no h1 at all: the first thing on a phone was the entry-point
+    // card, and assistive tech never learned what the page is.
+    expect(screen.getByRole('heading', { level: 1, name: 'Bible study' })).toBeInTheDocument();
+  });
+
   it('lists the weeks newest first with date, section count and publish state', async () => {
     renderIndex();
 
