@@ -4,7 +4,7 @@ total_score: 23
 max_score: 40
 na_heuristics:
 p0_count: 1
-p1_count: 11
+p1_count: 10
 target_identity: "file:/Users/twang/cisa-campus-work-tracker/.worktrees/issue-1776/src/views/MyDayMobile.tsx"
 timestamp: 2026-10-24T21-18-51Z
 slug: src-views-landings-fulltimer-at-375x812
