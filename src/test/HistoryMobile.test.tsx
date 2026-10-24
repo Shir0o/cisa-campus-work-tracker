@@ -2,6 +2,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import HistoryMobile from '../views/HistoryMobile';
 
+// A row written by the webhook / batch ingest / tag engine: `createdAt` is a
+// Firestore Timestamp, not the ISO string `logActivity` writes.
+const TIMESTAMP_SHAPE = {
+  seconds: 1_760_000_000,
+  nanoseconds: 0,
+  toDate: () => new Date(1_760_000_000_000),
+  toMillis: () => 1_760_000_000_000,
+};
+
 const humanize = vi.fn((_a: any): any => ({
   bucket: 'talk',
   icon: () => <span>·</span>,
@@ -23,6 +32,9 @@ const baseProps = {
   setKind: vi.fn(),
   who: 'all',
   setWho: vi.fn(),
+  q: '',
+  setQ: vi.fn(),
+  onClearFilters: vi.fn(),
   staff: ['Sarah Chen', 'Tom Lee'],
   onOpenContact: vi.fn(),
   humanize,
@@ -51,13 +63,36 @@ describe('HistoryMobile', () => {
   it('renders the header with moment count and people remembered', () => {
     render(<HistoryMobile {...baseProps} activities={[{}, {}] as any} peopleRemembered={3} />);
     expect(screen.getByText('Looking back')).toBeInTheDocument();
-    expect(screen.getByText('2 moments')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText(/2 moments across the team, touching 3 of the people in our care/)).toBeInTheDocument();
   });
 
-  it('shows the empty state when there are no rows', () => {
+  it('says nothing has been logged yet when the record itself is empty', () => {
     render(<HistoryMobile {...baseProps} />);
-    expect(screen.getByText('No logged moments match these filters.')).toBeInTheDocument();
+    expect(screen.getByText(/No moments yet/i)).toBeInTheDocument();
+    // The filter sentence is the filter's, not the empty record's.
+    expect(screen.queryByText(/match these filters/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show everything/i })).not.toBeInTheDocument();
+  });
+
+  it('says the filter matched nothing, and offers a way back to everything', () => {
+    const onClearFilters = vi.fn();
+    render(
+      <HistoryMobile
+        {...baseProps}
+        kind="prayer"
+        who="Sarah Chen"
+        onClearFilters={onClearFilters}
+      />,
+    );
+    expect(screen.getByText('Nothing here yet for that filter')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Show everything/i }));
+    expect(onClearFilters).toHaveBeenCalled();
+  });
+
+  it('announces that it is still gathering instead of claiming the record is empty', () => {
+    render(<HistoryMobile {...baseProps} loading />);
+    expect(screen.getByText('Gathering the last few days…')).toBeInTheDocument();
+    expect(screen.queryByText(/No moments yet/i)).not.toBeInTheDocument();
   });
 
   it('shows a Show older control only when more may exist', () => {
@@ -92,6 +127,28 @@ describe('HistoryMobile', () => {
     render(<HistoryMobile {...baseProps} rows={[itemRow()]} onOpenContact={onOpenContact} />);
     fireEvent.click(screen.getByText('Jane'));
     expect(onOpenContact).toHaveBeenCalledWith('c1');
+  });
+
+  it('gives the person a real button, so a keyboard can open them (#1768)', () => {
+    const onOpenContact = vi.fn();
+    render(<HistoryMobile {...baseProps} rows={[itemRow()]} onOpenContact={onOpenContact} />);
+    const name = screen.getByRole('button', { name: 'Jane' });
+    fireEvent.click(name);
+    // The row's own click must not fire a second time from the button.
+    expect(onOpenContact).toHaveBeenCalledTimes(1);
+    expect(onOpenContact).toHaveBeenCalledWith('c1');
+  });
+
+  it('renders a moment whose createdAt is a Firestore Timestamp instead of crashing', () => {
+    const { container } = render(
+      <HistoryMobile
+        {...baseProps}
+        rows={[itemRow({ createdAt: TIMESTAMP_SHAPE })]}
+        dayInfo={(() => ({ label: 'Today', sub: 'October 24' })) as any}
+      />,
+    );
+    expect(screen.getByText(/said hi to/)).toBeInTheDocument();
+    expect(container.querySelector('.hist-time')?.textContent).toMatch(/\d/);
   });
 
   it('does not open a contact for items without a contactId', () => {
@@ -164,7 +221,7 @@ describe('HistoryMobile', () => {
     expect(setWho).toHaveBeenCalledWith('Tom Lee');
   });
 
-  it('clears the who-chip and closes the sheet from the close button, scrim, and Apply filters', () => {
+  it('closes the sheet from the close button, scrim, Done and Escape', () => {
     const setWho = vi.fn();
     render(<HistoryMobile {...baseProps} who="Sarah Chen" setWho={setWho} />);
 
@@ -181,7 +238,27 @@ describe('HistoryMobile', () => {
     expect(screen.queryByText('Team member')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Filter history'));
-    fireEvent.click(screen.getByText('Apply filters'));
+    fireEvent.click(screen.getByText('Done'));
     expect(screen.queryByText('Team member')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Filter history'));
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(screen.queryByText('Team member')).not.toBeInTheDocument();
+  });
+
+  it('names the filter sheet as a dialog with a title', () => {
+    render(<HistoryMobile {...baseProps} />);
+    fireEvent.click(screen.getByText('Filter history'));
+    const sheet = screen.getByRole('dialog');
+    expect(sheet).toHaveAttribute('aria-modal', 'true');
+    expect(sheet).toHaveAccessibleName('Filter history');
+  });
+
+  it('finds a moment by typing, so a long record is searchable on a phone', () => {
+    const setQ = vi.fn();
+    render(<HistoryMobile {...baseProps} setQ={setQ} />);
+    fireEvent.click(screen.getByText('Filter history'));
+    fireEvent.change(screen.getByPlaceholderText('Find a moment or a name…'), { target: { value: 'chaplaincy' } });
+    expect(setQ).toHaveBeenCalledWith('chaplaincy');
   });
 });

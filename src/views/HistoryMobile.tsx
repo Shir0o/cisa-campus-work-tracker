@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import { Filter, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Filter, Search, X, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact } from '../types';
+import { clockLabel } from './historyTime';
 
 interface Hist {
   id: string;
@@ -37,8 +37,12 @@ interface HistoryMobileProps {
   setKind: (kind: any) => void;
   who: string;
   setWho: (who: string) => void;
+  q: string;
+  setQ: (q: string) => void;
   staff: string[];
   onOpenContact: (contactId?: string) => void;
+  onClearFilters: () => void;
+  loading?: boolean;
   humanize: (a: Hist) => Humanized;
   dayInfo: (iso: string) => { label: string; sub: string };
   firstName: (name: string) => string;
@@ -71,32 +75,56 @@ export default function HistoryMobile({
   setKind,
   who,
   setWho,
+  q,
+  setQ,
   staff,
   onOpenContact,
+  onClearFilters,
+  loading = false,
   humanize,
   dayInfo,
   firstName,
   hasMore,
   onShowOlder,
 }: HistoryMobileProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const activeCount = (kind !== 'all' ? 1 : 0) + (who !== 'all' ? 1 : 0);
+  // Escape closes the sheet: it is a dialog, and a phone with a keyboard (or a
+  // screen reader's escape) should not be trapped in it.
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFilterOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filterOpen]);
+
+  const hasFilters = kind !== 'all' || who !== 'all' || q.trim() !== '';
+  const activeCount = (kind !== 'all' ? 1 : 0) + (who !== 'all' ? 1 : 0) + (q.trim() ? 1 : 0);
   const activeKindEntry = KINDS.find((k) => k.id === kind);
   const kindLabel = activeKindEntry ? t(activeKindEntry.i18nKey, activeKindEntry.label) : undefined;
   const whoLabel = who === 'all' ? null : firstName(who);
+  const today = new Date().toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' });
+  const momentWord = activities.length === 1 ? t('history.moment', 'moment') : t('history.moments', 'moments');
+  const deck = t(
+    'history.deck',
+    'The small, faithful work of these days — {moments} across the team, touching {people} of the people in our care.',
+  )
+    .replace('{moments}', `${activities.length} ${momentWord}`)
+    .replace('{people}', String(peopleRemembered));
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page history history--m" data-role="ft">
       {/* ── Header ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 hism-hero">
-        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1">
-          {format(new Date(), 'EEEE, MMMM d')}
+        <div className="text-xs text-on-surface-variant font-semibold mb-1">
+          {today}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 hism-state">
-          The small, faithful work of these days — <b className="font-semibold text-on-surface">{activities.length} moments</b> across the team, touching <b className="font-semibold text-on-surface">{peopleRemembered}</b> of the people in our care.
+          {deck}
         </p>
       </header>
 
@@ -123,7 +151,8 @@ export default function HistoryMobile({
             {kind !== 'all' && (
               <button
                 onClick={() => setKind('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
+                aria-label={t('history.remove_filter', 'Remove filter: {name}').replace('{name}', kindLabel ?? '')}
+                className="inline-flex items-center gap-1.5 px-3 min-h-10 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
               >
                 {kindLabel}
                 <X className="w-3.5 h-3.5" />
@@ -132,9 +161,20 @@ export default function HistoryMobile({
             {who !== 'all' && (
               <button
                 onClick={() => setWho('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
+                aria-label={t('history.remove_filter', 'Remove filter: {name}').replace('{name}', whoLabel ?? '')}
+                className="inline-flex items-center gap-1.5 px-3 min-h-10 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
               >
                 {whoLabel}
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {q.trim() !== '' && (
+              <button
+                onClick={() => setQ('')}
+                aria-label={t('history.remove_filter', 'Remove filter: {name}').replace('{name}', q)}
+                className="inline-flex items-center gap-1.5 px-3 min-h-10 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
+              >
+                “{q}”
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -144,9 +184,26 @@ export default function HistoryMobile({
 
       {/* ── Unbroken history stream ── */}
       <section className="px-5 mt-4 flex-1">
-        {rows.length === 0 ? (
-          <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 shadow-inner">
-            No logged moments match these filters.
+        {loading ? (
+          <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-xl border border-outline-variant/40">
+            {t('history.gathering_last_few_days')}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="py-12 text-center text-sm text-on-surface-variant bg-surface/40 rounded-xl border border-dashed border-outline-variant/40">
+            <p className="italic">
+              {hasFilters
+                ? t('history.nothing_yet_filter')
+                : t('history.nothing_logged', 'No moments yet — the first thing you write down will land here.')}
+            </p>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="mt-3 inline-flex items-center min-h-10 px-3 text-sm font-semibold text-accent underline underline-offset-2"
+              >
+                {t('history.show_everything', 'Show everything')}
+              </button>
+            )}
           </div>
         ) : (
           <div className="relative border-l border-outline-variant/40 ml-3 pl-5 space-y-6">
@@ -171,7 +228,11 @@ export default function HistoryMobile({
               const uFirst = firstName(a.user);
 
               return (
-                <div key={row.key} className="relative group hist-body" onClick={() => a.contactId && onOpenContact(a.contactId)}>
+                <div
+                  key={row.key}
+                  className={cn("relative group hist-body", a.contactId && "cursor-pointer")}
+                  onClick={() => a.contactId && onOpenContact(a.contactId)}
+                >
                   {/* Timeline dot */}
                   <span
                     className={cn(
@@ -187,13 +248,21 @@ export default function HistoryMobile({
                   <div className="min-w-0 flex-1">
                     <div className="text-sm leading-snug text-on-surface-variant/95 hist-line">
                       <b className="font-semibold text-on-surface">{uFirst}</b> {h.lead}{' '}
-                      {h.showTarget && (
-                        <span className={cn(
-                          "font-semibold text-on-surface",
-                          a.contactId && "underline decoration-outline-variant/60 underline-offset-2 cursor-pointer hover:text-accent hover:decoration-primary transition-all"
-                        )}>
-                          {a.target}
-                        </span>
+                      {h.showTarget && a.target && (
+                        a.contactId ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenContact(a.contactId);
+                            }}
+                            className="font-semibold text-on-surface underline decoration-outline-variant/60 underline-offset-2 hover:text-accent hover:decoration-primary transition-all"
+                          >
+                            {a.target}
+                          </button>
+                        ) : (
+                          <span className="font-semibold text-on-surface">{a.target}</span>
+                        )
                       )}
                       {h.tail && ` ${h.tail}`}.
                     </div>
@@ -204,8 +273,8 @@ export default function HistoryMobile({
                       </p>
                     )}
 
-                    <div className="text-[11px] text-on-surface-variant/75 mt-1.5 flex items-center gap-1.5 hist-time">
-                      {format(new Date(a.createdAt), 'h:mm a')}
+                    <div className="text-[11px] text-on-surface-variant mt-1.5 flex items-center gap-1.5 hist-time">
+                      {clockLabel(a.createdAt, language)}
                     </div>
                   </div>
                 </div>
@@ -234,20 +303,23 @@ export default function HistoryMobile({
           onClick={() => setFilterOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-filter-title"
             className="bg-surface rounded-t-2xl shadow-2xl w-full max-h-[85vh] flex flex-col overflow-hidden modal ibxs animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0 ibxs-grab" />
             <div className="flex items-center justify-between px-5 pt-1 ibxs-head">
               <div className="ibxs-headtext">
-                <h3 className="font-serif text-lg text-on-surface ibxs-title">{t('history.filter_history')}</h3>
+                <h3 id="history-filter-title" className="font-serif text-lg text-on-surface ibxs-title">{t('history.filter_history')}</h3>
                 <p className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
-                  Narrow down logged moments by kind or who.
+                  {t('history.filter_help', 'Narrow down logged moments by kind or who.')}
                 </p>
               </div>
               <button
                 onClick={() => setFilterOpen(false)}
-                className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
+                className="grid place-items-center min-w-11 min-h-11 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
                 aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
@@ -255,18 +327,32 @@ export default function HistoryMobile({
             </div>
 
             <div className="overflow-y-auto px-5 pb-8 pt-4 space-y-6 mds-body">
+              {/* Free-text search: the desktop has one, and a long record needs
+                  it more on a phone than on a keyboard. */}
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" aria-hidden />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t('history.find_moment')}
+                  aria-label={t('history.find_moment')}
+                  className="pl-10 pr-4 h-11 w-full rounded-sm bg-surface border border-outline-variant/80 focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant"
+                />
+              </div>
+
               {/* Kind category */}
               <div>
-                <label className="block text-xs font-semibold   text-on-surface-variant mb-2.5">
-                  Kind of moment
+                <label className="block text-xs font-semibold text-on-surface-variant mb-2.5">
+                  {t('history.kind_of_moment', 'Kind of moment')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {KINDS.map((k) => (
                     <button
                       key={k.id}
                       onClick={() => setKind(k.id)}
+                      aria-pressed={kind === k.id}
                       className={cn(
-                        "px-4 py-2 rounded-full text-xs font-semibold border transition-all",
+                        "px-4 min-h-10 rounded-full text-xs font-semibold border transition-all",
                         kind === k.id
                           ? "bg-primary text-on-primary border-primary "
                           : "bg-surface border-outline-variant/60 text-on-surface-variant hover:bg-surface-variant"
@@ -280,8 +366,8 @@ export default function HistoryMobile({
 
               {/* Staff category */}
               <div>
-                <label className="block text-xs font-semibold   text-on-surface-variant mb-2">
-                  Team member
+                <label className="block text-xs font-semibold text-on-surface-variant mb-2">
+                  {t('history.team_member', 'Team member')}
                 </label>
                 <div className="relative border border-outline-variant/80 rounded-xl bg-surface-container-low">
                   <select
@@ -303,23 +389,25 @@ export default function HistoryMobile({
                 </div>
               </div>
 
-              {/* Reset & Apply */}
+              {/* Reset & Done — the filters apply as you choose them, so the
+                  primary control only closes the sheet. */}
               <div className="pt-4 border-t border-outline-variant/30 flex gap-3">
                 <button
                   onClick={() => {
                     setKind('all');
                     setWho('all');
+                    setQ('');
                     setFilterOpen(false);
                   }}
-                  className="flex-1 py-3 text-center text-sm font-semibold border border-outline-variant/80 text-on-surface-variant hover:bg-surface-variant rounded-xl"
+                  className="flex-1 min-h-11 py-3 text-center text-sm font-semibold border border-outline-variant/80 text-on-surface-variant hover:bg-surface-variant rounded-xl"
                 >
-                  Reset all
+                  {t('history.reset_all', 'Reset all')}
                 </button>
                 <button
                   onClick={() => setFilterOpen(false)}
-                  className="flex-[2] py-3 text-center text-sm font-semibold bg-primary text-on-primary rounded-xl"
+                  className="flex-[2] min-h-11 py-3 text-center text-sm font-semibold bg-primary text-on-primary rounded-xl"
                 >
-                  Apply filters
+                  {t('actions.done')}
                 </button>
               </div>
             </div>
