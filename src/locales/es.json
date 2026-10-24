@@ -2123,6 +2123,8 @@
     "read": "Leído",
     "from_who": "de {name}",
     "unread": "sin leer",
+    "unread_count": "{n} sin leer",
+    "unread_count_more": "Más de {n} sin leer",
     "back_to_list": "Volver a las conversaciones",
     "conversation_details": "Detalles de la conversación",
     "pinned_messages": "Mensajes fijados",
