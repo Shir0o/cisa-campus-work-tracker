@@ -135,6 +135,7 @@ import {
   bodyMarkdownForDisplay,
   persistDocEdit,
   type DocSaveState,
+  type DocMarkdownWriter,
   formatDocNoteMarkdown,
   parseDocTasks,
   parseDocNotes,
@@ -2594,7 +2595,7 @@ export function DocEditor({
   pagesCollapsed: boolean;
   onTogglePages: () => void;
   onLiveMarkdownChange: (md: string) => void;
-  onSaveMarkdown: (id: string, md: string) => Promise<boolean>;
+  onSaveMarkdown: DocMarkdownWriter;
   onSaveTitle: (id: string, title: string) => void;
   onSaveAudience: (id: string, audience: Audience) => void;
   onPromote: (d: BoardDoc) => void;

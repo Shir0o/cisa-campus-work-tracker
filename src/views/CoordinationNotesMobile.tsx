@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, Check, Plus, Search, X, CheckSquare, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup, type DocSaveState } from '../lib/board';
+import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup, type DocSaveState, type DocMarkdownWriter } from '../lib/board';
 import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 import { useLanguage } from '../components/LanguageProvider';
@@ -32,7 +32,7 @@ interface CoordinationNotesMobileProps {
   pagesCollapsed: boolean;
   togglePages: () => void;
   setLiveActiveMd: (md: string | null) => void;
-  saveMarkdown: (id: string, md: string) => Promise<boolean>;
+  saveMarkdown: DocMarkdownWriter;
   saveTitle: (id: string, title: string) => void;
   saveAudience: (id: string, audience: Audience) => void;
   deleteBoardDoc: (d: BoardDoc) => void;

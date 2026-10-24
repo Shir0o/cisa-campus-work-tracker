@@ -320,6 +320,16 @@ export function bodyMarkdownForDisplay(md: string, title: string): string {
 
 export type DocSaveState = 'saved' | 'saving' | 'failed';
 
+/** Saves a page's markdown. Resolves false when the write did not land. */
+export interface DocMarkdownWriter {
+  (id: string, md: string): Promise<boolean>;
+}
+
+/** The write a save indicator follows. Resolves false when it did not land. */
+export interface DocWrite {
+  (): Promise<boolean>;
+}
+
 /**
  * The save indicator follows the write's outcome, not the debounce's.
  *
@@ -327,9 +337,9 @@ export type DocSaveState = 'saved' | 'saving' | 'failed';
  * write landed, so a failed save on a flaky phone connection looked exactly
  * like a successful one (#1772).
  */
-export async function persistDocEdit(save: () => Promise<boolean>): Promise<DocSaveState> {
+export async function persistDocEdit(write: DocWrite): Promise<DocSaveState> {
   try {
-    return (await save()) ? 'saved' : 'failed';
+    return (await write()) ? 'saved' : 'failed';
   } catch {
     return 'failed';
   }
