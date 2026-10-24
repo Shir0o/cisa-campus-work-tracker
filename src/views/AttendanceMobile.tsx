@@ -32,6 +32,12 @@ function useDayNames() {
   };
 }
 
+/** A handler that may write to Firestore (mirrors Attendance's own alias). */
+type AsyncVoid = Promise<void>;
+/** Writes one exact mark for one person — what an Undo needs, including
+ *  "no mark at all" on a week nobody had recorded. */
+type SetAttendanceStatus = (contact: Contact, eventId: string, status: 'present' | 'absent' | undefined) => AsyncVoid;
+
 // A one-off Gathering shown in "Coming up" — no calendar merge anymore
 // (ADR 0016 decision 2), so this is just an upcoming `events` doc.
 export interface UpcomingGathering {
@@ -57,11 +63,7 @@ interface AttendanceMobileProps {
   onDeleteSession: (id: string, name: string) => Promise<void>;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
   /** Writes one exact mark — what an Undo needs, including "no mark at all". */
-  setAttendanceStatus?: (
-    contact: Contact,
-    eventId: string,
-    status: 'present' | 'absent' | undefined,
-  ) => Promise<void>;
+  setAttendanceStatus?: SetAttendanceStatus;
   here: (gathering: Gathering, contactId: string) => boolean;
   RsvpCountComponent: React.ComponentType<{ eventId: string }>;
   team?: TodoPerson[];
@@ -340,11 +342,7 @@ interface RosterSheetProps {
   session: Gathering;
   contacts: Contact[];
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
-  setAttendanceStatus?: (
-    contact: Contact,
-    eventId: string,
-    status: 'present' | 'absent' | undefined,
-  ) => Promise<void>;
+  setAttendanceStatus?: SetAttendanceStatus;
   onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
   confirmDeleteId: string | null;
