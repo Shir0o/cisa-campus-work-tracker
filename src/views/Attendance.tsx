@@ -18,7 +18,7 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addD
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
-import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, presentCount, hydrateGatherings, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
+import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, hydrateGatherings, heldGatherings, averageAttendance, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
 import { subscribeRhythms, uncancelGatheringDoc, cancelGatheringForRhythm } from '../lib/rhythms';
 import {
   buildGatheringViewModel,
@@ -333,16 +333,18 @@ export default function Attendance() {
     }
   };
 
-  const cycleAttendance = async (contact: Contact, eventId: string) => {
-    const event = events.find((e) => e.id === eventId);
-    if (event === undefined) return;
+  /** Writes one person's mark for one Gathering. Split out of the cycle so a
+   *  phone tap can be undone exactly — including the first tap on a week nobody
+   *  had recorded, where "the other state" is no state at all (#1769). */
+  const writeAttendance = async (
+    contact: Contact,
+    event: Gathering,
+    next: GatheringAttendanceStatus | undefined,
+  ) => {
     try {
       let current: GatheringAttendanceStatus | undefined;
       if (isContactPresent(event, contact.id)) current = 'present';
       else if (explicitlyAbsent(event, contact.id)) current = 'absent';
-      const rhythm = event.rhythmId ? rhythmsById.get(event.rhythmId) : undefined;
-      const onRoster = resolveRoster(event, rhythm, new Date()).includes(contact.id);
-      const next = cycleAttendanceStatus(current, onRoster);
       const attendance = applyAttendance(event.attendance, contact.id, next);
       const label = (v: GatheringAttendanceStatus | undefined) =>
         v === 'present' ? t('attendance.present') : v === 'absent' ? t('attendance.absent') : t('attendance.none');
@@ -350,8 +352,8 @@ export default function Attendance() {
       const userName = user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user');
       const userUid = user?.uid || null;
       const legacyMap = { ...((contact as { attendance?: Record<string, boolean | 'absent' | 'late'> }).attendance ?? {}) };
-      if (next === undefined) delete legacyMap[eventId];
-      else legacyMap[eventId] = next === 'present' ? true : 'absent';
+      if (next === undefined) delete legacyMap[event.id];
+      else legacyMap[event.id] = next === 'present' ? true : 'absent';
       const contactUpdate: Record<string, unknown> = {
         attendance: legacyMap,
         updatedAt: new Date().toISOString(),
@@ -368,7 +370,7 @@ export default function Attendance() {
       }
 
       const batch = writeBatch(db);
-      batch.update(doc(db, 'events', eventId), { attendance });
+      batch.update(doc(db, 'events', event.id), { attendance });
       batch.update(doc(db, 'contacts', contact.id), contactUpdate);
       await batch.commit();
       logActivity({
@@ -382,6 +384,27 @@ export default function Attendance() {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     }
+  };
+
+  const cycleAttendance = async (contact: Contact, eventId: string) => {
+    const event = events.find((e) => e.id === eventId);
+    if (event === undefined) return;
+    let current: GatheringAttendanceStatus | undefined;
+    if (isContactPresent(event, contact.id)) current = 'present';
+    else if (explicitlyAbsent(event, contact.id)) current = 'absent';
+    const rhythm = event.rhythmId ? rhythmsById.get(event.rhythmId) : undefined;
+    const onRoster = resolveRoster(event, rhythm, new Date()).includes(contact.id);
+    await writeAttendance(contact, event, cycleAttendanceStatus(current, onRoster));
+  };
+
+  const setAttendanceStatus = async (
+    contact: Contact,
+    eventId: string,
+    next: GatheringAttendanceStatus | undefined,
+  ) => {
+    const event = events.find((e) => e.id === eventId);
+    if (event === undefined) return;
+    await writeAttendance(contact, event, next);
   };
 
   const handleCreateWalkInContact = async (name: string, event: Gathering) => {
@@ -538,13 +561,16 @@ export default function Attendance() {
       .map((ev) => ({ id: ev.id, name: ev.name, date: ev.date, location: ev.location }));
   }, [events]);
 
-  // quiet figures
-  const avgPer = useMemo(() => {
-    if (events.length === 0) return 0;
-    let slots = 0;
-    events.forEach((e) => { slots += presentCount(e); });
-    return Math.round(slots / events.length);
-  }, [events]);
+  // quiet figures — only the Gatherings actually held: a season's "N times"
+  // and "about M people" are claims about the past (#1769).
+  const held = useMemo(() => heldGatherings(events, new Date()), [events]);
+  const avgPer = useMemo(() => averageAttendance(held), [held]);
+  // "When we met" keeps cancelled weeks — they belong to the record — but not
+  // an occasion that has not happened yet.
+  const sessionsHeld = useMemo(
+    () => sessionsNewestFirst.filter((s) => !isFutureEventDate(s.date)),
+    [sessionsNewestFirst],
+  );
 
   // The full view model: this-week band, Rhythm rows, and one-offs. The view
   // below is a renderer of this model and holds no grouping, week-bounding
@@ -607,8 +633,8 @@ export default function Attendance() {
         />
         <AttendanceMobile
           contacts={contacts}
-          events={events}
-          sessions={sessionsNewestFirst}
+          events={held}
+          sessions={sessionsHeld}
           upcoming={upcomingOwnEvents}
           calContext={calContext}
           missed={missed}
@@ -619,6 +645,7 @@ export default function Attendance() {
           onEditSession={(session) => setEditingEvent(session)}
           onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
           cycleAttendance={cycleAttendance}
+          setAttendanceStatus={setAttendanceStatus}
           here={here}
           RsvpCountComponent={RsvpCount}
           team={team}
@@ -686,9 +713,9 @@ export default function Attendance() {
             <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
               We've come together{' '}
               <b className="text-on-surface font-semibold">
-                {events.length} {events.length === 1 ? 'time' : 'times'}
+                {held.length} {held.length === 1 ? 'time' : 'times'}
               </b>
-              {events.length > 0 && (
+              {held.length > 0 && (
                 <>
                   {' '}— about <span className="text-on-surface font-medium">{avgPer}</span>{' '}
                   {avgPer === 1 ? 'person' : 'people'} each time
@@ -982,7 +1009,7 @@ export default function Attendance() {
               </section>
               <aside className="self-start lg:sticky lg:top-4">
                 <FiguresCard
-                  eventsCount={events.length}
+                  eventsCount={held.length}
                   avgPer={avgPer}
                   missedCount={missed.length}
                 />
@@ -991,7 +1018,7 @@ export default function Attendance() {
           </div>
         ) : (
           <div className="mt-12 max-w-sm">
-            <FiguresCard eventsCount={events.length} avgPer={avgPer} missedCount={missed.length} />
+            <FiguresCard eventsCount={held.length} avgPer={avgPer} missedCount={missed.length} />
           </div>
         )}
 

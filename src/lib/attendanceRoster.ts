@@ -34,6 +34,47 @@ export function presentCount(gathering: Gathering): number {
 }
 
 /**
+ * The Gatherings that have actually been held: dated today or earlier, and not
+ * called off. "We've come together N times" and "about M people each time" are
+ * statements about the past — an upcoming occasion and a cancelled week are
+ * neither, and counting them made the page's headline figures untrue.
+ */
+export function heldGatherings(gatherings: Gathering[], now: Date): Gathering[] {
+  const today = startOfDay(now).getTime();
+  return gatherings.filter((gathering) => {
+    if (gathering.cancelled === true) return false;
+    const date = localDay(gathering.date);
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+    return startOfDay(date).getTime() <= today;
+  });
+}
+
+/**
+ * A date-only value ('2026-10-27') names a LOCAL day. `new Date(value)` reads
+ * it as UTC midnight, which renders a day early west of Greenwich — the phone's
+ * "When we met" and "Coming up" disagreed by one day for the same gathering.
+ * Noon keeps the day stable through DST changes.
+ */
+export function localDay(value: string | Date | null | undefined): Date | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return value;
+  return new Date(`${value.slice(0, 10)}T12:00:00`);
+}
+
+/**
+ * How many people came, on average, to the Gatherings actually held — measured
+ * only over the ones somebody recorded. A week nobody took attendance is
+ * unknown, not zero, and counting it as zero understates the team's life.
+ */
+export function averageAttendance(gatherings: Gathering[]): number {
+  const recorded = gatherings.filter((gathering) => gathering.attendance !== undefined);
+  if (recorded.length === 0) return 0;
+  let slots = 0;
+  recorded.forEach((gathering) => { slots += presentCount(gathering); });
+  return Math.round(slots / recorded.length);
+}
+
+/**
  * Resolves who's on the roster for a Gathering.
  *
  * Rule (issue #957 / ADR 0005 amendment): a Rhythm's roster with the

@@ -96,7 +96,7 @@ describe('AttendanceMobile', () => {
     render(
       <AttendanceMobile
         {...baseProps}
-        sessions={[session()]}
+        sessions={[session({ attendance: { present: ['c1'], absent: [] } })]}
         contacts={[contact(), contact({ id: 'c2', name: 'Bob Jones' })]}
         here={here}
       />
@@ -109,7 +109,178 @@ describe('AttendanceMobile', () => {
     expect(screen.getByText('Came')).toBeInTheDocument();
     expect(screen.queryByText('Here')).not.toBeInTheDocument();
     expect(screen.getByText('We missed')).toBeInTheDocument();
-    expect(screen.getByText('Tap a name to cycle.')).toBeInTheDocument();
+    expect(screen.getByText(/Tap a name to cycle/)).toBeInTheDocument();
+  });
+
+  it('says a week nobody recorded is not recorded, on the row and in the sheet (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+        here={vi.fn(() => false)}
+      />
+    );
+    expect(screen.getByText('Not recorded')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.getByText(/Attendance not recorded yet/)).toBeInTheDocument();
+  });
+
+  it('says attendance was recorded when it was (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session({ attendance: { present: [], absent: [] } })]}
+        contacts={[]}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.getByText(/Attendance recorded/)).toBeInTheDocument();
+    expect(screen.queryByText(/Attendance not recorded yet/)).not.toBeInTheDocument();
+  });
+
+  it('never says "Everyone came" for a cancelled week, and offers no marks (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session({ cancelled: true, attendance: { present: [], absent: [] } })]}
+        contacts={[contact()]}
+        resolvedRosterFor={() => ['c1']}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.getByText(/called off/)).toBeInTheDocument();
+    expect(screen.queryByText('Everyone came!')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Alice Smith/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap a name to cycle.')).not.toBeInTheDocument();
+  });
+
+  it('reports a mark and offers Undo, because a tap can record the opposite (#1769)', () => {
+    const setAttendanceStatus = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session({ attendance: { present: ['c1'], absent: [] } })]}
+        contacts={[contact()]}
+        here={vi.fn(() => true)}
+        resolvedRosterFor={() => ['c1']}
+        setAttendanceStatus={setAttendanceStatus}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    fireEvent.click(screen.getByRole('button', { name: /Alice Smith — came\. Tap to mark missed/ }));
+    expect(setAttendanceStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), 's1', 'absent');
+    expect(screen.getByText('Alice Smith moved to We missed')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(setAttendanceStatus).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'c1' }), 's1', 'present');
+  });
+
+  it('undoes the first tap on an unrecorded week back to no mark at all (#1769)', () => {
+    const setAttendanceStatus = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+        here={vi.fn(() => false)}
+        resolvedRosterFor={() => ['c1']}
+        setAttendanceStatus={setAttendanceStatus}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    fireEvent.click(screen.getByRole('button', { name: /Alice Smith — missed\. Tap to mark came/ }));
+    expect(setAttendanceStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), 's1', 'present');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    // The week had no record; undoing the tap must not leave a recorded absence.
+    expect(setAttendanceStatus).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'c1' }), 's1', undefined);
+  });
+
+  it('names the chip state and the tap action for assistive tech (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session({ attendance: { present: [], absent: ['c1'] } })]}
+        contacts={[contact()]}
+        here={vi.fn(() => false)}
+        resolvedRosterFor={() => ['c1']}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.getByRole('button', { name: /Alice Smith — missed\. Tap to mark came/ })).toBeInTheDocument();
+  });
+
+  it('is a labelled dialog that closes on Escape (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('Bible Study');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('hides the manage actions from a Student, and shows them to a Full-timer (#1769)', () => {
+    const { unmount } = render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+        isAdmin={false}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.queryByText('Edit details')).not.toBeInTheDocument();
+    expect(screen.queryByText('Remove')).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+        isAdmin
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    expect(screen.getByText('Edit details')).toBeInTheDocument();
+    expect(screen.getByText('Remove')).toBeInTheDocument();
+  });
+
+  it('opens a missed contact from a real button, and only offers Message when there is a number (#1769)', () => {
+    const onOpenContact = vi.fn();
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        onOpenContact={onOpenContact}
+        missed={[{ contact: contact({ phone: '' }), since: 3, lastSeen: session() }]}
+      />
+    );
+    const row = screen.getByRole('button', { name: /Alice Smith/ });
+    fireEvent.click(row);
+    expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+    expect(screen.queryByLabelText('Message Alice Smith')).not.toBeInTheDocument();
+  });
+
+  it('lists the same day in When we met and Coming up, and follows the reader language (#1769)', () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session({ date: '2026-08-01' })]}
+        upcoming={[{ id: 'e1', name: 'Worship Night', date: '2026-09-14' }]}
+      />
+    );
+    // 2026-08-01 is a Saturday and 2026-09-14 a Monday; a UTC parse would make
+    // both render a day earlier west of Greenwich.
+    expect(screen.getByText('Sat')).toBeInTheDocument();
+    expect(screen.getByText('Sep')).toBeInTheDocument();
+    expect(screen.getByText('14')).toBeInTheDocument();
   });
 
   it('cycles attendance from the roster sheet', () => {
@@ -138,6 +309,7 @@ describe('AttendanceMobile', () => {
         contacts={[contact()]}
         onDeleteSession={onDeleteSession}
         here={vi.fn(() => true)}
+        isAdmin
       />
     );
     fireEvent.click(screen.getByText('Bible Study'));
@@ -168,6 +340,7 @@ describe('AttendanceMobile', () => {
         contacts={[contact()]}
         onEditSession={onEditSession}
         here={vi.fn(() => true)}
+        isAdmin
       />
     );
     fireEvent.click(screen.getByText('Bible Study'));
@@ -226,7 +399,7 @@ describe('AttendanceMobile', () => {
         />
       );
       fireEvent.click(screen.getByText('Bible Study'));
-      expect(screen.getByTitle('Tap to mark present')).toHaveTextContent('Alice Smith');
+      expect(screen.getByRole('button', { name: /Alice Smith — missed/ })).toHaveTextContent('Alice Smith');
       expect(screen.queryByText('walk-in')).not.toBeInTheDocument();
     });
 
