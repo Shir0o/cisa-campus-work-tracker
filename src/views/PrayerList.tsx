@@ -523,6 +523,8 @@ export default function PrayerList() {
           contacts={contacts}
           prayers={teamPrayers}
           entries={filteredEntries}
+          heldTotal={sortedEntries.length}
+          heldIds={sortedEntries.map((e) => e.contact.id)}
           team={team}
           suggestions={suggestions}
           genderFilter={genderFilter}

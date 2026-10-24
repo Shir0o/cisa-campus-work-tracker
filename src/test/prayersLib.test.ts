@@ -16,7 +16,12 @@ import {
   STALE_INTERACTION_DAYS,
   getDaysSinceLastInteraction,
   isContactStale,
+  prayerCarrySummary,
+  isPlaceholderPrayerBurden,
+  PRAYER_PLACEHOLDER_BURDENS,
 } from '../lib/prayers';
+import en from '../locales/en.json';
+import es from '../locales/es.json';
 import { handleFirestoreError } from '../lib/firebase';
 
 const hoisted = vi.hoisted(() => {
@@ -389,3 +394,63 @@ describe('isContactStale', () => {
 });
 
 
+
+
+describe('prayerCarrySummary (#1765)', () => {
+  it('says "Needs marking" for an unmarked prayer — never "All answered"', () => {
+    expect(prayerCarrySummary([{ status: 'pending' }])).toEqual({
+      tone: 'pending',
+      key: 'prayers.needs_marking',
+    });
+  });
+
+  it('lets an unmarked prayer win over an answered sibling', () => {
+    expect(prayerCarrySummary([{ status: 'answered' }, { status: 'pending' }]).key).toBe(
+      'prayers.needs_marking',
+    );
+  });
+
+  it('counts ongoing prayers when none are unmarked', () => {
+    expect(prayerCarrySummary([{ status: 'answered' }, { status: 'ongoing' }, { status: 'ongoing' }])).toEqual({
+      tone: 'accent',
+      key: 'prayers.ongoing_count',
+      count: 2,
+    });
+  });
+
+  it('says "All answered" only when every prayer is answered', () => {
+    expect(prayerCarrySummary([{ status: 'answered' }, { status: 'answered' }]).key).toBe('prayers.all_answered');
+  });
+
+  it('says "All archived" when every prayer is archived', () => {
+    expect(prayerCarrySummary([{ status: 'unanswered' }])).toEqual({
+      tone: 'muted',
+      key: 'prayers.all_archived',
+    });
+  });
+
+  it('says "No prayers yet" for a person with none', () => {
+    expect(prayerCarrySummary([])).toEqual({ tone: 'muted', key: 'prayers.no_prayers_yet' });
+  });
+});
+
+describe('placeholder prayer burdens (#1691, #1765)', () => {
+  it('recognises both strings the app writes, whatever the author locale', () => {
+    for (const text of PRAYER_PLACEHOLDER_BURDENS) {
+      expect(isPlaceholderPrayerBurden(text)).toBe(true);
+    }
+  });
+
+  it('does not mistake real prose for the placeholder', () => {
+    expect(isPlaceholderPrayerBurden('Settling into the new term after the move.')).toBe(false);
+    expect(isPlaceholderPrayerBurden('')).toBe(false);
+    expect(isPlaceholderPrayerBurden(undefined)).toBe(false);
+  });
+
+  it('stays in step with both locale strings', () => {
+    expect(PRAYER_PLACEHOLDER_BURDENS).toEqual([
+      (en as any).prayers.holding_in_prayer,
+      (es as any).prayers.holding_in_prayer,
+    ]);
+  });
+});

@@ -3735,7 +3735,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   /* ── Prayer — mobile-native pass ──────────────────────────────────────
      Compact hero + sheet picker (markup branch in prayer.jsx); person cards
      restructured to read as a native scroll, marks become full-width targets. */
-  .prm { padding-bottom: 26px; }
+  .prm { padding-bottom: 0; }
 
   .prm-hero { padding: 4px 0 20px; margin-bottom: 4px; }
   .prm-eyebrow {
@@ -3755,17 +3755,26 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prm-choose {
     margin-top: 16px; width: 100%; min-height: 48px;
     display: flex; align-items: center; gap: 10px;
-    background: var(--accent-soft); border: 1px solid var(--accent-line);
-    color: var(--accent); border-radius: var(--radius);
+    /* A button, not a text field: the 6% wash read as an input with a value
+       in it (#1765). Secondary per DESIGN.md. */
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius);
     padding: 0 14px; font-family: var(--font-sans); font-size: 14.5px;
     font-weight: 600; cursor: pointer;
   }
   .prm-choose > span:first-of-type { flex: 1; text-align: left; }
   .prm-choose-n {
-    font-size: 12.5px; font-weight: 600; color: var(--accent);
+    font-size: 12.5px; font-weight: 600; color: var(--text-dim);
     background: var(--panel); border-radius: 999px;
     min-width: 24px; height: 22px; padding: 0 8px;
     display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* the on-our-hearts / answered switcher — the selected segment inverts
+     (Inversion Rule) instead of a 6% wash with a drop shadow (#1765). */
+  .prm .ans-toggle { background: var(--panel-2); border: 0; }
+  .prm .ans-toggle-opt.on {
+    background: var(--text); color: var(--bg); box-shadow: none;
   }
 
   /* the sheet-hosted picker */
@@ -3787,7 +3796,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prm-picker .pr-picker-name { font-size: 15px; color: var(--text); font-weight: 500; }
   .prm-picker .pr-picker-meta { font-size: 12.5px; color: var(--text-mute); margin-left: auto; white-space: nowrap; }
   .prm-picker .pr-picker-add { color: var(--accent); flex: none; }
-  .prm-picker .pr-picker-empty { padding: 22px 4px; color: var(--text-mute); font-size: 14px; }
+  .prm-picker .pr-picker-empty { padding: 22px 4px; color: var(--text-dim); font-size: 14px; }
 
   /* — person cards — */
   .prm .prt-list { gap: 14px; }
@@ -3803,8 +3812,11 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prm .prt-head--m .prt-person-id { min-width: 0; flex: 1; }
   .prm .prt-name { font-size: 19px; line-height: 1.15; }
   .prm .prt-head--m .prt-meta {
-    font-size: 12.5px; margin-top: 3px; color: var(--text-mute);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12.5px; margin-top: 3px; color: var(--text-dim);
+    /* Two lines, not an ellipsis: on a team list "who added this person" is
+       the provenance cue, and the mute token was 2.35:1 (#1765). */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .prm .prt-substatus {
     display: flex; align-items: center; gap: 8px; margin-top: 7px;
@@ -3816,14 +3828,15 @@ body.msgs-fullscreen .msgs-rail { display: none; }
     background: var(--accent-soft); color: var(--accent);
   }
   .prm .prt-statuspill.tone-rest { background: var(--success-soft); color: var(--success); }
-  .prm .prt-statuspill.tone-muted { background: var(--panel-2); color: var(--text-mute); }
+  .prm .prt-statuspill.tone-muted { background: var(--panel-2); color: var(--text-dim); }
+  .prm .prt-statuspill.tone-pending { background: var(--panel-2); color: var(--warning); }
   .prm .prt-shep {
     font-size: 12px; color: var(--text-mute);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
   /* remove is always reachable on touch (no hover), pinned top-right */
   .prm .prt-head--m .prt-remove {
-    opacity: 1; flex: none; width: 32px; height: 32px; margin-top: -2px;
+    opacity: 1; flex: none; width: 44px; height: 44px; margin-top: -6px;
   }
 
   .prm .prt-week { margin-top: 16px; }
@@ -3842,12 +3855,18 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prt-prayer--m .prt-mark-head { width: 100%; justify-content: space-between; }
   .prt-prayer-edit--m {
     display: inline-flex; align-items: center; gap: 5px; flex: none;
-    padding: 6px 11px; min-height: 32px;
+    padding: 6px 11px; min-height: 40px;
     border: 1px solid var(--border); border-radius: 8px;
     background: var(--surface-2, var(--surface));
     color: var(--text-dim); font-size: 12.5px; line-height: 1;
   }
   .prt-prayer-edit--m:hover { color: var(--accent); border-color: var(--accent-line); }
+  /* Everything in the prayer's tool row is a 40px target; these are the
+     controls that change or clear a prayer (#1765). */
+  .prt-prayer-tools button,
+  .prt-log-interaction { min-height: 40px; display: inline-flex; align-items: center; }
+  .prt-filter { min-height: 40px; }
+  .prt-prayer-placeholder { display: flex; flex-direction: column; align-items: flex-start; }
   /* Mobile: one native status control instead of a cramped 3-up row */
   .prt-mark-select {
     position: relative; width: 100%;
@@ -3855,6 +3874,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
     background: var(--surface-2, var(--surface));
     transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
   }
+  .prt-mark-label { font-size: 11px; }
   .prt-mark-select select {
     -webkit-appearance: none; appearance: none;
     width: 100%; min-height: 44px;

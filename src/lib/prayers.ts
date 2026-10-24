@@ -213,6 +213,48 @@ export function isContactSister(contact: { gender?: string; pronouns?: string; t
   return false;
 }
 
+/** The carry summary on a person's card: one sentence, plus its tone. */
+export type PrayerCarry = {
+  tone: 'pending' | 'accent' | 'rest' | 'muted';
+  key: string;
+  count?: number;
+};
+
+/**
+ * What a person's card says about their prayers. The order is the point: an
+ * unmarked prayer is the thing to act on, so it can never be summarised as
+ * "All answered" (#1765). Falls through to ongoing, then answered, then
+ * archived, and only says "No prayers yet" when there are none.
+ */
+export function prayerCarrySummary(
+  prayers: { status?: PrayerRecord['status'] }[],
+): PrayerCarry {
+  if (prayers.length === 0) return { tone: 'muted', key: 'prayers.no_prayers_yet' };
+  if (prayers.some((p) => (p.status || 'pending') === 'pending')) {
+    return { tone: 'pending', key: 'prayers.needs_marking' };
+  }
+  const ongoing = prayers.filter((p) => p.status === 'ongoing').length;
+  if (ongoing > 0) return { tone: 'accent', key: 'prayers.ongoing_count', count: ongoing };
+  if (prayers.every((p) => p.status === 'answered')) {
+    return { tone: 'rest', key: 'prayers.all_answered' };
+  }
+  return { tone: 'muted', key: 'prayers.all_archived' };
+}
+
+/**
+ * The two strings the picker and `startHolding` write as a stand-in burden
+ * ("Holding in prayer", #1691). They are held here rather than read from the
+ * reader's locale because the text was stored in the *author's* locale — which
+ * is why a Spanish reader could meet the English string. A card that sees one
+ * renders a prompt instead of printing it as prose (#1765).
+ */
+export const PRAYER_PLACEHOLDER_BURDENS = ['Holding in prayer', 'Sosteniendo en oración'];
+
+export function isPlaceholderPrayerBurden(text: string | undefined | null): boolean {
+  if (!text) return false;
+  return PRAYER_PLACEHOLDER_BURDENS.includes(text.trim());
+}
+
 /**
  * Sorts prayer list entries alphabetically by last name, then first name
  * (case-insensitive) — so the "People we're holding" list reads like a roster.

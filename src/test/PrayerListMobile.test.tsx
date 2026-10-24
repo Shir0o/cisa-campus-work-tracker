@@ -169,7 +169,7 @@ describe('PrayerListMobile', () => {
     const onRemoveFromPrayerList = vi.fn();
     const alice = contact();
     renderWithRouter({ entries: [{ contact: alice, prayers: [prayer()] }], onRemoveFromPrayerList });
-    fireEvent.click(screen.getByTitle('Remove Alice from prayer list'));
+    fireEvent.click(screen.getByTitle("Remove Alice from the team's prayer list"));
     // The way back is the page's Undo snackbar, not an inline Remove / Keep.
     expect(screen.queryByText('Keep')).not.toBeInTheDocument();
     expect(onRemoveFromPrayerList).toHaveBeenCalledWith(alice);
@@ -293,7 +293,7 @@ describe('PrayerListMobile', () => {
   it('leaves the removal alone until the × is pressed', () => {
     const onRemoveFromPrayerList = vi.fn();
     renderWithRouter({ entries: [{ contact: contact(), prayers: [prayer()] }], onRemoveFromPrayerList });
-    expect(screen.getByTitle('Remove Alice from prayer list')).toBeInTheDocument();
+    expect(screen.getByTitle("Remove Alice from the team's prayer list")).toBeInTheDocument();
     expect(onRemoveFromPrayerList).not.toHaveBeenCalled();
   });
 
