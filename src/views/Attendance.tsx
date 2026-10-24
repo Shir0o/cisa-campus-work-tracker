@@ -335,7 +335,7 @@ export default function Attendance() {
 
   /** Writes one person's mark for one Gathering. Split out of the cycle so a
    *  phone tap can be undone exactly — including the first tap on a week nobody
-   *  had recorded, where "the other state" is no state at all (#1769). */
+   *  had recorded, where "the other state" is no state at all (issue 1769). */
   const writeAttendance = async (
     contact: Contact,
     event: Gathering,
@@ -562,7 +562,7 @@ export default function Attendance() {
   }, [events]);
 
   // quiet figures — only the Gatherings actually held: a season's "N times"
-  // and "about M people" are claims about the past (#1769).
+  // and "about M people" are claims about the past (issue 1769).
   const held = useMemo(() => heldGatherings(events, new Date()), [events]);
   const avgPer = useMemo(() => averageAttendance(held), [held]);
   // "When we met" keeps cancelled weeks — they belong to the record — but not

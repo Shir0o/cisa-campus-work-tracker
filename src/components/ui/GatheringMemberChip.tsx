@@ -32,7 +32,7 @@ export default function GatheringMemberChip({
   const name = contact.name;
 
   // The chip never said what it was or what a tap would do, so a screen reader
-  // met "LC Lila Chen" beside a control that quietly records an absence (#1769).
+  // met "LC Lila Chen" beside a control that quietly records an absence (issue 1769).
   const toggleLabel = came
     ? t('attendance.chip_mark_missed', '{name} — came. Tap to mark missed.').replace('{name}', name)
     : t('attendance.chip_mark_came', '{name} — missed. Tap to mark came.').replace('{name}', name);

@@ -141,7 +141,7 @@ export default function AttendanceMobile({
                 className="flex items-center justify-between p-1 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-colors mdm-person"
               >
                 {/* The row itself is the door into the person's page, so it is
-                    a real button — not a div with a click handler (#1769). */}
+                    a real button — not a div with a click handler (issue 1769). */}
                 <button
                   type="button"
                   onClick={() => onOpenContact(contact)}
@@ -158,7 +158,7 @@ export default function AttendanceMobile({
                   </div>
                 </button>
                 {/* No number, no door: `openMessage` falls back to Google
-                    Messages for web, which is nothing on a phone (#1769). */}
+                    Messages for web, which is nothing on a phone (issue 1769). */}
                 {contact.phone ? (
                   <button
                     onClick={(e) => {
@@ -220,7 +220,7 @@ export default function AttendanceMobile({
                         {s.cancelled ? t('attendance.cancelled', 'Cancelled') : (s.location || '')}
                       </div>
                       {/* "0 attended" reads the same for a recorded nil and for a
-                          week nobody has looked at; only one of those is a fact (#1769). */}
+                          week nobody has looked at; only one of those is a fact (issue 1769). */}
                       <div className="text-[11px] font-semibold text-accent mt-1.5 gthm-scount">
                         {recorded
                           ? <><b>{attendedCount}</b> {t('attendance.attended')}</>
@@ -352,7 +352,7 @@ interface RosterSheetProps {
   /** Only passed for Full-timers. */
   onToggleRoster?: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
   /** Edit and Remove are Full-timer work; a Student was shown both and neither
-   *  did anything (#1769). */
+   *  did anything (issue 1769). */
   isAdmin: boolean;
   onClose: () => void;
 }
@@ -383,7 +383,7 @@ function RosterSheet({
   const sheetRef = useRef<HTMLDivElement>(null);
 
   // A sheet that opens over the page is a dialog: focus moves into it and
-  // Escape closes it. It used to leave focus on the row behind the scrim (#1769).
+  // Escape closes it. It used to leave focus on the row behind the scrim (issue 1769).
   React.useEffect(() => {
     sheetRef.current?.focus();
   }, []);
@@ -443,7 +443,7 @@ function RosterSheet({
 
         {/* A called-off week is not a full house: nobody was there, because
             there was nothing to be at (ADR 0005). And an unrecorded week is not
-            a list of absences — say which one this is before the names (#1769). */}
+            a list of absences — say which one this is before the names (issue 1769). */}
         {session.cancelled ? (
           <div className="px-5 py-4 text-sm italic text-on-surface-variant border-t border-outline-variant/30">
             {t('attendance.week_cancelled', "This week was called off — nobody's counted absent.")}
@@ -508,7 +508,7 @@ function RosterSheet({
               </div>
 
               {/* Manage Session buttons — Full-timers only, matching desktop.
-                  "Remove" used to be offered to Students and did nothing (#1769). */}
+                  "Remove" used to be offered to Students and did nothing (issue 1769). */}
               {isAdmin && (
                 <div className="pt-4 border-t border-outline-variant/30 flex gap-4 gthm-rmanage">
                   {confirmDeleteId === session.id ? (
