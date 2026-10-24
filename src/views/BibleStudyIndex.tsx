@@ -27,6 +27,7 @@ import {
   subscribeStudyMeetings,
 } from '../lib/data/bibleStudy';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import { staffPermalinkUrl } from '../lib/publicUrl';
 import { format, parseISO } from 'date-fns';
 
@@ -39,6 +40,7 @@ import { format, parseISO } from 'date-fns';
  */
 export default function BibleStudyIndex() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
@@ -271,7 +273,7 @@ export default function BibleStudyIndex() {
             was the entry-point card, and neither the DOM nor a screen reader
             was told what this page is (#1776). */}
         <header className="px-1 mb-4">
-          <h1 className="font-serif text-2xl font-bold text-on-surface">Bible study</h1>
+          <h1 className="font-serif text-2xl font-bold text-on-surface">{t('nav.bible_study')}</h1>
         </header>
       </div>
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
