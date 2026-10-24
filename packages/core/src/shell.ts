@@ -81,10 +81,11 @@ export interface ShellLink {
  * WEB sidebar, but the queue's own prefs (the on-campus window, the nudges,
  * the day cap) live on that screen, so mobile gates it on `canSeePrefs`
  * instead — the same predicate the design's `M2Sub` uses.
+ *
+ * The Journey has no row: on the phone it is People narrowed by Step (ADR 0047).
  */
 export const TRAINEE_DRAWER: ShellLink[] = [
   { key: "people", label: "People", href: "/people" },
-  { key: "journey", label: "The Journey", href: "/journey" },
   { key: "messages", label: "Messages", href: "/messages" },
   // Ask the team (#545) — person-less questions; a full-timer answers from My Day.
   { key: "ask", label: "Ask the team", href: "/ask" },
@@ -98,10 +99,10 @@ export const TRAINEE_DRAWER: ShellLink[] = [
 
 export const TRAINEE_DRAWER_FOOT = "The queue is the app. Everything else lives here.";
 
-/** `FT_MORE` in `views/mobile/ft.jsx`, verbatim and in order. People and
- *  Messages are tabs for this role, so they aren't repeated here. */
+/** `FT_MORE` in `views/mobile/ft.jsx`, in order. People and Messages are
+ *  tabs for this role, so they aren't repeated here; The Journey is People's
+ *  Step pills (ADR 0047), so it has no row either. */
 export const FT_MORE: ShellLink[] = [
-  { key: "journey", label: "The Journey", href: "/journey" },
   { key: "gatherings", label: "Gatherings", href: "/attendance" },
   { key: "prayers", label: "Prayer log", href: "/prayer-log" },
   { key: "board", label: "The Board", href: "/coordination" },

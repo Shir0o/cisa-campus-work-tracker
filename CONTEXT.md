@@ -414,16 +414,24 @@ Meeting regularly with the church, not merely believing. It is the axis that tel
 _Avoid_: Saved, believer, saint, churched, active, engaged, committed, member
 
 **Local saint**:
-Someone in **the church life** who is not a student — the people whose **Home** we go round to, including anyone who was **Our own** and has since graduated or left school. They sit outside The Journey and are never counted toward **The Day's Goal**: the board and the Goal measure outreach, and a local saint is not being reached.
+Someone in **the church life** who is not a student — the people whose **Home** we go round to, including anyone who was **Our own** and has since graduated or left school. They stand on **The Journey** like everyone else, but are never counted toward **The Day's Goal**: the Goal measures outreach, and a local saint is not being reached.
 _Avoid_: Saint, member, church family, brother, sister, non-student
 
 **Our own**:
-A student of ours who is in **the church life** — as much a saint as a **Local saint**, and distinguished from one only by being a student. They stay on The Journey, where the church-meeting step lives, but are never counted as a new connection toward **The Day's Goal**. Being a student means studying now, not having been one of our campus people: when they graduate or leave school they become a **Local saint** and leave The Journey, however much the campus team still shepherds them.
+A student of ours who is in **the church life** — as much a saint as a **Local saint**, and distinguished from one only by being a student. They stand on The Journey like everyone else, but are never counted as a new connection toward **The Day's Goal**. Being a student means studying now, not having been one of our campus people: when they graduate or leave school they become a **Local saint**, however much the campus team still shepherds them.
 _Avoid_: Saint, student, our student, disciple, member
 
 **Contact (the kind of person)**:
 Someone **not in the church life** — a student we met on campus, or a local who is neither. They may well be a believer, which is exactly why belief cannot be the test. This is the narrow sense of the word: `Contact` in code and the `contacts` collection mean *any* person in the system, a local saint included. Both senses are live — the kind is a bucket in the Directory, the type is every row in it — so say "a Contact (kind)" when the distinction matters.
 _Avoid_: New contact, seeker, unbeliever, prospect, outsider — and never read the narrow sense into `Contact` in code
+
+**The Journey**:
+Everyone, laid out by the **Step** each has reached — **Local saints** and **Our own** included, not only the people we are reaching. Someone on no Step yet stands apart as unplaced rather than off the Journey. It holds the same people as the Directory, so in the phone app it is not a place of its own: People shows everyone, and choosing a Step narrows it to the people standing there, which is where moving them on happens. Only a Trainee or Full-timer sees the Steps.
+_Avoid_: Stage board, pipeline, funnel, the board (**The Board** is the coordination docs)
+
+**Step**:
+One place on **The Journey**. Everyone is on exactly one Step at a time, or none yet, and moving them is its own deliberate act, never part of editing who they are. `stage` is the code's word for it.
+_Avoid_: Stage, column, phase, status
 
 **Home**:
 A household we visit, usually labelled by the family's last name ("the Peinados") — the label is free text, because a house sharing no one surname needs a name only the team would think of — and tied to the people in **the church life** who live there, usually **Local saints**, sometimes **Our own** living with family. Several may share one home, and someone may have none yet. The Home carries the place, because the person no longer does: `location` was retired from the contact form and survives only on older documents. When logging a visit for a Home's members, the visit's location defaults quietly to the Home's place without requiring typing or review unless an explicit override is made (ADR 0031, ADR 0043). A Home outlives its household: when the last person leaves it goes inactive, keeping its visits. Only a Home made by mistake — one no visit was ever logged against — is removed outright, and a Home entered twice is folded into the real one with **Combine homes** (ADR 0040).
@@ -438,7 +446,7 @@ The people whose kind nobody has decided — no one has said whether they are in
 _Avoid_: Uncategorised, unknown, unassigned, untagged, needs review
 
 **Moving up a year**:
-Confirming every student's year when the school year turns over on 1 August. The app proposes the next year — Freshman to Sophomore, through Senior to graduated — and a Full-timer confirms it, for many people at once with exceptions: the same year (a gap year, or taking longer), another year from the list, or graduated or left school. A Graduate, anyone in Other, and anyone with no year get no proposal and are chosen by hand. Graduating or leaving school means they are no longer a student, so they keep no year: an **Our own** becomes a **Local saint** and leaves The Journey, and a **Contact** stays a Contact. It is a Full-timer's decision, as the kind is.
+Confirming every student's year when the school year turns over on 1 August. The app proposes the next year — Freshman to Sophomore, through Senior to graduated — and a Full-timer confirms it, for many people at once with exceptions: the same year (a gap year, or taking longer), another year from the list, or graduated or left school. A Graduate, anyone in Other, and anyone with no year get no proposal and are chosen by hand. Graduating or leaving school means they are no longer a student, so they keep no year: an **Our own** becomes a **Local saint**, and a **Contact** stays a Contact. It is a Full-timer's decision, as the kind is.
 _Avoid_: Rollover, promotion, advancement, class bump
 
 **Years to confirm**:

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  EVERYONE_PILL,
+  onStepPill,
   personalContactIdsOf,
   splitDirectory,
+  stepPills,
   visibleContacts,
   type AppRole,
   type Contact,
+  type Leader,
   type Stage,
   type Touch,
 } from '@cisa/core';
@@ -22,6 +26,9 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // Component state only, so People opens on Everyone every time (ADR 0047):
+  // a remembered filter would quietly hide people.
+  const [pillId, setPillId] = useState(EVERYONE_PILL);
 
   // Drop the previous identity's content the moment it changes (impersonation)
   // instead of flashing it until the new snapshot lands.
@@ -76,10 +83,28 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
     [prefContactIds, scopedContacts, uid],
   );
 
-  const { mine, rest } = useMemo(
+  const matched = useMemo(
     () => splitDirectory(scopedContacts, touches, personalContactIds, search),
     [scopedContacts, touches, personalContactIds, search],
   );
+
+  // The pills count the search's matches, so a match on another Step is one
+  // tap away. Whether Not on a step is there at all is read before the search,
+  // so a search can't pull it out from under you.
+  const pills = useMemo(
+    () => stepPills([...matched.mine, ...matched.rest].map((l) => l.contact), stages, scopedContacts),
+    [matched, stages, scopedContacts],
+  );
+
+  // A pill can go away under you — Not on a step once the last unplaced person
+  // is moved — and then the list falls back to Everyone.
+  const activePill = pills.some((p) => p.id === pillId) ? pillId : EVERYONE_PILL;
+
+  // Narrowing keeps splitDirectory's order, so every pill reads like People.
+  const { mine, rest } = useMemo(() => {
+    const onPill = (l: Leader) => onStepPill(l.contact, activePill, stages);
+    return { mine: matched.mine.filter(onPill), rest: matched.rest.filter(onPill) };
+  }, [matched, activePill, stages]);
 
   const shownLoading = useMinLoading(loading);
 
@@ -88,6 +113,9 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
     stages,
     mine,
     rest,
+    pills,
+    pillId: activePill,
+    setPillId,
     totalCount: scopedContacts.length,
     loading: shownLoading,
     error,

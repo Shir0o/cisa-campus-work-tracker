@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { contactIdForEmail, contactKind, filterAndSortDirectory, isKindSorted, kindMatches, splitDirectory, stageToneKey } from '../src/directory';
+import {
+  contactIdForEmail,
+  contactKind,
+  EVERYONE_PILL,
+  filterAndSortDirectory,
+  isKindSorted,
+  isUnplaced,
+  kindMatches,
+  onStepPill,
+  splitDirectory,
+  stageToneKey,
+  stepPills,
+  UNPLACED_PILL,
+} from '../src/directory';
 import type { Touch } from '../src/myday';
 import type { Contact, Stage } from '../src/types';
 
@@ -178,6 +191,108 @@ describe('splitDirectory', () => {
     const { mine, rest } = splitDirectory(contacts, [], new Set(['mine-name', 'mine-field']), 'ian', NOW);
     expect(mine.map((l) => l.contact.id)).toEqual(['mine-name', 'mine-field']);
     expect(rest.map((l) => l.contact.id)).toEqual(['rest-name', 'rest-field']);
+  });
+});
+
+// The pill row under the phone People search (#1800, ADR 0047).
+describe('stepPills', () => {
+  const stage = (id: string, label: string, order: number): Stage => ({ id, label, order, color: '' });
+  // Out of order on purpose: the pills follow `order`, not array position.
+  const stages = [stage('s2', 'Regular', 2), stage('s1', 'New', 1)];
+  const pills = (contacts: Contact[], unsearched?: Contact[]) =>
+    stepPills(contacts, stages, unsearched).map((p) => [p.id, p.label, p.count]);
+
+  // The two fixed pills carry no label: the screen names them in its own
+  // language. A Step pill's label is the Step's.
+  it('puts Everyone first, counting every contact passed in, with no label of its own', () => {
+    const contacts = [contact({ id: 'a', stage: 'New' }), contact({ id: 'b', stage: 'Regular' })];
+    expect(stepPills(contacts, stages)[0]).toEqual({ id: EVERYONE_PILL, count: 2 });
+  });
+
+  it('follows Everyone with each step in order, counting who stands there', () => {
+    const contacts = [
+      contact({ id: 'a', stage: 'New' }),
+      contact({ id: 'b', stage: 'Regular' }),
+      contact({ id: 'c', stage: 'Regular' }),
+    ];
+    expect(pills(contacts)).toEqual([
+      [EVERYONE_PILL, undefined, 3],
+      ['s1', 'New', 1],
+      ['s2', 'Regular', 2],
+    ]);
+  });
+
+  it('adds Not on a step, after Everyone, only while someone has no step or a stale one', () => {
+    expect(pills([contact({ id: 'a', stage: 'New' })]).map(([id]) => id)).not.toContain(UNPLACED_PILL);
+    expect(pills([contact({ id: 'a', stage: '' }), contact({ id: 'b', stage: 'Gone' })])).toEqual([
+      [EVERYONE_PILL, undefined, 2],
+      [UNPLACED_PILL, undefined, 2],
+      ['s1', 'New', 0],
+      ['s2', 'Regular', 0],
+    ]);
+  });
+
+  it('counts only the matches when the contacts are already search-filtered', () => {
+    const all = [
+      contact({ id: 'a', name: 'Mei Lin', stage: 'New' }),
+      contact({ id: 'b', name: 'Sam Cho', stage: 'New' }),
+      contact({ id: 'c', name: 'Mei Chen', stage: 'Regular' }),
+    ];
+    const searched = splitDirectory(all, [], new Set(), 'mei', NOW).rest.map((l) => l.contact);
+    expect(pills(searched)).toEqual([
+      [EVERYONE_PILL, undefined, 2],
+      ['s1', 'New', 1],
+      ['s2', 'Regular', 1],
+    ]);
+  });
+
+  // Whether Not on a step is there is decided before the search, so a search
+  // with no unplaced match leaves it on the row at 0 instead of pulling it out
+  // from under a selection.
+  it('keeps Not on a step at 0 while a search matches none of the unplaced', () => {
+    const all = [contact({ id: 'a', name: 'Mei Lin', stage: 'New' }), contact({ id: 'b', name: 'Sam Cho', stage: '' })];
+    const searched = [all[0]];
+    expect(pills(searched, all)).toEqual([
+      [EVERYONE_PILL, undefined, 1],
+      [UNPLACED_PILL, undefined, 0],
+      ['s1', 'New', 1],
+      ['s2', 'Regular', 0],
+    ]);
+  });
+
+  it('still drops Not on a step once nobody at all is unplaced', () => {
+    const all = [contact({ id: 'a', stage: 'New' })];
+    expect(pills(all, all).map(([id]) => id)).not.toContain(UNPLACED_PILL);
+  });
+});
+
+describe('isUnplaced', () => {
+  const stages = [{ label: 'New' }];
+
+  it('reads no step, or a step label that no longer exists, as unplaced', () => {
+    expect(isUnplaced(contact({ stage: '' }), stages)).toBe(true);
+    expect(isUnplaced(contact({ stage: 'Gone' }), stages)).toBe(true);
+    expect(isUnplaced(contact({ stage: 'New' }), stages)).toBe(false);
+  });
+});
+
+describe('onStepPill', () => {
+  const stages: Stage[] = [{ id: 's1', label: 'New', order: 1, color: '' }];
+  const placed = contact({ id: 'a', stage: 'New' });
+  const unplaced = contact({ id: 'b', stage: '' });
+
+  it('lets everyone through on Everyone', () => {
+    expect([placed, unplaced].every((c) => onStepPill(c, EVERYONE_PILL, stages))).toBe(true);
+  });
+
+  it('keeps the people standing on a step by its id', () => {
+    expect(onStepPill(placed, 's1', stages)).toBe(true);
+    expect(onStepPill(unplaced, 's1', stages)).toBe(false);
+  });
+
+  it('keeps only the unplaced on Not on a step', () => {
+    expect(onStepPill(unplaced, UNPLACED_PILL, stages)).toBe(true);
+    expect(onStepPill(placed, UNPLACED_PILL, stages)).toBe(false);
   });
 });
 

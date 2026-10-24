@@ -91,7 +91,6 @@ describe('the drawer and More lists', () => {
   it("matches the design's trainee drawer, in order", () => {
     expect(TRAINEE_DRAWER.map((l) => l.label)).toEqual([
       'People',
-      'The Journey',
       'Messages',
       'Ask the team',
       'Sign-up form',
@@ -115,7 +114,6 @@ describe('the drawer and More lists', () => {
     // Outreach sits right after The Board — the other going-out record — and
     // is full-timer-only (a deliberate change from the design). Sign-up form is enabled for full-timers.
     expect(FT_MORE.map((l) => l.label)).toEqual([
-      'The Journey',
       'Gatherings',
       'Prayer log',
       'The Board',
@@ -124,6 +122,13 @@ describe('the drawer and More lists', () => {
       'How this works',
       'Settings',
     ]);
+  });
+
+  // ADR 0047: on the phone The Journey is People narrowed by Step, so People is
+  // the one door and neither list keeps a second one (#1800).
+  it('lists no Journey row for either role', () => {
+    expect(TRAINEE_DRAWER.some((l) => l.key === 'journey')).toBe(false);
+    expect(FT_MORE.some((l) => l.key === 'journey')).toBe(false);
   });
 
   it('never repeats a tab the full-timer already has', () => {

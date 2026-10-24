@@ -1806,6 +1806,10 @@
       "added_this_window": "Agregados o registrados en este horario",
       "new_suffix": " · nuevo",
       "people_to_reach": "{count} personas para contactar hoy"
+    },
+    "people": {
+      "everyone": "Todos",
+      "not_on_a_step": "Sin paso"
     }
   }
 }
