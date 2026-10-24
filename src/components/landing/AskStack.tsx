@@ -117,7 +117,10 @@ function AskStackRow({
                   <button
                     type="button"
                     onClick={() => openOnQuestionsPage(m)}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    className={cn(
+                      "mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors",
+                      mobile && "min-h-11",
+                    )}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     {t("ask.answer", `Answer ${first}`).replace("{first}", first)}
@@ -133,7 +136,10 @@ function AskStackRow({
               onClick={() =>
                 stack.items.forEach((m) => inbox.markRead(uid, "ask:" + m.id))
               }
-              className="text-xs font-medium text-on-surface-variant hover:text-on-surface px-1 py-1 transition-colors mt-1"
+              className={cn(
+                "text-xs font-medium text-on-surface-variant hover:text-on-surface px-1 py-1 transition-colors mt-1",
+                mobile && "min-h-11",
+              )}
             >
               <Check className="w-3 h-3 inline mr-1" />
               {t("ask.mark_scanned", "Mark scanned")}
@@ -212,7 +218,10 @@ export default function AskStack({
               onClick={() =>
                 stacks.forEach((s) => s.items.forEach((m) => inbox.markRead(uid, "ask:" + m.id)))
               }
-              className="text-xs font-medium text-accent hover:underline cursor-pointer"
+              className={cn(
+                "text-xs font-medium text-accent hover:underline cursor-pointer",
+                mobile && "min-h-11 px-1",
+              )}
             >
               {t("ask.mark_all_scanned", "Mark all scanned")}
             </button>

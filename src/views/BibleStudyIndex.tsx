@@ -27,6 +27,7 @@ import {
   subscribeStudyMeetings,
 } from '../lib/data/bibleStudy';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import { staffPermalinkUrl } from '../lib/publicUrl';
 import { format, parseISO } from 'date-fns';
 
@@ -39,6 +40,7 @@ import { format, parseISO } from 'date-fns';
  */
 export default function BibleStudyIndex() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
@@ -266,6 +268,14 @@ export default function BibleStudyIndex() {
 
   return (
     <div className="flex-1 min-w-0 h-full overflow-y-auto p-4 lg:p-6 bg-background">
+      <div className="max-w-5xl mx-auto">
+        {/* The page had no title at all: on a phone the first thing on screen
+            was the entry-point card, and neither the DOM nor a screen reader
+            was told what this page is (issue 1776). */}
+        <header className="px-1 mb-4">
+          <h1 className="font-serif text-2xl font-bold text-on-surface">{t('nav.bible_study')}</h1>
+        </header>
+      </div>
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         {/* Weeks — what exists */}
         <section className="order-2 lg:order-1 min-w-0">

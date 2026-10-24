@@ -107,10 +107,21 @@ describe('historyRows', () => {
   it('announces each day once, in order, when a row arrives as a Timestamp', () => {
     // Firestore returns strings and Timestamps in separate blocks, so the same
     // day reaches the view twice and out of order.
+    //
+    // "Late" is pinned to 20:00 today rather than `Date.now()`: with the clock
+    // as the fixture, the test asserted a later-than-08:00 ordering that only
+    // held after 8am local, and went red in CI whenever it ran before then
+    // (04:33 UTC, 2026-10-25).
+    const lateToday = at(0, 20);
+    const lateMs = new Date(lateToday).getTime();
     const rows = historyRows([
       item('today-iso', at(0, 8)),
       item('yesterday-iso', at(1, 8)),
-      item('today-late', { seconds: Math.floor(Date.now() / 1000), toMillis: () => Date.now(), toDate: () => new Date() }),
+      item('today-late', {
+        seconds: Math.floor(lateMs / 1000),
+        toMillis: () => lateMs,
+        toDate: () => new Date(lateMs),
+      }),
     ]);
     const keys = markers(rows);
     expect(new Set(keys).size).toBe(keys.length);

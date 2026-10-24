@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { statusPillClass, Avatar, StatusPills, StageChip, SectionHead, Figure } from '../components/landing/primitives';
 import { ReachCard } from '../components/landing/ReachCard';
-import { getGreeting, stageColor } from '../components/landing/helpers';
+import { getGreeting, greetingKey, stageColor } from '../components/landing/helpers';
 
 describe('statusPillClass', () => {
   it('returns active classes for each tone', () => {
@@ -37,6 +37,16 @@ describe('getGreeting', () => {
     vi.setSystemTime(new Date(2026, 0, 1, 14, 0));
     expect(getGreeting()).toBe('Good afternoon');
     vi.useRealTimers();
+  });
+});
+
+describe('greetingKey', () => {
+  // The phone greeted a 1pm reader with "Good morning" because it hard-coded
+  // the one key; the greeting is a localized string chosen by the clock (#1776).
+  it('picks the key the clock is in', () => {
+    expect(greetingKey(new Date(2026, 0, 1, 9, 0))).toBe('myDay.good_morning');
+    expect(greetingKey(new Date(2026, 0, 1, 14, 0))).toBe('myDay.good_afternoon');
+    expect(greetingKey(new Date(2026, 0, 1, 20, 0))).toBe('myDay.good_evening');
   });
 });
 
