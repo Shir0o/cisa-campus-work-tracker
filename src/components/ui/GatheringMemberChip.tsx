@@ -31,6 +31,12 @@ export default function GatheringMemberChip({
   const { t } = useLanguage();
   const name = contact.name;
 
+  // The chip never said what it was or what a tap would do, so a screen reader
+  // met "LC Lila Chen" beside a control that quietly records an absence (#1769).
+  const toggleLabel = came
+    ? t('attendance.chip_mark_missed', '{name} — came. Tap to mark missed.').replace('{name}', name)
+    : t('attendance.chip_mark_came', '{name} — missed. Tap to mark came.').replace('{name}', name);
+
   let action: { label: string; title: string; icon: React.ReactNode; onClick: () => void } | null = null;
   if (!came && onMakeTodo) {
     action = {
@@ -47,15 +53,16 @@ export default function GatheringMemberChip({
   return (
     <span
       className={cn(
-        'group inline-flex items-center gap-1 min-h-[36px] max-w-full pl-1 pr-2.5 rounded-full border border-outline-variant bg-surface transition-colors',
+        'group inline-flex items-center gap-1 min-h-[44px] max-w-full pl-1 pr-2.5 rounded-full border border-outline-variant bg-surface transition-colors',
         came ? 'text-on-surface' : 'text-on-surface-variant',
       )}
     >
       <button
         type="button"
         onClick={onToggle}
-        title={came ? undefined : t('attendance.tap_to_mark_present')}
-        className="inline-flex items-center gap-2 min-w-0 text-left"
+        title={toggleLabel}
+        aria-label={toggleLabel}
+        className="inline-flex items-center gap-2 min-w-0 min-h-[44px] text-left"
       >
         <Avatar contact={contact} size="sm" muted={!came} />
         <span className="text-sm truncate">{name}</span>
@@ -69,7 +76,7 @@ export default function GatheringMemberChip({
           onClick={action.onClick}
           title={action.title}
           aria-label={action.label}
-          className="p-1.5 rounded-full shrink-0 text-on-surface-variant hover:bg-surface-variant hover:text-accent transition-colors [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
+          className="min-w-[44px] min-h-[44px] grid place-items-center rounded-full shrink-0 text-on-surface-variant hover:bg-surface-variant hover:text-accent transition-colors [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
         >
           {action.icon}
         </button>

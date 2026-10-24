@@ -5,6 +5,7 @@ import { onSnapshot, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
 import { useAuth, type AuthContextType } from '../components/AuthProvider';
 import { useLayout } from '../App';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import React from 'react';
 
 // Mock dependencies
@@ -126,6 +127,8 @@ describe('Attendance', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Desktop is the default branch; the phone test below opts in explicitly.
+    vi.mocked(useMediaQuery).mockReturnValue(false);
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({ docs: mockContacts, size: 2 });
@@ -338,7 +341,7 @@ describe('Attendance', () => {
     fireEvent.click(screen.getByText('Friday Gathering 1'));
 
     // Alice is in "We missed" section for e1
-    const aliceBtn = screen.getByTitle('Tap to mark present');
+    const aliceBtn = screen.getByRole('button', { name: /Alice Johnson — missed\. Tap to mark came/ });
     fireEvent.click(aliceBtn);
 
     expect(mockBatch.update).toHaveBeenCalledWith(
@@ -466,6 +469,36 @@ describe('Attendance', () => {
       expect(names[0]).toContain('Bob Lee');
       expect(names[1]).toContain('Charlie Brown');
     });
+  });
+
+  it('leaves a gathering that has not happened out of the phone list, and counts only held weeks (#1769)', async () => {
+    const futureDate = new Date(Date.now() + 5 * 86_400_000).toISOString().split('T')[0];
+    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (snap: unknown) => void) => {
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
+      else if (ref?.path === 'events') {
+        callback({
+          docs: [
+            { id: 'e-past', data: () => ({ name: 'Last Friday', date: '2026-06-12', order: 1 }) },
+            { id: 'e-future', data: () => ({ name: 'Retreat Ahead', date: futureDate, order: 2 }) },
+          ],
+          size: 2,
+        });
+      } else callback({ docs: [], size: 0 });
+      return vi.fn();
+    }) as unknown as typeof onSnapshot);
+    // The phone branch — the one the critique measured.
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+
+    render(<Attendance />);
+
+    await waitFor(() => expect(screen.getByText('Last Friday')).toBeInTheDocument());
+    // "When we met" holds the meetings that happened; the retreat is only an
+    // invitation, so it belongs to "Coming up" alone.
+    const sessionRows = document.querySelectorAll('.gthm-scard');
+    expect(sessionRows).toHaveLength(1);
+    expect(sessionRows[0]).toHaveTextContent('Last Friday');
+    // One gathering was held, not two.
+    expect(screen.getByText('1 times')).toBeInTheDocument();
   });
 
   it('shows an upcoming one-off, faint-rendered under One-offs (Story 36)', async () => {
