@@ -100,6 +100,13 @@ export interface NavItem {
    * Full-timer and This week's study for everyone else (#946).
    */
   hideForRoles?: AppRole[];
+  /**
+   * A destination with no phone view. The phone drawer leaves it out, because
+   * the route would land somewhere else through a redirect; the rail and the
+   * desktop More menu still offer it. `/board` is the one case: on a phone The
+   * Journey is People narrowed by Step, not a screen (ADR 0047, #1787).
+   */
+  desktopOnly?: boolean;
 }
 
 export interface ExternalNavItem {
@@ -127,7 +134,9 @@ export function navExternalFor(role: AppRole | string | null): ExternalNavItem[]
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
-  { href: '/board', label: 'The Journey', minRole: 'manager' },
+  // The Journey's board is a desktop surface (ADR 0047, #1787): at phone width
+  // the route sends the reader to People, so the drawer must not offer it.
+  { href: '/board', label: 'The Journey', minRole: 'manager', desktopOnly: true },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'operator' },
@@ -182,6 +191,16 @@ export function navItemsForRole(role: AppRole | string | null): NavItem[] {
     (item) =>
       canAccessRoute(role, item.href) && !item.hideForRoles?.includes(role as AppRole),
   );
+}
+
+/**
+ * The destinations the phone drawer may offer: everything the role can reach
+ * except surfaces that have no phone view (`desktopOnly`). Under the `lg`
+ * breakpoint the rail is gone, and a row that only redirects is a dead link —
+ * so the drawer leaves it out rather than pretending the place exists (#1787).
+ */
+export function phoneNavItemsForRole(role: AppRole | string | null): NavItem[] {
+  return navItemsForRole(role).filter((item) => !item.desktopOnly);
 }
 
 /**

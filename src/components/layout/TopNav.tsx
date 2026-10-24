@@ -31,7 +31,7 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
 import {
-  navItemsForRole,
+  phoneNavItemsForRole,
   navExternalFor,
   primaryNavFor,
   moreNavFor,
@@ -474,10 +474,12 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               </button>
             </div>
 
-            {/* navItemsForRole, not a bare canAccessRoute filter: the list now
-                holds two items sharing the label "Bible study" and the role
-                picks which one is meant, which only that helper knows (issue 946). */}
-            {navItemsForRole(role as AppRole).map((item) => {
+            {/* phoneNavItemsForRole, not a bare canAccessRoute filter: the list
+                now holds two items sharing the label "Bible study" and the
+                role picks which one is meant, which only that helper knows
+                (issue 946). It also drops desktop-only destinations, whose
+                routes have no phone view (#1787). */}
+            {phoneNavItemsForRole(role as AppRole).map((item) => {
               const href = item.href;
               const label = href === '/' ? homeLabel : item.label;
               // Not NavLink's own `isActive`: that matches the pathname, which

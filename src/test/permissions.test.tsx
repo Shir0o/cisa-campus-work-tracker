@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, phoneNavItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
@@ -494,6 +494,20 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(navItemsForRole('manager')).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: '/' })])
     );
+  });
+
+  // `/board` is The Journey's desktop home. The phone drawer drops it because
+  // on a phone The Journey is People narrowed by Step, and the row would land
+  // on People through a redirect (ADR 0047, #1787).
+  it('keeps desktop-only destinations out of the phone drawer, not off the rail (#1787)', () => {
+    for (const role of ['admin', 'manager'] as const) {
+      expect(navItemsForRole(role).map((item) => item.href)).toContain('/board');
+      expect(phoneNavItemsForRole(role).map((item) => item.href)).not.toContain('/board');
+      // Everything else the drawer offered is still there.
+      expect(phoneNavItemsForRole(role)).toEqual(
+        navItemsForRole(role).filter((item) => !item.desktopOnly),
+      );
+    }
   });
 
   it('exports OWNER_VIEW_ROLES centralized role options', () => {

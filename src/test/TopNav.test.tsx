@@ -164,6 +164,20 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(h.mockSetIsMobileMenuOpen).toHaveBeenCalledWith(true);
   });
 
+  it('does not offer a destination the phone cannot open in the drawer (#1787)', () => {
+    h.layout = { ...h.layout, isMobileMenuOpen: true };
+    renderTopNav();
+
+    const nav = screen.getByRole('navigation', { name: /mobile menu/i });
+    // `/board` is a desktop surface: at phone width it redirects to People.
+    expect(within(nav).queryByRole('link', { name: /the journey/i })).not.toBeInTheDocument();
+    // People is the one door to those people on a phone.
+    expect(within(nav).getByRole('link', { name: /^people$/i })).toHaveAttribute(
+      'href',
+      '/directory',
+    );
+  });
+
   // ── No orphaned vertical gap above the Sign-up entry (#1635) ────────────
   // Every destination row in the drawer is a flush h-11 flex item. The
   // Sign-up entry has no group label, so the one-off `mt-2` wrapper it carried
