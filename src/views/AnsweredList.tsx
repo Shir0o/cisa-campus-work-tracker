@@ -224,7 +224,7 @@ export default function AnsweredList() {
 
     return {
       recent: rows.filter((r) => (r.answered?.getTime() ?? 0) >= ninetyDaysAgo),
-      earlier: rows.filter((r) => (r.answered?.getTime() ?? 0) < ninetyDaysAgo),
+      earlier: rows.filter((r) => ninetyDaysAgo > (r.answered?.getTime() ?? 0)),
       totalThisYear: rows.filter((r) => r.answered?.getFullYear() === year).length,
     };
   }, [prayers]);
