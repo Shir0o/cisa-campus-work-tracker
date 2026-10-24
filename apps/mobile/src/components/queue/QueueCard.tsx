@@ -47,8 +47,11 @@ export interface QueueCardApi {
   markDone: (taskId: string) => void;
   pushToTomorrow: (taskId: string) => void;
   openBoardDoc: (docId?: string | null) => void;
-  openContact: (contactId: string, tab?: 'thread' | 'prayer') => void;
+  /** `card` is passed from a msg card, so opening the person reads its stream. */
+  openContact: (contactId: string, tab?: 'thread' | 'prayer', card?: QueueCardData) => void;
   openReply: (card: QueueCardData) => void;
+  /** Read every text on a msg card, nothing written back — done for today. */
+  seenIt: (card: QueueCardData) => void;
   openLog: (card: QueueCardData) => void;
   text: (card: QueueCardData) => void;
 }
@@ -67,7 +70,7 @@ export function QueueCard({
   /** Recent conversations with this card's person, newest first — sheet only. */
   history?: Interaction[];
 }) {
-  const { c: pal, font, fs } = useV2Theme();
+  const { c: pal, font, radius, fs } = useV2Theme();
   const { t: tr } = useLanguage();
   const c = card.contact;
   const first = c ? firstName(c.name) : '';
@@ -207,15 +210,35 @@ export function QueueCard({
     // ── a message from the full-timer who cares for you ────────────────────
     if (card.kind === 'msg' && card.msg) {
       const m = card.msg;
+      // One card per stream (#1793): the featured text leads, the rest fold
+      // beneath it. The main button is whatever the texts ask for.
+      const rest = (card.msgs ?? []).filter((x) => x.id !== m.id);
+      const writers = new Set(rest.map((x) => x.from));
+      const restLabel =
+        writers.size === 1
+          ? tr('mobile.queue.more_from').replace('{count}', String(rest.length)).replace('{name}', firstName(rest[0].fromName))
+          : tr('mobile.queue.more_here').replace('{count}', String(rest.length));
+      const writeBack = { title: 'Write back', icon: 'chatbubble-outline' as const, onPress: () => api.openReply(card) };
+      const seenIt = { title: tr('mobile.queue.seen_it'), icon: 'checkmark' as const, onPress: () => api.seenIt(card) };
       return {
         tone: 'ask',
-        primary: { title: 'Write back', icon: 'chatbubble-outline', onPress: () => api.openReply(card) },
-        actions: c ? [{ title: `Open ${first}`, icon: 'person-outline', onPress: () => api.openContact(c.id, 'thread') }] : [],
+        primary: card.needsReply ? writeBack : { ...seenIt, tone: 'inverse' },
+        actions: [card.needsReply ? seenIt : writeBack],
         body: (full) => (
           <>
             <WhoBlock name={m.fromName} id={m.from} sub={`${roleLabel('admin')} · cares for you`} />
             <Quote lines={full ? undefined : 4}>{m.body}</Quote>
-            {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread')} />}
+            {rest.length > 0 && (
+              <View style={{ marginTop: 16, gap: 8, backgroundColor: pal.card.bg2, borderRadius: radius.note, paddingVertical: 12, paddingHorizontal: 14 }}>
+                <Kicker>{restLabel}</Kicker>
+                {rest.map((x) => (
+                  <Text key={x.id} numberOfLines={full ? undefined : 2} style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(20), color: pal.card.ink2 }}>
+                    {x.body}
+                  </Text>
+                ))}
+              </View>
+            )}
+            {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread', card)} />}
           </>
         ),
       };

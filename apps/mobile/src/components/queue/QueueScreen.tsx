@@ -147,6 +147,17 @@ export function QueueScreen() {
     setLogOpen(true);
   };
 
+  // A msg card stands for every unread text in its stream (#1793), so whatever
+  // clears it reads them all.
+  const markStreamRead = (card: QueueCardData) => {
+    if (!uid) return;
+    for (const m of card.msgs ?? []) InboxReads.markRead(uid, 'thread:' + m.id);
+  };
+  const markStreamUnread = (card: QueueCardData) => {
+    if (!uid) return;
+    for (const m of card.msgs ?? []) InboxReads.markUnread(uid, 'thread:' + m.id);
+  };
+
   const openNewPerson = () => {
     openBlankLog();
     setLogStart('new');
@@ -184,9 +195,15 @@ export function QueueScreen() {
       }
       router.push(docId ? `/coordination/${docId}` : '/coordination');
     },
-    openContact: (contactId, tab) =>
-      router.push(tab ? `/contact/${contactId}?tab=${tab}` : `/contact/${contactId}`),
+    openContact: (contactId, tab, card) => {
+      if (card?.kind === 'msg') markStreamRead(card);
+      router.push(tab ? `/contact/${contactId}?tab=${tab}` : `/contact/${contactId}`);
+    },
     openReply: (card) => setReplyTo(card),
+    seenIt: (card) => {
+      markStreamRead(card);
+      doneForToday(card.id, () => markStreamUnread(card));
+    },
     openLog: (card) => {
       setLogFor(card.contact ?? null);
       setLogTask(card.task?.id ?? null);
@@ -215,7 +232,7 @@ export function QueueScreen() {
       },
       { to: card.msg.from, contactName: card.contact?.name },
     );
-    InboxReads.markRead(uid, 'thread:' + card.msg.id);
+    markStreamRead(card);
     setReplyTo(null);
     doneForToday(card.id);
   };

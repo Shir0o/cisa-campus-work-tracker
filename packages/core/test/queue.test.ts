@@ -339,8 +339,124 @@ describe('buildQueue — order and state', () => {
   });
 });
 
+describe('buildQueue — one card per stream (#1793)', () => {
+  const at = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
+
+  it('folds unread texts in one stream into one card, oldest to newest', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'b', kind: 'comment', at: at(2) }),
+          message({ id: 'c', kind: 'comment', at: at(1) }),
+          message({ id: 'a', kind: 'comment', at: at(3) }),
+        ],
+      }),
+    );
+    expect(q).toHaveLength(1);
+    expect(q[0].id).toBe('ftmsg:c');
+    expect(q[0].msgs?.map((m) => m.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it("keeps a person's Conversation and an interaction thread apart", () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'conv', at: at(2) }),
+          message({ id: 'thread', interactionId: 'i1', at: at(1) }),
+        ],
+      }),
+    );
+    expect(q.map((c) => c.id)).toEqual(['ftmsg:thread', 'ftmsg:conv']);
+  });
+
+  it('features the question among comments and says it needs a reply', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'old', kind: 'comment', at: at(3) }),
+          message({ id: 'ask', kind: 'question', body: 'Can you bring him Friday?', at: at(2) }),
+          message({ id: 'new', kind: 'encouragement', at: at(1) }),
+        ],
+      }),
+    );
+    expect(q).toHaveLength(1);
+    expect(q[0]).toMatchObject({ id: 'ftmsg:new', needsReply: true, label: 'Mei asked you something' });
+    expect(q[0].msg?.id).toBe('ask');
+    expect(q[0].title).toBe('Mei: Can you bring him Friday?');
+  });
+
+  it('features the newest text and needs no reply when nothing was asked', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'old', kind: 'comment', at: at(2) }),
+          message({ id: 'new', kind: 'encouragement', at: at(1) }),
+        ],
+      }),
+    );
+    expect(q[0]).toMatchObject({ needsReply: false, label: 'Mei encouraged you' });
+    expect(q[0].msg?.id).toBe('new');
+  });
+
+  it('leaves read texts out of the group', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [message({ id: 'seen', at: at(2) }), message({ id: 'fresh', at: at(1) })],
+        isRead: (id) => id === 'thread:seen',
+      }),
+    );
+    expect(q[0].msgs?.map((m) => m.id)).toEqual(['fresh']);
+  });
+
+  it('brings the card back under a new id when a newer text lands after it was handled', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [message({ id: 'first', at: at(2) }), message({ id: 'second', at: at(1) })],
+        handled: { 'ftmsg:first': 1 },
+      }),
+    );
+    expect(q.map((c) => c.id)).toEqual(['ftmsg:second']);
+  });
+
+  it('counts a stream once toward the day cap', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: Array.from({ length: 5 }, (_, i) => message({ id: `m${i}`, at: at(i + 1) })),
+        prayers: [prayer({ id: 'p0' }), prayer({ id: 'p1' })],
+      }),
+      { ...QUEUE_PREF_DEFAULTS, dayCap: 3 },
+    );
+    expect(q.map((c) => c.id)).toEqual(['ftmsg:m0', 'pray:p0', 'pray:p1']);
+    expect(q.held).toBe(0);
+  });
+
+  it('makes one card when a full-timer text and an In the Conversation text share a stream', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'mine', from: 'me', kind: 'comment', at: at(5) }),
+          message({ id: 'ft-text', from: 'ft', kind: 'comment', at: at(3) }),
+          message({ id: 'peer-text', from: 'peer', fromName: 'Ana Ruiz', kind: 'comment', at: at(1) }),
+        ],
+      }),
+    );
+    expect(q).toHaveLength(1);
+    expect(q[0].id).toBe('ftmsg:peer-text');
+    expect(q[0].msgs?.map((m) => m.id)).toEqual(['ft-text', 'peer-text']);
+    expect(q[0].label).toBe('Ana wrote back');
+  });
+});
+
 describe('buildQueue — the day cap', () => {
-  // 1 due to-do + 4 messages + 3 follow-ups + 3 prayers = 11 cards.
+  // 1 due to-do + 4 messages (each in its own stream) + 3 follow-ups + 3 prayers = 11 cards.
   const many = () =>
     input({
       contacts: Array.from({ length: 3 }, (_, i) => contact({ id: `c${i}`, lastSeen: iso(0) })),
@@ -348,7 +464,7 @@ describe('buildQueue — the day cap', () => {
         task({ id: 'due', dueDate: iso(0) }),
         ...Array.from({ length: 3 }, (_, i) => task({ id: `f${i}`, contactId: `c${i}`, dueDate: iso(9) })),
       ],
-      threads: Array.from({ length: 4 }, (_, i) => message({ id: `m${i}`, at: iso(-i) })),
+      threads: Array.from({ length: 4 }, (_, i) => message({ id: `m${i}`, interactionId: `i${i}`, at: iso(-i) })),
       prayers: Array.from({ length: 3 }, (_, i) => prayer({ id: `p${i}`, date: iso(-i) })),
     });
 

@@ -58,6 +58,7 @@ import { addTodo } from '../../lib/data/todos';
 import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
+import { useInboxReads } from '../../lib/data/inboxReads';
 import { moveContactStage } from '../../lib/data/contacts';
 import { subscribeUsers } from '../../lib/data/users';
 import {
@@ -185,6 +186,13 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   // A viewer who may not write gets no ask actions from the model.
   const viewer = { uid: uid ?? '', role: canWrite ? role : null };
   const items = buildStream({ messages: showing === 'team' ? fullTimers : conversation, viewer, now });
+  // Seeing a stream reads it (#1793), so Today drops its card: whichever side
+  // is showing, replies included — Today groups them in the same stream.
+  const reads = useInboxReads();
+  useEffect(() => {
+    if (!uid || tab !== 'conversation') return;
+    reads.markAll(uid, (showing === 'team' ? fullTimers : conversation).map((m) => 'thread:' + m.id));
+  }, [uid, tab, showing, conversation, fullTimers, reads]);
   const topLevel = (list: ThreadMessage[]) => list.filter((m) => !m.parentId).length;
   const { open: openPrayers, closed: closedPrayers } = useMemo(
     () => splitContactPrayers(data.prayers),

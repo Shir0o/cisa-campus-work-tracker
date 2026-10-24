@@ -297,12 +297,12 @@ export function CardPrimary({
   title: string;
   icon: IconName;
   onPress: () => void;
-  tone?: 'primary' | 'warm' | 'deep';
+  tone?: 'primary' | 'warm' | 'deep' | 'inverse';
 }) {
   const { c, font, radius, shadow, fs } = useV2Theme();
-  const bg = { primary: c.card.primary, warm: c.card.warm, deep: c.card.deep }[tone];
-  const fg = { primary: c.card.onPrimary, warm: c.card.onWarm, deep: c.card.onDeep }[tone];
-  const edge = tone === 'warm' ? c.card.warmEdge : c.card.primaryEdge;
+  const bg = { primary: c.card.primary, warm: c.card.warm, deep: c.card.deep, inverse: c.card.inverse }[tone];
+  const fg = { primary: c.card.onPrimary, warm: c.card.onWarm, deep: c.card.onDeep, inverse: c.card.onInverse }[tone];
+  const edge = tone === 'warm' ? c.card.warmEdge : tone === 'inverse' ? c.card.inverseEdge : c.card.primaryEdge;
   return (
     <Pressable
       onPress={onPress}

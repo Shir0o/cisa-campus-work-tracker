@@ -3,7 +3,7 @@
 // "Thread" over the person's name. The parent sits on top — a Conversation or
 // Full-timers message, or an Interaction quoted from the Story — then "N
 // replies", the replies, and a reply box pinned at the foot.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { buildThread, canSeeContact, storyRowLine, type StreamRow, type ThreadMe
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useContactDetailData } from '../../lib/useContactDetailData';
+import { useInboxReads } from '../../lib/data/inboxReads';
 import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { SafeAreaView } from '../ui/SafeArea';
@@ -76,6 +77,17 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
   const back = () => (router.canGoBack() ? router.back() : router.replace(`/contact/${contactId}` as never));
   const contact = data.contact;
   const visible = !!contact && canSeeContact(role, uid, contact);
+
+  // Seeing a Thread reads what it shows (#1793), so Today drops its card. An
+  // Interaction's quoted parent is not a message, so it has nothing to read.
+  const reads = useInboxReads();
+  const shown = thread
+    ? [thread.parent, ...thread.replies].map((r) => r.message.id).filter((id) => !id.startsWith('interaction:')).join(',')
+    : '';
+  useEffect(() => {
+    if (!uid || !visible || !shown) return;
+    reads.markAll(uid, shown.split(',').map((id) => 'thread:' + id));
+  }, [uid, visible, shown, reads]);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
