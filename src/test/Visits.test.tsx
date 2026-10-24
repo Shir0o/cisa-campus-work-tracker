@@ -397,7 +397,10 @@ describe('Visits', () => {
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
     expect(screen.getByText("Where we've been")).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: "Who we haven't seen" })).toBeInTheDocument();
+    // On the phone the tab above already names the reading, so the section
+    // heading is not repeated under it (issue 1776).
+    expect(screen.getByRole('button', { name: "Who we haven't seen" })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: "Who we haven't seen" })).not.toBeInTheDocument();
   });
 
   it('renders the mobile component while visits are still loading', async () => {
