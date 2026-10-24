@@ -798,7 +798,7 @@ function AppearanceSection({
               className={cn(
                 'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
                 // The Inversion Rule: the active choice turns inside out. A 5%
-                // tint left the chosen card *lighter* than its neighbours.
+                // tint left the chosen card lighter than its neighbours.
                 active
                   ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
@@ -847,8 +847,8 @@ function NavigationSection() {
         )}
       />
       {/* Below `lg` there is no rail and no top bar, so these three cards
-          accepted a tap and changed nothing the reader could see (#1774). The
-          phone gets one sentence instead of a control it cannot use. */}
+          accepted a tap and changed nothing the reader could see. The phone
+          gets one sentence instead of a control it cannot use. */}
       <div className="hidden lg:grid grid-cols-3 gap-3 max-w-2xl" data-testid="nav-shell-cards">
         {NAV_SHELLS.map(({ key, labelKey, label, noteKey, note, Icon }) => {
           const active = preference === key;
@@ -3506,8 +3506,8 @@ export default function Settings() {
 
         {/* Member list. A denied or failed users query used to fall through to
             the same sentence as an empty search ("No teammates or invites match
-            your search."), so a network blip looked like a roster of nobody
-            (#1774). It says what happened and offers a way back. */}
+            your search."), so a network blip looked like a roster of nobody.
+            It says what happened and offers a way back. */}
         {teamError ? (
           <div
             role="alert"
