@@ -1664,4 +1664,79 @@ describe('Settings', () => {
       });
     });
   });
+
+  // ── Phone pass (#1774) ─────────────────────────────────────────────────
+  // Settings at 375×812: the desktop-only navigation cards accepted taps and
+  // changed nothing, three text fields were named only by their placeholder,
+  // and a failed team query rendered as the "no search results" sentence.
+
+  describe('phone pass (#1774)', () => {
+    it('offers a sentence, not three dead cards, where the nav shell is chosen', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      expect(
+        screen.getByText(/On a phone the bottom bar is always the navigation\./),
+      ).toBeInTheDocument();
+
+      // The cards still exist for wide windows, but they are hidden below `lg`
+      // so a phone cannot tap a control that has no effect on it.
+      const cards = screen.getByTestId('nav-shell-cards');
+      expect(cards.className).toContain('hidden');
+      expect(cards.className).toContain('lg:grid');
+    });
+
+    it('names the text fields that were placeholder-only', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      expect(screen.getByLabelText('Find a teammate')).toHaveAttribute('type', 'text');
+      expect(screen.getByLabelText('A description to parse into a contact')).toBeInTheDocument();
+      expect(screen.getByLabelText('Video link')).toHaveAttribute('type', 'url');
+    });
+
+    it('says a failed team query failed, and retries it', async () => {
+      setupManagerAuth();
+      const calls = { users: 0 };
+      vi.mocked(onSnapshot).mockImplementation((ref: any, cb: any, errCb: any) => {
+        if (ref?.path === 'users') {
+          calls.users += 1;
+          errCb?.(new Error('permission-denied'));
+          return vi.fn();
+        }
+        cb({ docs: [], size: 0 });
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load your team.");
+      // The false empty state that used to stand in for a failure.
+      expect(screen.queryByText(/No teammates or invites match your search/i)).not.toBeInTheDocument();
+
+      const before = calls.users;
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(calls.users).toBeGreaterThan(before));
+    });
+
+    it('has a dictionary entry for every Settings string it asks for', async () => {
+      const { readFileSync } = await import('node:fs');
+      const { resolve } = await import('node:path');
+      const source = readFileSync(resolve(process.cwd(), 'src/views/Settings.tsx'), 'utf8');
+      const en = (await import('../locales/en.json')).default as any;
+      const es = (await import('../locales/es.json')).default as any;
+      const lookup = (dict: any, key: string) =>
+        key.split('.').reduce<any>((node, part) => (node && typeof node === 'object' ? node[part] : undefined), dict);
+
+      const keys = Array.from(source.matchAll(/\bt\(\s*'([a-zA-Z0-9_.]+)'/g)).map((m) => m[1]);
+      expect(keys.length).toBeGreaterThan(100);
+
+      const missing: string[] = [];
+      for (const key of new Set(keys)) {
+        if (typeof lookup(en, key) !== 'string') missing.push(`${key} (en)`);
+        if (typeof lookup(es, key) !== 'string') missing.push(`${key} (es)`);
+      }
+      expect(missing).toEqual([]);
+    });
+  });
 });

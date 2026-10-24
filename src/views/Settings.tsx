@@ -128,12 +128,20 @@ type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
 const OWNER_EMAIL = 'yilongwang05@gmail.com';
 
-const ROLE_LABEL: Record<AppRole, string> = {
-  admin: 'Full-timer',
-  manager: 'Trainee',
-  operator: 'Student',
-  viewer: 'Community',
+// Role names are the one piece of vocabulary the whole page repeats (the
+// account badge, the roster rows, the role cards), so they resolve through one
+// map instead of four English literals.
+const ROLE_LABEL_KEY: Record<AppRole, [key: string, fallback: string]> = {
+  admin: ['settings.roles.full_timer', 'Full-timer'],
+  manager: ['settings.roles.trainee', 'Trainee'],
+  operator: ['settings.roles.student', 'Student'],
+  viewer: ['settings.roles.community', 'Community'],
 };
+
+function roleLabel(t: (key: string, fallback?: string) => string, role: AppRole | string | null | undefined): string {
+  const [key, fallback] = ROLE_LABEL_KEY[(role as AppRole)] ?? ROLE_LABEL_KEY.viewer;
+  return t(key, fallback);
+}
 
 // Ordered low → high for the selects. The Full-timer (admin) option is only
 // offered to admins (RBAC) — handled where the options are rendered.
@@ -144,40 +152,63 @@ const ROLE_OPTIONS: { value: AppRole; label: string }[] = [
   { value: 'admin', label: 'Full-timer' },
 ];
 
+// The access chips reuse the nav labels so a Spanish reader sees the same
+// destination names the rail uses (plus "Today", which only this card calls
+// the home surface).
+const ROLE_SECTIONS: Record<string, [key: string, label: string]> = {
+  today: ['settings.access_today', 'Today'],
+  people: ['nav.directory', 'People'],
+  journey: ['nav.the_journey', 'The Journey'],
+  gatherings: ['nav.gatherings', 'Gatherings'],
+  prayer: ['nav.prayer', 'Prayer'],
+  history: ['nav.history', 'History'],
+  settings: ['nav.settings', 'Settings'],
+};
+
 const ROLE_CARDS: {
   key: AppRole;
+  labelKey: string;
   label: string;
+  descKey: string;
   initials: string;
   description: string;
   access: string[];
 }[] = [
   {
     key: 'admin',
+    labelKey: 'settings.roles.full_timer',
     label: 'Full-timer',
+    descKey: 'settings.roles.full_timer_desc',
     initials: 'FT',
     description: 'Full-time staff. Sees the whole work — every person, the team board, and all admin tools.',
-    access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History', 'Settings'],
+    access: ['today', 'people', 'journey', 'gatherings', 'prayer', 'history', 'settings'],
   },
   {
     key: 'manager',
+    labelKey: 'settings.roles.trainee',
     label: 'Trainee',
+    descKey: 'settings.roles.trainee_desc',
     initials: 'TR',
     description: 'Cares for the team. Manages users and accesses all data surfaces, minus dev-only admin.',
-    access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History'],
+    access: ['today', 'people', 'journey', 'gatherings', 'prayer', 'history'],
   },
   {
     key: 'operator',
+    labelKey: 'settings.roles.student',
     label: 'Student',
+    descKey: 'settings.roles.student_desc',
     initials: 'ST',
     description: 'Can add and update people, log interactions, and mark attendance.',
-    access: ['Today', 'People', 'Gatherings', 'Prayer'],
+    access: ['today', 'people', 'gatherings', 'prayer'],
   },
   {
     key: 'viewer',
+    labelKey: 'settings.roles.community',
     label: 'Community',
+    descKey: 'settings.roles.community_desc',
     initials: 'CM',
     description: 'A read-only window — can see gatherings and prayers, nothing else.',
-    access: ['Gatherings', 'Prayer'],
+    access: ['gatherings', 'prayer'],
   },
 ];
 
@@ -222,6 +253,7 @@ function Avatar({
 // ── Roles & access (RBAC reference cards — reskin only, never removed) ──
 
 function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-2.5 max-w-2xl">
       {ROLE_CARDS.map((card) => {
@@ -244,26 +276,29 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="font-serif text-[17px] text-on-surface leading-tight">{card.label}</span>
+                <span className="font-serif text-[17px] text-on-surface leading-tight">{t(card.labelKey, card.label)}</span>
                 {isActive && (
                   <span className="text-[11px] font-medium text-accent border border-accent-line bg-surface rounded-full px-2 py-0.5 leading-none">
-                    your role
+                    {t('settings.your_role', 'your role')}
                   </span>
                 )}
               </div>
               <p className="text-[13px] text-on-surface-variant mt-0.5 leading-none">
-                {card.access.length} section{card.access.length !== 1 ? 's' : ''} accessible
+                {t('settings.sections_accessible', '{n} sections accessible').replace('{n}', String(card.access.length))}
               </p>
-              <p className="text-[13.5px] text-on-surface/75 leading-relaxed mt-2 max-w-prose">{card.description}</p>
+              <p className="text-[13.5px] text-on-surface/75 leading-relaxed mt-2 max-w-prose">{t(card.descKey, card.description)}</p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {card.access.map((section) => (
-                  <span
-                    key={section}
-                    className="text-[12px] text-on-surface-variant bg-surface-container-high border border-outline-variant/40 rounded-full px-2.5 py-0.5"
-                  >
-                    {section}
-                  </span>
-                ))}
+                {card.access.map((section) => {
+                  const [key, label] = ROLE_SECTIONS[section];
+                  return (
+                    <span
+                      key={section}
+                      className="text-[12px] text-on-surface-variant bg-surface-container-high border border-outline-variant/40 rounded-full px-2.5 py-0.5"
+                    >
+                      {t(key, label)}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -331,7 +366,7 @@ function AccountSection() {
               </span>
               {myRole && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stage-accent-soft text-stage-accent border border-outline-variant/40">
-                  {ROLE_LABEL[myRole]}
+                  {roleLabel(t, myRole)}
                 </span>
               )}
             </div>
@@ -537,7 +572,7 @@ function SecuritySection() {
   return (
     <section className="mt-10">
       <SectionHeader
-        title={t('settings.security', 'Security')}
+        title={t('settings.security_title', 'Security')}
         sub={t('settings.security_sub', 'A second factor protects your account even if your password is compromised.')}
       />
       <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 space-y-4">
@@ -555,7 +590,10 @@ function SecuritySection() {
           <span
             className={cn(
               'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shrink-0',
-              secondFactorOn ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20',
+              // `text-warning` (#BA5900) on a 10% warning wash measured 3.87:1
+              // — below AA for a 12px badge. The tint carries the signal; the
+              // words stay in ink so the state can actually be read.
+              secondFactorOn ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-on-surface border-warning/30',
             )}
           >
             {secondFactorOn
@@ -573,7 +611,7 @@ function SecuritySection() {
               type="button"
               onClick={handleVerifyEmail}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-warning/15 text-warning hover:bg-warning/25 transition-colors disabled:opacity-50 min-h-[40px]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-warning/15 text-on-surface border border-warning/40 hover:bg-warning/25 transition-colors disabled:opacity-50 min-h-[40px]"
             >
               <Mail className="w-3.5 h-3.5" />
               {t('settings.security.verify_email', 'Verify email')}
@@ -725,10 +763,17 @@ function SecuritySection() {
 
 // ── Appearance ─────────────────────────────────────────────────────────
 
-const APPEARANCE: { key: 'light' | 'dark' | 'system'; label: string; note: string; Icon: typeof Sun }[] = [
-  { key: 'light', label: 'Light', note: 'Warm paper', Icon: Sun },
-  { key: 'dark', label: 'Dark', note: 'Quiet dusk', Icon: Moon },
-  { key: 'system', label: 'System', note: 'Match my device', Icon: Monitor },
+const APPEARANCE: {
+  key: 'light' | 'dark' | 'system';
+  labelKey: string;
+  label: string;
+  noteKey: string;
+  note: string;
+  Icon: typeof Sun;
+}[] = [
+  { key: 'light', labelKey: 'settings.appearance_light', label: 'Light', noteKey: 'settings.appearance_light_note', note: 'Warm paper', Icon: Sun },
+  { key: 'dark', labelKey: 'settings.appearance_dark', label: 'Dark', noteKey: 'settings.appearance_dark_note', note: 'Quiet dusk', Icon: Moon },
+  { key: 'system', labelKey: 'settings.appearance_system', label: 'System', noteKey: 'settings.appearance_system_note', note: 'Match my device', Icon: Monitor },
 ];
 
 function AppearanceSection({
@@ -743,7 +788,7 @@ function AppearanceSection({
     <section className="mt-10">
       <SectionHeader title={t('settings.appearance', 'Appearance')} sub={t('settings.appearance_sub', 'How CISA looks. Choose paper, dusk, or follow your device.')} />
       <div className="grid grid-cols-3 gap-3 max-w-2xl">
-        {APPEARANCE.map(({ key, label, note, Icon }) => {
+        {APPEARANCE.map(({ key, labelKey, label, noteKey, note, Icon }) => {
           const active = theme === key;
           return (
             <button
@@ -752,14 +797,20 @@ function AppearanceSection({
               aria-pressed={active}
               className={cn(
                 'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
+                // The Inversion Rule: the active choice turns inside out. A 5%
+                // tint left the chosen card lighter than its neighbours.
                 active
-                  ? 'border-primary/40 bg-primary/5'
+                  ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
               )}
             >
-              <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-on-surface-variant')} />
-              <span className="font-serif text-base text-on-surface leading-none">{label}</span>
-              <span className="text-xs text-on-surface-variant">{note}</span>
+              <Icon className={cn('w-5 h-5', active ? 'text-on-primary' : 'text-on-surface-variant')} />
+              <span className={cn('font-serif text-base leading-none', active ? 'text-on-primary' : 'text-on-surface')}>
+                {t(labelKey, label)}
+              </span>
+              <span className={cn('text-xs', active ? 'text-on-primary/80' : 'text-on-surface-variant')}>
+                {t(noteKey, note)}
+              </span>
             </button>
           );
         })}
@@ -772,13 +823,15 @@ function AppearanceSection({
 
 const NAV_SHELLS: Array<{
   key: NavShellPreference;
+  labelKey: string;
   label: string;
+  noteKey: string;
   note: string;
   Icon: typeof Sun;
 }> = [
-  { key: 'rail', label: 'Rail', note: 'Wide, all destinations visible', Icon: PanelLeft },
-  { key: 'rail-collapsed', label: 'Compact', note: 'Icons only, labels on hover', Icon: LayoutPanelLeft },
-  { key: 'topbar', label: 'Top bar', note: 'The original horizontal bar', Icon: Rows3 },
+  { key: 'rail', labelKey: 'settings.nav_rail', label: 'Rail', noteKey: 'settings.nav_rail_note', note: 'Wide, all destinations visible', Icon: PanelLeft },
+  { key: 'rail-collapsed', labelKey: 'settings.nav_compact', label: 'Compact', noteKey: 'settings.nav_compact_note', note: 'Icons only, labels on hover', Icon: LayoutPanelLeft },
+  { key: 'topbar', labelKey: 'settings.nav_topbar', label: 'Top bar', noteKey: 'settings.nav_topbar_note', note: 'The original horizontal bar', Icon: Rows3 },
 ];
 
 function NavigationSection() {
@@ -793,8 +846,11 @@ function NavigationSection() {
           'Desktop-only. The rail shows every destination grouped; the compact rail keeps the same destinations on icons; the top bar keeps the existing horizontal shell.',
         )}
       />
-      <div className="grid grid-cols-3 gap-3 max-w-2xl">
-        {NAV_SHELLS.map(({ key, label, note, Icon }) => {
+      {/* Below `lg` there is no rail and no top bar, so these three cards
+          accepted a tap and changed nothing the reader could see. The phone
+          gets one sentence instead of a control it cannot use. */}
+      <div className="hidden lg:grid grid-cols-3 gap-3 max-w-2xl" data-testid="nav-shell-cards">
+        {NAV_SHELLS.map(({ key, labelKey, label, noteKey, note, Icon }) => {
           const active = preference === key;
           return (
             <button
@@ -804,18 +860,28 @@ function NavigationSection() {
               className={cn(
                 'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
                 active
-                  ? 'border-primary/40 bg-primary/5'
+                  ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
               )}
             >
-              <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-on-surface-variant')} />
-              <span className="font-serif text-base text-on-surface leading-none">{label}</span>
-              <span className="text-xs text-on-surface-variant">{note}</span>
+              <Icon className={cn('w-5 h-5', active ? 'text-on-primary' : 'text-on-surface-variant')} />
+              <span className={cn('font-serif text-base leading-none', active ? 'text-on-primary' : 'text-on-surface')}>
+                {t(labelKey, label)}
+              </span>
+              <span className={cn('text-xs', active ? 'text-on-primary/80' : 'text-on-surface-variant')}>
+                {t(noteKey, note)}
+              </span>
             </button>
           );
         })}
       </div>
-      <p className="mt-3 text-xs text-on-surface-variant/70 max-w-2xl">
+      <p className="text-sm text-on-surface-variant lg:hidden max-w-2xl" data-testid="nav-phone-note">
+        {t(
+          'settings.navigation_phone',
+          'On a phone the bottom bar is always the navigation. The rail and the top bar are chosen on a computer.',
+        )}
+      </p>
+      <p className="mt-3 hidden text-xs text-on-surface-variant lg:block max-w-2xl">
         {t(
           'settings.navigation_help',
           'On narrower windows the top bar is used instead, and on phones the bottom bar — neither changes this choice. A narrow window may also collapse the rail temporarily.',
@@ -899,7 +965,7 @@ function NotificationsSection() {
       );
     } catch (err) {
       console.error('Failed to send test notification:', err);
-      setFeedbackMsg('Failed to send test notification.');
+      setFeedbackMsg(t('settings.push_test_failed', 'Failed to send test notification.'));
     } finally {
       setTesting(false);
     }
@@ -930,7 +996,7 @@ function NotificationsSection() {
                 ? t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings')
                 : permStatus === 'unsupported'
                   ? t('settings.notifications_unsupported', 'Browser notifications are not supported in this browser')
-                  : 'Notification permission not yet granted'}
+                  : t('settings.notifications_not_yet', 'Notification permission not yet granted')}
           </span>
         </div>
 
@@ -1107,9 +1173,9 @@ function ReminderScheduleSection() {
 
 // ── Language ───────────────────────────────────────────────────────────
 
-const LANGUAGES: { key: 'en' | 'es'; label: string; note: string; flag: string }[] = [
-  { key: 'en', label: 'English', note: 'Default language', flag: '🇺🇸' },
-  { key: 'es', label: 'Español', note: 'Traducción inteligente en vivo', flag: '🇪🇸' },
+const LANGUAGES: { key: 'en' | 'es'; label: string; noteKey: string; note: string; flag: string }[] = [
+  { key: 'en', label: 'English', noteKey: 'settings.language_en_note', note: 'Default language', flag: '🇺🇸' },
+  { key: 'es', label: 'Español', noteKey: 'settings.language_es_note', note: 'Traducción inteligente en vivo', flag: '🇪🇸' },
 ];
 
 function LanguageSection() {
@@ -1119,7 +1185,7 @@ function LanguageSection() {
     <section className="mt-10">
       <SectionHeader title={t('settings.language', 'Language')} sub={t('settings.language_sub', 'Choose your preferred interface and live translation language.')} />
       <div className="grid grid-cols-2 gap-3 max-w-xl">
-        {LANGUAGES.map(({ key, label, note, flag }) => {
+        {LANGUAGES.map(({ key, label, noteKey, note, flag }) => {
           const active = language === key;
           return (
             <button
@@ -1130,15 +1196,21 @@ function LanguageSection() {
               className={cn(
                 'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors cursor-pointer',
                 active
-                  ? 'border-primary/40 bg-primary/5'
+                  ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
               )}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xl leading-none" role="img" aria-label={label}>{flag}</span>
-                <span className="font-serif text-base text-on-surface leading-none">{label}</span>
+                {/* Decorative: the language's own name is the next span, so an
+                    aria-label here made a screen reader say "English English". */}
+                <span className="text-xl leading-none" aria-hidden="true">{flag}</span>
+                <span className={cn('font-serif text-base leading-none', active ? 'text-on-primary' : 'text-on-surface')}>
+                  {label}
+                </span>
               </div>
-              <span className="text-xs text-on-surface-variant">{note}</span>
+              <span className={cn('text-xs', active ? 'text-on-primary/80' : 'text-on-surface-variant')}>
+                {t(noteKey, note)}
+              </span>
             </button>
           );
         })}
@@ -1260,6 +1332,7 @@ function WhatsNewSection({
               <input
                 type="url"
                 placeholder="https://drive.google.com/file/d/.../view"
+                aria-label={t('settings.whats_new_video_url', 'Video link')}
                 value={effectiveInputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
                 className="flex-1 px-3.5 py-2 text-sm bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none text-on-surface"
@@ -1460,6 +1533,7 @@ function IntegrationsSection({
 }: {
   currentUser: User | null;
 }) {
+  const { t } = useLanguage();
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [result, setResult] = useState<QuickAddResult | null>(null);
@@ -1571,7 +1645,7 @@ function IntegrationsSection({
                 {geminiStatus === 'missing' && (
                   <span
                     data-testid="gemini-status-badge"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-warning border border-warning/20"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-on-surface border border-warning/30"
                     title="The backend reports GEMINI_API_KEY is not configured. Set it on the campus-hub-backend Cloud Run service to re-enable Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups."
                   >
                     <XCircle className="w-3 h-3" /> Gemini AI not configured
@@ -1597,6 +1671,7 @@ function IntegrationsSection({
             <input
               type="text"
               placeholder="e.g. Met John Doe at Miller Hall. Sophomore philosophy student, phone 555-1234."
+              aria-label={t('settings.quick_add_label', 'A description to parse into a contact')}
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={status === 'loading'}
@@ -1925,7 +2000,7 @@ function AttdIntegrationCard({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-warning bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
+          <p className="text-xs text-on-surface bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
             {t('attendanceSync.attd_no_token', 'No sync token configured yet. Generate one to enable sync from ~/attd.')}
           </p>
         )}
@@ -2020,7 +2095,7 @@ function WebhookConsoleSection() {
           <div className="py-12 text-center">
             <Sparkles className="w-7 h-7 text-on-surface-variant/40 mx-auto mb-2" />
             <p className="text-sm font-medium text-on-surface-variant">No activity yet</p>
-            <p className="text-xs text-on-surface-variant/70 mt-1">
+            <p className="text-xs text-on-surface-variant mt-1">
               Send a message to your GroupMe bot or try Quick Add to see webhooks here.
             </p>
           </div>
@@ -2173,6 +2248,7 @@ function MemberCard({
   onEdit: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -2205,7 +2281,7 @@ function MemberCard({
           )}
         </div>
         <div className="text-[13px] text-on-surface-variant truncate">
-          {ROLE_LABEL[user.role || 'viewer']} · {user.email}
+          {roleLabel(t, user.role)} · {user.email}
         </div>
       </div>
 
@@ -2252,6 +2328,7 @@ function MemberCard({
 }
 
 function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-outline-variant/60 bg-surface-container-low">
       <div className="w-10 h-10 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center shrink-0">
@@ -2264,7 +2341,7 @@ function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => v
             invite sent
           </span>
         </div>
-        <div className="text-[13px] text-on-surface-variant">{ROLE_LABEL[invite.role]} · waiting to sign up</div>
+        <div className="text-[13px] text-on-surface-variant">{roleLabel(t, invite.role)} · waiting to sign up</div>
       </div>
       <button
         onClick={onCancel}
@@ -2463,6 +2540,7 @@ function RemoveConfirmModal({
   onClose: () => void;
   onConfirm: (uid: string) => void;
 }) {
+  const { t } = useLanguage();
   const firstName = (user.displayName || user.email).split(' ')[0];
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -2484,7 +2562,7 @@ function RemoveConfirmModal({
           <Avatar name={user.displayName || user.email} photoURL={user.photoURL} />
           <div className="min-w-0">
             <div className="font-medium text-on-surface truncate">{user.displayName || 'Unnamed'}</div>
-            <div className="text-[13px] text-on-surface-variant truncate">{ROLE_LABEL[user.role || 'viewer']}</div>
+            <div className="text-[13px] text-on-surface-variant truncate">{roleLabel(t, user.role)}</div>
           </div>
         </div>
         <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
@@ -3121,6 +3199,8 @@ export default function Settings() {
   const myWeeklyOff = !!users.find((u) => u.uid === currentUser?.uid)?.weeklyRemindersOff;
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teamError, setTeamError] = useState(false);
+  const [teamReloadKey, setTeamReloadKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -3150,10 +3230,12 @@ export default function Settings() {
           return !email.startsWith('cisa-') && !displayName.startsWith('cisa-');
         });
         setUsers(filteredUsers);
+        setTeamError(false);
         timer = setTimeout(() => setLoading(false), 600);
       },
       (error) => {
         console.error('Error fetching users:', error);
+        setTeamError(true);
         timer = setTimeout(() => setLoading(false), 600);
       },
     );
@@ -3170,7 +3252,7 @@ export default function Settings() {
       unsubscribeUsers();
       unsubscribeInvites();
     };
-  }, [isManager]);
+  }, [isManager, teamReloadKey]);
 
   const sendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3331,7 +3413,7 @@ export default function Settings() {
         <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">{t('settings.title', 'Settings')}</h1>
         <p className="text-base text-on-surface-variant mt-2">
           {currentUser?.displayName
-            ? `${t('settings.signed_in_as', 'Signed in as')} ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`
+            ? `${t('settings.signed_in_as', 'Signed in as')} ${currentUser.displayName}${myRole ? ` · ${roleLabel(t, myRole)}` : ''}`
             : t('settings.manager_subtitle', 'Your workspace and preferences.')}
         </p>
       </header>
@@ -3371,6 +3453,7 @@ export default function Settings() {
             <input
               type="text"
               placeholder={t('settings.find_teammate', 'Find a teammate…')}
+              aria-label={t('settings.find_teammate_label', 'Find a teammate')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
@@ -3400,7 +3483,7 @@ export default function Settings() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-on-surface truncate">{u.displayName || 'Unnamed'}</div>
                     <div className="text-[13px] text-on-surface-variant truncate">
-                      wants {ROLE_LABEL[u.role || 'viewer']} · {u.email}
+                      wants {roleLabel(t, u.role)} · {u.email}
                     </div>
                   </div>
                   <button
@@ -3421,8 +3504,31 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Member list */}
-        {loading ? (
+        {/* Member list. A denied or failed users query used to fall through to
+            the same sentence as an empty search ("No teammates or invites match
+            your search."), so a network blip looked like a roster of nobody.
+            It says what happened and offers a way back. */}
+        {teamError ? (
+          <div
+            role="alert"
+            className="flex flex-col gap-3 rounded-2xl border border-error/30 bg-error/5 p-4 sm:flex-row sm:items-center"
+          >
+            <p className="flex-1 text-sm text-on-surface">
+              {t('settings.team_load_failed', "Couldn't load your team.")}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setTeamError(false);
+                setLoading(true);
+                setTeamReloadKey((k) => k + 1);
+              }}
+              className="shrink-0 rounded-lg border border-outline-variant/50 bg-surface px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors min-h-[40px]"
+            >
+              {t('settings.try_again', 'Try again')}
+            </button>
+          </div>
+        ) : loading ? (
           <div className="space-y-2.5">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
