@@ -3949,20 +3949,14 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .cdm-chip-row { margin: 8px 0 6px; }
   .cdm-meta { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; margin-top: 14px; text-wrap: pretty; }
 
-  /* communication tiles */
-  .cdm-comm { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
-  .cdm-comm button {
-    display: flex; flex-direction: column; align-items: center; gap: 7px;
-    padding: 12px 0 11px; min-height: 62px;
-    background: var(--panel); border: 1px solid var(--border-soft); border-radius: 13px;
-    font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; color: var(--text-dim);
-    cursor: pointer; transition: background 120ms ease;
+  /* one reach row: the Conversation, then Call/Text/Email (#1781) */
+  .cdm-reach-btn {
+    width: 44px; height: 44px; border-radius: 999px; flex: none;
+    display: grid; place-items: center; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border-soft); color: var(--accent);
+    transition: background 120ms ease;
   }
-  .cdm-comm button:active { background: var(--hover); }
-  .cdm-comm-ico {
-    width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center;
-    background: var(--accent-soft); color: var(--accent);
-  }
+  .cdm-reach-btn:active { background: var(--hover); }
 
   /* two primary actions */
   .cdm-primary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
@@ -4235,7 +4229,17 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 14px 16px; border-bottom: 1px solid var(--border-soft); flex: none;
 }
+.cd-pane-heading { min-width: 0; flex: 1 1 auto; }
 .cd-pane-title { font-family: var(--font-serif); font-size: 16px; font-weight: 600; margin: 0; color: var(--on-surface); }
+/* Whose thread this is — the pane covers the page on a phone, so the title
+   alone is not enough (#1781). */
+.cd-pane-who { margin: 2px 0 0; font-family: var(--font-sans); font-size: 13px; color: var(--on-surface-variant); }
+.cd-pane-close {
+  width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--on-surface-variant);
+}
+.cd-pane-close:hover { background: var(--surface-container-high); }
 .cd-pane-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--surface-container-low); }
 .cd-pane-tab {
   position: relative; height: 28px; padding: 0 12px; border-radius: 999px; border: 0;
@@ -4254,6 +4258,17 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cdm-page .cd-pane-stream.is-open {
   display: flex; flex-direction: column; position: absolute; inset: 0; z-index: 40;
   width: 100%; background: var(--bg);
+}
+/* Phone targets in the Conversation pane (#1781): the pane's tabs and its ask
+   chip, the mention/attach tools, the send and the kind chips. Scoped to the
+   contact page so the desktop stream keeps its density; the staged-attachment
+   chip keeps its own 24px tool (its rule comes later). */
+@media (max-width: 720px) {
+  .cdm-page .strm-tool,
+  .cdm-page .strm-send { width: 44px; height: 44px; }
+  .cdm-page .strm-kind { height: 44px; }
+  .cdm-page .cd-pane-tab,
+  .cdm-page .cd-pane-asks { height: 44px; min-height: 44px; }
 }
 .cd-story { padding: 24px 28px; min-width: 0; }
 .cd-story-compose { margin-bottom: 20px; }

@@ -921,10 +921,14 @@ export default function ContactDetailsModal({
     },
   };
 
+  // AnimatePresence identifies its children by their keys, so every direct
+  // child here carries one: unkeyed, they all claimed `""`, and React logged
+  // "Encountered two children with the same key" on every render of this page
+  // (#1781).
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className={isMobile ? "cdm-page" : "cd-page"}>
+        <div key="page" className={isMobile ? "cdm-page" : "cd-page"}>
           <div className={isMobile ? "cdm-page-main" : "cd-page-main"}>
             <ContactHead
               model={headerModel}
@@ -994,7 +998,7 @@ export default function ContactDetailsModal({
       )}
 
       {aboutOpen && (
-        <AboutSheet open={aboutOpen} name={contact.name} onClose={() => setAboutOpen(false)}>
+        <AboutSheet key="about" open={aboutOpen} name={contact.name} onClose={() => setAboutOpen(false)}>
           <ContactAboutContent
             contact={contact}
             firstName={firstName}
@@ -1026,6 +1030,7 @@ export default function ContactDetailsModal({
       )}
 
       <DelegateSheet
+        key="delegate"
         open={delegateOpen}
         name={contact.name}
         members={shareOptions}
@@ -1034,6 +1039,7 @@ export default function ContactDetailsModal({
       />
 
       <AddToAskModal
+        key="add-to-ask"
         open={addToAskOpen}
         contactId={currentContact.id}
         contactName={currentContact.name}
@@ -1043,6 +1049,7 @@ export default function ContactDetailsModal({
 
       {movingStage && (
         <StageMoveSheet
+          key="stage"
           stages={sortedStages}
           current={currentContact.stage || ""}
           contactName={currentContact.name}
@@ -1050,7 +1057,7 @@ export default function ContactDetailsModal({
           onClose={() => setMovingStage(false)}
         />
       )}
-      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
+      <UndoSnackbar key="undo" undoSnack={undoSnack} onClose={closeUndoSnack} />
     </AnimatePresence>
   );
 }

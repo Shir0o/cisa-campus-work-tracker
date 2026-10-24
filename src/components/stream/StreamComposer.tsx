@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 
 import { AtSign, FileText, Lock, Paperclip, Send, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useCommand } from "../../lib/commands";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useLanguage } from "../LanguageProvider";
 import { MentionAutocomplete } from "../common/MentionAutocomplete";
 import {
@@ -181,6 +182,10 @@ export default function StreamComposer({
 
   const line = kind === "nudge" && askAudience ? askAudience : audience;
   const ph = kinds ? t(COMPOSE_KINDS[kind].placeholder) : placeholder;
+  // "⌘↵ to post" is a keyboard hint. Below the phone breakpoint the pane is a
+  // thumb-driven composer with no Command key, so the hint is not rendered at
+  // all rather than left for CSS to hide (#1781).
+  const showHint = useMediaQuery("(min-width: 721px)");
 
   return (
     <div className="strm-composer" data-stream-composer="">
@@ -262,7 +267,7 @@ export default function StreamComposer({
               <AtSign className="w-4 h-4" />
             </button>
           )}
-          <span className="strm-hint">{hint}</span>
+          {showHint && <span className="strm-hint">{hint}</span>}
           <button
             type="button"
             className="strm-send"

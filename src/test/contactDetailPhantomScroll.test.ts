@@ -145,6 +145,43 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     expect(css).not.toMatch(/\[data-thread-list\][^{}]*\{[^}]*column-reverse/);
   });
 
+  /**
+   * The phone-targets block for the Conversation pane (#1781). jsdom has no
+   * layout engine, so the 44px rule cannot be measured in a render test; this
+   * reads the stylesheet the way the rest of this file does. The block is
+   * found by its marker comment and read to the first closing brace at column
+   * zero, which is the enclosing `@media`'s.
+   */
+  it('the Conversation pane meets the 44px phone rule on every control (#1781)', () => {
+    const marker = '/* Phone targets in the Conversation pane (#1781)';
+    const markAt = css.indexOf(marker);
+    expect(markAt, 'the #1781 phone-targets block should exist').toBeGreaterThan(-1);
+    const mediaAt = css.lastIndexOf('@media', markAt);
+    const end = css.indexOf('\n}', markAt);
+    const block = css.slice(mediaAt, end);
+
+    const fourtyFour = (selector: string) => {
+      const rule = block.slice(block.indexOf(selector));
+      const body = rule.slice(rule.indexOf('{') + 1, rule.indexOf('}'));
+      expect(body, `${selector} should be a 44px target`).toMatch(/44px/);
+    };
+
+    // The pane's own chrome: the close is a pane-only control, so it carries
+    // its size in its base rule, not in the breakpoint.
+    const closeBody = ruleBody(css, '.cd-pane-close');
+    expect(closeBody, '.cd-pane-close rule should exist').not.toBeNull();
+    expect(closeBody!).toMatch(/width:\s*44px/);
+    expect(closeBody!).toMatch(/height:\s*44px/);
+    fourtyFour('.cdm-page .cd-pane-tab');
+    fourtyFour('.cdm-page .cd-pane-asks');
+    // The composer's controls: mention/attach tools, send, and the kind chips.
+    fourtyFour('.cdm-page .strm-tool');
+    fourtyFour('.cdm-page .strm-send');
+    fourtyFour('.cdm-page .strm-kind');
+    // Scoped to the contact page, so the desktop stream keeps its density.
+    expect(block).toMatch(/max-width:\s*720px/);
+  });
+
   it('desktop edit form is wrapped in a scroll container inside cd-page-content', () => {
     const markup = readFileSync(MARKUP_PATHS[0], 'utf8');
     // When isEditing is true on desktop, the edit form must be wrapped in a scroll

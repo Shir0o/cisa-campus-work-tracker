@@ -557,19 +557,40 @@ describe("Stream — optional adapter capabilities", () => {
   });
 
   it("draws the adapter's footer under the composer, and the composer's own words", () => {
-    renderStream(
-      fakeAdapter({
-        composer: { placeholder: "Ask a follow-up…", label: "Ask a follow-up", submitLabel: "Send", hint: "⌘↵ to send" },
-        capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
-      }),
-      { footer: <p>Replies are public.</p> },
-    );
-    const box = screen.getByPlaceholderText("Ask a follow-up…");
-    expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBe(box);
-    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
-    expect(screen.getByText("⌘↵ to send")).toBeInTheDocument();
-    const footer = screen.getByText("Replies are public.");
-    expect(box.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The shortcut hint is a keyboard hint, so it only renders at widths that
+    // have a keyboard (#1781). This test is about the words, not the
+    // breakpoint, so it renders as a desktop pane.
+    const originalMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(min-width: 721px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    try {
+      renderStream(
+        fakeAdapter({
+          composer: { placeholder: "Ask a follow-up…", label: "Ask a follow-up", submitLabel: "Send", hint: "⌘↵ to send" },
+          capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+        }),
+        { footer: <p>Replies are public.</p> },
+      );
+      const box = screen.getByPlaceholderText("Ask a follow-up…");
+      expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBe(box);
+      expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+      expect(screen.getByText("⌘↵ to send")).toBeInTheDocument();
+      const footer = screen.getByText("Replies are public.");
+      expect(box.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: originalMedia });
+    }
   });
 
   it("keeps the draft and says so when a confirmed post fails; clears it once a post lands", async () => {
