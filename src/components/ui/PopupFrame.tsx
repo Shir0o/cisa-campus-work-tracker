@@ -467,10 +467,7 @@ export function PopupFrame({
                   type="button"
                   onClick={requestBack}
                   aria-label={backLabel ?? t('popup.back')}
-                  className={cn(
-                    'grid shrink-0 place-items-center rounded-full text-on-surface transition-colors hover:bg-surface-container-low',
-                    sheet ? 'h-11 w-11' : 'h-10 w-10',
-                  )}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-on-surface transition-colors hover:bg-surface-container-low"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>
@@ -490,10 +487,7 @@ export function PopupFrame({
                 type="button"
                 onClick={requestClose}
                 aria-label={t('modals.close')}
-                className={cn(
-                  'grid shrink-0 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface',
-                  sheet ? 'h-11 w-11' : 'h-10 w-10',
-                )}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface"
               >
                 <X className="h-5 w-5" />
               </button>

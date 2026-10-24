@@ -1,4 +1,5 @@
 import { Lock, X } from "lucide-react";
+import { useId } from "react";
 import Stream from "../stream/Stream";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { useLanguage } from "../LanguageProvider";
@@ -78,6 +79,7 @@ export default function ContactStreamPane({
   const fullTimersLabel = t('modals.contactDetails.discussion');
   const baseLabel = view === "fullTimers" ? fullTimersLabel : conversationLabel;
   const baseAdapter = view === "fullTimers" ? fullTimers : conversation;
+  const whoId = useId();
 
   // On a narrow screen the pane only exists while it is open; the head's
   // Conversation button is what opens it.
@@ -93,6 +95,7 @@ export default function ContactStreamPane({
       className={cn("cd-pane-stream", isMobile && open && "is-open")}
       role="region"
       aria-label={baseLabel}
+      aria-describedby={isMobile ? whoId : undefined}
       data-pane-stream={view}
     >
       {interactionThread ? (
@@ -106,10 +109,20 @@ export default function ContactStreamPane({
       ) : (
         <>
           <div className="cd-pane-head">
-            <h3 className="cd-pane-title inline-flex items-center gap-2">
-              {view === "fullTimers" && <Lock className="w-4 h-4" aria-hidden />}
-              {baseLabel}
-            </h3>
+            <div className="cd-pane-heading">
+              <h3 className="cd-pane-title inline-flex items-center gap-2">
+                {view === "fullTimers" && <Lock className="w-4 h-4" aria-hidden />}
+                {baseLabel}
+              </h3>
+              {/* The pane covers the page (#1781), so the title alone loses
+                  whose thread this is. The name sits under it and is the
+                  region's description. */}
+              {isMobile && (
+                <p className="cd-pane-who" id={whoId}>
+                  {contact.name}
+                </p>
+              )}
+            </div>
             {isFullTimer && (
               <div className="cd-pane-switch" role="group" aria-label={t('modals.contactDetails.conversation_switch')}>
                 <button
@@ -148,7 +161,7 @@ export default function ContactStreamPane({
                 onClick={onClose}
                 title={t('modals.contactDetails.close_drawer').replace('{thread}', baseLabel)}
                 aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', baseLabel)}
-                className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
+                className="cd-pane-close shrink-0 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>

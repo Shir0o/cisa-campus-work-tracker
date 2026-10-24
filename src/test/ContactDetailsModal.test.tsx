@@ -3797,6 +3797,57 @@ describe('desktop story layout (design D)', () => {
       expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
       expect(within(pane).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
     });
+
+    // #1781: the pane covers the whole page, so the header has to say whose
+    // thread this is — the title alone leaves the reader without a person.
+    it("keeps the person's name in the Conversation pane's header and description", () => {
+      const pane = openPane();
+      const head = pane.querySelector('.cd-pane-head') as HTMLElement;
+      expect(within(head).getByText('John Doe')).toBeInTheDocument();
+      expect(pane).toHaveAccessibleDescription('John Doe');
+    });
+
+    // #1781: a keyboard hint on a screen with no Command key.
+    it('renders no ⌘ hint in the phone pane', () => {
+      const pane = openPane();
+      expect(within(pane).queryByText('⌘↵ to post')).toBeNull();
+      expect(within(pane).queryByText('⌘↵ to reply')).toBeNull();
+    });
+
+    // #1781: the head is compressed by folding the communication tiles into
+    // the row that already carries the Conversation. jsdom has no layout, so
+    // the structural change is what this asserts; the pixel measurement is in
+    // the PR body.
+    it('folds Call, Text and Email into the Conversation row instead of a tiled band', () => {
+      renderOnPhone();
+      const reach = document.querySelector('.cdm-reach') as HTMLElement;
+      expect(reach).not.toBeNull();
+      expect(within(reach).getByRole('button', { name: /^Conversation/ })).toBeInTheDocument();
+      expect(within(reach).getByRole('button', { name: 'Call' })).toBeInTheDocument();
+      expect(within(reach).getByRole('button', { name: 'Text' })).toBeInTheDocument();
+      expect(within(reach).getByRole('button', { name: 'Email' })).toBeInTheDocument();
+      expect(document.querySelector('.cdm-comm')).toBeNull();
+    });
+  });
+
+  // #1781: the page opened with the console printing "Encountered two children
+  // with the same key" — the key was the empty string. AnimatePresence keys its
+  // children itself, so every unkeyed child it is given claims `""` and React
+  // warns once per collision. This file's `motion/react` mock flattens
+  // AnimatePresence into a fragment, which hides the defect, so this one test
+  // re-imports the modal against the real library.
+  it('renders its overlays without duplicate empty React keys (#1781)', async () => {
+    vi.resetModules();
+    vi.doUnmock('motion/react');
+    const { default: RealModal } = await import('../components/modals/ContactDetailsModal');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<RealModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    const duplicateKeyWarnings = errorSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('same key'),
+    );
+    expect(duplicateKeyWarnings.map((call) => call[1])).toEqual([]);
   });
 });
 

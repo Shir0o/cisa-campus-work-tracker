@@ -418,9 +418,12 @@ export default function ContactHead(props: ContactHeadProps) {
               </div>
             </div>
 
-            {/* The Conversation lives in a pane; on a narrow screen this opens
-                it full-screen (ADR 0034). */}
-            <div className="px-5 pt-1">
+            {/* One row for every way to reach the person (#1781) — the
+                Conversation, then Call/Text/Email as 44px icons. The tiled
+                band below it cost 101px on a person with a phone and an email,
+                leaving the story 337px of the first screen; folded in, the
+                head gives back more than half of it. */}
+            <div className="cdm-reach px-5 pt-1 flex items-center gap-2">
               <button
                 type="button"
                 onClick={onOpenConversation}
@@ -440,6 +443,41 @@ export default function ContactHead(props: ContactHeadProps) {
                   />
                 )}
               </button>
+              <div className="cdm-reach-actions ml-auto flex items-center gap-1">
+                {contact.phone && (
+                  <button
+                    type="button"
+                    onClick={onCall}
+                    aria-label={t('modals.contactDetails.call')}
+                    title={t('modals.contactDetails.call')}
+                    className="cdm-reach-btn"
+                  >
+                    <Phone className="w-5 h-5" />
+                  </button>
+                )}
+                {contact.phone && (
+                  <button
+                    type="button"
+                    onClick={onText}
+                    aria-label={t('modals.contactDetails.text')}
+                    title={t('modals.contactDetails.text')}
+                    className="cdm-reach-btn"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                  </button>
+                )}
+                {contact.email && (
+                  <button
+                    type="button"
+                    onClick={onEmail}
+                    aria-label={t('modals.contactDetails.email')}
+                    title={t('modals.contactDetails.email')}
+                    className="cdm-reach-btn"
+                  >
+                    <Mail className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Hero Block */}
@@ -500,28 +538,6 @@ export default function ContactHead(props: ContactHeadProps) {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Communication Tiles */}
-            <div className="cdm-comm px-5 pb-4">
-              {contact.phone && (
-                <button onClick={onCall}>
-                  <span className="cdm-comm-ico"><Phone className="w-4.5 h-4.5" /></span>
-                  <span>{t('modals.contactDetails.call')}</span>
-                </button>
-              )}
-              {contact.phone && (
-                <button onClick={onText}>
-                  <span className="cdm-comm-ico"><MessageSquare className="w-4.5 h-4.5" /></span>
-                  <span>{t('modals.contactDetails.text')}</span>
-                </button>
-              )}
-              {contact.email && (
-                <button onClick={onEmail}>
-                  <span className="cdm-comm-ico"><Mail className="w-4.5 h-4.5" /></span>
-                  <span>{t('modals.contactDetails.email')}</span>
-                </button>
-              )}
             </div>
 
             {/* Two Primary Actions */}
