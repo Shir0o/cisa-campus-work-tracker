@@ -1795,7 +1795,7 @@ export default function CoordinationNotes() {
           SearchBarComponent={searchBarJSX}
         />
         {/* The phone branch used to drop every confirmation and undo the desktop
-            renders — a deleted page left no snackbar and no way back (#1772). */}
+            renders — a deleted page left no snackbar and no way back. */}
         {flash && (
           <div
             role="status"
