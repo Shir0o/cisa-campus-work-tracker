@@ -451,7 +451,7 @@ export default function BibleStudyEditor() {
       {/* Header. Below lg the two halves stack: the actions are ~311px wide on
           their own, so on a 375px phone an unwrapped row squeezed the title
           input to 16px and painted the date/Save/Unpublish over the
-          breadcrumb (#1776). */}
+          breadcrumb (issue 1776). */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 pb-4 shrink-0 border-b border-outline-variant">
         <div className="min-w-0 flex-1">
           <div className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5">

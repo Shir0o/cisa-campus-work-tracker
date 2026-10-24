@@ -423,7 +423,7 @@ export function WorklistCard({
                 // The clamp exists for the desktop three-up grid, where every
                 // tile has to be the same height. A phone stacks one card per
                 // row, so a clamped body there only hides the thing the reader
-                // has to read to answer it (#1776).
+                // has to read to answer it (issue 1776).
                 !mobile && !stripOpen && !noteExpanded && "line-clamp-2",
               )}
               text={latestText}

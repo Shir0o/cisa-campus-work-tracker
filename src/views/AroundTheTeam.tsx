@@ -65,7 +65,7 @@ function dayLabel(iso: any): string {
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   // A day from another year needs its year: "Wednesday, December 31" on a
-  // phone in October reads as a date that has not happened yet (#1776).
+  // phone in October reads as a date that has not happened yet (issue 1776).
   if (d.getFullYear() !== today.getFullYear()) {
     return d.toLocaleDateString(undefined, {
       weekday: "long",

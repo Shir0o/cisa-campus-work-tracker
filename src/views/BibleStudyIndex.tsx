@@ -271,7 +271,7 @@ export default function BibleStudyIndex() {
       <div className="max-w-5xl mx-auto">
         {/* The page had no title at all: on a phone the first thing on screen
             was the entry-point card, and neither the DOM nor a screen reader
-            was told what this page is (#1776). */}
+            was told what this page is (issue 1776). */}
         <header className="px-1 mb-4">
           <h1 className="font-serif text-2xl font-bold text-on-surface">{t('nav.bible_study')}</h1>
         </header>

@@ -143,7 +143,7 @@ export default function WhoWeHaventSeen({
     <div className={compact ? 'px-5 mt-6' : ''}>
       {/* On the phone the tab above already says "Who we haven't seen" and the
           page header already carries the sentence, so repeating both here
-          opened the reading with the same two lines twice (#1776). */}
+          opened the reading with the same two lines twice (issue 1776). */}
       {!compact && (
         <div className="flex items-baseline gap-3 flex-wrap mb-1">
           <h2 className="font-serif text-[23px] text-on-surface">{t('visits.who_we_havent_seen')}</h2>
