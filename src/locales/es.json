@@ -481,7 +481,9 @@
     "no_prayers_title": "Aún no hay oraciones contestadas registradas",
     "no_prayers_body": "Cuando las oraciones se marquen como contestadas y se escriban testimonios, aparecerán aquí.",
     "recent_answers": "Respuestas recientes",
-    "earlier_this_year": "Anteriormente este año",
+    "earlier_answers": "Respuestas anteriores",
+    "recently": "Recientemente",
+    "photo": "Foto",
     "whole_team": "Todo el equipo",
     "asked": "preguntada",
     "answered": "contestada"

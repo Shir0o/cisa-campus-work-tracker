@@ -481,7 +481,9 @@
     "no_prayers_title": "No answered prayers recorded yet",
     "no_prayers_body": "As prayers are marked answered and testimonies are written, they will blossom here.",
     "recent_answers": "Recent answers",
-    "earlier_this_year": "Earlier this year",
+    "earlier_answers": "Earlier answers",
+    "recently": "Recently",
+    "photo": "Photo",
     "whole_team": "Whole Team",
     "asked": "asked",
     "answered": "answered"

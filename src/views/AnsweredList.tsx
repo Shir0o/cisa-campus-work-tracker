@@ -19,19 +19,149 @@ function getToneForId(id: string): 'accent' | 'violet' | 'amber' | 'sage' {
   return TONES[sum % TONES.length];
 }
 
-function formatDate(isoString: string) {
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) throw new Error('Invalid Date');
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch {
-    return 'Recently';
+/** `Oct 18` — the shape the prayer controls write into `answeredAt`. */
+const MONTH_DAY = /^([A-Za-z]{3,9})\.?\s+(\d{1,2})$/;
+
+/**
+ * Parse a stored prayer date.
+ *
+ * `answeredAt` is written as a *display* string (`Oct 18`) by the prayer
+ * controls, so `new Date('Oct 18')` reads it as 2001 and every answer made in
+ * the app dropped out of "this year" and landed under "Earlier". A display
+ * string is therefore read in the current year — or last year, if that would
+ * put the answer in the future. Date-only ISO strings are local midnight, not
+ * UTC (a UTC midnight is the previous day west of Greenwich).
+ */
+export function parsePrayerDate(
+  value: string | null | undefined,
+  now: Date = new Date(),
+): Date | null {
+  const raw = (value || '').trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date(`${raw}T00:00:00`);
+
+  const stored = MONTH_DAY.exec(raw);
+  if (stored) {
+    const thisYear = new Date(`${stored[1]} ${stored[2]}, ${now.getFullYear()}`);
+    if (isNaN(thisYear.getTime())) return null;
+    if (thisYear.getTime() <= now.getTime() + 24 * 60 * 60 * 1000) return thisYear;
+    return new Date(`${stored[1]} ${stored[2]}, ${now.getFullYear() - 1}`);
   }
+
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** Short day, with the year only when it is not this one. */
+function formatDay(date: Date, locale: string, now: Date = new Date()): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  }).format(date);
+}
+
+interface AnsweredRow {
+  prayer: PrayerRecord;
+  answered: Date | null;
+}
+
+interface AnsweredCardProps {
+  row: AnsweredRow;
+  contact?: Contact;
+  locale: string;
+  t: (key: string, fallback?: string) => string;
+  onOpen: (contact: Contact) => void;
+}
+
+function AnsweredCard({ row, contact, locale, t, onOpen }: AnsweredCardProps) {
+  const { prayer: p, answered } = row;
+  const name = contact?.name || t('answered.whole_team');
+  const initial = name.trim().charAt(0).toUpperCase();
+  const tone = getToneForId(p.id);
+  const asked = parsePrayerDate(p.date);
+  const answeredLabel = answered ? formatDay(answered, locale) : t('answered.recently');
+  const askedLabel = asked ? formatDay(asked, locale) : t('answered.recently');
+
+  const open = () => contact && onOpen(contact);
+
+  return (
+    <article
+      onClick={open}
+      className={cn('ans-card', `tone-${tone}`, contact && 'is-clickable')}
+    >
+      {contact ? (
+        // The portrait is the card's one control, so a keyboard or screen
+        // reader has a named way into the person (the card itself is a mouse
+        // target only).
+        <button
+          type="button"
+          className={cn('ans-photo', `tone-${tone}`)}
+          aria-label={name}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(contact);
+          }}
+        >
+          <span className="ans-initial">{initial}</span>
+          {contact.avatar && (
+            <img
+              src={contact.avatar}
+              alt={name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+        </button>
+      ) : (
+        <div className={cn('ans-photo', `tone-${tone}`)}>
+          <span className="ans-initial">{initial}</span>
+        </div>
+      )}
+      <div className="ans-card-body">
+        <div className="ans-who">{name}</div>
+        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
+        {(p.answeredPhotos || []).length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {p.answeredPhotos!.map((ph) =>
+              ph.url ? (
+                <img
+                  key={ph.path}
+                  src={ph.url}
+                  alt={ph.name || t('answered.photo')}
+                  className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
+                />
+              ) : (
+                <span
+                  key={ph.path}
+                  title={ph.name}
+                  className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </span>
+              ),
+            )}
+          </div>
+        )}
+        <div className="ans-arc">
+          <Translate as="span" className="ans-item" text={p.burden} />
+          <span className="ans-dates">
+            <span>
+              {t('answered.asked')} {askedLabel}
+            </span>
+            <span className="ans-sep" />
+            <span className="ans-ans">
+              {t('answered.answered')} {answeredLabel}
+            </span>
+          </span>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 export default function AnsweredList() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,41 +205,27 @@ export default function AnsweredList() {
     return map;
   }, [contacts]);
 
-  // Grouped answered prayers
+  // Grouped answered prayers. One parsed date per prayer drives the group, the
+  // sort and the "this year" count, so the three cannot disagree.
   const { recent, earlier, totalThisYear } = useMemo(() => {
-    const year = new Date().getFullYear();
-    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    
-    let thisYearCount = 0;
-    const rec: PrayerRecord[] = [];
-    const ear: PrayerRecord[] = [];
+    const now = new Date();
+    const year = now.getFullYear();
+    const ninetyDaysAgo = now.getTime() - 90 * 24 * 60 * 60 * 1000;
 
-    prayers.forEach((p) => {
-      const dateMs = new Date(p.answeredAt || p.updatedAt || p.date).getTime();
-      const pYear = new Date(p.answeredAt || p.updatedAt || p.date).getFullYear();
-      
-      if (pYear === year) {
-        thisYearCount++;
-      }
-
-      if (dateMs >= ninetyDaysAgo) {
-        rec.push(p);
-      } else {
-        ear.push(p);
-      }
-    });
-
-    // Sort by answered date (newest first)
-    const sortByDate = (a: PrayerRecord, b: PrayerRecord) => {
-      const tA = new Date(a.answeredAt || a.updatedAt || a.date).getTime();
-      const tB = new Date(b.answeredAt || b.updatedAt || b.date).getTime();
-      return tB - tA;
-    };
+    const rows: AnsweredRow[] = prayers
+      .map((prayer) => ({
+        prayer,
+        answered:
+          parsePrayerDate(prayer.answeredAt, now) ??
+          parsePrayerDate(prayer.updatedAt, now) ??
+          parsePrayerDate(prayer.date, now),
+      }))
+      .sort((a, b) => (b.answered?.getTime() ?? 0) - (a.answered?.getTime() ?? 0));
 
     return {
-      recent: rec.sort(sortByDate),
-      earlier: ear.sort(sortByDate),
-      totalThisYear: thisYearCount,
+      recent: rows.filter((r) => (r.answered?.getTime() ?? 0) >= ninetyDaysAgo),
+      earlier: rows.filter((r) => (r.answered?.getTime() ?? 0) < ninetyDaysAgo),
+      totalThisYear: rows.filter((r) => r.answered?.getFullYear() === year).length,
     };
   }, [prayers]);
 
@@ -145,12 +261,20 @@ export default function AnsweredList() {
     );
   }
 
+  const renderCard = (row: AnsweredRow) => (
+    <AnsweredCard
+      key={row.prayer.id}
+      row={row}
+      contact={contactMap.get(row.prayer.contactId)}
+      locale={language}
+      t={t}
+      onOpen={setProfileContact}
+    />
+  );
+
   return (
     <PageContainer variant="wide">
       <header className="ans-head">
-        <div className="ans-eyebrow">
-          <span className="ans-lit" /> {t('answered.eyebrow')}
-        </div>
         <div className="ans-head-row">
           <div>
             <h1 className="ans-h1">{t('answered.title')}</h1>
@@ -161,8 +285,7 @@ export default function AnsweredList() {
           <div className="ans-count">
             <div className="ans-count-n">{totalThisYear}</div>
             <div className="ans-count-l">
-              {t('answered.answered_count')}
-              <br />
+              {t('answered.answered_count')} <br />
               {t('answered.this_year')}
             </div>
           </div>
@@ -171,12 +294,14 @@ export default function AnsweredList() {
           <button className="ans-toggle-opt" onClick={() => navigate('/prayer')}>
             {t('answered.on_our_hearts')}
           </button>
-          <button className="ans-toggle-opt on">{t('answered.title')}</button>
+          <button className="ans-toggle-opt on" aria-current="page">
+            {t('answered.title')}
+          </button>
         </div>
       </header>
 
       {prayers.length === 0 ? (
-        <div className="text-center py-20 bg-surface rounded-3xl border border-outline-variant/60">
+        <div className="text-center py-16 bg-surface rounded-xl">
           <Heart className="w-12 h-12 text-on-surface-variant opacity-25 mx-auto mb-4" />
           <h3 className="font-serif text-xl text-on-surface">{t('answered.no_prayers_title')}</h3>
           <p className="text-sm text-on-surface-variant mt-1">
@@ -188,150 +313,22 @@ export default function AnsweredList() {
           {recent.length > 0 && (
             <section className="ans-group">
               <div className="ans-group-h">
-                <span className="ans-group-label">{t('answered.recent_answers')}</span>
+                <h2 className="ans-group-label">{t('answered.recent_answers')}</h2>
                 <span className="ans-group-count">{recent.length}</span>
                 <span className="ans-group-rule" />
               </div>
-              <div className="ans-wall">
-                {recent.map((p) => {
-                  const contact = contactMap.get(p.contactId);
-                  const name = contact?.name || t('answered.whole_team');
-                  const initial = name.trim().charAt(0).toUpperCase();
-                  const tone = getToneForId(p.id);
-                  
-                  return (
-                    <article
-                      key={p.id}
-                      onClick={() => contact && setProfileContact(contact)}
-                      className={cn(
-                        'ans-card',
-                        `tone-${tone}`,
-                        contact && 'is-clickable'
-                      )}
-                    >
-                      <div className={cn('ans-photo', `tone-${tone}`)}>
-                        <span className="ans-initial">{initial}</span>
-                        {contact?.avatar && (
-                          <img
-                            src={contact.avatar}
-                            alt={name}
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="ans-card-body">
-                        <div className="ans-who">{name}</div>
-                        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
-                        {(p.answeredPhotos || []).length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {p.answeredPhotos!.map((ph) =>
-                              ph.url ? (
-                                <img
-                                  key={ph.path}
-                                  src={ph.url}
-                                  alt={ph.name || 'photo'}
-                                  className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
-                                />
-                              ) : (
-                                <span
-                                  key={ph.path}
-                                  title={ph.name}
-                                  className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
-                                >
-                                  <ImageIcon className="w-4 h-4" />
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        )}
-                        <div className="ans-arc">
-                          <Translate as="span" className="ans-item" text={p.burden} />
-                          <span className="ans-dates">
-                            <span>{t('answered.asked')} {formatDate(p.date)}</span>
-                            <span className="ans-sep" />
-                            <span className="ans-ans">{t('answered.answered')} {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <div className="ans-wall">{recent.map(renderCard)}</div>
             </section>
           )}
 
           {earlier.length > 0 && (
             <section className="ans-group">
               <div className="ans-group-h">
-                <span className="ans-group-label">{t('answered.earlier_this_year')}</span>
+                <h2 className="ans-group-label">{t('answered.earlier_answers')}</h2>
                 <span className="ans-group-count">{earlier.length}</span>
                 <span className="ans-group-rule" />
               </div>
-              <div className="ans-wall">
-                {earlier.map((p) => {
-                  const contact = contactMap.get(p.contactId);
-                  const name = contact?.name || t('answered.whole_team');
-                  const initial = name.trim().charAt(0).toUpperCase();
-                  const tone = getToneForId(p.id);
-
-                  return (
-                    <article
-                      key={p.id}
-                      onClick={() => contact && setProfileContact(contact)}
-                      className={cn(
-                        'ans-card',
-                        `tone-${tone}`,
-                        contact && 'is-clickable'
-                      )}
-                    >
-                      <div className={cn('ans-photo', `tone-${tone}`)}>
-                        <span className="ans-initial">{initial}</span>
-                        {contact?.avatar && (
-                          <img
-                            src={contact.avatar}
-                            alt={name}
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="ans-card-body">
-                        <div className="ans-who">{name}</div>
-                        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
-                        {(p.answeredPhotos || []).length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {p.answeredPhotos!.map((ph) =>
-                              ph.url ? (
-                                <img
-                                  key={ph.path}
-                                  src={ph.url}
-                                  alt={ph.name || 'photo'}
-                                  className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
-                                />
-                              ) : (
-                                <span
-                                  key={ph.path}
-                                  title={ph.name}
-                                  className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
-                                >
-                                  <ImageIcon className="w-4 h-4" />
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        )}
-                        <div className="ans-arc">
-                          <Translate as="span" className="ans-item" text={p.burden} />
-                          <span className="ans-dates">
-                            <span>{t('answered.asked')} {formatDate(p.date)}</span>
-                            <span className="ans-sep" />
-                            <span className="ans-ans">{t('answered.answered')} {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <div className="ans-wall">{earlier.map(renderCard)}</div>
             </section>
           )}
         </div>

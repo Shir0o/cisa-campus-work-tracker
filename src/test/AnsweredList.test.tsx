@@ -2,8 +2,10 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import AnsweredList from '../views/AnsweredList';
+import { parsePrayerDate } from '../views/AnsweredList';
 import { onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../components/AuthProvider';
+import { LanguageProvider } from '../components/LanguageProvider';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, path) => ({ path })),
@@ -160,6 +162,28 @@ const mockPrayers = [
   },
 ];
 
+describe('parsePrayerDate', () => {
+  it('reads a stored display date in the current year', () => {
+    expect(parsePrayerDate('Oct 18', new Date('2026-10-24T12:00:00'))!.getFullYear()).toBe(2026);
+  });
+
+  it('rolls a December answer back to last year when read in January', () => {
+    expect(parsePrayerDate('Dec 28', new Date('2026-01-03T12:00:00'))!.getFullYear()).toBe(2025);
+  });
+
+  it('reads a date-only ISO string as local midnight, not UTC', () => {
+    const day = parsePrayerDate('2026-10-20')!;
+    expect(day.getDate()).toBe(20);
+    expect(day.getHours()).toBe(0);
+  });
+
+  it('returns null for a value with no date in it', () => {
+    expect(parsePrayerDate('invalid-date')).toBeNull();
+    expect(parsePrayerDate('')).toBeNull();
+    expect(parsePrayerDate(null)).toBeNull();
+  });
+});
+
 describe('AnsweredList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -175,6 +199,7 @@ describe('AnsweredList', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
     });
+    localStorage.setItem('cisa_language', 'en');
   });
 
   it('renders initial loading state', () => {
@@ -197,9 +222,10 @@ describe('AnsweredList', () => {
       expect(screen.getByText('Bob Smith')).toBeInTheDocument();
       // Sections should render
       expect(screen.getByText('Recent answers')).toBeInTheDocument();
-      expect(screen.getByText('Earlier this year')).toBeInTheDocument();
-      // Unanswered date formatted to "Recently" should render
-      expect(screen.getAllByText(/answered Recently/i).length).toBeGreaterThan(0);
+      expect(screen.getByText('Earlier answers')).toBeInTheDocument();
+      // An unparseable answeredAt falls back to the prayer's own date rather
+      // than printing a broken string.
+      expect(screen.getAllByText(/answered ([A-Z][a-z]{2} \d{1,2}|Recently)/).length).toBeGreaterThan(0);
       // Whole Team fallback should render
       expect(screen.getAllByText('Whole Team').length).toBeGreaterThan(1);
       expect(screen.getByText('Team was blessed')).toBeInTheDocument();
@@ -356,6 +382,85 @@ describe('AnsweredList', () => {
     closeBtn = screen.getByText('Close');
     fireEvent.click(closeBtn);
     expect(screen.queryByTestId('contact-modal')).not.toBeInTheDocument();
+  });
+
+  it('files an answer stored as a display date under Recent answers and counts it this year (#1766)', async () => {
+    // The prayer controls write `answeredAt` as a display string ("Oct 18"), so
+    // `new Date()` reads it as 2001 and the answer falls out of "this year".
+    const stored = [
+      {
+        id: 'p-stored',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Wisdom for the placement interview',
+          date: daysAgo(20),
+          status: 'answered',
+          answer: 'She got the placement.',
+          answeredAt: 'Oct 18',
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      callback({ docs: ref?.path === 'contacts' ? mockContacts : stored, size: stored.length });
+      return vi.fn();
+    });
+
+    const { container } = render(<AnsweredList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('She got the placement.')).toBeInTheDocument();
+    });
+
+    const recent = screen.getByText('Recent answers').closest('section')!;
+    expect(within(recent).getByText('She got the placement.')).toBeInTheDocument();
+    expect(container.querySelector('.ans-count-n')?.textContent).toBe('1');
+    expect(screen.getByText(/answered Oct 18/)).toBeInTheDocument();
+    expect(screen.queryByText(/2001/)).not.toBeInTheDocument();
+  });
+
+  it('formats the answer date in the reader language (#1766)', async () => {
+    const stored = [
+      {
+        id: 'p-es',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Sabiduría para la entrevista',
+          date: daysAgo(20),
+          status: 'answered',
+          answer: 'Consiguió la plaza.',
+          answeredAt: 'Oct 18',
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      callback({ docs: ref?.path === 'contacts' ? mockContacts : stored, size: stored.length });
+      return vi.fn();
+    });
+    localStorage.setItem('cisa_language', 'es');
+
+    render(
+      <LanguageProvider>
+        <AnsweredList />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/18 oct/)).toBeInTheDocument();
+    });
+  });
+
+  it('offers a keyboard-reachable control that opens the person from a card (#1766)', async () => {
+    render(<AnsweredList />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Alice Johnson').length).toBeGreaterThan(0);
+    });
+
+    const openers = screen.getAllByRole('button', { name: 'Alice Johnson' });
+    expect(openers.length).toBeGreaterThan(0);
+    fireEvent.click(openers[0]);
+    expect(screen.getByTestId('contact-modal')).toBeInTheDocument();
+    expect(screen.getByText('Contact Modal for Alice Johnson')).toBeInTheDocument();
   });
 
   it('surfaces load error when snapshot listener fails', async () => {
