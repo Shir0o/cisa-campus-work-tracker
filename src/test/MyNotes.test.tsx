@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import MyNotes from '../views/MyNotes';
+import { LanguageProvider } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
 
 vi.mock('../components/AuthProvider', () => ({
@@ -166,6 +167,47 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     noteDocs = [NOTE];
     render(<MyNotes />);
     expect(screen.getByText('We have this — no news yet')).toBeInTheDocument();
+  });
+
+  // `awaitingReply` is the only reply state the note doc carries: a Follow-up
+  // from the team writes false, one from the submitter writes true. So the
+  // submitter's page can say whether the last word was the team's without
+  // subscribing to every thread on the list.
+  it('says the team replied when the last follow-up was theirs', () => {
+    noteDocs = [{ ...NOTE, awaitingReply: false }];
+    render(<MyNotes />);
+    expect(screen.getByText('The team replied')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Read the reply/i })).toBeInTheDocument();
+    // "No news yet" is a claim the reply just contradicted.
+    expect(screen.queryByText('We have this — no news yet')).not.toBeInTheDocument();
+  });
+
+  it('does not claim a reply while the last word is still the submitter’s', () => {
+    noteDocs = [{ ...NOTE, awaitingReply: true }];
+    render(<MyNotes />);
+    expect(screen.queryByText('The team replied')).not.toBeInTheDocument();
+    expect(screen.getByText('We have this — no news yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Follow-ups/i })).toBeInTheDocument();
+  });
+
+  it('names each follow-ups control after the note it belongs to', () => {
+    noteDocs = [NOTE, { ...NOTE, id: 'n2', createdAt: '2026-08-02T12:00:00.000Z' }];
+    render(<MyNotes />);
+    expect(screen.getByRole('button', { name: 'Follow-ups · Sep 1, 2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Follow-ups · Aug 2, 2026' })).toBeInTheDocument();
+  });
+
+  it('speaks the note’s own vocabulary in Spanish, dates included', () => {
+    noteDocs = [{ ...NOTE, outcome: 'not-planned' }];
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <MyNotes />
+      </LanguageProvider>,
+    );
+    expect(screen.getByText('Una idea')).toBeInTheDocument();
+    expect(screen.getByText('No planeado')).toBeInTheDocument();
+    expect(screen.getByText(/no pensamos construirlo/)).toBeInTheDocument();
+    expect(screen.getByText('1 sept 2026')).toBeInTheDocument();
   });
 
   it('prefers the message written at close over the canned sentence', () => {
