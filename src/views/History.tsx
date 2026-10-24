@@ -28,7 +28,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn, relTime, isServiceAccountName } from "../lib/utils";
-import { bucketFor, bucketLabel } from "../components/landing/dateBuckets";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import PageContainer from "../components/layout/PageContainer";
@@ -37,6 +36,7 @@ import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
+import { dayMark, historyMs } from './historyTime';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -105,7 +105,7 @@ const quote = (s?: string) => {
 };
 
 // Map a real logged action onto warm, human language.
-const humanize = (a: Hist): Humanized => {
+export const humanize = (a: Hist): Humanized => {
   const act = a.action.toLowerCase();
   const desc = a.description;
 
@@ -166,6 +166,18 @@ const humanize = (a: Hist): Humanized => {
       lead: "updated a prayer for",
       showTarget: true,
       detail: status ? `Now marked ${status}.` : undefined,
+    };
+  }
+  // Clearing a prayer deletes the burden (src/lib/prayers.ts), but it is still
+  // the work of prayer — without this branch it fell through to the fallback
+  // and was filed under Conversations (#1768).
+  if (act.startsWith("cleared a prayer for")) {
+    return {
+      bucket: "prayer",
+      icon: Heart,
+      lead: "cleared a prayer for",
+      showTarget: true,
+      detail: quote(desc) ? `Laid down ${quote(desc)}.` : undefined,
     };
   }
   if (act.startsWith("logged a visit to") || act.startsWith("edited a visit to") || act.startsWith("removed a visit to")) {
@@ -242,29 +254,14 @@ const humanize = (a: Hist): Humanized => {
 };
 
 // ── time helpers ──────────────────────────────────────────────────────
-// Day markers use the shared date-bucket cut-offs for the Today/Yesterday
-// boundary, then fall back to finer per-day labels so the stream keeps its
-// per-day rhythm instead of collapsing into week buckets.
-const dayInfo = (iso: string | null | undefined) => {
-  if (!iso) return { label: "", sub: "" };
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { label: "", sub: "" };
-  const md = d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
-  const bucket = bucketFor(iso);
-  if (bucket === "today" || bucket === "yesterday") {
-    return { label: bucketLabel(bucket), sub: md };
-  }
-  if (bucket === "thisWeek") {
-    return { label: d.toLocaleDateString(undefined, { weekday: "long" }), sub: md };
-  }
-  return { label: md, sub: d.toLocaleDateString(undefined, { weekday: "long" }) };
-};
+// The marker itself lives in ./historyTime, so the phone and the challenge of
+// Timestamp-shaped rows read one date the same way.
 
 const firstName = (name: string) => (name || "Someone").split(" ")[0];
 
 export default function History() {
   useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -408,15 +405,28 @@ export default function History() {
     const out: ({ type: "date"; at: string; key: string } | { type: "item"; a: Hist; key: string })[] = [];
     let lastDay: string | null = null;
     filtered.forEach((a) => {
-      const k = new Date(a.createdAt).toDateString();
-      if (k !== lastDay) {
+      // A row the app cannot date still appears — it just carries no marker.
+      const ms = historyMs(a.createdAt);
+      const k = ms == null ? null : new Date(ms).toDateString();
+      if (k !== null && k !== lastDay) {
         out.push({ type: "date", at: a.createdAt, key: "d:" + k });
-        lastDay = k;
       }
+      if (k !== null) lastDay = k;
       out.push({ type: "item", a, key: a.id });
     });
     return out;
   }, [filtered]);
+
+  const dayInfo = useCallback(
+    (iso: string) => dayMark(iso, language, t),
+    [language, t],
+  );
+
+  const clearFilters = useCallback(() => {
+    setKind("all");
+    setWho("all");
+    setQ("");
+  }, []);
 
   const peopleRemembered = useMemo(
     () => new Set(activities.filter((a) => a.contactId).map((a) => a.contactId)).size,
@@ -461,8 +471,12 @@ export default function History() {
           setKind={setKind}
           who={who}
           setWho={setWho}
+          q={q}
+          setQ={setQ}
           staff={staff}
           onOpenContact={openContact}
+          onClearFilters={clearFilters}
+          loading={loading}
           humanize={humanize}
           dayInfo={dayInfo}
           firstName={firstName}
