@@ -114,9 +114,9 @@ export default function ContactStreamPane({
                 {view === "fullTimers" && <Lock className="w-4 h-4" aria-hidden />}
                 {baseLabel}
               </h3>
-              {/* The pane covers the page, so the title alone loses whose thread
-                  this is. The name sits under it and is the region's
-                  description (#1781). */}
+              {/* The pane covers the page (#1781), so the title alone loses
+                  whose thread this is. The name sits under it and is the
+                  region's description. */}
               {isMobile && (
                 <p className="cd-pane-who" id={whoId}>
                   {contact.name}

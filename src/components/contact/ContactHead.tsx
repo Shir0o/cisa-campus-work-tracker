@@ -418,11 +418,11 @@ export default function ContactHead(props: ContactHeadProps) {
               </div>
             </div>
 
-            {/* One row for every way to reach the person — the Conversation,
-                then Call/Text/Email as 44px icons. The tiled band below it
-                cost 101px on a person with a phone and an email, leaving the
-                story 337px of the first screen; folded in, the head gives back
-                more than half of it (#1781). */}
+            {/* One row for every way to reach the person (#1781) — the
+                Conversation, then Call/Text/Email as 44px icons. The tiled
+                band below it cost 101px on a person with a phone and an email,
+                leaving the story 337px of the first screen; folded in, the
+                head gives back more than half of it. */}
             <div className="cdm-reach px-5 pt-1 flex items-center gap-2">
               <button
                 type="button"
