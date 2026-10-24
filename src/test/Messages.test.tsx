@@ -77,6 +77,9 @@ vi.mock('firebase/firestore', () => {
     }),
     updateDoc: vi.fn().mockResolvedValue(true),
     serverTimestamp: vi.fn(() => 'mock-server-time'),
+    // Unread counts are one aggregate read per unread room (#1791).
+    getCountFromServer: vi.fn(async () => ({ data: () => ({ count: 3 }) })),
+    Timestamp: { fromMillis: (ms: number) => ms },
   };
 });
 
@@ -508,6 +511,77 @@ describe('Messages View Component', () => {
 
     // Unread badge should not be present
     expect(screen.getByText('Trainees Chat').closest('.msgs-item')?.querySelector('.msgs-unread-dot')).toBeFalsy();
+  });
+
+  it('shows how many messages are unread, not just that some are (#1791)', async () => {
+    localStorage.removeItem('chat_read_room1');
+    localStorage.removeItem('chat_read_u1_room1');
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    const row = () => screen.getByText('Trainees Chat').closest('.msgs-item') as HTMLElement;
+    await waitFor(() => expect(row().querySelector('.msgs-unread-count')?.textContent).toBe('3'));
+    // The dot stays: it is the fallback when a count cannot be read.
+    expect(row().querySelector('.msgs-unread-dot')).toBeTruthy();
+    // Announced as part of the row's name, not as a second stray label.
+    expect(screen.getByRole('button', { name: /Trainees Chat.*3 unread/ })).toBeInTheDocument();
+  });
+
+  it('shows no count on a room already read (#1791)', async () => {
+    localStorage.setItem('chat_read_room1', String(100006 * 1000));
+
+    const { container } = render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText('Trainees Chat')).toBeInTheDocument());
+    expect(firestore.getCountFromServer).not.toHaveBeenCalled();
+    expect(container.querySelector('.msgs-unread-count')).toBeFalsy();
+    expect(container.querySelector('.msgs-unread-dot')).toBeFalsy();
+  });
+
+  it('clears the count when the room is opened, on the way back (#1791)', async () => {
+    localStorage.removeItem('chat_read_room1');
+    localStorage.removeItem('chat_read_u1_room1');
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    // The open thread's header repeats the name, so target the rail's row.
+    const row = () => document.querySelector('.msgs-item') as HTMLElement;
+    await waitFor(() => expect(row().querySelector('.msgs-unread-count')).toBeTruthy());
+
+    fireEvent.click(row());
+
+    await waitFor(() => expect(localStorage.getItem('chat_read_room1')).toBeTruthy());
+    await waitFor(() => expect(row().querySelector('.msgs-unread-count')).toBeFalsy());
+    expect(row().querySelector('.msgs-unread-dot')).toBeFalsy();
+  });
+
+  it('keeps the dot rather than a wrong number when a count fails (#1791)', async () => {
+    localStorage.removeItem('chat_read_room1');
+    localStorage.removeItem('chat_read_u1_room1');
+    (firestore.getCountFromServer as any).mockRejectedValue(new Error('permission denied'));
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    const row = () => screen.getByText('Trainees Chat').closest('.msgs-item') as HTMLElement;
+    await waitFor(() => expect(firestore.getCountFromServer).toHaveBeenCalled());
+    expect(row().querySelector('.msgs-unread-count')).toBeFalsy();
+    expect(row().querySelector('.msgs-unread-dot')).toBeTruthy();
   });
 
   it('leaves a room unread only when someone else spoke last (#1764)', async () => {

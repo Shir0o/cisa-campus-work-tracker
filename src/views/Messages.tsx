@@ -50,6 +50,14 @@ import type { TodoPerson } from '../lib/todos';
 import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import { MessageHides } from '../lib/messageHides';
 import { ConvHides } from '../lib/convHides';
+import {
+  UNREAD_COUNT_ROOMS,
+  countUnreadMessages,
+  roomIsUnread,
+  roomReadMarkMs,
+  unreadA11yText,
+  unreadCountLabel,
+} from '../lib/chatUnread';
 
 // Modals & UI
 import CreateChatModal from '../components/modals/CreateChatModal';
@@ -140,6 +148,12 @@ export default function Messages() {
   // A denied or offline room query: say so, and let the reader try again.
   const [roomsFailed, setRoomsFailed] = useState(false);
   const [roomsAttempt, setRoomsAttempt] = useState(0);
+  // How many messages sit after this device's read mark, per unread room,
+  // tagged with the last message it counted. A count whose stamp no longer
+  // matches the row is stale and the row keeps its dot (#1791).
+  const [unreadCounts, setUnreadCounts] = useState<
+    Record<string, { count: number; at: number | null }>
+  >({});
   const { language, t } = useLanguage();
 
   useEffect(() => {
@@ -243,6 +257,36 @@ export default function Messages() {
 
     return unsubscribe;
   }, [effectiveUid, roomsAttempt]);
+
+  // 1b. Unread counts (#1791). One aggregate read per unread room, fired after
+  // the rail paints and refreshed by the same room snapshot that moves a row.
+  // A failed aggregate leaves that row with its dot, never a wrong number.
+  useEffect(() => {
+    if (loadingRooms || roomsFailed || !effectiveUid) return;
+    const unread = rooms
+      .filter((room) => roomIsUnread(room, effectiveUid))
+      .slice(0, UNREAD_COUNT_ROOMS);
+    if (unread.length === 0) return;
+    let cancelled = false;
+    void Promise.allSettled(
+      unread.map((room) => countUnreadMessages(db, room.id, roomReadMarkMs(room.id, effectiveUid))),
+    ).then((results) => {
+      if (cancelled) return;
+      setUnreadCounts((previous) => {
+        const next = { ...previous };
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            const room = unread[index];
+            next[room.id] = { count: result.value, at: room.lastMessage?.timestamp?.seconds ?? null };
+          }
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rooms, effectiveUid, loadingRooms, roomsFailed, roomsAttempt]);
 
   // Reset active room if the current user is no longer a member of it
   useEffect(() => {
@@ -353,15 +397,8 @@ export default function Messages() {
   // composer stays visible and the stream gives up the space instead (#1790).
   const keyboardOverlap = useKeyboardOverlap(!!activeRoom);
 
-  // Check unread status
-  const isUnread = (room: ChatRoom) => {
-    if (!room.lastMessage || room.lastMessage.senderId === effectiveUid) return false;
-    const readKey = effectiveUid ? `chat_read_${effectiveUid}_${room.id}` : `chat_read_${room.id}`;
-    const lastRead = localStorage.getItem(readKey) || localStorage.getItem(`chat_read_${room.id}`);
-    if (!lastRead) return true;
-    const lastMsgTime = room.lastMessage.timestamp?.seconds * 1000 || 0;
-    return lastMsgTime > parseInt(lastRead);
-  };
+  // Check unread status — the same per-device mark the count aggregates after.
+  const isUnread = (room: ChatRoom) => roomIsUnread(room, effectiveUid);
 
   const getRoomName = (room: ChatRoom) => {
     if (room.type === 'announcement') return room.name || 'Announcement';
@@ -755,6 +792,13 @@ export default function Messages() {
               const photo = getRoomPhoto(room);
               const unread = isUnread(room);
               const last = room.lastMessage;
+              const cachedCount = unreadCounts[room.id];
+              // A count only stands for the message it counted; anything newer
+              // (or an aggregate that failed) falls back to the dot.
+              const unreadCount =
+                unread && cachedCount && cachedCount.at === (last?.timestamp?.seconds ?? null)
+                  ? cachedCount.count
+                  : undefined;
               const isGroupish = room.type !== 'direct';
               const menuOpen = convMenuFor === room.id;
               const canAllConv = canRemoveConvForEveryone(room, effectiveUid, isAdmin);
@@ -780,7 +824,7 @@ export default function Messages() {
                       </span>
                       <span className="anrow-name">
                         {name}
-                        {unread && <span className="sr-only">, {t('chat.unread')}</span>}
+                        {unread && <span className="sr-only">, {unreadA11yText(unreadCount, t)}</span>}
                       </span>
                       {last?.timestamp?.seconds && (
                         <span className="anrow-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
@@ -791,6 +835,9 @@ export default function Messages() {
                     </div>
                     <div className="anrow-meta">
                       {unread && <span className="dot-warn" />}
+                      {unread && unreadCount !== undefined && unreadCount > 0 && (
+                        <span className="anrow-unread-count" aria-hidden>{unreadCountLabel(unreadCount)}</span>
+                      )}
                       <span>{unread ? t('stream.new') : t('chat.read')}{last ? ` · ${t('chat.from_who').replace('{name}', firstName(last.senderName))}` : ''}</span>
                     </div>
                   </div>
@@ -828,7 +875,7 @@ export default function Messages() {
                     <div className="msgs-item-top">
                       <span className="msgs-item-name">
                         {name}
-                        {unread && <span className="sr-only">, {t('chat.unread')}</span>}
+                        {unread && <span className="sr-only">, {unreadA11yText(unreadCount, t)}</span>}
                       </span>
                       {last?.timestamp?.seconds && (
                         <span className="msgs-item-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
@@ -848,6 +895,9 @@ export default function Messages() {
                         )}
                       </span>
                       {unread && <span className="msgs-unread-dot" aria-hidden />}
+                      {unread && unreadCount !== undefined && unreadCount > 0 && (
+                        <span className="msgs-unread-count" aria-hidden>{unreadCountLabel(unreadCount)}</span>
+                      )}
                       <span
                         className={cn("msgs-item-more", menuOpen && "on")}
                         onClick={(e) => e.stopPropagation()}
