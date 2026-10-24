@@ -433,7 +433,7 @@ test.describe('Full-timer journey — a removal belongs to the team (#1692)', ()
     await expect(page.getByText('Everyone on the team sees this list.')).toBeVisible();
 
     await page.getByRole('button', { name: `More for ${HELD_CONTACT}` }).click();
-    await page.getByRole('menuitem', { name: /Remove Held from prayer list/ }).click();
+    await page.getByRole('menuitem', { name: /Remove Held from the team's prayer list/ }).click();
     await expect(page.getByText("Removed Held from the team's prayer list")).toBeVisible({
       timeout: 10_000,
     });
