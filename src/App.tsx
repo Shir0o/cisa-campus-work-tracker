@@ -596,7 +596,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <StandardTagsProvider>
-      <div className={cn("flex min-h-screen bg-background relative", !isMessagesPage && "pb-16 md:pb-0")}>
+      {/* Phone shell: one dynamic-viewport-tall page that clips, so the inner
+          pane is the only scroller and the document cannot slide 64px behind
+          the fixed bottom bar (issue 1795). `min-h-screen` is 100vh, which is
+          taller than 100dvh while browser chrome is showing — and min-height
+          would win — so it is desktop-only. At `md` the bottom bar is gone and
+          the old shell (grow past the viewport, inner pane `h-screen`) returns
+          unchanged. */}
+      <div className="flex h-[100dvh] bg-background relative overflow-hidden md:h-auto md:min-h-screen md:overflow-visible">
         {/* Single shell wrapper. The chrome inside it varies with the viewport
             (rail vs top-bar), but the wrapper and the inner content column are
             always present at the same tree position, so the routed <main>
@@ -604,7 +611,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             across the 1024px breakpoint instead of being remounted (#1129). */}
         <div
           className={cn(
-            "flex-1 min-w-0 h-screen",
+            "flex-1 min-w-0 h-full md:h-screen",
             useRail ? "flex gap-4 p-4" : "flex flex-col transition-all duration-300",
           )}
         >
