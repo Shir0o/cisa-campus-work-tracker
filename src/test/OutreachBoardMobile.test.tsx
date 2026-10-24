@@ -207,6 +207,86 @@ describe('OutreachBoardMobile', () => {
     expect(screen.getByText('No one here just now.')).toBeInTheDocument();
   });
 
+  // #1787: the phone Journey had no way to find a person across steps.
+  describe('finding someone (#1787)', () => {
+    const twoInFirst = () => [
+      contact(),
+      contact({ id: 'c2', name: 'Bob Park' }),
+      contact({ id: 'c3', name: 'Cara Diaz', stage: 'Regular' }),
+      contact({ id: 'c4', name: 'Dee Moss', stage: 'Regular' }),
+    ];
+    const searchField = () =>
+      screen.getByRole('searchbox', { name: 'Find someone in this step' });
+
+    it('narrows the current step to matches as you type', () => {
+      render(<OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />);
+      fireEvent.change(searchField(), { target: { value: 'ali' } });
+
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+      expect(screen.queryByText('Bob Park')).not.toBeInTheDocument();
+      // A person on another step is not in this step's list either way.
+      expect(screen.queryByText('Cara Diaz')).not.toBeInTheDocument();
+    });
+
+    it('reports a match in another step and selects that step on tap', () => {
+      render(<OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />);
+      fireEvent.change(searchField(), { target: { value: 'cara' } });
+
+      expect(screen.getByText('No one in this step matches “cara”.')).toBeInTheDocument();
+      const hint = screen.getByRole('button', { name: '1 more in Regular' });
+      // A cross-step match is one tap away, at the phone's 44px target.
+      expect(hint.className).toMatch(/(^|\s)min-h-11(\s|$)/);
+
+      fireEvent.click(hint);
+      expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('Cara Diaz')).toBeInTheDocument();
+      expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    });
+
+    it('has an accessible name and a 44px field, and clears without losing the step', () => {
+      render(<OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />);
+      fireEvent.click(screen.getAllByRole('tab')[1]);
+
+      const field = searchField();
+      expect(field.className).toMatch(/(^|\s)min-h-11(\s|$)/);
+      fireEvent.change(field, { target: { value: 'cara' } });
+      expect(screen.getByText('Cara Diaz')).toBeInTheDocument();
+      expect(screen.queryByText('Dee Moss')).not.toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: 'Clear search' });
+      expect(clear.className).toMatch(/(^|\s)w-11(\s|$)/);
+      fireEvent.click(clear);
+
+      expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+      expect(searchField()).toHaveValue('');
+      expect(searchField()).toHaveFocus();
+      // The step's full list is back.
+      expect(screen.getByText('Cara Diaz')).toBeInTheDocument();
+      expect(screen.getByText('Dee Moss')).toBeInTheDocument();
+    });
+
+    it('announces the result count and the matches in other steps', () => {
+      render(<OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />);
+      fireEvent.change(searchField(), { target: { value: 'cara' } });
+
+      const status = screen.getByRole('status');
+      expect(status).toHaveTextContent('0 people');
+      expect(status).toHaveTextContent('1 more in Regular');
+    });
+
+    it('speaks Spanish', () => {
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />
+        </LanguageProvider>,
+      );
+      const field = screen.getByRole('searchbox', { name: 'Buscar a alguien en este paso' });
+      fireEvent.change(field, { target: { value: 'cara' } });
+      expect(screen.getByRole('button', { name: '1 más en Regular' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Borrar búsqueda' })).toBeInTheDocument();
+    });
+  });
+
   it('renders translated contact notes in Spanish mode when cached', async () => {
     const { setCachedTranslation } = await import('../lib/translator');
 

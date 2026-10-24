@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronRight, Settings2, X, ArrowRight } from 'lucide-react';
+import { ChevronRight, Settings2, Search, X, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { Avatar } from '../components/landing/primitives';
@@ -124,6 +124,7 @@ export default function OutreachBoardMobile({
   const panelRef = useRef<HTMLElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const userNavigated = useRef(false);
   const moveTriggerRef = useRef<HTMLElement | null>(null);
@@ -137,11 +138,47 @@ export default function OutreachBoardMobile({
     color: 'bg-surface-variant',
   };
 
-  const items = stage.id === 'uncategorized'
+  // #1787: a stage-local find. The global search reads all of People, which is
+  // not the same question as "where is this person in the journey?".
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const searching = normalizedQuery.length > 0;
+  const matchesQuery = (c: Contact) =>
+    c.name.toLowerCase().includes(normalizedQuery) ||
+    (c.email || '').toLowerCase().includes(normalizedQuery);
+
+  const stageItems = stage.id === 'uncategorized'
     ? unmappedContacts
     : contacts.filter((c) => c.stage === stage.label);
+  const items = searching ? stageItems.filter(matchesQuery) : stageItems;
   const countLabel = (n: number) =>
     n === 1 ? t('outreachBoard.one_person') : t('outreachBoard.n_people').replace('{n}', String(n));
+
+  // The part the global search cannot say: this match is on another step.
+  const otherStageMatches = searching
+    ? mobileStages
+        .map((s, index) => ({ stage: s, index }))
+        .filter(({ stage: s }) => s.id !== stage.id)
+        .map(({ stage: s, index }) => ({
+          stage: s,
+          index,
+          count: (s.id === 'uncategorized'
+            ? unmappedContacts
+            : contacts.filter((c) => c.stage === s.label)).filter(matchesQuery).length,
+        }))
+        .filter((m) => m.count > 0)
+    : [];
+  const otherStepHint = (count: number, label: string) =>
+    t('outreachBoard.search_other_step')
+      .replace('{n}', String(count))
+      .replace('{stage}', label);
+
+  // Clearing returns the caret to the field: the button itself disappears, so
+  // leaving focus on it would drop the reader back to the top of the page.
+  const clearSearch = () => {
+    setQuery('');
+    searchRef.current?.focus();
+  };
 
   const selectStage = (next: number) => {
     const bounded = Math.max(0, Math.min(next, mobileStages.length - 1));
@@ -331,7 +368,9 @@ export default function OutreachBoardMobile({
       </div>
 
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {`${stage.label}, ${countLabel(items.length)}`}
+        {`${stage.label}, ${countLabel(items.length)}${otherStageMatches
+          .map((m) => `, ${otherStepHint(m.count, m.stage.label)}`)
+          .join('')}`}
       </p>
 
       {/* List content panel */}
@@ -347,22 +386,71 @@ export default function OutreachBoardMobile({
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="mb-4 flex flex-col gap-0.5 jrnm-panel-head">
-          {items.length > 0 && (
-            <span className="text-[13px] font-semibold   text-on-surface-variant/80 jrnm-panel-count">
-              {countLabel(items.length)}
-            </span>
-          )}
-          {captionKey && (
-            <p className="text-xs text-on-surface-variant/90 leading-relaxed max-w-sm mt-1 jrnm-panel-caption">
-              {t(`outreachBoard.stage_captions.${captionKey}`)}
-            </p>
+        <div className="mb-4 flex flex-col gap-2 jrnm-panel-head">
+          <div
+            className="relative jrnm-search"
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <Search
+              className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t('outreachBoard.search_in_step')}
+              placeholder={t('outreachBoard.search_in_step')}
+              className="w-full min-h-11 pl-10 pr-12 py-2 rounded-sm border border-outline-variant bg-surface text-[14.5px] text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--tone-soft)] [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query.length > 0 && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                aria-label={t('outreachBoard.clear_search')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-variant active:scale-95 transition-all jrnm-search-clear focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {searching ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 jrnm-search-results">
+              {items.length > 0 && (
+                <span className="text-[13px] font-semibold text-on-surface-variant/80">
+                  {countLabel(items.length)}
+                </span>
+              )}
+              {otherStageMatches.map((m) => (
+                <button
+                  key={m.stage.id}
+                  type="button"
+                  onClick={() => selectStage(m.index)}
+                  className="min-h-11 inline-flex items-center text-[13px] font-semibold text-accent underline underline-offset-2 jrnm-search-other focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--tone-soft)]"
+                >
+                  {otherStepHint(m.count, m.stage.label)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            captionKey && (
+              <p className="text-xs text-on-surface-variant/90 leading-relaxed max-w-sm jrnm-panel-caption">
+                {t(`outreachBoard.stage_captions.${captionKey}`)}
+              </p>
+            )
           )}
         </div>
 
         {items.length === 0 ? (
           <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 jrnm-empty shadow-inner">
-            {t('outreachBoard.no_one_here')}
+            {searching
+              ? t('outreachBoard.search_no_match').replace('{q}', query.trim())
+              : t('outreachBoard.no_one_here')}
           </div>
         ) : (
           <div className="space-y-2.5 jrnm-list">
