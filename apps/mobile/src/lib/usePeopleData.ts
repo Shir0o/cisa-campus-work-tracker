@@ -89,14 +89,15 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
   );
 
   // The pills count the search's matches, so a match on another Step is one
-  // tap away.
+  // tap away. Whether Not on a step is there at all is read before the search,
+  // so a search can't pull it out from under you.
   const pills = useMemo(
-    () => stepPills([...matched.mine, ...matched.rest].map((l) => l.contact), stages),
-    [matched, stages],
+    () => stepPills([...matched.mine, ...matched.rest].map((l) => l.contact), stages, scopedContacts),
+    [matched, stages, scopedContacts],
   );
 
   // A pill can go away under you — Not on a step once the last unplaced person
-  // is moved or searched out — and then the list falls back to Everyone.
+  // is moved — and then the list falls back to Everyone.
   const activePill = pills.some((p) => p.id === pillId) ? pillId : EVERYONE_PILL;
 
   // Narrowing keeps splitDirectory's order, so every pill reads like People.

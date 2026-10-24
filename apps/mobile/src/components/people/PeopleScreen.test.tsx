@@ -5,6 +5,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import type { Contact, Stage } from '@cisa/core';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { moveContactStage } from '../../lib/data/contacts';
 import { PeopleScreen } from './PeopleScreen';
 
 let mockRole = 'admin';
@@ -73,7 +74,22 @@ jest.mock('../../lib/useMinLoading', () => ({
 }));
 
 jest.mock('../log/LogSheet', () => ({ LogSheet: () => null }));
-jest.mock('../journey/MoveStepSheet', () => ({ MoveStepSheet: () => null }));
+// The sheet itself is tested on its own; here it only shows who it opened for
+// and offers each step it was handed.
+jest.mock('../journey/MoveStepSheet', () => {
+  const { Pressable, Text, View } = jest.requireActual('react-native');
+  return {
+    MoveStepSheet: ({ visible, contact, stages, onMove }: any) =>
+      visible && contact ? (
+        <View testID="move-step-sheet">
+          <Text>{`Moving ${contact.name}`}</Text>
+          {stages.map((s: { id: string; label: string }) => (
+            <Pressable key={s.id} accessibilityLabel={`Move to ${s.label}`} onPress={() => onMove(contact.id, s.label)} />
+          ))}
+        </View>
+      ) : null,
+  };
+});
 
 const renderPeople = () =>
   render(
@@ -84,6 +100,7 @@ const renderPeople = () =>
 
 describe('PeopleScreen Step pills (#1800)', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     mockRole = 'admin';
   });
 
@@ -137,5 +154,35 @@ describe('PeopleScreen Step pills (#1800)', () => {
     expect(getByLabelText('Everyone, 1')).toBeTruthy();
     expect(getByLabelText('New, 1').props.accessibilityState).toEqual({ selected: true });
     expect(getByLabelText('Regular, 0')).toBeTruthy();
+  });
+
+  it('holds Not on a step through a search that matches none of the unplaced', async () => {
+    const { getByLabelText, getByPlaceholderText, getByText, queryByText } = await renderPeople();
+
+    await fireEvent.press(getByLabelText('Not on a step, 1'));
+    await fireEvent.changeText(getByPlaceholderText('Find someone by name, major, hall…'), 'ana');
+
+    expect(getByLabelText('Not on a step, 0').props.accessibilityState).toEqual({ selected: true });
+    expect(queryByText('Ana Lee')).toBeNull();
+    expect(queryByText('Dee Fox')).toBeNull();
+    expect(getByText('Nobody by that name. Try less of it.')).toBeTruthy();
+  });
+
+  it('opens the move sheet from a row and moves that person to the chosen step', async () => {
+    const { getByLabelText, getAllByText, getByText, queryByTestId } = await renderPeople();
+
+    await fireEvent.press(getByLabelText('New, 2'));
+    expect(queryByTestId('move-step-sheet')).toBeNull();
+    // Ana is in my care, so she heads the list.
+    await fireEvent.press(getAllByText('Move a step')[0]);
+
+    expect(getByText('Moving Ana Lee')).toBeTruthy();
+    await fireEvent.press(getByLabelText('Move to Regular'));
+
+    expect(moveContactStage).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a', name: 'Ana Lee' }),
+      'Regular',
+      { uid: 'u1', name: 'Tony' },
+    );
   });
 });

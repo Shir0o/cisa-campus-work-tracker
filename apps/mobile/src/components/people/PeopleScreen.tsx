@@ -107,6 +107,7 @@ function People() {
   // The pills and Move follow who may see The Journey.
   const byStep = canAccessRoute(role, '/board');
   const onMove = byStep && data.pillId !== EVERYONE_PILL ? setMoving : undefined;
+  // Core names only the Step pills; the two fixed ones are named here.
   const pills = data.pills.map((p) =>
     p.id === EVERYONE_PILL
       ? { ...p, label: t('mobile.people.everyone') }

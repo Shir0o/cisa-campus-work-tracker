@@ -116,7 +116,9 @@ export const UNPLACED_PILL = "unplaced";
 export interface StepPill {
   /** `EVERYONE_PILL`, `UNPLACED_PILL`, or the stage's id. */
   id: string;
-  label: string;
+  /** A Step pill's Step label. The two fixed pills have none: the screen
+   *  names them in its own language. */
+  label?: string;
   count: number;
 }
 
@@ -136,12 +138,19 @@ export function onStepPill(c: Pick<Contact, "stage">, pillId: string, stages: St
 
 /** *Everyone*, then *Not on a step* only while someone is unplaced, then each
  *  Step in `order`. Pass the search-filtered contacts, so each count is that
- *  pill's number of matches. */
-export function stepPills(contacts: Pick<Contact, "stage">[], stages: Stage[]): StepPill[] {
+ *  pill's number of matches, and the `unsearched` ones: *Not on a step* stays
+ *  on the row (at 0) through a search that matches none of the unplaced, and
+ *  leaves only once nobody is unplaced at all. */
+export function stepPills(
+  contacts: Pick<Contact, "stage">[],
+  stages: Stage[],
+  unsearched: Pick<Contact, "stage">[] = contacts,
+): StepPill[] {
+  const anyUnplaced = unsearched.some((c) => isUnplaced(c, stages));
   const unplaced = contacts.filter((c) => isUnplaced(c, stages)).length;
   return [
-    { id: EVERYONE_PILL, label: "Everyone", count: contacts.length },
-    ...(unplaced > 0 ? [{ id: UNPLACED_PILL, label: "Not on a step", count: unplaced }] : []),
+    { id: EVERYONE_PILL, count: contacts.length },
+    ...(anyUnplaced ? [{ id: UNPLACED_PILL, count: unplaced }] : []),
     ...[...stages]
       .sort((a, b) => a.order - b.order)
       .map((s) => ({ id: s.id, label: s.label, count: contacts.filter((c) => c.stage === s.label).length })),
