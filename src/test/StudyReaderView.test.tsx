@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
+import { LanguageProvider } from '../components/LanguageProvider';
 import type { Meeting } from '../lib/bibleStudy';
 
 // The reader's scroll deck owns "which Section am I on": it reads the deck's
@@ -226,6 +227,43 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('opens and closes the Section index from the keyboard (#1777)', () => {
+    render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+    // The grip is a real button, so it is in the tab order; the rows are
+    // buttons, so the index can be used without a pointer; Escape closes it
+    // (the only other way out was a "tap anywhere" hint).
+    const grip = screen.getByRole('button', { name: 'Open section index' });
+    fireEvent.click(grip);
+
+    const dialog = screen.getByRole('dialog', { name: 'Section index' });
+    const rows = within(dialog).getAllByRole('button');
+    expect(rows).toHaveLength(meeting({}).sections.length);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('speaks the reader\'s own chrome in Spanish, not English (#1777)', () => {
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <StudyReaderView meeting={meeting({})} staleDateLabel={null} />
+      </LanguageProvider>,
+    );
+
+    // The end-of-meeting line, the index and the Blank label are the strings a
+    // Spanish reader navigates with; they used to be hard-coded English while
+    // the text-size control was already translated.
+    expect(screen.getByTestId('reader-end')).toHaveTextContent('Fin de Peace that holds');
+    expect(screen.getByRole('button', { name: 'Abrir el índice de secciones' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Espacio en blanco, toca para revelar/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir el índice de secciones' }));
+    const dialog = screen.getByRole('dialog', { name: 'Índice de secciones' });
+    expect(dialog).toHaveTextContent('Toca en cualquier sitio para cerrar');
+    expect(dialog).not.toHaveTextContent('End of');
+  });
+
   it('does not show a stored Section\'s legacy citation in the Section index', () => {
     const m = meeting({});
     m.sections[1] = { ...m.sections[1], ref: 'Romans 5:3–4 · WEB' };
@@ -357,8 +395,8 @@ describe('StudyReaderView (the scrolling deck)', () => {
       const rowFor = (title: string) =>
         within(dialog)
           .getAllByText(title)
-          .map((el) => el.closest('div.cursor-pointer')!)
-          .find((el) => el.className.includes('cursor-pointer'))!;
+          .map((el) => el.closest('[data-current]')!)
+          .find((el) => el !== null)!;
       expect(rowFor('Where peace starts').getAttribute('data-current')).toBe('false');
       expect(rowFor('The end of the week').getAttribute('data-current')).toBe('true');
     });

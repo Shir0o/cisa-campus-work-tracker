@@ -34,11 +34,13 @@ vi.mock('firebase/firestore', () => ({
         id: target.id || 'm1',
         exists: () => mockDocExists,
         data: () => mockDocData,
+        metadata: { fromCache: false },
       });
     } else {
       // query listener
       onNext({
         docs: mockDocs,
+        metadata: { fromCache: false },
       });
     }
     return vi.fn(); // unsubscribe
@@ -75,14 +77,19 @@ describe('bibleStudy data service', () => {
     const cb = vi.fn();
     const unsub = subscribePublishedStudyMeetings(fakeDb, 'romans', cb);
 
-    expect(cb).toHaveBeenCalledWith([
-      expect.objectContaining({
-        id: 'meeting-1',
-        studyId: 'romans',
-        title: 'Peace',
-        published: true,
-      }),
-    ]);
+    // The second argument is the SDK's fromCache flag (#1777), which the
+    // reader uses to tell "not loaded" from "published nothing".
+    expect(cb).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          id: 'meeting-1',
+          studyId: 'romans',
+          title: 'Peace',
+          published: true,
+        }),
+      ],
+      false,
+    );
     // A legacy document that still carries the removed siblingId field maps
     // cleanly — the field is dropped, not rejected (issue #858).
     const mapped = cb.mock.calls[0]?.[0] as Meeting[] | undefined;
@@ -202,12 +209,13 @@ describe('bibleStudy data service', () => {
     subscribeStudy(fakeDb, 'romans-fall26', cb);
     expect(cb).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'romans-fall26', title: 'Romans', term: 'Fall 2026' }),
+      false,
     );
 
     mockDocExists = false;
     const cb2 = vi.fn();
     subscribeStudy(fakeDb, 'missing', cb2);
-    expect(cb2).toHaveBeenCalledWith(null);
+    expect(cb2).toHaveBeenCalledWith(null, false);
   });
 
   it('subscribeEntryPoint maps the entry point doc or null', () => {
@@ -216,18 +224,19 @@ describe('bibleStudy data service', () => {
     subscribeEntryPoint(fakeDb, 'cisa-wednesday', cb);
     expect(cb).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall26' }),
+      false,
     );
 
     // An entry point parked between terms carries no active Study.
     mockDocData = { slug: 'cisa-wednesday', name: 'Wednesday Bible Study' };
     const cb2 = vi.fn();
     subscribeEntryPoint(fakeDb, 'cisa-wednesday', cb2);
-    expect(cb2).toHaveBeenCalledWith(expect.objectContaining({ activeStudyId: null }));
+    expect(cb2).toHaveBeenCalledWith(expect.objectContaining({ activeStudyId: null }), false);
 
     mockDocExists = false;
     const cb3 = vi.fn();
     subscribeEntryPoint(fakeDb, 'missing', cb3);
-    expect(cb3).toHaveBeenCalledWith(null);
+    expect(cb3).toHaveBeenCalledWith(null, false);
   });
 
   it('setMeetingPublished and deleteMeeting call firestore methods', async () => {

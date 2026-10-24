@@ -43,7 +43,7 @@ describe('BibleStudyPresent', () => {
     study: Study | null = STUDY,
   ) {
     vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, cb) => {
-      cb(entryPoint);
+      cb(entryPoint, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
@@ -51,11 +51,11 @@ describe('BibleStudyPresent', () => {
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _studyId, cb) => {
-      cb(study);
+      cb(study, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _studyId, cb) => {
-      cb(meetings);
+      cb(meetings, false);
       return () => {};
     });
   }

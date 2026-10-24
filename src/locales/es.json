@@ -712,7 +712,12 @@
     "previous": "Anterior",
     "next": "Siguiente",
     "end_of": "Fin de {title}",
-    "section_announce": "Sección {n} de {total}: {title}"
+    "section_announce": "Sección {n} de {total}: {title}",
+    "open_index": "Abrir el índice de secciones",
+    "index": "Índice de secciones",
+    "close_hint": "Toca en cualquier sitio para cerrar",
+    "blank_reveal": "Espacio en blanco, toca para revelar",
+    "no_sections": "Esta semana aún no tiene secciones."
   },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",
@@ -2172,6 +2177,9 @@
     "nothing_yet": "Todavía nada",
     "never_published": "El estudio no ha publicado ninguna semana",
     "never_published_body": "Un estudio recién creado, o un código mostrado antes de publicar la primera semana. No hay nada a lo que recurrir.",
+    "load_failed": "No se pudo cargar esta semana",
+    "load_failed_body": "El estudio sigue ahí: este dispositivo no pudo conectarse. Revisa tu conexión e inténtalo de nuevo.",
+    "try_again": "Reintentar",
     "bold": "Negrita",
     "italic": "Cursiva",
     "numbered_list": "Lista numerada",

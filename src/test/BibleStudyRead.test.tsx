@@ -52,15 +52,15 @@ describe("This week's study (#946)", () => {
       return () => {};
     });
     vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, slug, cb) => {
-      cb(entryPoints.find((ep) => ep.slug === slug) ?? null);
+      cb(entryPoints.find((ep) => ep.slug === slug) ?? null, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _id, cb) => {
-      cb(study);
+      cb(study, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, cb) => {
-      cb(meetings);
+      cb(meetings, false);
       return () => {};
     });
   }

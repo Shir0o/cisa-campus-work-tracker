@@ -107,7 +107,7 @@ describe('BibleStudyIndex view', () => {
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _studyId, cb) => {
-      cb(STUDY);
+      cb(STUDY, false);
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, _studyId, cb) => {

@@ -3,8 +3,10 @@ import { useParams } from 'react-router-dom';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import StudyEmptyState from '../components/bibleStudy/StudyEmptyState';
 import { useResolvedStudy } from '../components/bibleStudy/useResolvedStudy';
+import { useLanguage } from '../components/LanguageProvider';
 
 export default function PublicStudyReader() {
+  const { t } = useLanguage();
   const params = useParams<{ slug?: string; studyId?: string; date?: string }>();
   const slug = params.slug ?? '';
   const permalinkStudyId = params.studyId ?? '';
@@ -14,7 +16,7 @@ export default function PublicStudyReader() {
   // staff permalink addresses one week by Study and date directly. Either
   // way the chain ends at the newest published Meeting of a Study, and it is
   // the same chain "This week's study" walks (#946).
-  const { loading, entryPoint, resolution, meeting, staleDateLabel } = useResolvedStudy(
+  const { loading, entryPoint, resolution, meeting, staleDateLabel, loadError } = useResolvedStudy(
     slug,
     isPermalink ? { studyId: permalinkStudyId, date: params.date || undefined } : undefined,
   );
@@ -35,6 +37,32 @@ export default function PublicStudyReader() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-on-surface-variant font-sans">
         <div className="animate-pulse tracking-wide text-sm font-medium">Loading Bible Study...</div>
+      </div>
+    );
+  }
+
+  // A failed subscription looks exactly like an empty term in `resolution`,
+  // so this state is checked first: a student on a bad connection must not be
+  // told the study is over (#1777).
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background text-on-surface">
+        <div role="alert" className="flex flex-col items-center justify-center p-6 text-center flex-1">
+          <h1 className="font-serif text-2xl mb-2 font-medium">{t('study.load_failed')}</h1>
+          <p className="text-on-surface-variant text-sm max-w-sm">{t('study.load_failed_body')}</p>
+          {/* A reload, not a re-subscribe: the Firestore channel holds its
+              reconnect backoff, so a second listen on the same client keeps
+              answering from the failed cache. A fresh load opens a fresh
+              connection (measured: the deck renders again as soon as the
+              network is back). */}
+          <button
+            type="button"
+            className="mt-5 h-11 px-5 rounded-full bg-on-surface text-background text-sm font-medium"
+            onClick={() => window.location.reload()}
+          >
+            {t('study.try_again')}
+          </button>
+        </div>
       </div>
     );
   }
