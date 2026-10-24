@@ -603,7 +603,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           would win — so it is desktop-only. At `md` the bottom bar is gone and
           the old shell (grow past the viewport, inner pane `h-screen`) returns
           unchanged. */}
-      <div className="flex h-[100dvh] bg-background relative overflow-hidden md:h-auto md:min-h-screen md:overflow-visible">
+      <div data-app-shell className="flex h-[100dvh] bg-background relative overflow-hidden md:h-auto md:min-h-screen md:overflow-visible">
         {/* Single shell wrapper. The chrome inside it varies with the viewport
             (rail vs top-bar), but the wrapper and the inner content column are
             always present at the same tree position, so the routed <main>

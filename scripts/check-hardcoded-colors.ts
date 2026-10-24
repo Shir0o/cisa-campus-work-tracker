@@ -52,7 +52,13 @@ const PALETTE_PATTERN = new RegExp(
   'g',
 );
 
-export type ViolationKind = 'hex' | 'palette';
+// A text utility bound to a border token (#1779). `--outline` is #E4E4E7, the
+// hairline colour, so `text-outline` on a #EAEAEC panel measured 1.1:1 — the
+// P0 in #1775. `--outline-variant` is the same family of structure colour, not
+// reading ink: secondary copy belongs to `--on-surface-variant`.
+const TEXT_ON_BORDER_TOKEN = /\btext-outline(?:-variant)?(?![-\w])/g;
+
+export type ViolationKind = 'hex' | 'palette' | 'token-misuse';
 
 export type RawHit = {
   match: string;
@@ -60,8 +66,9 @@ export type RawHit = {
 };
 
 /**
- * Find all raw colour matches on a single added line. Producer-side —
- * file/line context is added by the caller after parsing the diff.
+ * Find all raw colour matches and token misuses on a single added line.
+ * Producer-side — file/line context is added by the caller after parsing the
+ * diff.
  */
 export function findRawHits(line: string): RawHit[] {
   const hits: RawHit[] = [];
@@ -70,6 +77,9 @@ export function findRawHits(line: string): RawHit[] {
   }
   for (const match of line.matchAll(PALETTE_PATTERN)) {
     hits.push({ match: match[0], kind: 'palette' });
+  }
+  for (const match of line.matchAll(TEXT_ON_BORDER_TOKEN)) {
+    hits.push({ match: match[0], kind: 'token-misuse' });
   }
   return hits;
 }
@@ -157,15 +167,19 @@ export function run(): void {
 
   if (violations.length > 0) {
     console.error(
-      'Raw colour values detected in this diff. Use CSS custom property tokens (e.g. `bg-surface`, `text-on-surface`, `border-outline-variant`) instead.\n',
+      'Raw colour values or misused colour tokens detected in this diff. Use CSS custom property tokens (e.g. `bg-surface`, `text-on-surface`, `border-outline-variant`) instead.\n',
     );
     for (const v of violations) {
-      console.error(`  ${v.file}:${v.line}: ${v.kind} "${v.match}"`);
+      const hint =
+        v.kind === 'token-misuse'
+          ? ' — a border token cannot carry text; use `text-on-surface-variant`'
+          : '';
+      console.error(`  ${v.file}:${v.line}: ${v.kind} "${v.match}"${hint}`);
     }
     process.exit(1);
   }
 
-  console.log('No new raw colour values detected.');
+  console.log('No new raw colour values or misused colour tokens detected.');
 }
 
 // Only run when invoked as a script; importing the module (e.g. in tests)

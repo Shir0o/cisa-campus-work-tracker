@@ -20,14 +20,21 @@ export function LanguageToggle({ className }: { className?: string }) {
           if (language !== "en") setLanguage("en");
         }}
         aria-pressed={language === "en"}
-        className={cn(
-          "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-          language === "en"
-            ? "bg-surface text-on-surface shadow-xs"
-            : "text-on-surface-variant hover:text-on-surface",
-        )}
+        // 44px hit area on the repo's phone rule (#1779). The negative margin
+        // takes the extra height back out of the layout, and the pill lives on
+        // the inner span, so the control still looks 24px tall in its 32px tray.
+        className="grid min-h-11 min-w-11 -my-2.5 place-items-center px-1 transition-all cursor-pointer"
       >
-        EN
+        <span
+          className={cn(
+            "rounded-lg px-2.5 py-1 text-xs font-semibold transition-all",
+            language === "en"
+              ? "bg-surface text-on-surface shadow-xs"
+              : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          EN
+        </span>
       </button>
       <button
         type="button"
@@ -35,14 +42,18 @@ export function LanguageToggle({ className }: { className?: string }) {
           if (language !== "es") setLanguage("es");
         }}
         aria-pressed={language === "es"}
-        className={cn(
-          "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-          language === "es"
-            ? "bg-primary text-on-primary shadow-xs"
-            : "text-on-surface-variant hover:text-on-surface",
-        )}
+        className="grid min-h-11 min-w-11 -my-2.5 place-items-center px-1 transition-all cursor-pointer"
       >
-        ES
+        <span
+          className={cn(
+            "rounded-lg px-2.5 py-1 text-xs font-semibold transition-all",
+            language === "es"
+              ? "bg-primary text-on-primary shadow-xs"
+              : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          ES
+        </span>
       </button>
     </div>
   );

@@ -419,6 +419,7 @@ export function PopupFrame({
             exit={{ opacity: 0 }}
             onClick={requestClose}
             aria-hidden="true"
+            data-testid="popup-scrim"
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           />
           <motion.div

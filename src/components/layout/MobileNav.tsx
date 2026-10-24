@@ -15,6 +15,17 @@ import { sectionHrefFor } from '../../lib/navTrail';
 import { useI18n } from '../LanguageProvider';
 
 /**
+ * Re-tapping the lit destination returns the list under it to the top, the way
+ * a native tab bar does (#1779). The phone shell's only scroller is the routed
+ * `main` pane — the document itself no longer scrolls (#1795) — so that is the
+ * single element to move.
+ */
+function scrollCurrentListToTop() {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.querySelector('main')?.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+}
+
+/**
  * One bottom-bar destination.
  *
  * Selection is the Ink inversion — a solid ink disc with the glyph turned
@@ -39,6 +50,7 @@ function Destination({
     <Link
       to={to}
       aria-current={active ? 'page' : undefined}
+      onClick={active ? scrollCurrentListToTop : undefined}
       className={cn(
         'group flex min-h-11 min-w-[64px] flex-col items-center justify-center gap-1 rounded-[14px] px-1 py-1.5 transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',

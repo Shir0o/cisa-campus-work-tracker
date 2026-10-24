@@ -7,9 +7,9 @@
  * exactly to stop that. These are the assertions that would have gone red.
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MobileNav from '../components/layout/MobileNav';
 
 let currentUser: { role: string } = { role: 'manager' };
@@ -72,5 +72,49 @@ describe('MobileNav selected destination (#1775)', () => {
     const home = screen.getByRole('link', { name: 'Home' });
     expect(home.className).toContain('min-h-11');
     expect(home.className).toContain('focus-visible:ring');
+  });
+});
+
+// ── Re-tapping the lit destination (#1779) ──────────────────────────────────
+//
+// A native tab bar returns the current list to the top when you tap the tab you
+// are already on; ours re-navigated to the same route and left the list where
+// it was. The phone shell's only scroller is the routed `main` pane (#1795), so
+// that is the element the re-tap has to move.
+describe('MobileNav re-tap (#1779)', () => {
+  const scrollTo = vi.fn();
+
+  beforeEach(() => {
+    scrollTo.mockClear();
+    // jsdom has no layout, so the element scroll is a spy rather than a
+    // measurement — the assertion is on the call, not on a rendered offset.
+    (HTMLElement.prototype as unknown as { scrollTo: typeof scrollTo }).scrollTo = scrollTo;
+  });
+
+  function renderWithScroller(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <main data-testid="list" />
+        <MobileNav />
+      </MemoryRouter>,
+    );
+  }
+
+  it('returns the current list to the top when the lit destination is tapped', () => {
+    renderWithScroller('/');
+    fireEvent.click(screen.getByRole('link', { name: 'Home' }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+  });
+
+  it('does not move the list when the tap goes to a different destination', () => {
+    renderWithScroller('/');
+    fireEvent.click(screen.getByRole('link', { name: 'People' }));
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('scrolls the list on a re-tap of the destination lighting a deeper route', () => {
+    renderWithScroller('/people/e2e-contact-lila');
+    fireEvent.click(screen.getByRole('link', { name: 'People' }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, X, Heart, Sparkles, Calendar, Users, CheckCircle2, ArrowRight, AlertCircle, ChevronDown } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, orderBy, limit,
@@ -9,10 +10,12 @@ import { db, auth, handleFirestoreError, OperationType } from '../../lib/firebas
 import { useAuth } from '../AuthProvider';
 import { Notification } from '../../types';
 import { cn, ntfWhen } from '../../lib/utils';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
+import { PopupFrame } from '../ui/PopupFrame';
 
 type Tone = 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
 
@@ -96,6 +99,10 @@ export default function NotificationCenter() {
   const bellRef = useRef<HTMLButtonElement>(null);
   const currentUserId = effectiveUserId || auth.currentUser?.uid;
   const seesTeamBroadcasts = role === 'admin';
+  // Under 768px the panel is a bottom sheet on a scrim, the same layer every
+  // other dialog uses (PopupFrame), instead of a strip pinned under the header
+  // with the page still live behind it (#1779).
+  const isPhone = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -160,6 +167,9 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     if (!isOpen) return;
+    // On a phone the sheet is modal: PopupFrame owns Escape, the scrim owns
+    // click-away, and neither may also be handled here.
+    if (isPhone) return;
     const onDown = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsOpen(false);
     };
@@ -170,13 +180,35 @@ export default function NotificationCenter() {
       document.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey);
     };
-  }, [isOpen]);
+  }, [isOpen, isPhone]);
 
-  // Focus follows the sheet: into the panel when it opens, back to the bell
-  // when it closes. Without this the panel opened under the reader's focus and
-  // Escape closed a dialog they were never inside (#1775).
+  // While the phone sheet is open the shell behind it is out of reach: hidden
+  // from the accessibility tree and inert for pointer and focus, so a swipe or
+  // a Tab cannot land on the page under the scrim. The sheet itself is portalled
+  // to the body, so it is never inside the subtree it covers.
+  useEffect(() => {
+    if (!isOpen || !isPhone) return;
+    const shell = document.querySelector<HTMLElement>('[data-app-shell]');
+    if (!shell) return;
+    const bell = bellRef.current;
+    shell.setAttribute('inert', '');
+    shell.setAttribute('aria-hidden', 'true');
+    return () => {
+      shell.removeAttribute('inert');
+      shell.removeAttribute('aria-hidden');
+      // PopupFrame returns focus to its opener, but that focus call runs before
+      // this cleanup and an inert subtree refuses it. Hand focus back here.
+      bell?.focus();
+    };
+  }, [isOpen, isPhone]);
+
+  // Focus follows the panel: into it when it opens, back to the bell when it
+  // closes. Without this the panel opened under the reader's focus and Escape
+  // closed a dialog they were never inside (#1775). The phone sheet is a
+  // PopupFrame, which owns both moves itself.
   const wasOpen = useRef(false);
   useEffect(() => {
+    if (isPhone) return;
     if (isOpen) {
       wasOpen.current = true;
       panelRef.current?.focus({ preventScroll: true });
@@ -184,7 +216,7 @@ export default function NotificationCenter() {
       wasOpen.current = false;
       bellRef.current?.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, isPhone]);
 
   const markAsRead = async (id: string) => {
     if (!auth.currentUser) return;
@@ -277,6 +309,63 @@ export default function NotificationCenter() {
     }
   };
 
+  const subtitle =
+    unreadCount > 0
+      ? unreadCount === 1
+        ? t('notifications.one_thing_since')
+        : t('notifications.things_since').replace('{n}', String(unreadCount))
+      : t('notifications.caught_up');
+
+  // The list is shared by the desktop popover and the phone sheet; only the
+  // shell around it changes.
+  const list = notifications.length === 0 ? (
+    <div className="py-11 px-8 text-center">
+      <div className="w-[46px] h-[46px] rounded-full bg-accent-soft text-accent grid place-items-center mx-auto mb-3.5">
+        <Heart className="w-5 h-5" />
+      </div>
+      <div className="font-serif text-[17px] font-medium text-on-surface">
+        {t('notifications.nothing_needs_you')}
+      </div>
+      <div className="text-[13px] text-on-surface-variant mt-1.5 leading-[1.55] [text-wrap:pretty]">
+        {t('notifications.quiet_inbox')}
+      </div>
+    </div>
+  ) : (
+    <>
+      {unread.length > 0 && (
+        <NtfGroup
+          label={t('notifications.worth_a_look')}
+          items={unread}
+          onSelect={handleSelectNotification}
+          onSetAside={setAside}
+          onSetAsideStack={setAsideStack}
+        />
+      )}
+      {read.length > 0 && (
+        <NtfGroup
+          label={t('notifications.earlier')}
+          items={read}
+          onSelect={handleSelectNotification}
+          onSetAside={setAside}
+          onSetAsideStack={setAsideStack}
+          bordered={unread.length > 0}
+        />
+      )}
+    </>
+  );
+
+  const openWholeRecord = () => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); };
+  const footerAction = notifications.length > 0 && (
+    <button
+      type="button"
+      onClick={openWholeRecord}
+      className="w-full flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-accent text-[13px] font-semibold hover:bg-accent-soft transition-colors"
+    >
+      {isStaff ? t('notifications.see_whole_record') : t('notifications.open_prayer')}
+      <ArrowRight className="w-[14px] h-[14px]" />
+    </button>
+  );
+
   return (
     <div className="relative flex-none inline-flex" ref={dropdownRef}>
       {/* Bell button */}
@@ -302,9 +391,9 @@ export default function NotificationCenter() {
         )}
       </button>
 
-      {/* Panel */}
+      {/* Panel — the anchored popover above the phone breakpoint */}
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !isPhone && (
           <motion.div
             ref={panelRef}
             tabIndex={-1}
@@ -320,9 +409,6 @@ export default function NotificationCenter() {
               'flex flex-col max-h-[min(640px,78vh)]',
               'bg-surface-container border border-outline-variant rounded-[16px] overflow-hidden',
               'shadow-xl',
-              // mobile: fixed full-width strip, set below the sticky header's
-              // breadcrumb row (h-14 + h-10 + rule) so it never covers it.
-              'max-sm:fixed max-sm:top-[calc(4rem+2.5rem+1px)] max-sm:right-3 max-sm:left-3 max-sm:w-auto',
             )}
           >
             {/* Header */}
@@ -332,11 +418,7 @@ export default function NotificationCenter() {
                   {t('notifications.whats_stirring')}
                 </div>
                 <div className="text-[12.5px] text-on-surface-variant mt-0.5">
-                  {unreadCount > 0
-                    ? unreadCount === 1
-                      ? t('notifications.one_thing_since')
-                      : t('notifications.things_since').replace('{n}', String(unreadCount))
-                    : t('notifications.caught_up')}
+                  {subtitle}
                 </div>
               </div>
               {unreadCount > 0 && (
@@ -350,57 +432,33 @@ export default function NotificationCenter() {
             </div>
 
             {/* Scrollable body */}
-            <div className="overflow-y-auto flex-1 min-h-0">
-              {notifications.length === 0 ? (
-                <div className="py-11 px-8 text-center">
-                  <div className="w-[46px] h-[46px] rounded-full bg-accent-soft text-accent grid place-items-center mx-auto mb-3.5">
-                    <Heart className="w-5 h-5" />
-                  </div>
-                  <div className="font-serif text-[17px] font-medium text-on-surface">
-                    {t('notifications.nothing_needs_you')}
-                  </div>
-                  <div className="text-[13px] text-on-surface-variant mt-1.5 leading-[1.55] [text-wrap:pretty]">
-                    {t('notifications.quiet_inbox')}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {unread.length > 0 && (
-                    <NtfGroup
-                      label={t('notifications.worth_a_look')}
-                      items={unread}
-                      onSelect={handleSelectNotification}
-                      onSetAside={setAside}
-                      onSetAsideStack={setAsideStack}
-                    />
-                  )}
-                  {read.length > 0 && (
-                    <NtfGroup
-                      label={t('notifications.earlier')}
-                      items={read}
-                      onSelect={handleSelectNotification}
-                      onSetAside={setAside}
-                      onSetAsideStack={setAsideStack}
-                      bordered={unread.length > 0}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+            <div className="overflow-y-auto flex-1 min-h-0">{list}</div>
 
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <button
-                onClick={() => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); }}
-                className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-accent text-[13px] font-semibold hover:bg-accent-soft transition-colors"
-              >
-                {isStaff ? t('notifications.see_whole_record') : t('notifications.open_prayer')}
-                <ArrowRight className="w-[14px] h-[14px]" />
-              </button>
-            )}
+            {footerAction}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Phone (#1779) — the same list as the app's bottom sheet, on a scrim,
+          with the shell behind it inert. Portalled to the body so the inert
+          subtree is not this sheet's own ancestor. */}
+      {isPhone && createPortal(
+        <PopupFrame
+          open={isOpen}
+          onClose={() => setIsOpen(false)}
+          title={t('notifications.whats_stirring')}
+          subtitle={subtitle}
+          primary={unreadCount > 0 ? {
+            label: t('notifications.mark_all_read'),
+            onClick: () => { void markAllAsRead(); },
+            savingLabel: t('notifications.mark_all_read'),
+          } : undefined}
+        >
+          <div className="pb-1">{list}</div>
+          {footerAction}
+        </PopupFrame>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -524,7 +582,7 @@ function NtfStack({
             <span>{ntfWhen(latest.createdAt)}</span>
             <button
               type="button"
-              className="inline-flex items-center gap-1 -my-2 py-2 text-accent hover:underline font-medium cursor-pointer"
+              className="inline-flex items-center gap-1 -my-3 min-h-11 py-3 text-accent hover:underline font-medium cursor-pointer"
               onClick={e => {
                 e.stopPropagation();
                 setExpanded(exp => !exp);
@@ -588,67 +646,72 @@ function NtfItem({
   const tone: Tone = notif.tone ?? typeToTone(notif.type);
 
   return (
-    <div
-      className={cn(
-        "group relative flex gap-[13px] items-start cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30",
-        isChild ? "px-3 py-2.5" : "px-[18px] py-3"
-      )}
-      onClick={() => onSelect(notif)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter') onSelect(notif); }}
-    >
-      {/* Tonal icon node */}
-      <span
+    <div className="group relative">
+      {/* A real button (#1779), so Enter and Space both activate it natively
+          and the rotor reads one control. The dismissal is its sibling, not a
+          nested button, which is what flattened the row before. */}
+      <button
+        type="button"
         className={cn(
-          'flex-none rounded-[9px] grid place-items-center mt-px transition-opacity',
-          isChild ? 'w-[24px] h-[24px]' : 'w-[30px] h-[30px]',
-          TONE_CLASSES[tone],
-          notif.read && 'opacity-[0.62]',
+          "flex w-full gap-[13px] items-start cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30",
+          isChild ? "px-3 py-2.5" : "px-[18px] py-3"
         )}
+        onClick={() => onSelect(notif)}
       >
-        <ToneIcon tone={tone} type={notif.tone ? undefined : notif.type} size={isChild ? 12 : 15} />
-      </span>
+        {/* Tonal icon node */}
+        <span
+          className={cn(
+            'flex-none rounded-[9px] grid place-items-center mt-px transition-opacity',
+            isChild ? 'w-[24px] h-[24px]' : 'w-[30px] h-[30px]',
+            TONE_CLASSES[tone],
+            notif.read && 'opacity-[0.62]',
+          )}
+        >
+          <ToneIcon tone={tone} type={notif.tone ? undefined : notif.type} size={isChild ? 12 : 15} />
+        </span>
 
-      {/* Content */}
-      <div className="min-w-0 flex-1 pr-[46px] sm:pr-[18px]">
-        <div className={cn(
-          'leading-[1.35]',
-          isChild ? 'text-[13px]' : 'text-[14px]',
-          notif.read
-            ? 'font-medium text-on-surface-variant'
-            : 'font-semibold text-on-surface',
-        )}>
-          <Translate text={notif.title} />
+        {/* Content */}
+        <div className="min-w-0 flex-1 pr-[46px] sm:pr-[18px]">
+          <div className={cn(
+            'leading-[1.35]',
+            isChild ? 'text-[13px]' : 'text-[14px]',
+            notif.read
+              ? 'font-medium text-on-surface-variant'
+              : 'font-semibold text-on-surface',
+          )}>
+            <Translate text={notif.title} />
+          </div>
+          <div className={cn(
+            'text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]',
+            isChild ? 'text-[12px]' : 'text-[13px]',
+          )}>
+            <Translate text={notif.message || (notif as any).body} />
+          </div>
+          <div className="text-[11.5px] text-on-surface-variant mt-1.5">
+            {ntfWhen(notif.createdAt)}
+          </div>
         </div>
-        <div className={cn(
-          'text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]',
-          isChild ? 'text-[12px]' : 'text-[13px]',
-        )}>
-          <Translate text={notif.message || (notif as any).body} />
-        </div>
-        <div className="text-[11.5px] text-on-surface-variant mt-1.5">
-          {ntfWhen(notif.createdAt)}
-        </div>
-      </div>
 
-      {/* Unread dot */}
-      {!notif.read && (
-        <span className={cn(
-          "absolute right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden",
-          isChild ? "top-[14px]" : "top-[17px]"
-        )} aria-hidden />
-      )}
+        {/* Unread dot — absolute, so it hangs off the row rather than the
+            button's content box */}
+        {!notif.read && (
+          <span className={cn(
+            "absolute right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden",
+            isChild ? "top-[14px]" : "top-[17px]"
+          )} aria-hidden />
+        )}
+      </button>
 
       {/* Set-aside button (hover-reveal, sits on top of unread dot) */}
       <button
+        type="button"
         className={cn(
           "absolute right-2 w-9 h-9 grid place-items-center rounded-[6px] bg-surface-container text-on-surface-variant opacity-100 sm:opacity-0 sm:group-hover:opacity-100 after:absolute after:-inset-1 after:content-[''] hover:text-on-surface hover:bg-surface-container-high transition-all",
           isChild ? "top-[9px]" : "top-[11px]"
         )}
         title={t('notifications.set_aside')}
         aria-label={t('notifications.set_aside')}
-        onClick={e => { e.stopPropagation(); onSetAside(notif.id); }}
+        onClick={() => onSetAside(notif.id)}
       >
         <X className="w-[13px] h-[13px]" />
       </button>

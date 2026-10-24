@@ -187,6 +187,22 @@ describe('TopNav (top-anchored navigation)', () => {
     }
   });
 
+  // The EN/ES toggles measured 37×24 and 35×24 in the drawer footer at 375px,
+  // half the repo's 44px phone minimum (#1779). The visual pill stays 24px; the
+  // button around it is 44px and pulls the extra height back with a negative
+  // margin so the tray does not grow.
+  it('gives the drawer footer language toggles a 44px hit area (#1779)', () => {
+    h.layout = { ...h.layout, isMobileMenuOpen: true };
+    renderTopNav();
+
+    const nav = screen.getByRole('navigation', { name: /mobile menu/i });
+    for (const label of ['EN', 'ES']) {
+      const toggle = within(nav).getByRole('button', { name: label });
+      expect(toggle.className, label).toContain('min-h-11');
+      expect(toggle.className, label).toContain('-my-2.5');
+    }
+  });
+
   it('renders profile dropdown with persona, season chip, Settings and Log out', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /Profile/i }));
