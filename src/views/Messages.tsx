@@ -65,6 +65,45 @@ import {
   type ChatStreamMessage,
 } from '../components/stream/chatAdapter';
 
+/** How much of the layout viewport the on-screen keyboard covers, in px.
+ *
+ *  `index.html` asks for `interactive-widget=resizes-visual`, so a phone
+ *  keyboard shrinks the *visual* viewport while the `100dvh` shell keeps its
+ *  layout height — a composer at the layout viewport's bottom sits under the
+ *  keyboard. This is the same overlap the phone popup sheet measures (#1444);
+ *  it is copied rather than shared because the sheet also folds the overlap
+ *  into its 92%-height fit (#1790). Zero on a desk browser and without
+ *  `visualViewport`. */
+function useKeyboardOverlap(enabled: boolean): number {
+  const [overlap, setOverlap] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!enabled || !vv) {
+      setOverlap(0);
+      return;
+    }
+    let raf = 0;
+    // resize/scroll fire repeatedly while the keyboard animates; measure once
+    // per frame instead of laying out per event.
+    const measure = () => {
+      raf = 0;
+      setOverlap(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    };
+    const schedule = () => {
+      if (!raf) raf = window.requestAnimationFrame(measure);
+    };
+    measure();
+    vv.addEventListener('resize', schedule);
+    vv.addEventListener('scroll', schedule);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      vv.removeEventListener('resize', schedule);
+      vv.removeEventListener('scroll', schedule);
+    };
+  }, [enabled]);
+  return overlap;
+}
+
 export default function Messages() {
   const { roomId } = useParams<{ roomId?: string }>();
   // A notification about a reply opens that message's Thread (#1303).
@@ -310,6 +349,9 @@ export default function Messages() {
   }, [rooms, currentUser, usersCache]);
 
   const activeRoom = rooms.find(r => r.id === activeRoomId);
+  // With a room open on a phone, the keyboard's overlap lifts the thread so the
+  // composer stays visible and the stream gives up the space instead (#1790).
+  const keyboardOverlap = useKeyboardOverlap(!!activeRoom);
 
   // Check unread status
   const isUnread = (room: ChatRoom) => {
@@ -941,8 +983,11 @@ export default function Messages() {
         <div ref={messagesContainerRef} className={cn(
           "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
           activeRoomId ? "flex" : "hidden md:flex",
-          adapter && "msgs-streamed"
-        )}>
+          adapter && "msgs-streamed",
+          keyboardOverlap > 0 && "msgs-keyboard"
+        )}
+          style={keyboardOverlap > 0 ? { paddingBottom: keyboardOverlap } : undefined}
+        >
           {!activeRoom || !adapter ? (
             /* Empty Chat Area Placeholder */
             <div className="msgs-empty">

@@ -14,6 +14,7 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `journeys/signup.spec.ts` | Public sign-up journey: a signed-out visitor submits the intake form, the lead appears for a Full-timer in Around the team and My Day, the sidebar carries the Sign-up form link; plus the Outreach view and the #1493 phone-preservation pair (#1478) |
 | `journeys/notification.spec.ts` | Notification journey: a reply raises a bell entry that opens its Thread (row 15, #1303), a contact notification opens the contact, plus the retired bell deep-linking (#682) and push-transport checks (#1479) |
 | `journeys/student-community.spec.ts` | Student and Community journey: the landing + sidebar nav + route-guard matrix for every role, the Student's People/Gatherings/contact-thread/Quick-Capture flows, and the Community member's missing door to the contact directory — People or sideways through Gatherings (#950; #1480; folds in the retired `permissions`, `gatherings-attendance`, `cross-role-journey`, `quick-capture` and `walking-together-threads` specs) |
+| `journeys/messages-keyboard.spec.ts` | Messages on a phone at 375×812: with a stubbed `visualViewport` standing in for the soft keyboard, the composer's bottom edge stays inside the visual viewport and the message stream shrinks by the keyboard's height (#1790). |
 
 ## Running
 

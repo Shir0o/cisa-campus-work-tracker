@@ -3660,6 +3660,10 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 @media (max-width: 720px) {
   body.msgs-fullscreen .page.msgs { padding-bottom: 0; }
   body.msgs-fullscreen .strm-composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  /* With the soft keyboard up, the thread's own bottom padding already lifts
+     the composer clear of the keyboard, so the safe-area pad underneath it
+     would double-count the inset (#1790). */
+  body.msgs-fullscreen .msgs-thread.msgs-keyboard .strm-composer { padding-bottom: 10px; }
   body.msgs-fullscreen .msgs-readonly { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   /* send button: comfortable touch target */
   body.msgs-fullscreen .strm-send { width: 44px; height: 44px; }

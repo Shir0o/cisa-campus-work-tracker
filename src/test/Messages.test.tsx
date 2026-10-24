@@ -2300,5 +2300,45 @@ describe('Messages View Component', () => {
       });
     });
   });
+
+  describe('the composer and the phone keyboard (#1790)', () => {
+    it('lifts the thread by the keyboard overlap and restores it when the keyboard closes', async () => {
+      // `interactive-widget=resizes-visual` leaves the layout viewport at full
+      // height, so the keyboard's overlap is the part of `window.innerHeight`
+      // the visual viewport no longer covers — the popup sheet's precedent
+      // (#1444). The stub stands in for an Android keyboard, which the harness
+      // cannot raise.
+      const vv = Object.assign(new EventTarget(), { height: window.innerHeight, offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      try {
+        const { container } = render(
+          <MemoryRouter>
+            <Messages />
+          </MemoryRouter>
+        );
+        fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+        await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
+        const thread = container.querySelector('.msgs-thread') as HTMLElement;
+        expect(thread.style.paddingBottom).toBe('');
+
+        act(() => {
+          vv.height = 480;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        await waitFor(() => expect(thread.style.paddingBottom).toBe(`${window.innerHeight - 480}px`));
+        // The composer's own safe-area pad would double-count the inset.
+        expect(thread).toHaveClass('msgs-keyboard');
+
+        act(() => {
+          vv.height = window.innerHeight;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        await waitFor(() => expect(thread.style.paddingBottom).toBe(''));
+        expect(thread).not.toHaveClass('msgs-keyboard');
+      } finally {
+        delete (window as { visualViewport?: unknown }).visualViewport;
+      }
+    });
+  });
 });
 
