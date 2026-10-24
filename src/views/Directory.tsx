@@ -14,7 +14,8 @@ import {
   Combine,
   Users,
   ChevronDown,
-  X
+  X,
+  ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -48,7 +49,7 @@ import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
-import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters, type KindSegment } from '../lib/directoryFilters';
+import { DEFAULT_DIRECTORY_FILTERS, DIRECTORY_SORTS, readDirectoryFilters, writeDirectoryFilters, sortDirectoryContacts, type DirectorySort, type KindSegment } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
@@ -143,6 +144,15 @@ const KIND_SEGMENTS: { value: KindSegment; labelKey: string }[] = [
   { value: 'our-own', labelKey: 'directory.kind_our_own' },
   { value: 'local-saint', labelKey: 'directory.kind_local_saints' },
 ];
+
+// The four stated orders (#1783): the control's labels, and the sentence each
+// one shows while it is not the default.
+const SORT_LABELS: Record<DirectorySort, { labelKey: string; noteKey: string }> = {
+  recent: { labelKey: 'directory.sort_recent', noteKey: 'directory.sort_note_recent' },
+  longest: { labelKey: 'directory.sort_longest', noteKey: 'directory.sort_note_longest' },
+  added: { labelKey: 'directory.sort_added', noteKey: 'directory.sort_note_added' },
+  name: { labelKey: 'directory.sort_name', noteKey: '' },
+};
 
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-10 h-10 text-xs sm:w-12 sm:h-12 sm:text-sm';
@@ -386,6 +396,8 @@ export default function Directory() {
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
+  // The list's order (#1783), remembered with the filters.
+  const [sort, setSort] = useState<DirectorySort>(restoredFilters.sort);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [isKindModalOpen, setIsKindModalOpen] = useState(false);
@@ -439,8 +451,9 @@ export default function Directory() {
       filterAddedWhen,
       customRange,
       selectedTags,
+      sort,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, sort]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -587,15 +600,39 @@ export default function Directory() {
       result = result.filter(c => typeof c.phone === 'string' && c.phone.trim() !== '');
     }
 
+    // The chosen order (#1783). It runs after every narrowing — search, kind,
+    // Stage, tags, added-when — and only rearranges the people still in the
+    // list, so the order can never widen what a filter hid. Pills and search
+    // narrow first for the same reason: a Step's people keep this order.
+    //
+    // "Connected with" is the same reading each card paints: an Interaction or
+    // thread, the person's own last-contacted stamps, and a Gathering they were
+    // present at (#1293, #1335). Anyone the reach model calls "Not reached yet"
+    // has never been connected with, so they sort as the longest wait rather
+    // than as a person carrying an old date.
+    const lastConnected = new Map<string, number>();
+    for (const c of result) {
+      const reach = reachByContactMap.get(c.id);
+      if (!reach?.reached) continue;
+      const cardMs = Math.max(
+        lastTouchByContact.get(c.id)?.ms ?? -Infinity,
+        parseMs(c.lastContactedDate) ?? -Infinity,
+        parseMs(c.lastSeen) ?? -Infinity,
+        reach.ms ?? -Infinity,
+      );
+      if (Number.isFinite(cardMs) && cardMs > 0) lastConnected.set(c.id, cardMs);
+    }
+    result = sortDirectoryContacts(result, sort, (id) => lastConnected.get(id) ?? null);
+
     // Name-first tiering (#1192): a contact whose name matches the query outranks
-    // one that only matched on email/role/background/tags/ties. Stable — the
-    // underlying userContacts order holds within each tier.
+    // one that only matched on email/role/background/tags/ties. A stable second
+    // pass, so the chosen order holds within each tier (#1783).
     if (searchQuery.trim()) {
       result = result.slice().sort((a, b) => matchTier(searchMatches.get(a.id)) - matchTier(searchMatches.get(b.id)));
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
+  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, sort, lastTouchByContact, searchMatches, reachByContactMap]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -1106,9 +1143,9 @@ export default function Directory() {
         })}
       </div>
 
-      {/* ── Search + filters ── */}
-      <div className="flex items-center gap-3 mt-4">
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+      {/* ── Search, order, filters ── */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-4">
+        <div className="relative order-1 flex-1 min-w-0 sm:min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" aria-hidden="true" />
           <input
             type="text"
@@ -1129,7 +1166,35 @@ export default function Directory() {
             </button>
           )}
         </div>
-        <div className="relative">
+
+        {/* The order (#1783). On a phone it takes its own full-width row under
+            the search, so the chosen order is readable rather than squeezed;
+            from sm it sits between the search and Filters. */}
+        <label
+          data-testid="directory-sort"
+          className="order-3 flex h-11 min-h-[44px] w-full min-w-0 items-center gap-2 rounded-sm border border-outline-variant bg-surface pl-3 pr-1.5 text-sm transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary sm:order-2 sm:w-auto"
+        >
+          <ArrowUpDown className="w-4 h-4 shrink-0 text-on-surface-variant" aria-hidden="true" />
+          <span className="shrink-0 text-on-surface-variant">{t('directory.sort')}</span>
+          <span className="relative min-w-0 flex-1">
+            <select
+              aria-label={t('directory.sort_by')}
+              value={sort}
+              onChange={(e) => setSort(e.target.value as DirectorySort)}
+              className="h-11 w-full min-w-0 cursor-pointer appearance-none bg-transparent pl-0 pr-7 text-sm font-medium text-on-surface outline-none"
+            >
+              {DIRECTORY_SORTS.map((option) => (
+                <option key={option} value={option}>{t(SORT_LABELS[option].labelKey)}</option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden="true"
+              className="pointer-events-none absolute right-1 top-1/2 w-4 h-4 -translate-y-1/2 text-on-surface-variant"
+            />
+          </span>
+        </label>
+
+        <div className="relative order-2 sm:order-3">
           <button
             onClick={() => setShowFilterMenu(!showFilterMenu)}
             className={cn(
@@ -1296,6 +1361,18 @@ export default function Directory() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* The list says its order in words whenever it is not the default, so a
+          reader never has to infer why these people are in this sequence. */}
+      {sort !== 'name' && (
+        <p
+          role="status"
+          data-testid="directory-order-note"
+          className="mt-2 text-xs text-on-surface-variant"
+        >
+          {t(SORT_LABELS[sort].noteKey)}
+        </p>
+      )}
 
       {/* ── Tag chips filter ── */}
       {allTags.length > 0 && (

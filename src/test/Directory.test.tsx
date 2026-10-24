@@ -2063,3 +2063,167 @@ describe('Directory — the phone list (#1762)', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 });
+
+// The list's order (#1783). The four orders are named as the control names
+// them, and the list says its order in words whenever it is not Name.
+describe('Directory — the order of the list (#1783)', () => {
+  const DAY = 86_400_000;
+  const now = Date.now();
+
+  // Four people whose four orders disagree, so a passing assertion cannot be
+  // the list's natural order doing the work:
+  //   name       Ada, Bo, Cy, Dee
+  //   added      Bo (newest), Cy, Ada, Dee (no date)
+  //   connected  Cy (2d), Ada (10d), Dee (30d), Bo (never)
+  //   longest    Bo, Dee, Ada, Cy
+  const orderContacts = [
+    { id: 'ord-ada', data: () => ({ name: 'Ada Lovelace', stage: 'Regular', tags: [], createdAt: new Date(now - 200 * DAY).toISOString() }) },
+    { id: 'ord-bo', data: () => ({ name: 'Bo Chen', stage: 'Regular', tags: [], createdAt: new Date(now - 1 * DAY).toISOString() }) },
+    { id: 'ord-cy', data: () => ({ name: 'Cy Park', stage: 'Regular', tags: [], createdAt: new Date(now - 50 * DAY).toISOString() }) },
+    { id: 'ord-dee', data: () => ({ name: 'Dee Ruiz', stage: 'Regular', tags: [] }) },
+  ];
+  const touchedDaysAgo: Record<string, number> = { 'ord-ada': 10, 'ord-cy': 2, 'ord-dee': 30 };
+
+  const interactions = Object.entries(touchedDaysAgo).map(([id, days]) => ({
+    ref: { path: `contacts/${id}/interactions/i-${id}` },
+    data: () => ({ content: 'Coffee', createdAt: new Date(now - days * DAY).toISOString() }),
+  }));
+
+  const serve = (contactsDocs = orderContacts, interactionDocs = interactions, userDocs: any[] = []) => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: contactsDocs, size: contactsDocs.length });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: userDocs, size: userDocs.length });
+      } else if (ref?.group === 'interactions') {
+        callback({ docs: interactionDocs, size: interactionDocs.length });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+  };
+
+  const namesInOrder = () =>
+    screen
+      .getAllByRole('button', { name: /^Open .*'s page$/ })
+      .map((b) => (b.getAttribute('aria-label') || '').replace(/^Open /, '').replace(/'s page$/, ''));
+
+  const sortSelect = () => screen.getByRole('combobox', { name: 'Sort by' }) as HTMLSelectElement;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __resetDirectoryFilters();
+    serve();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
+    });
+    (useLayout as any).mockReturnValue({
+      openNewContact: vi.fn(),
+      setSelectedContact: vi.fn(),
+    });
+  });
+
+  it('opens on Name and says nothing extra, because that is the familiar order', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    expect(sortSelect()).toHaveValue('name');
+    expect(namesInOrder()).toEqual(['Ada Lovelace', 'Bo Chen', 'Cy Park', 'Dee Ruiz']);
+    expect(screen.queryByTestId('directory-order-note')).not.toBeInTheDocument();
+  });
+
+  it('sorts by longest since connected, with anyone never reached at the top', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'longest' } });
+
+    expect(namesInOrder()).toEqual(['Bo Chen', 'Dee Ruiz', 'Ada Lovelace', 'Cy Park']);
+    // Never reached reads as "not reached yet" on Bo's card, not as "connected today".
+    expect(screen.getAllByText('Not reached yet').length).toBeGreaterThan(0);
+  });
+
+  it('sorts by recently connected, most recent first', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'recent' } });
+
+    expect(namesInOrder()).toEqual(['Cy Park', 'Ada Lovelace', 'Dee Ruiz', 'Bo Chen']);
+  });
+
+  it('sorts by recently added, newest first', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'added' } });
+
+    expect(namesInOrder()).toEqual(['Bo Chen', 'Cy Park', 'Ada Lovelace', 'Dee Ruiz']);
+  });
+
+  it('states the order in words whenever it is not the default (#1783)', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'longest' } });
+    expect(screen.getByTestId('directory-order-note')).toHaveTextContent('Longest since you last connected first.');
+
+    fireEvent.change(sortSelect(), { target: { value: 'added' } });
+    expect(screen.getByTestId('directory-order-note')).toHaveTextContent('Newest first.');
+
+    fireEvent.change(sortSelect(), { target: { value: 'recent' } });
+    expect(screen.getByTestId('directory-order-note')).toHaveTextContent('Most recently connected first.');
+
+    fireEvent.change(sortSelect(), { target: { value: 'name' } });
+    expect(screen.queryByTestId('directory-order-note')).not.toBeInTheDocument();
+  });
+
+  it('gives the sort its own accessible name and a 44px target, without opening Filters', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    const control = sortSelect();
+    expect(control).toBeVisible();
+    // Visible without opening the Filters panel, as the current choice must be.
+    expect(screen.queryByText('Narrow it down')).not.toBeInTheDocument();
+    expect(control.closest('[data-testid="directory-sort"]')).toHaveClass('min-h-[44px]');
+  });
+
+  it('keeps a name match above a relationship-only match whatever order is chosen (#1192, #1783)', async () => {
+    serve(
+      [
+        { id: 'n1', data: () => ({ name: 'Julia Bell', email: 'julia@example.com', stage: 'Lead', tags: [], createdAt: new Date(now - 400 * DAY).toISOString() }) },
+        { id: 'n2', data: () => ({ name: 'Tied Person', email: 'tied@example.com', stage: 'Lead', tags: [], createdAt: new Date(now - 1 * DAY).toISOString(), carers: ['carer-julia'] }) },
+      ] as any,
+      [],
+      [{ id: 'carer-julia', data: () => ({ displayName: 'Julia Worker', role: 'manager' }) }],
+    );
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Julia Bell')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'added' } });
+    fireEvent.change(screen.getByPlaceholderText(/Find someone by name/i), { target: { value: 'julia' } });
+
+    // Newest-first would put Tied Person on top; the name match still leads.
+    expect(namesInOrder()).toEqual(['Julia Bell', 'Tied Person']);
+  });
+
+  it('remembers the chosen order across an open-then-close contact detail cycle (#1783)', async () => {
+    const { unmount } = render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.change(sortSelect(), { target: { value: 'longest' } });
+    expect(namesInOrder()[0]).toBe('Bo Chen');
+
+    unmount();
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    expect(sortSelect()).toHaveValue('longest');
+    expect(namesInOrder()).toEqual(['Bo Chen', 'Dee Ruiz', 'Ada Lovelace', 'Cy Park']);
+  });
+});
