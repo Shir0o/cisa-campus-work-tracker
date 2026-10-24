@@ -36,7 +36,7 @@ import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import { dayMark, historyMs } from './historyTime';
+import { dayMark, historyRows } from './historyTime';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -254,8 +254,8 @@ export const humanize = (a: Hist): Humanized => {
 };
 
 // ── time helpers ──────────────────────────────────────────────────────
-// The marker itself lives in ./historyTime, so the phone and the challenge of
-// Timestamp-shaped rows read one date the same way.
+// The marker and the stream order live in ./historyTime, so the phone and the
+// desktop read the same date, from the same value, the same way.
 
 const firstName = (name: string) => (name || "Someone").split(" ")[0];
 
@@ -401,21 +401,7 @@ export default function History() {
   }, [activities, who, kind, q, staffOptions]);
 
   // One continuous stream, with a small marker wherever the day changes.
-  const rows = useMemo(() => {
-    const out: ({ type: "date"; at: string; key: string } | { type: "item"; a: Hist; key: string })[] = [];
-    let lastDay: string | null = null;
-    filtered.forEach((a) => {
-      // A row the app cannot date still appears — it just carries no marker.
-      const ms = historyMs(a.createdAt);
-      const k = ms == null ? null : new Date(ms).toDateString();
-      if (k !== null && k !== lastDay) {
-        out.push({ type: "date", at: a.createdAt, key: "d:" + k });
-      }
-      if (k !== null) lastDay = k;
-      out.push({ type: "item", a, key: a.id });
-    });
-    return out;
-  }, [filtered]);
+  const rows = useMemo(() => historyRows(filtered), [filtered]);
 
   const dayInfo = useCallback(
     (iso: string) => dayMark(iso, language, t),

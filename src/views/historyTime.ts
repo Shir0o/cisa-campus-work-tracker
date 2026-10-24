@@ -59,3 +59,41 @@ export function clockLabel(createdAt: unknown, locale: string): string {
     minute: "2-digit",
   });
 }
+
+export type HistoryRow<A extends { id: string; createdAt: unknown }> =
+  | { type: "date"; at: A["createdAt"]; key: string }
+  | { type: "item"; a: A; key: string };
+
+/**
+ * One continuous stream with a marker wherever the day changes.
+ *
+ * The client orders by `createdAt`, and Firestore sorts by *type* before value:
+ * a collection holding both ISO strings (`logActivity`) and Timestamps (the
+ * webhook, the batch ingest, the tag engine) comes back in two blocks, so the
+ * same day can appear twice and the stream can run backwards within itself.
+ * Ordering here by the parsed instant fixes the sequence and the markers with
+ * it. A row the app cannot date still appears — it just carries no marker.
+ */
+export function historyRows<A extends { id: string; createdAt: unknown }>(items: A[]): HistoryRow<A>[] {
+  const ordered = [...items].sort((a, b) => {
+    const am = historyMs(a.createdAt);
+    const bm = historyMs(b.createdAt);
+    if (am == null && bm == null) return 0;
+    if (am == null) return 1;
+    if (bm == null) return -1;
+    return bm - am;
+  });
+
+  const out: HistoryRow<A>[] = [];
+  let lastDay: string | null = null;
+  for (const a of ordered) {
+    const ms = historyMs(a.createdAt);
+    const k = ms == null ? null : new Date(ms).toDateString();
+    if (k !== null && k !== lastDay) {
+      out.push({ type: "date", at: a.createdAt, key: "d:" + k });
+      lastDay = k;
+    }
+    out.push({ type: "item", a, key: a.id });
+  }
+  return out;
+}

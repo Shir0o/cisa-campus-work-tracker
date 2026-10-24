@@ -10,7 +10,7 @@
  *    two different years, and flipped its label order at the 7-day boundary.
  */
 import { describe, it, expect } from 'vitest';
-import { clockLabel, dayMark, historyMs } from '../views/historyTime';
+import { clockLabel, dayMark, historyMs, historyRows } from '../views/historyTime';
 
 const TIMESTAMP_SHAPE = {
   seconds: 1_760_000_000,
@@ -90,5 +90,41 @@ describe('dayMark', () => {
 
   it('returns an empty mark for a value it cannot read, without throwing', () => {
     expect(dayMark({}, 'en', t)).toEqual({ label: '', sub: '' });
+  });
+});
+
+describe('historyRows', () => {
+  const at = (daysAgo: number, hour = 9) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  };
+  const item = (id: string, createdAt: unknown) => ({ id, createdAt });
+  const markers = (rows: ReturnType<typeof historyRows>) =>
+    rows.filter((r) => r.type === 'date').map((r) => r.key);
+
+  it('announces each day once, in order, when a row arrives as a Timestamp', () => {
+    // Firestore returns strings and Timestamps in separate blocks, so the same
+    // day reaches the view twice and out of order.
+    const rows = historyRows([
+      item('today-iso', at(0, 8)),
+      item('yesterday-iso', at(1, 8)),
+      item('today-late', { seconds: Math.floor(Date.now() / 1000), toMillis: () => Date.now(), toDate: () => new Date() }),
+    ]);
+    const keys = markers(rows);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toHaveLength(2);
+    expect(rows[0].type).toBe('date');
+    expect((rows[0] as any).at).not.toBeUndefined();
+    // Newest first.
+    const ids = rows.filter((r) => r.type === 'item').map((r) => (r as any).a.id);
+    expect(ids).toEqual(['today-late', 'today-iso', 'yesterday-iso']);
+  });
+
+  it('keeps an undatable row in the stream, at the end, without a marker', () => {
+    const rows = historyRows([item('good', at(0)), item('broken', 'not a date')]);
+    expect(rows.filter((r) => r.type === 'date')).toHaveLength(1);
+    expect((rows[rows.length - 1] as any).a.id).toBe('broken');
   });
 });
