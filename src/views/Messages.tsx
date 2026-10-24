@@ -98,6 +98,9 @@ export default function Messages() {
   const readMarkRoomRef = useRef<string | null>(null);
   const [roomSearch, setRoomSearch] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
+  // A denied or offline room query: say so, and let the reader try again.
+  const [roomsFailed, setRoomsFailed] = useState(false);
+  const [roomsAttempt, setRoomsAttempt] = useState(0);
   const { language, t } = useLanguage();
 
   useEffect(() => {
@@ -164,23 +167,6 @@ export default function Messages() {
     return () => document.body.classList.remove("msgs-fullscreen");
   }, [isMobile, activeRoomId]);
 
-  // Back-button/gesture integration for mobile chat
-  useEffect(() => {
-    if (!isMobile || !activeRoomId) return;
-
-    const stateId = `chat-room-${activeRoomId}`;
-    window.history.pushState({ chatRoomId: stateId }, '');
-
-    const handlePopState = () => {
-      setActiveRoomId(null);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [isMobile, activeRoomId]);
-
   // 1. Fetch Rooms (Real-time)
   useEffect(() => {
     if (!effectiveUid) {
@@ -190,6 +176,7 @@ export default function Messages() {
     }
 
     setLoadingRooms(true);
+    setRoomsFailed(false);
     // Only fetch chat rooms where the user is an explicit member
     const roomsQuery = query(
       collection(db, 'chatRooms'),
@@ -211,11 +198,12 @@ export default function Messages() {
       setLoadingRooms(false);
     }, (error) => {
       console.error('Error fetching rooms:', error);
+      setRoomsFailed(true);
       setLoadingRooms(false);
     });
 
     return unsubscribe;
-  }, [effectiveUid]);
+  }, [effectiveUid, roomsAttempt]);
 
   // Reset active room if the current user is no longer a member of it
   useEffect(() => {
@@ -646,22 +634,23 @@ export default function Messages() {
       )}>
         {/* Rail head */}
         <div className="msgs-rail-head">
-          <h1 className="page-title">Messages</h1>
+          <h1 className="page-title">{t('nav.messages')}</h1>
           <button
             onClick={() => setCreateChatOpen(true)}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-[13.5px] font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer"
-            title="Start Chat"
+            className="msgs-new inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-[13.5px] font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer"
+            title={t('chat.new_conversation')}
           >
-            <Plus className="w-3.5 h-3.5" /> New
+            <Plus className="w-3.5 h-3.5" aria-hidden /> {t('chat.new_conversation')}
           </button>
         </div>
 
         {/* Search */}
         <div className="msgs-search">
-          <Search className="w-3.5 h-3.5 shrink-0" />
+          <Search className="w-3.5 h-3.5 shrink-0" aria-hidden />
           <input
             type="text"
-            placeholder="Search messages…"
+            aria-label={t('chat.search_messages')}
+            placeholder={t('chat.search_messages')}
             value={roomSearch}
             onChange={(e) => setRoomSearch(e.target.value)}
           />
@@ -669,10 +658,16 @@ export default function Messages() {
 
         {/* Filter pills */}
         <div className="msgs-filters">
-          {([["all", "All"], ["unread", "Unread"], ["groups", "Groups"], ["announce", "Announcements"]] as const).map(([id, label]) => (
+          {([
+            ["all", t('chat.filter_all')],
+            ["unread", t('chat.filter_unread')],
+            ["groups", t('chat.filter_groups')],
+            ["announce", t('modals.announcements_heading', 'Announcements')],
+          ] as const).map(([id, label]) => (
             <button
               key={id}
               className={cn("msgs-pill", filter === id && "on")}
+              aria-pressed={filter === id}
               onClick={() => setFilter(id)}
             >
               {label}
@@ -682,10 +677,30 @@ export default function Messages() {
 
         {/* Rooms Scroll List */}
         <div className="msgs-list">
-          {loadingRooms ? (
-            <div className="msgs-people-empty">Loading conversations…</div>
+          {roomsFailed ? (
+            <div className="msgs-people-empty msgs-list-failed" role="alert">
+              <p>{t('chat.load_failed')}</p>
+              <button type="button" className="msgs-retry" onClick={() => setRoomsAttempt((n) => n + 1)}>
+                {t('common.try_again')}
+              </button>
+            </div>
+          ) : loadingRooms ? (
+            <div className="msgs-people-empty">{t('chat.loading_conversations')}</div>
           ) : filteredRooms.length === 0 ? (
-            <div className="msgs-people-empty">Nothing here yet.</div>
+            <div className="msgs-people-empty">
+              {roomSearch ? (
+                <>
+                  <p>{t('chat.no_match').replace('{q}', roomSearch)}</p>
+                  <button type="button" className="msgs-retry" onClick={() => setRoomSearch('')}>
+                    {t('search.clear_search')}
+                  </button>
+                </>
+              ) : filter === 'unread' ? (
+                <p>{t('chat.empty_unread')}</p>
+              ) : (
+                <p>{t('common.no_conversations')}</p>
+              )}
+            </div>
           ) : (() => {
             const isAll = filter === 'all';
             const annRooms = filteredRooms.filter(r => r.type === 'announcement');
@@ -707,13 +722,24 @@ export default function Messages() {
                   <div
                     key={room.id}
                     className={cn("anrow", isActive && "active", unread && "unread")}
+                    role="button"
+                    tabIndex={0}
+                    data-unread={unread ? 'true' : undefined}
                     onClick={() => handleSelectRoom(room.id)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      handleSelectRoom(room.id);
+                    }}
                   >
                     <div className="anrow-top">
                       <span className="cluster">
-                        <Bell className="w-3.5 h-3.5" />
+                        <Bell className="w-3.5 h-3.5" aria-hidden />
                       </span>
-                      <span className="anrow-name">{name}</span>
+                      <span className="anrow-name">
+                        {name}
+                        {unread && <span className="sr-only">, {t('chat.unread')}</span>}
+                      </span>
                       {last?.timestamp?.seconds && (
                         <span className="anrow-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
                       )}
@@ -723,7 +749,7 @@ export default function Messages() {
                     </div>
                     <div className="anrow-meta">
                       {unread && <span className="dot-warn" />}
-                      <span>{unread ? 'New' : 'Read'}{last ? ` · from ${firstName(last.senderName)}` : ''}</span>
+                      <span>{unread ? t('stream.new') : t('chat.read')}{last ? ` · ${t('chat.from_who').replace('{name}', firstName(last.senderName))}` : ''}</span>
                     </div>
                   </div>
                 );
@@ -733,16 +759,24 @@ export default function Messages() {
                 <div
                   key={room.id}
                   className={cn("msgs-item", isActive && "active", unread && "unread")}
+                  role="button"
+                  tabIndex={0}
+                  data-unread={unread ? 'true' : undefined}
                   onClick={() => handleSelectRoom(room.id)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    handleSelectRoom(room.id);
+                  }}
                 >
                   {isGroupish ? (
                     <span className="msgs-cluster">
-                      <Users className="w-4 h-4" />
+                      <Users className="w-4 h-4" aria-hidden />
                     </span>
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-sm shrink-0">
                       {photo ? (
-                        <img src={photo} alt={name} className="w-full h-full object-cover rounded-full" />
+                        <img src={photo} alt="" className="w-full h-full object-cover rounded-full" />
                       ) : (
                         getUserInitials(name)
                       )}
@@ -750,7 +784,10 @@ export default function Messages() {
                   )}
                   <div className="msgs-item-main">
                     <div className="msgs-item-top">
-                      <span className="msgs-item-name">{name}</span>
+                      <span className="msgs-item-name">
+                        {name}
+                        {unread && <span className="sr-only">, {t('chat.unread')}</span>}
+                      </span>
                       {last?.timestamp?.seconds && (
                         <span className="msgs-item-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
                       )}
@@ -758,23 +795,27 @@ export default function Messages() {
                     <div className="msgs-item-bot">
                       <span className="msgs-item-preview">
                         {!last ? (
-                          'No messages yet'
+                          t('common.no_messages')
                         ) : last.senderName === 'System' ? (
                           last.text
                         ) : (
                           <>
-                            {isGroupish && <b>{last.senderId === effectiveUid ? 'You' : firstName(last.senderName)}: </b>}
+                            {isGroupish && <b>{last.senderId === effectiveUid ? t('common.you') : firstName(last.senderName)}: </b>}
                             {last.text}
                           </>
                         )}
                       </span>
-                      {unread && <span className="msgs-unread-dot"></span>}
+                      {unread && <span className="msgs-unread-dot" aria-hidden />}
                       <span
                         className={cn("msgs-item-more", menuOpen && "on")}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
-                          title="More options"
+                          type="button"
+                          aria-label={t('stream.more_actions')}
+                          title={t('stream.more_actions')}
+                          aria-haspopup="menu"
+                          aria-expanded={menuOpen}
                           onClick={(e) => {
                             e.stopPropagation();
                             setConvMenuFor(menuOpen ? null : room.id);
@@ -796,7 +837,7 @@ export default function Messages() {
                             <div className="msgb-menu">
                               {convMenuConfirm ? (
                                 <>
-                                  <p>Delete this conversation for everyone? It leaves everyone's list, messages and all.</p>
+                                  <p>{t('chat.delete_conversation_prompt')}</p>
                                   <button
                                     className="msgb-menu-danger"
                                     onClick={async (e) => {
@@ -811,7 +852,7 @@ export default function Messages() {
                                       }
                                     }}
                                   >
-                                    Yes, delete it
+                                    {t('chat.delete_conversation_yes')}
                                   </button>
                                   <button
                                     onClick={(e) => {
@@ -819,7 +860,7 @@ export default function Messages() {
                                       setConvMenuConfirm(false);
                                     }}
                                   >
-                                    Keep it
+                                    {t('chat.delete_conversation_no')}
                                   </button>
                                 </>
                               ) : (
@@ -832,7 +873,7 @@ export default function Messages() {
                                       if (activeRoomId === room.id) handleClearRoom();
                                     }}
                                   >
-                                    Hide from my list
+                                    {t('chat.hide_conversation')}
                                   </button>
                                   {canAllConv ? (
                                     <button
@@ -842,10 +883,10 @@ export default function Messages() {
                                         setConvMenuConfirm(true);
                                       }}
                                     >
-                                      Delete for everyone
+                                      {t('chat.delete_conversation')}
                                     </button>
                                   ) : (
-                                    <p>Only whoever started it or a full-timer can delete it for everyone.</p>
+                                    <p>{t('chat.delete_conversation_denied')}</p>
                                   )}
                                 </>
                               )}
@@ -883,13 +924,13 @@ export default function Messages() {
             <div className="msgs-hidden-note msgs-hidden-convs">
               <span>
                 {hiddenConvs.length === 1
-                  ? "One conversation is hidden from your list. Everyone else still has it."
-                  : `${hiddenConvs.length} conversations are hidden from your list. Everyone else still have them.`}
+                  ? t('chat.hidden_one')
+                  : t('chat.hidden_many').replace('{n}', String(hiddenConvs.length))}
               </span>
               <button
                 onClick={() => effectiveUid && ConvHides.unhideAll(effectiveUid, hiddenConvs.map((c) => c.id))}
               >
-                {hiddenConvs.length === 1 ? "Bring it back" : "Bring them back"}
+                {hiddenConvs.length === 1 ? t('chat.hidden_restore_one') : t('chat.hidden_restore_many')}
               </button>
             </div>
           )}
@@ -928,8 +969,14 @@ export default function Messages() {
               {/* Active Room Header */}
               <div className="msgs-thread-head">
                 {isMobile && (
-                  <button className="icon-btn" onClick={handleClearRoom}>
-                    <ChevronLeft className="w-4 h-4" />
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={t('chat.back_to_list')}
+                    title={t('chat.back_to_list')}
+                    onClick={handleClearRoom}
+                  >
+                    <ChevronLeft className="w-4 h-4" aria-hidden />
                   </button>
                 )}
                 {activeRoom.type === 'direct' ? (
@@ -941,7 +988,7 @@ export default function Messages() {
                     )}
                   </div>
                 ) : (
-                  <span className={cn("msgs-cluster", activeRoom.type === 'announcement' && "broadcast")}>
+                  <span className={cn("msgs-cluster", activeRoom.type === 'announcement' && "broadcast")} aria-hidden>
                     {activeRoom.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
                   </span>
                 )}
@@ -951,15 +998,15 @@ export default function Messages() {
                 </div>
                 <div className="msgs-thread-actions">
                   {pinned.length > 0 && (
-                    <button className="icon-btn" title="Pinned messages" onClick={() => setPinnedOpen(o => !o)}>
-                      <Pin className="w-4 h-4" />
+                    <button className="icon-btn" title={t('chat.pinned_messages')} aria-label={t('chat.pinned_messages')} onClick={() => setPinnedOpen(o => !o)}>
+                      <Pin className="w-4 h-4" aria-hidden />
                     </button>
                   )}
-                  <button className="icon-btn" title="Search in conversation" onClick={() => setThreadSearchOpen(o => !o)}>
-                    <Search className="w-4 h-4" />
+                  <button className="icon-btn" title={t('chat.search_in_conversation')} aria-label={t('chat.search_in_conversation')} aria-expanded={threadSearchOpen} onClick={() => setThreadSearchOpen(o => !o)}>
+                    <Search className="w-4 h-4" aria-hidden />
                   </button>
-                  <button className="icon-btn" title="Group details" onClick={() => setChatDetailsOpen(true)}>
-                    <Info className="w-4 h-4" />
+                  <button className="icon-btn" title={t('chat.conversation_details')} aria-label={t('chat.conversation_details')} onClick={() => setChatDetailsOpen(true)}>
+                    <Info className="w-4 h-4" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -967,8 +1014,14 @@ export default function Messages() {
               {/* Thread search */}
               {threadSearchOpen && (
                 <div className="msgs-thread-search">
-                  <Search className="w-3.5 h-3.5 shrink-0" />
-                  <input autoFocus placeholder="Search this conversation…" value={threadSearch} onChange={(e) => setThreadSearch(e.target.value)} />
+                  <Search className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <input
+                    autoFocus
+                    aria-label={t('chat.search_in_conversation')}
+                    placeholder={t('chat.search_conversation_placeholder')}
+                    value={threadSearch}
+                    onChange={(e) => setThreadSearch(e.target.value)}
+                  />
                 </div>
               )}
 
@@ -977,8 +1030,8 @@ export default function Messages() {
                 <div className="msgs-pinned-strip">
                   {pinned.map((m) => (
                     <div key={m.id} className="msgs-pinned-row" onClick={() => jumpTo(m.id)}>
-                      <Pin className="w-3 h-3 shrink-0" />
-                      <span><b>{m.senderId === effectiveUid ? 'You' : firstName(m.senderName)}:</b> {m.text}</span>
+                      <Pin className="w-3 h-3 shrink-0" aria-hidden />
+                      <span><b>{m.senderId === effectiveUid ? t('common.you') : firstName(m.senderName)}:</b> {m.text}</span>
                     </div>
                   ))}
                 </div>
@@ -988,11 +1041,11 @@ export default function Messages() {
                   <div className="msgs-hidden-note">
                     <span>
                       {hiddenHere.length === 1
-                        ? "One message is hidden from your view. Everyone else still sees it."
-                        : `${hiddenHere.length} messages are hidden from your view. Everyone else still sees them.`}
+                        ? t('chat.hidden_message_one')
+                        : t('chat.hidden_message_many').replace('{n}', String(hiddenHere.length))}
                     </span>
                     <button onClick={() => effectiveUid && MessageHides.unhideAll(effectiveUid, hiddenHere.map((m) => m.id))}>
-                      {hiddenHere.length === 1 ? "Bring it back" : "Bring them back"}
+                      {hiddenHere.length === 1 ? t('chat.hidden_restore_one') : t('chat.hidden_restore_many')}
                     </button>
                   </div>
                 )}

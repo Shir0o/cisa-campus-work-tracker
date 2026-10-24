@@ -54,6 +54,8 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
 }
 
 const TONES = 8;
+/** How close to the bottom still counts as "reading the newest message" (#1764). */
+const STICK_SLACK_PX = 120;
 function toneOf(uid: string): number {
   let h = 0;
   for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) >>> 0;
@@ -251,6 +253,7 @@ function Row<M extends StreamSourceMessage>({
   const continuation = row.continuation && !justPosted;
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -290,7 +293,16 @@ function Row<M extends StreamSourceMessage>({
   const chip = showChip && thread && <ThreadChip summary={thread} open={threadOpen} onClick={() => onOpenThread?.(false)} />;
 
   return (
-    <div className={cn("strm-m", continuation && "strm-cont", menu && "strm-m-menu")} data-stream-row={m.id}>
+    <div
+      className={cn("strm-m", continuation && "strm-cont", menu && "strm-m-menu", revealed && "strm-m-revealed")}
+      data-stream-row={m.id}
+      onClick={(e) => {
+        // Where there is no hover, a tap on the message is how its actions
+        // appear (#1764). A tap on one of those actions is not that tap.
+        if ((e.target as HTMLElement).closest("button, a, input, textarea, label")) return;
+        setRevealed((v) => !v);
+      }}
+    >
       {!continuation && <Avatar uid={m.from} name={m.fromName} initials={m.initials} photo={photo} />}
       <div className="strm-mb">
         {!continuation && (
@@ -593,10 +605,32 @@ export default function Stream<M extends StreamSourceMessage>({
   const replacing = (threadMode === "replace" || !!pinned) && !!thread;
   const topCount = items.length + heldRows.length;
 
-  // Open on — and stay with — the newest message (G4).
+  // Open on — and stay with — the newest message (G4). "Stay with" is a
+  // promise only while the reader is already there: someone scrolled up into
+  // yesterday keeps their place and is offered the way down instead, as a chat
+  // app does (#1764).
+  const [newBelow, setNewBelow] = useState(false);
+  const countSeen = useRef(0);
+  const nearBottom = (el: HTMLElement) => {
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_SLACK_PX;
+  };
   useLayoutEffect(() => {
     const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    // The first paint (and a room switch, which remounts this stream) opens on
+    // the newest message; after that, only a reader who is already there is
+    // carried along.
+    const first = countSeen.current === 0;
+    const grew = topCount > countSeen.current;
+    countSeen.current = topCount;
+    const mineLast = [...messages].reverse().find((m) => !m.parentId)?.from === viewer.uid;
+    if (first || !grew || replacing || mineLast || nearBottom(el)) {
+      el.scrollTop = el.scrollHeight;
+      setNewBelow(false);
+      return;
+    }
+    setNewBelow(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topCount, replacing]);
 
   const [postError, setPostError] = useState<string | null>(null);
@@ -730,7 +764,14 @@ export default function Stream<M extends StreamSourceMessage>({
   const main = (
     <>
       {header}
-      <div className="strm-list" ref={listRef} data-stream-list="">
+      <div
+        className="strm-list"
+        ref={listRef}
+        data-stream-list=""
+        onScroll={(e) => {
+          if (newBelow && nearBottom(e.currentTarget)) setNewBelow(false);
+        }}
+      >
         <div className="strm-flow">
           {topCount === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
           {heldRows.map((row) => (
@@ -756,6 +797,19 @@ export default function Stream<M extends StreamSourceMessage>({
             ),
           )}
         </div>
+        {newBelow && (
+          <button
+            type="button"
+            className="strm-newbelow"
+            onClick={() => {
+              const el = listRef.current;
+              if (el) el.scrollTop = el.scrollHeight;
+              setNewBelow(false);
+            }}
+          >
+            {t("stream.new_messages")}
+          </button>
+        )}
       </div>
       {can.canPost && (
         <>

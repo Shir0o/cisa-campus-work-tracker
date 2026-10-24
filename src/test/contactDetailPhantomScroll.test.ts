@@ -44,12 +44,16 @@ const MARKUP_PATHS = ['src/components/modals/ContactDetailsModal.tsx'].map((p) =
  * Extract the body of a top-level rule with the given selector. Tolerant
  * enough for src/index.css where the file structure is fixed. Returns
  * `null` if the selector is not present.
+ *
+ * The selector must start a line: `body.msgs-fullscreen .strm-composer { … }`
+ * is a descendant rule and must not be mistaken for the `.strm-composer`
+ * base rule below it (#1764).
  */
 function ruleBody(css: string, selector: string): string | null {
-  const idx = css.indexOf(selector + ' {');
+  const idx = css.indexOf(`\n${selector} {`);
   if (idx === -1) return null;
+  const start = idx + 1 + selector.length + 2;
   let depth = 0;
-  const start = idx + selector.length + 2;
   for (let i = start; i < css.length; i++) {
     const c = css[i];
     if (c === '{') depth++;

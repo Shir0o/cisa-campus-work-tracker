@@ -84,7 +84,7 @@ export default function MobileNav() {
   return (
     <nav
       aria-label={t('nav.mobile_navigation', 'Mobile Navigation')}
-      className="md:hidden fixed bottom-0 left-0 right-0 min-h-16 pb-[env(safe-area-inset-bottom)] bg-surface-container-low border-t border-outline-variant flex items-center justify-around z-50 animate-in slide-in-from-bottom duration-300 px-4"
+      className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 min-h-16 pb-[env(safe-area-inset-bottom)] bg-surface-container-low border-t border-outline-variant flex items-center justify-around z-50 animate-in slide-in-from-bottom duration-300 px-4"
     >
       <Destination to="/" label={homeLabel} icon={LayoutDashboard} active={section === '/'} />
 

@@ -275,7 +275,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    const newChatBtn = screen.getByTitle('Start Chat');
+    const newChatBtn = screen.getByRole('button', { name: 'New' });
     fireEvent.click(newChatBtn);
 
     expect(screen.getByTestId('create-chat-modal')).toBeInTheDocument();
@@ -510,6 +510,116 @@ describe('Messages View Component', () => {
     expect(screen.getByText('Trainees Chat').closest('.msgs-item')?.querySelector('.msgs-unread-dot')).toBeFalsy();
   });
 
+  it('leaves a room unread only when someone else spoke last (#1764)', async () => {
+    const rooms = [
+      {
+        ...mockRooms[0],
+        id: 'room-mine',
+        name: 'Mine',
+        lastMessage: { text: 'My own last word', senderId: 'u1', senderName: 'Current User', timestamp: { seconds: 100005 } },
+      },
+    ];
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      const dataList = q && q.path && q.path.includes('messages') ? mockMessages : rooms;
+      successCallback({
+        forEach: (fn: any) => dataList.forEach((item: any) => {
+          const { id, ...rest } = item;
+          fn({ id, data: () => rest });
+        }),
+      });
+      return vi.fn();
+    });
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    const row = screen.getByText('Mine').closest('.msgs-item');
+    expect(row?.querySelector('.msgs-unread-dot')).toBeFalsy();
+    expect(row).not.toHaveAttribute('data-unread');
+  });
+
+  it('opens a conversation on its own route so the phone can go back to the list (#1764)', async () => {
+    const pushState = vi.spyOn(window.history, 'pushState');
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/messages/room1');
+    // The screen no longer fakes a history entry beside the router's own.
+    expect(pushState).not.toHaveBeenCalled();
+    pushState.mockRestore();
+  });
+
+  it('opens a conversation from the keyboard, not just the pointer (#1764)', async () => {
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    const row = screen.getByRole('button', { name: /Trainees Chat/ });
+    fireEvent.keyDown(row, { key: 'Enter' });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/messages/room1');
+  });
+
+  it('says what was searched when nothing matches, instead of "Nothing here yet." (#1764)', async () => {
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Search messages/i), { target: { value: 'zzz' } });
+
+    expect(screen.getByText('Nothing matches “zzz”.')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing here yet.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(screen.getByText('Trainees Chat')).toBeInTheDocument();
+  });
+
+  it('tells a reader with nothing unread that they are caught up (#1764)', async () => {
+    localStorage.setItem('chat_read_room1', Date.now().toString());
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unread' }));
+
+    expect(screen.getByText("You're all caught up.")).toBeInTheDocument();
+  });
+
+  it('says when conversations could not load, and offers to try again (#1764)', async () => {
+    let attempt = 0;
+    (firestore.onSnapshot as any).mockImplementation((_q: any, _success: any, error?: any) => {
+      attempt += 1;
+      if (attempt === 1) error?.({ code: 'permission-denied', message: 'nope' });
+      return vi.fn();
+    });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't load/i);
+    fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
+    await waitFor(() => expect(attempt).toBeGreaterThan(1));
+    consoleError.mockRestore();
+  });
+
   it('handles clicking different attachment cards to trigger navigation/detail actions', async () => {
     const mockMessagesWithAttachments = [
       {
@@ -670,10 +780,10 @@ describe('Messages View Component', () => {
     fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
     await waitFor(() => {
-      expect(screen.getByTitle('Group details')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Conversation details' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTitle('Group details'));
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation details' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('chat-details-modal')).toBeInTheDocument();
@@ -727,7 +837,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByTitle('Start Chat'));
+    fireEvent.click(screen.getByRole('button', { name: 'New' }));
     expect(screen.getByTestId('create-chat-modal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Select Room 2'));
@@ -853,7 +963,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByTitle('Start Chat'));
+    fireEvent.click(screen.getByRole('button', { name: 'New' }));
 
     expect(screen.getByTestId('create-chat-modal')).toBeInTheDocument();
   });
@@ -1575,7 +1685,7 @@ describe('Messages View Component', () => {
       expect(roomTitle).toBeTruthy();
 
       // Open room ⋯ menu
-      const moreBtn = screen.getByTitle('More options');
+      const moreBtn = screen.getByRole('button', { name: 'More actions' });
       fireEvent.click(moreBtn);
 
       // Hide from my list
@@ -1597,7 +1707,7 @@ describe('Messages View Component', () => {
       });
 
       // Open menu again and test Delete for everyone
-      const moreBtn2 = screen.getByTitle('More options');
+      const moreBtn2 = screen.getByRole('button', { name: 'More actions' });
       fireEvent.click(moreBtn2);
 
       const deleteForEveryoneBtn = screen.getByText('Delete for everyone');
@@ -1723,7 +1833,7 @@ describe('Messages View Component', () => {
           <Messages />
         </MemoryRouter>
       );
-      const moreBtn = screen.getByTitle('More options');
+      const moreBtn = screen.getByRole('button', { name: 'More actions' });
       fireEvent.click(moreBtn);
 
       fireEvent.click(screen.getByText('Delete for everyone'));
@@ -1903,7 +2013,7 @@ describe('Messages View Component', () => {
       consoleSpy.mockRestore();
     });
 
-    it('backs out of a chat room via the mobile back button and the browser popstate', async () => {
+    it('backs out of a chat room via the mobile back button, and opens it on its own route (#1764)', async () => {
       const original = window.matchMedia;
       Object.defineProperty(window, 'matchMedia', {
         writable: true,
@@ -1918,6 +2028,7 @@ describe('Messages View Component', () => {
           dispatchEvent: vi.fn(),
         })),
       });
+      const pushState = vi.spyOn(window.history, 'pushState');
 
       try {
         const { container } = render(
@@ -1928,16 +2039,17 @@ describe('Messages View Component', () => {
         fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
         await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
 
+        // Opening a room is a route change (not a hand-made history entry), so
+        // the phone's own Back has something true to go back to.
+        expect(mockNavigate).toHaveBeenCalledWith('/messages/room1');
+        expect(pushState).not.toHaveBeenCalled();
+
         // The mobile back button closes the room.
         fireEvent.click(container.querySelector('.msgs-thread-head .icon-btn')!);
-        await waitFor(() => expect(screen.getByText('Pick a conversation')).toBeInTheDocument());
-
-        // Re-open and pop the browser history entry.
-        fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
-        await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        expect(mockNavigate).toHaveBeenCalledWith('/messages');
         await waitFor(() => expect(screen.getByText('Pick a conversation')).toBeInTheDocument());
       } finally {
+        pushState.mockRestore();
         Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
       }
     });

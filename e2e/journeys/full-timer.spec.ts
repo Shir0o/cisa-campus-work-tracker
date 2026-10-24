@@ -212,7 +212,10 @@ test.describe('Full-timer journey (#1477)', () => {
 
     // #1671: Delegate is not a header button — it opens from More actions.
     await expect(contactPage.getByRole('button', { name: 'Delegate' })).toHaveCount(0);
-    await contactPage.getByRole('button', { name: 'More actions' }).click();
+    // The stream's per-message toolbars are "More actions" too, and they are in
+    // the accessibility tree now that a tap (not just hover) reveals them
+    // (#1764) — the page's own header button comes first in the DOM.
+    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
     await contactPage.getByRole('button', { name: 'Delegate' }).click();
     const delegateSheet = page.getByRole('dialog', { name: /Delegate Lila Chen/i });
     await expect(delegateSheet).toBeVisible({ timeout: 5_000 });
@@ -222,7 +225,7 @@ test.describe('Full-timer journey (#1477)', () => {
     // #1666: "Edit details" is a header action, not something buried in the
     // overflow menu. It stays the only instance while the menu is open.
     await expect(contactPage.getByRole('button', { name: 'Edit details' })).toBeVisible();
-    await contactPage.getByRole('button', { name: 'More actions' }).click();
+    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
     await expect(contactPage.getByText('Log interaction')).toBeVisible();
     await expect(contactPage.getByRole('button', { name: 'Edit details' })).toHaveCount(1);
   });
