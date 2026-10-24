@@ -299,7 +299,41 @@ export const docSortOrder = (a: BoardDoc, b: BoardDoc) => {
 
 // Starter body for a brand-new page.
 export const newDocMarkdown = (): string =>
-  `# Untitled page\n\nStart writing — everyone on the team sees your edits live.\n`;
+  `Start writing — everyone on the team sees your edits live.\n`;
+
+/**
+ * The page's body without a heading that only restates its title.
+ *
+ * Pages created before #1772 were seeded with `# Untitled page`, so they print
+ * their name twice — once from the title field, once from the body's first
+ * heading. The stored markdown is left alone; only what a reader sees drops it.
+ */
+export function bodyMarkdownForDisplay(md: string, title: string): string {
+  const source = md || '';
+  const name = (title || '').trim();
+  if (!source || !name) return source;
+  const [first, ...rest] = source.split('\n');
+  const heading = first.trim().replace(/^#+\s*/, '');
+  if (!first.trim().startsWith('#') || heading.toLowerCase() !== name.toLowerCase()) return source;
+  return rest.join('\n').replace(/^\n+/, '');
+}
+
+export type DocSaveState = 'saved' | 'saving' | 'failed';
+
+/**
+ * The save indicator follows the write's outcome, not the debounce's.
+ *
+ * The editor used to flip to “Saved” 1.2s after a keystroke whether or not the
+ * write landed, so a failed save on a flaky phone connection looked exactly
+ * like a successful one (#1772).
+ */
+export async function persistDocEdit(save: () => Promise<boolean>): Promise<DocSaveState> {
+  try {
+    return (await save()) ? 'saved' : 'failed';
+  } catch {
+    return 'failed';
+  }
+}
 
 // ── Doc-linked Tasks & Notes (Markdown Sync Helpers) ─────────────────────────
 

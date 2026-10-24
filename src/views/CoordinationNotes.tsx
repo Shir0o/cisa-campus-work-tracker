@@ -132,6 +132,9 @@ import {
   docByDateDesc,
   docSortOrder,
   newDocMarkdown,
+  bodyMarkdownForDisplay,
+  persistDocEdit,
+  type DocSaveState,
   formatDocNoteMarkdown,
   parseDocTasks,
   parseDocNotes,
@@ -524,7 +527,9 @@ function ReadOnlyDoc({
   const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
   const { t } = useLanguage();
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
-  const markdownToRender = d.md ? translatedMarkdown : t('coordination.this_page_empty');
+  const markdownToRender = d.md
+    ? bodyMarkdownForDisplay(translatedMarkdown, translatedTitle)
+    : t('coordination.this_page_empty');
   return (
     <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
       {/* head */}
@@ -556,6 +561,11 @@ function ReadOnlyDoc({
             </span>
           )}
           <AudienceBadge audience={audienceOf(d)} />
+          {d.updatedByName && (
+            <span className="inline-flex items-center gap-1 text-[12.5px] text-on-surface-variant/80">
+              <Feather className="w-3 h-3" /> {t('coordination.last_edited_by').replace('{name}', d.updatedByName)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isFullscreen && onToggleNativeFs && canNativeFs && (
@@ -1131,12 +1141,14 @@ export default function CoordinationNotes() {
     }
   };
 
-  const saveMarkdown = async (id: string, md: string) => {
+  const saveMarkdown = async (id: string, md: string): Promise<boolean> => {
     try {
       const summary = mdSummary(md);
       await updateDoc(doc(db, 'board_docs', id), { md, summary, updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: meName });
+      return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
+      return false;
     }
   };
 
@@ -1369,7 +1381,10 @@ export default function CoordinationNotes() {
     <section className="px-5 mt-5">
       <SectionHead
         title={t('coordination.what_were_holding')}
-        sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
+        sub={t('coordination.todo_sub', 'Every to-do the team is carrying — {count}. Highlight a line in a page above, or add one here.').replace(
+          '{count}',
+          openTodoCount > 0 ? t('coordination.todo_open_count').replace('{n}', String(openTodoCount)) : t('coordination.all_clear'),
+        )}
         action={
           <button
             onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
@@ -1409,7 +1424,7 @@ export default function CoordinationNotes() {
               >
                 <PersonAvatar person={m} size="xs" />
                 {m.name.split(' ')[0]}
-                {m.uid === uid ? ' (you)' : ''}
+                {m.uid === uid ? t('coordination.you_suffix') : ''}
                 {n > 0 && (
                   <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-accent text-[10px] font-semibold inline-flex items-center justify-center">
                     {n}
@@ -1442,7 +1457,7 @@ export default function CoordinationNotes() {
         <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-8 text-center flex flex-col items-center">
           <CheckSquare className="w-6 h-6 text-on-surface-variant/50 mb-2" />
           <p className="text-sm text-on-surface-variant max-w-sm">
-            Nothing here yet. Add one above, or highlight a line in a page and choose “Make a to-do”.
+            {t('coordination.no_todos_yet')}
           </p>
         </div>
       ) : (
@@ -1479,7 +1494,7 @@ export default function CoordinationNotes() {
     <section id="board-notes-section" className="px-5 mt-5">
       <SectionHead
         title={t('coordination.notes_learnings')}
-        sub="Every page becomes a record — running it again? Find last time's notes."
+        sub={t('coordination.notes_sub')}
         action={
           canEdit ? (
             <div className="flex items-center gap-3">
@@ -1778,6 +1793,17 @@ export default function CoordinationNotes() {
           NotesSectionComponent={NotesSectionComponent}
           SearchBarComponent={searchBarJSX}
         />
+        {/* The phone branch used to drop every confirmation and undo the desktop
+            renders — a deleted page left no snackbar and no way back (#1772). */}
+        {flash && (
+          <div
+            role="status"
+            className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-[130] bg-on-surface text-surface text-sm font-medium px-4 py-2.5 rounded-full shadow-lg"
+          >
+            {flash}
+          </div>
+        )}
+        <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
       </>
     );
   }
@@ -2002,7 +2028,10 @@ export default function CoordinationNotes() {
       <section>
         <SectionHead
           title={t('coordination.what_were_holding')}
-          sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
+          sub={t('coordination.todo_sub', 'Every to-do the team is carrying — {count}. Highlight a line in a page above, or add one here.').replace(
+            '{count}',
+            openTodoCount > 0 ? t('coordination.todo_open_count').replace('{n}', String(openTodoCount)) : t('coordination.all_clear'),
+          )}
           action={
             <button
               onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
@@ -2042,7 +2071,7 @@ export default function CoordinationNotes() {
                 >
                   <PersonAvatar person={m} size="xs" />
                   {m.name.split(' ')[0]}
-                  {m.uid === uid ? ' (you)' : ''}
+                  {m.uid === uid ? t('coordination.you_suffix') : ''}
                   {n > 0 && (
                     <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-accent text-[10px] font-semibold inline-flex items-center justify-center">
                       {n}
@@ -2075,7 +2104,7 @@ export default function CoordinationNotes() {
           <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-8 text-center flex flex-col items-center">
             <CheckSquare className="w-6 h-6 text-on-surface-variant/50 mb-2" />
             <p className="text-sm text-on-surface-variant max-w-sm">
-              Nothing here yet. Add one above, or highlight a line in a page and choose “Make a to-do”.
+              {t('coordination.no_todos_yet')}
             </p>
           </div>
         ) : (
@@ -2135,7 +2164,10 @@ export default function CoordinationNotes() {
 
       {/* ephemeral confirmation */}
       {flash && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[130] bg-on-surface text-surface text-sm font-medium px-4 py-2.5 rounded-full shadow-lg">
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[130] bg-on-surface text-surface text-sm font-medium px-4 py-2.5 rounded-full shadow-lg"
+        >
           {flash}
         </div>
       )}
@@ -2554,6 +2586,7 @@ export function DocEditor({
   nativeFs,
   onToggleNativeFs,
   canNativeFs,
+  onSaveStateChange,
 }: {
   doc: BoardDoc;
   meUid: string;
@@ -2561,7 +2594,7 @@ export function DocEditor({
   pagesCollapsed: boolean;
   onTogglePages: () => void;
   onLiveMarkdownChange: (md: string) => void;
-  onSaveMarkdown: (id: string, md: string) => void;
+  onSaveMarkdown: (id: string, md: string) => Promise<boolean>;
   onSaveTitle: (id: string, title: string) => void;
   onSaveAudience: (id: string, audience: Audience) => void;
   onPromote: (d: BoardDoc) => void;
@@ -2577,6 +2610,7 @@ export function DocEditor({
   nativeFs?: boolean;
   onToggleNativeFs?: () => void;
   canNativeFs?: boolean;
+  onSaveStateChange?: (state: DocSaveState) => void;
 }) {
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -2598,7 +2632,7 @@ export function DocEditor({
   const meColor = useMemo(() => colorFor(meUid), [meUid]);
 
   const [, force] = useReducer((x) => x + 1, 0);
-  const [saved, setSaved] = useState(true);
+  const [saveState, setSaveState] = useState<DocSaveState>('saved');
   const [live, setLive] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [markdownSource, setMarkdownSource] = useState('');
@@ -2755,11 +2789,15 @@ export function DocEditor({
   const edRef = useRef<Editor | null>(null);
 
   const scheduleSave = (md: string) => {
-    setSaved(false);
+    setSaveState('saving');
+    onSaveStateChange?.('saving');
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      onSaveMarkdown(d.id, md);
-      setSaved(true);
+    saveTimer.current = setTimeout(async () => {
+      // Only claim "Saved" once the write has actually landed (#1772).
+      const result = await persistDocEdit(() => onSaveMarkdown(d.id, md));
+      setSaveState(result);
+      onSaveStateChange?.(result);
+      if (result !== 'saved') return;
 
       // Bi-directional sync: check if tasks in doc changed status/title/assignee
       const docTasks = parseDocTasks(md);
@@ -2945,7 +2983,7 @@ export function DocEditor({
   useEffect(() => {
     if (!editor) return;
     const seedFromMd = () => {
-      if (editor.isEmpty && d.md) editor.commands.setContent(d.md);
+      if (editor.isEmpty && d.md) editor.commands.setContent(bodyMarkdownForDisplay(d.md, d.title));
     };
     if (!rtdb) {
       seedFromMd();
@@ -3149,6 +3187,11 @@ export function DocEditor({
             </span>
           )}
           <AudiencePicker audience={audienceOf(d)} onChange={(a) => onSaveAudience(d.id, a)} />
+          {d.updatedByName && (
+            <span className="inline-flex items-center gap-1 text-[12.5px] text-on-surface-variant/80">
+              <Feather className="w-3 h-3" /> {t('coordination.last_edited_by').replace('{name}', d.updatedByName)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2.5">
           <button
@@ -3225,7 +3268,7 @@ export function DocEditor({
           <button
             onClick={() => onDelete(d)}
             title={t('coordination.delete_page')}
-            className="p-1.5 rounded-lg text-on-surface-variant/60 hover:text-error hover:bg-error-container/10 transition-colors"
+            className="bdm-delete p-1.5 rounded-lg text-on-surface-variant/60 hover:text-error hover:bg-error-container/10 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -3297,13 +3340,23 @@ export function DocEditor({
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <span className={cn('inline-flex items-center gap-1 text-xs whitespace-nowrap', saved ? 'text-tertiary' : 'text-on-surface-variant/70')}>
-            {saved ? (
+          <span
+            role="status"
+            aria-live="polite"
+            title={saveState === 'failed' ? t('coordination.save_failed_hint') : undefined}
+            className={cn(
+              'bdoc-save-state inline-flex items-center gap-1 text-xs whitespace-nowrap',
+              saveState === 'saved' ? 'text-tertiary' : saveState === 'saving' ? 'text-on-surface-variant/70' : 'text-error',
+            )}
+          >
+            {saveState === 'saved' ? (
               <>
                 <Check className="w-3 h-3" /> {t('coordination.saved')}
               </>
-            ) : (
+            ) : saveState === 'saving' ? (
               t('coordination.saving')
+            ) : (
+              t('coordination.save_failed')
             )}
           </span>
           <button
@@ -3367,7 +3420,7 @@ export function DocEditor({
           ) : showReadingView ? (
             <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
-                {translatedMarkdown || t('coordination.this_page_empty')}
+                {bodyMarkdownForDisplay(translatedMarkdown, translatedTitle) || t('coordination.this_page_empty')}
               </ReactMarkdown>
             </div>
           ) : (

@@ -113,11 +113,13 @@ export default function EmbedCoordinationDoc() {
   const meName = user?.displayName || user?.email || t('embed.someone');
   const uid = user?.uid || '';
 
-  const saveMarkdown = async (id: string, md: string) => {
+  const saveMarkdown = async (id: string, md: string): Promise<boolean> => {
     try {
       await updateDoc(doc(db, 'board_docs', id), { md, updatedAt: serverTimestamp(), updatedBy: user?.uid, updatedByName: meName });
+      return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
+      return false;
     }
   };
   const saveTitle = async (id: string, title: string) => {
