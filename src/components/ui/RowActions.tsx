@@ -178,7 +178,14 @@ export function RowActions({
           setOpen((v) => !v);
         }}
         className={cn(
+          // On a coarse pointer the 28px box grows to the 44px touch floor
+          // (#1843). The 8px gained on each side is handed back as a negative
+          // margin, so the 16px glyph and the row's layout slot keep their
+          // desktop size and nothing reflows. Fine pointers get today's box
+          // untouched; phones open a bottom sheet over the grown hit circle.
           'p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors',
+          'pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center',
+          'pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:-m-2',
           open && 'bg-surface-variant text-on-surface',
         )}
       >

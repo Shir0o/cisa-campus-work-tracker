@@ -31,6 +31,33 @@ describe('RowActions', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  // #1843 — on a phone the trigger was a 28×28 box (`p-1.5` + a 16px glyph),
+  // the smallest control on every person/visit/prayer/outreach row, and only
+  // 12px from the floating note FAB on /outreach. It now reaches the 44px floor
+  // on coarse pointers while the glyph keeps its size and its layout slot: the
+  // 8px the box gains on each side is handed back as a negative margin, so no
+  // row reflows. Fine pointers see exactly the old classes.
+  it('grows the trigger to a 44px touch target on coarse pointers only', () => {
+    render(<RowActions items={[{ id: 'a', label: 'A', onSelect: vi.fn() }]} />);
+    const trigger = screen.getByRole('button', { name: /more for this row/i });
+
+    expect(trigger).toHaveClass('p-1.5');
+    for (const cls of [
+      'pointer-coarse:min-h-11',
+      'pointer-coarse:min-w-11',
+      'pointer-coarse:inline-flex',
+      'pointer-coarse:items-center',
+      'pointer-coarse:justify-center',
+      'pointer-coarse:-m-2',
+    ]) {
+      expect(trigger).toHaveClass(cls);
+    }
+
+    // The glyph is untouched, and nothing sizes the button at 44px by default.
+    expect(trigger.querySelector('svg')).toHaveClass('w-4', 'h-4');
+    expect(trigger.className).not.toMatch(/(^|\s)(min-h-11|min-w-11|h-11|w-11)(\s|$)/);
+  });
+
   it('opens the menu and runs an action', () => {
     const onOpen = vi.fn();
     const onFollowUp = vi.fn();
