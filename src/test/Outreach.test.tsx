@@ -335,14 +335,14 @@ describe('Outreach', () => {
     expect(screen.getByRole('button', { name: 'Ana Reyes' }).getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('formats a date in the reader’s language', () => {
+  it('formats a date in the reader’s language, day first', () => {
     const iso = '2026-08-14';
     const inSpanish = otWhen(iso, (_k, fallback) => fallback ?? _k, 'es');
-    const expected = new Intl.DateTimeFormat('es', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
-      new Date(iso + 'T12:00:00Z'),
-    );
-    expect(inSpanish).toBe(expected);
-    expect(otWhen(iso, (_k, fallback) => fallback ?? _k, 'en')).toBe('Aug 14');
+    const expected = new Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' }).format(new Date(iso + 'T12:00:00Z'));
+    // Day, then month, in both languages — the gutter stacks it that way, and
+    // Spanish already reads it that way (#1846).
+    expect(inSpanish).toBe(`14\u00a0${expected}`);
+    expect(otWhen(iso, (_k, fallback) => fallback ?? _k, 'en')).toBe('14\u00a0Aug');
   });
 
   it('is full-timer + community — trainees and students are locked out', () => {
@@ -409,5 +409,94 @@ describe('Outreach honours the radius ladder (#1844)', () => {
     fireEvent.click(toggle);
     expect(classesOf(card)).not.toContain('border-stage-accent');
     expect(classesOf(card).some((c) => c.startsWith('border-'))).toBe(true);
+  });
+});
+
+// #1846: the gutter stacked "16 / Sep" while the meta line said "Sep 16" — one
+// card, two orders. Both slots now say day, then month, in every language; and
+// the meta line's separators live inside the fact that follows them, so a
+// narrow card can never wrap a line onto a lone "·".
+describe('Outreach says a date one way (#1846)', () => {
+  // Older than the 21-day "days ago" window, so both slots print a date.
+  const OLD = '2025-09-16';
+  const DAY = '16';
+
+  const seedDated = (date: string) =>
+    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (s: unknown) => void) => {
+      if ((ref?.path ?? '') === 'outreach') {
+        callback({ docs: [{ id: 'OT-1', data: () => ({ ...SEED_OUTREACH, date }), ref: { path: 'outreach/OT-1' } }], size: 1, empty: false });
+        return () => {};
+      }
+      return (defaultOnSnapshot as unknown as (ref: unknown, callback: unknown) => () => void)(ref, callback);
+    }) as never);
+
+  const monthIn = (language: string) =>
+    new Intl.DateTimeFormat(language, { month: 'short', timeZone: 'UTC' }).format(new Date(OLD + 'T12:00:00Z'));
+  // The slots sit at known places in the card: the gutter is the block before
+  // the title column, the meta line is the row under the title.
+  const cardParts = (card: Element) => {
+    const column = card.querySelector('h3')!.parentElement!;
+    const gutter = column.previousElementSibling as HTMLElement;
+    const meta = column.children[1] as HTMLElement;
+    return { gutter, meta };
+  };
+  // Day and month are held together by a no-break space — a date split across
+  // a wrap is the same defect one level down.
+  const flat = (s: string | null | undefined) => (s ?? '').replace(/\u00a0/g, ' ');
+
+  const expectOneOrder = (card: Element, month: string) => {
+    const { gutter, meta } = cardParts(card);
+    const [dayEl, monthEl] = Array.from(gutter.children);
+    expect(flat(dayEl.textContent)).toBe(DAY);
+    expect(flat(monthEl.textContent)).toBe(month);
+    // The meta line repeats the gutter's two words in the gutter's order.
+    expect(flat(meta.children[0].textContent)).toBe(`${flat(dayEl.textContent)} ${flat(monthEl.textContent)}`);
+    // And the swapped order is nowhere on the card.
+    expect(flat(card.textContent)).not.toContain(`${month} ${DAY}`);
+  };
+
+  beforeEach(() => {
+    asRole('admin');
+    vi.clearAllMocks();
+    seedDated(OLD);
+  });
+
+  it('reads day then month in both slots, in English', async () => {
+    render(<Outreach />);
+    const card = (await screen.findByRole('button', { name: /Cedar Park — the north lawn/ })).closest('article')!;
+    expectOneOrder(card, monthIn('en'));
+  });
+
+  it('reads day then month in both slots, in Spanish', async () => {
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+    localStorage.setItem('cisa_language', 'es');
+    try {
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <Outreach />
+        </LanguageProvider>,
+      );
+      const card = (await screen.findByRole('button', { name: /Cedar Park — the north lawn/ })).closest('article')!;
+      expectOneOrder(card, monthIn('es'));
+    } finally {
+      localStorage.clear();
+    }
+  });
+
+  it('never lets a separator be a flex item of its own', async () => {
+    render(<Outreach />);
+    const card = (await screen.findByRole('button', { name: /Cedar Park — the north lawn/ })).closest('article')!;
+    const { meta } = cardParts(card);
+    const facts = Array.from(meta.children) as HTMLElement[];
+    // date · how many went · what we handed out
+    expect(facts).toHaveLength(3);
+    // A separator is never rendered as bare content…
+    expect(facts.some((f) => (f.textContent ?? '').trim() === '·')).toBe(false);
+    for (const f of facts) expect((f.textContent ?? '').trim()).not.toMatch(/^·|·$/);
+    // …so no line in the row can lead with it or end on it.
+    expect(flat(meta.textContent)).not.toMatch(/^\s*·|·\s*$/);
+    // It rides inside the fact that follows it, drawn by the element itself.
+    expect(facts[0].className).not.toContain('before:content');
+    for (const f of facts.slice(1)) expect(f.className).toContain("before:content-['·']");
   });
 });

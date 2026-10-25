@@ -84,15 +84,18 @@ const otDayNum = (s: string) => parseInt(s.slice(8, 10), 10);
 // is a date in the wrong language, not a style choice.
 const otMonth = (s: string, language: string) =>
   new Date(s + 'T12:00:00Z').toLocaleDateString(language, { month: 'short', timeZone: 'UTC' });
-const otShortDate = (s: string, language: string) =>
-  new Date(s + 'T12:00:00Z').toLocaleDateString(language, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+// One order for the whole card (issue 1846): the gutter stacks day over month, so
+// the meta line says it the same way — "19 Oct", and "19 oct" in Spanish —
+// rather than letting Intl print English's month-first habit beside it. The
+// no-break space keeps a tight card from breaking the date over two lines.
+const otDayMonth = (s: string, language: string) => `${otDayNum(s)}\u00a0${otMonth(s, language)}`;
 const outreachDaysSince = (dateStr: string) => Math.round((Date.now() - new Date(dateStr + 'T12:00:00Z').getTime()) / DAY_MS);
 export const otWhen = (s: string, t: (key: string, fallback?: string) => string, language = 'en') => {
   const n = outreachDaysSince(s);
   if (n <= 0) return t('outreach.today');
   if (n === 1) return t('outreach.yesterday');
   if (n < 21) return t('outreach.days_ago').replace('{n}', String(n));
-  return otShortDate(s, language);
+  return otDayMonth(s, language);
 };
 const otFirst = (n: string) => (n || '').split(' ')[0];
 const otAnd = (a: string[], t: (key: string, fallback?: string) => string) =>
@@ -415,15 +418,20 @@ function OutreachCard({
         <div className="min-w-0 flex-1 pr-8 sm:pr-0">
           <h3 className="font-serif text-[19px] font-medium text-on-surface leading-snug">{item.where}</h3>
           <div className="flex items-center gap-2 flex-wrap text-[13px] text-on-surface-variant mt-1">
-            <span>{otWhen(item.date, t, language)}</span>
-            <span>·</span>
-            <span>{t('outreach.of_us_went').replace('{n}', String(went.length + (item.others || 0)))}</span>
-            {otHandedLine(item.handed, t) && (
-              <>
-                <span>·</span>
-                <span>{otHandedLine(item.handed, t)}</span>
-              </>
-            )}
+            {/* Each dot is drawn by the fact it introduces, not by a flex item
+                of its own: alone in the gap it could end a line at 209px
+                (issue 1846). */}
+            {[
+              otWhen(item.date, t, language),
+              t('outreach.of_us_went').replace('{n}', String(went.length + (item.others || 0))),
+              otHandedLine(item.handed, t),
+            ]
+              .filter(Boolean)
+              .map((fact, i) => (
+                <span key={i} className={i > 0 ? "before:content-['·'] before:mr-2" : undefined}>
+                  {fact}
+                </span>
+              ))}
           </div>
           {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2"><Translate text={item.how.split('\n')[0]} /></p>}
         </div>
