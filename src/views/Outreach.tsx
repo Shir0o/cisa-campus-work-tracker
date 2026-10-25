@@ -575,6 +575,65 @@ function OutreachCard({
   );
 }
 
+// One month's records. Module scope on purpose: declared inside the page it
+// got a fresh identity on every render, so React tore down and rebuilt every
+// card — and the two-tap Remove confirm reset itself whenever a snapshot came
+// in. Everything it closed over now arrives as props.
+function OutreachGroup({
+  title,
+  sub,
+  list,
+  openId,
+  onToggle,
+  onOpenContact,
+  onEdit,
+  onRemove,
+  isAdmin,
+  touches,
+  contactById,
+  userById,
+}: {
+  title: string;
+  sub?: string;
+  list: OutreachRecord[];
+  openId: string | null;
+  onToggle: (id: string) => void;
+  onOpenContact: (c: Contact) => void;
+  onEdit: (o: OutreachRecord) => void;
+  onRemove: (o: OutreachRecord) => void;
+  isAdmin: boolean;
+  touches: Touch[];
+  contactById: (id?: string | null) => Contact | undefined;
+  userById: (id?: string | null) => AppUser | undefined;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <section className="mt-8">
+      <div className="flex items-baseline gap-3 mb-3">
+        <h2 className="font-semibold text-lg text-on-surface">{title}</h2>
+        {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
+      </div>
+      <div className="flex flex-col gap-3">
+        {list.map((o) => (
+          <OutreachCard
+            key={o.id}
+            item={o}
+            open={openId === o.id}
+            onToggle={() => onToggle(o.id)}
+            onOpenContact={onOpenContact}
+            onEdit={() => onEdit(o)}
+            onRemove={() => onRemove(o)}
+            isAdmin={isAdmin}
+            touches={touches}
+            contactById={contactById}
+            userById={userById}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── log / edit modal ───────────────────────────────────────────────────────
 function LogOutreachModal({
   item,
@@ -928,33 +987,17 @@ export default function Outreach() {
   };
 
   const last = thisMonth[0] || earlier[0] || null;
-
-  const Group = ({ title, sub, list }: { title: string; sub?: string; list: OutreachRecord[] }) =>
-    list.length === 0 ? null : (
-      <section className="mt-8">
-        <div className="flex items-baseline gap-3 mb-3">
-          <h2 className="font-semibold text-lg text-on-surface">{title}</h2>
-          {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
-        </div>
-        <div className="flex flex-col gap-3">
-          {list.map((o) => (
-            <OutreachCard
-              key={o.id}
-              item={o}
-              open={openId === o.id}
-              onToggle={() => setOpenId(openId === o.id ? null : o.id)}
-              onOpenContact={setSelectedContact}
-              onEdit={() => setEditing(o)}
-              onRemove={() => remove(o)}
-              isAdmin={isAdmin}
-              touches={touches}
-              contactById={contactById}
-              userById={userById}
-            />
-          ))}
-        </div>
-      </section>
-    );
+  const groupProps = {
+    openId,
+    onToggle: (id: string) => setOpenId(openId === id ? null : id),
+    onOpenContact: setSelectedContact,
+    onEdit: setEditing,
+    onRemove: remove,
+    isAdmin,
+    touches,
+    contactById,
+    userById,
+  };
 
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!selectedContact);
@@ -1024,8 +1067,8 @@ export default function Outreach() {
         </div>
       ) : (
         <>
-          <Group title={t('outreach.this_month')} sub={t('outreach.tap_to_read_it_back')} list={thisMonth} />
-          <Group title={t('outreach.earlier_months')} list={earlier} />
+          <OutreachGroup {...groupProps} title={t('outreach.this_month')} sub={t('outreach.tap_to_read_it_back')} list={thisMonth} />
+          <OutreachGroup {...groupProps} title={t('outreach.earlier_months')} list={earlier} />
 
           {thisMonth.length === 0 && earlier.length === 0 && (
             <div className="mt-8 rounded-2xl border border-outline-variant bg-surface-container p-6">

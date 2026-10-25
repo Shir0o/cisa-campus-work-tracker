@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Outreach, { otWhen } from '../views/Outreach';
 import { useAuth } from '../components/AuthProvider';
@@ -192,6 +192,36 @@ describe('Outreach', () => {
     expect(patch.where).toBe('Cedar Park — by the bandstand');
     expect(patch.names).toBeUndefined(); // names are the record's whole point — never edited
     expect(logActivity).toHaveBeenCalled();
+  });
+
+  it('keeps the Remove confirm when a fresh snapshot lands', async () => {
+    // The list is a module-level component: while it was declared inside the
+    // page, every parent re-render remounted every card, so the two-tap Remove
+    // silently dropped back to its first step as soon as Firestore pushed.
+    let emitOutreach: ((snap: unknown) => void) | null = null;
+    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (s: unknown) => void, onError?: unknown) => {
+      if ((ref?.path ?? '') === 'outreach') emitOutreach = callback;
+      return (defaultOnSnapshot as unknown as (r: unknown, c: unknown, e: unknown) => () => void)(ref, callback, onError);
+    }) as never);
+
+    render(<Outreach />);
+    const opened = await screen.findByRole('button', { name: /Cedar Park — the north lawn/ });
+    fireEvent.click(opened);
+    fireEvent.click(await screen.findByText('Remove'));
+    expect(screen.getByText('Remove it from the record?')).toBeTruthy();
+    const card = opened.closest('article')!;
+
+    await act(async () => {
+      emitOutreach!({
+        docs: [{ id: 'OT-1', data: () => SEED_OUTREACH, ref: { path: 'outreach/OT-1' } }],
+        size: 1,
+        empty: false,
+      });
+    });
+
+    // Same card node, still armed — nothing was torn down and rebuilt.
+    expect(screen.getByText('Remove it from the record?')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Cedar Park — the north lawn/ }).closest('article')).toBe(card);
   });
 
   it('removes an outing after the two-tap confirm', async () => {
