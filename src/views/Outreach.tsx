@@ -227,7 +227,7 @@ function useOutreachData() {
 
 // ── shared bits ────────────────────────────────────────────────────────────
 const INPUT =
-  'w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface';
+  'w-full h-11 px-4 rounded-sm bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface';
 const BTN_PRIMARY =
   'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-on-primary font-semibold   text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all hover: active:scale-[0.98]';
 const BTN_GHOST = 'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-semibold text-accent hover:bg-primary/5 text-sm cursor-pointer';
@@ -296,7 +296,7 @@ function PendingRow({
   const cold = days >= 7;
   const contact = n.contactId ? contactById(n.contactId) : undefined;
   return (
-    <div className={cn('rounded-3xl border bg-surface-container p-4 flex flex-col gap-3', cold ? 'border-warning' : 'border-outline-variant')}>
+    <div className={cn('rounded-xl border bg-surface-container p-4 flex flex-col gap-3', cold ? 'border-warning' : 'border-outline-variant')}>
       <div className="flex items-start gap-3">
         <Face label={initialsOf(undefined, n.name)} lg title={n.name} />
         <div className="min-w-0 flex-1">
@@ -401,7 +401,7 @@ function OutreachCard({
   const nPhotos = item.photoCount || 0;
   const went = item.went || [];
   return (
-    <article className={cn('rounded-3xl border bg-surface-container  overflow-hidden', open ? 'border-stage-accent' : 'border-outline-variant')}>
+    <article className={cn('rounded-xl border bg-surface-container  overflow-hidden', open ? 'border-outline' : 'border-outline-variant')}>
       <button
         aria-expanded={open}
         aria-controls={`outreach-record-${item.id}`}
@@ -520,7 +520,7 @@ function OutreachCard({
                   return (
                     <button
                       key={n.id}
-                      className={cn('flex items-center gap-3 w-full text-left px-3 py-2 rounded-xl bg-surface-container-high border border-outline-variant hover:border-stage-accent', done && 'opacity-80')}
+                      className={cn('flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg bg-surface-container-high border border-outline-variant hover:border-outline', done && 'opacity-80')}
                       onClick={() => contact && onOpenContact(contact)}
                     >
                       <Face label={initialsOf(undefined, n.name)} />
@@ -788,7 +788,7 @@ function LogOutreachModal({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-10"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div ref={sheetRef} tabIndex={-1} className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full outline-none">
+      <div ref={sheetRef} tabIndex={-1} className="relative w-full max-w-2xl bg-surface-container rounded-xl shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full outline-none">
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <span className="grid place-items-center h-9 w-9 rounded-xl bg-stage-accent-soft text-stage-accent">
@@ -867,7 +867,7 @@ function LogOutreachModal({
           <label className="block">
             <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.how_it_went')}</span>
             <textarea
-              className="mt-1.5 w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
+              className="mt-1.5 w-full min-h-[120px] p-4 rounded-sm bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
               rows={5}
               value={how}
               onChange={(e) => setHow(e.target.value)}
@@ -880,7 +880,7 @@ function LogOutreachModal({
               <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.who_left_us_their_number')}</span>
               <div className="flex flex-col gap-3 mt-2">
                 {rows.map((r) => (
-                  <div key={r.key} className="rounded-2xl border border-outline-variant bg-surface-container-high p-3 space-y-2">
+                  <div key={r.key} className="rounded-lg border border-outline-variant bg-surface-container-high p-3 space-y-2">
                     <div className="flex gap-2 flex-wrap">
                       <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.name} placeholder={t('outreach.their_name')} onChange={(e) => setRow(r.key, { name: e.target.value })} />
                       <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.contact} placeholder={t('outreach.number_or_email')} onChange={(e) => setRow(r.key, { contact: e.target.value })} />
