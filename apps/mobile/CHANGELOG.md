@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.13.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.12.0...v1.13.0) (2026-10-25)
+
+
+### Features
+
+* **feedback:** record the mobile screen and flag captured screenshots in issues ([#1750](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1750)) ([ac4308f](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ac4308f47f983e911226204b26866e8de754ddaa))
+* **mobile:** choose when a logged conversation happened ([#1798](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1798)) ([4394d25](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4394d25d2933aceabd9f73da8af959c436fb2448))
+* **mobile:** one Today card per stream, Seen it for plain texts ([#1793](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1793)) ([#1797](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1797)) ([3c00477](https://github.com/Shir0o/cisa-campus-work-tracker/commit/3c00477b0c4168ff5bd6d7bb9c2ee4156baab117))
+* **mobile:** pick a date for the log sheet's follow-up ([#1709](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1709)) ([#1748](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1748)) ([4f55b81](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4f55b81e79703cfafa4c7d1c6204f07b7d077669))
+* **mobile:** step pills on People replace The Journey screen ([#1800](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1800)) ([#1799](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1799)) ([52d18f0](https://github.com/Shir0o/cisa-campus-work-tracker/commit/52d18f073868af3477851aaea994f86fbb8932cb))
+
+
+### Bug Fixes
+
+* **mobile:** holding a conversation row opens its action sheet ([#1706](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1706)) ([#1778](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1778)) ([b6e0c21](https://github.com/Shir0o/cisa-campus-work-tracker/commit/b6e0c21aef81e6f671a9dc1bda9afca0eab9e9e6))
+* **mobile:** re-anchor the Maestro rows after The Journey left ([#1864](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1864)) ([#1873](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1873)) ([47ee279](https://github.com/Shir0o/cisa-campus-work-tracker/commit/47ee2798a1b314800428a87dac2859012666fcf3))
+* **mobile:** right-align the feedback sheet's sent buttons ([#1705](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1705)) ([#1753](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1753)) ([299437f](https://github.com/Shir0o/cisa-campus-work-tracker/commit/299437ff5bb8aeb751119d02840049c860d3acf2))
+* **mobile:** stop a conversation flashing as it opens ([#1710](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1710)) ([#1747](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1747)) ([7c3fe73](https://github.com/Shir0o/cisa-campus-work-tracker/commit/7c3fe7388839a1648d6afea76162e88f7a291564))
+
 ## [1.12.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.11.0...v1.12.0) (2026-10-22)
 
 
