@@ -31,11 +31,18 @@ appId: com.cisa.campus
 - assertVisible: "Find someone by name, major, hall…"
 
 # More Tab
+# #1800, ADR 0047: The Journey is People's Step pills now, not a More row — the
+# old assertion outlived the row and is what turned this flow red on
+# 2026-10-25. So FT_MORE's real rows are named, and the row that left is
+# asserted absent.
 - tapOn: "More"
-- assertVisible: "The Journey"
+- assertVisible: "Gatherings"
+- assertVisible: "Prayer log"
 - assertVisible: "The Board"
+- assertVisible: "Outreach"
 - assertVisible: "Sign-up form"
 - assertVisible: "How this works"
+- assertNotVisible: "The Journey"
 - scrollUntilVisible:
     element:
       text: "Settings"

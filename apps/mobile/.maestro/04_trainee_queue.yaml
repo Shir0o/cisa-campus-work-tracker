@@ -31,9 +31,14 @@ appId: com.cisa.campus
 - assertVisible: "Later today"
 
 # Drawer Navigation
+# #1800, ADR 0047: People is the one door for a Trainee too — The Journey is
+# People narrowed by Step, so the drawer carries no row for it. The old line
+# outlived the row and is what turned this flow red on 2026-10-25.
 - tapOn:
     id: "open-drawer"
 - assertVisible: "The queue is the app. Everything else lives here."
 - assertVisible: "People"
-- assertVisible: "The Journey"
 - assertVisible: "Messages"
+- assertVisible: "Ask the team"
+- assertVisible: "Sign-up form"
+- assertNotVisible: "The Journey"
