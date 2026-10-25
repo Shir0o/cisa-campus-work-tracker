@@ -1070,34 +1070,41 @@ export default function Outreach() {
           <OutreachGroup {...groupProps} title={t('outreach.this_month')} sub={t('outreach.tap_to_read_it_back')} list={thisMonth} />
           <OutreachGroup {...groupProps} title={t('outreach.earlier_months')} list={earlier} />
 
-          {thisMonth.length === 0 && earlier.length === 0 && (
+          {!last && (
             <div className="mt-8 rounded-2xl border border-outline-variant bg-surface-container p-6">
-              <p className="text-on-surface-variant">
-                {t('outreach.nothing_here_yet')}
+              <p className="font-medium text-on-surface">{t('outreach.empty_log_asks')}</p>
+              {/* The sheet's own section names, in the order it asks them — a
+                  preview of what tapping Log opens, not a second pitch. */}
+              <p className="mt-2 max-w-prose text-sm text-on-surface-variant">
+                {[
+                  t('outreach.when'),
+                  t('outreach.where'),
+                  t('outreach.who_went'),
+                  t('outreach.what_we_handed_out'),
+                  t('outreach.how_it_went'),
+                  t('outreach.who_left_us_their_number'),
+                ].join('\u00a0· ')}
               </p>
-              {canLog && (
-                <button className={cn(BTN_PRIMARY, 'mt-4')} onClick={() => setLogOpen(true)}>
-                  <Plus className="w-4 h-4" /> {t('outreach.log_a_gospel_outing')}
-                </button>
-              )}
             </div>
           )}
 
-          <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
-            {(
-              [
-                [stats.months, t('outreach.months_out')],
-                [stats.names, t('outreach.names_came_back_with_us')],
-                [stats.bibles, t('outreach.bibles_into_hands')],
-              ] as const
-            ).map(([n, l]) => (
-              <div key={l} className="flex items-baseline gap-2">
-                <span className="text-2xl font-medium text-on-surface">{n}</span>
-                <span className="text-sm text-on-surface-variant">{l}</span>
-              </div>
-            ))}
-            <span className="text-xs text-on-surface-variant max-w-[240px] ml-auto">{t('outreach.counted_so_nobody_waits')}</span>
-          </div>
+          {last && (
+            <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
+              {(
+                [
+                  [stats.months, t('outreach.months_out')],
+                  [stats.names, t('outreach.names_came_back_with_us')],
+                  [stats.bibles, t('outreach.bibles_into_hands')],
+                ] as const
+              ).map(([n, l]) => (
+                <div key={l} className="flex items-baseline gap-2">
+                  <span className="text-2xl font-medium text-on-surface">{n}</span>
+                  <span className="text-sm text-on-surface-variant">{l}</span>
+                </div>
+              ))}
+              <span className="text-xs text-on-surface-variant max-w-[240px] ml-auto">{t('outreach.counted_so_nobody_waits')}</span>
+            </div>
+          )}
         </>
       )}
 

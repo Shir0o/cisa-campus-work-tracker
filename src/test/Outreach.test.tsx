@@ -248,7 +248,7 @@ describe('Outreach', () => {
     expect(screen.queryByText('Remove')).toBeNull();
   });
 
-  it('renders an empty state when nothing has been logged', async () => {
+  it('renders one CTA, and no zeroed figures, when nothing has been logged (#1845)', async () => {
     vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (s: unknown) => void) => {
       const path = ref?.path ?? '';
       callback({
@@ -259,9 +259,25 @@ describe('Outreach', () => {
       return () => {};
     }) as never);
     render(<Outreach />);
-    expect(await screen.findByText(/Nothing here yet/)).toBeTruthy();
-    // Both the header and the empty-state card carry a Log button.
-    expect(screen.getAllByRole('button', { name: 'Log a gospel outing' }).length).toBeGreaterThan(0);
+
+    // One primary action — the header's. The empty panel used to repeat it, so
+    // two identical buttons sat above the fold.
+    expect(await screen.findAllByRole('button', { name: 'Log a gospel outing' })).toHaveLength(1);
+    // The header sentence stands alone; the panel carries the how instead.
+    expect(screen.getAllByText(/Nothing written down yet/)).toHaveLength(1);
+    expect(screen.getByText(/asks for six short things/)).toBeTruthy();
+    expect(screen.getByText(/Who left us their number/)).toBeTruthy();
+    // Three zeroes teach a first-time reader nothing: no figures until a record.
+    expect(screen.queryByText('months out')).toBeNull();
+    expect(screen.queryByText('Bibles into hands')).toBeNull();
+    expect(screen.queryByText(/Counted only so nobody waits/)).toBeNull();
+  });
+
+  it('counts the figures as soon as a first record exists (#1845)', async () => {
+    render(<Outreach />);
+    expect(await screen.findByText('months out')).toBeTruthy();
+    expect(screen.getByText('Bibles into hands')).toBeTruthy();
+    expect(screen.getByText(/Counted only so nobody waits/)).toBeTruthy();
   });
 
   it('gives the queue a person, not a pair of question marks', async () => {
