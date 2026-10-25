@@ -1739,4 +1739,219 @@ describe('Settings', () => {
       expect(missing).toEqual([]);
     });
   });
+
+  // ── Radius ladder & phone targets (#1817) ──────────────────────────────
+  // DESIGN.md: shell 32 → card 24 → sub-container 20 → panel 14 → control 10.
+  // Measured at 375×812: cards sat at 40px, search and quick-add inputs at
+  // 24px, and 48 of 68 interactive elements were under 44px tall. Cards and
+  // the panels inside them have to move together — dropping only one side
+  // inverts the ladder the other way — so the source guard below pins every
+  // step of the sweep in one place.
+
+  describe('radius ladder & phone targets (#1817)', () => {
+    const readSource = async () =>
+      (await import('node:fs')).readFileSync(
+        (await import('node:path')).resolve(process.cwd(), 'src/views/Settings.tsx'),
+        'utf8',
+      );
+
+    it('leaves nothing on the sub-container or shell step', async () => {
+      const source = await readSource();
+      expect(source).not.toMatch(/\brounded-3xl\b/);
+      expect(source).not.toMatch(/\brounded-2xl\b/);
+    });
+
+    it('keeps every filled card on the card step', async () => {
+      const source = await readSource();
+      const cards = [...source.matchAll(/className="([^"]*\bbg-surface-container(?![-a-z])[^"]*)"/g)].map(
+        (m) => m[1],
+      );
+
+      expect(cards.length).toBeGreaterThanOrEqual(12);
+      for (const card of cards) {
+        // One filled *control* sits on the card fill — the pair button under
+        // "Going out together". It is a button, so it takes the interactive
+        // step; every other filled surface here is a container.
+        if (card.includes('cursor-pointer')) {
+          expect(card).toContain('rounded-[14px]');
+        } else {
+          expect(card).toContain('rounded-xl');
+        }
+        expect(card).not.toMatch(/\brounded-(2xl|3xl|lg|sm)\b/);
+      }
+    });
+
+    it('puts every text field, select and date picker on the control step', async () => {
+      const source = await readSource();
+      const fields = [...source.matchAll(/<(input|select)\b[\s\S]*?className="([^"]*)"/g)]
+        // A 16px checkbox is a small mark, not a field: the No-Stadium-Input
+        // Rule is about text entry and pickers.
+        .filter((m) => !m[0].includes('type="checkbox"'))
+        .map((m) => m[2]);
+
+      expect(fields.length).toBeGreaterThanOrEqual(10);
+      for (const field of fields) {
+        expect(field).toContain('rounded-sm');
+        expect(field).not.toMatch(/\brounded-(xl|2xl|3xl|lg|full)\b/);
+      }
+    });
+
+    it('renders the account card at 24px and its nested panel at 20px', () => {
+      setupManagerAuth();
+      mfaMocks.listEnrolledFactors.mockReturnValue([
+        { uid: 'factor-1', factorId: 'totp', displayName: 'Authenticator', enrollmentTime: 'x' },
+      ]);
+      mfaMocks.hasTotpFactor.mockReturnValue(true);
+
+      render(<Settings />);
+
+      const account = screen.getByRole('heading', { name: 'Account & Session' }).closest('section')!;
+      expect(account.querySelector('div.bg-surface-container')!.className).toContain('rounded-xl');
+
+      const security = screen.getByRole('heading', { name: 'Security' }).closest('section')!;
+      expect(security.querySelector('div.bg-surface-container')!.className).toContain('rounded-xl');
+      // The factor row is a panel inside that card, so it takes the next step.
+      expect(security.querySelector('li')!.className).toContain('rounded-lg');
+
+      mfaMocks.listEnrolledFactors.mockReturnValue([]);
+      mfaMocks.hasTotpFactor.mockReturnValue(false);
+    });
+
+    it('puts the search field on the control step and Add someone on the interactive step', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+      render(<Settings />);
+
+      await screen.findByRole('button', { name: /Add someone/i });
+
+      const search = screen.getByPlaceholderText('Find a teammate…');
+      expect(search.className).toContain('rounded-sm');
+      // The No-Stadium-Input Rule: a 46px field cannot ask for 24px corners.
+      expect(search.className).not.toContain('rounded-xl');
+
+      expect(screen.getByRole('button', { name: /Add someone/i }).className).toContain(
+        'rounded-[14px]',
+      );
+    });
+
+    it('lifts the named phone controls to a coarse-pointer target', async () => {
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'users') {
+          callback({
+            docs: [
+              {
+                id: 'mei',
+                data: () => ({
+                  uid: 'mei',
+                  email: 'mei@test.com',
+                  displayName: 'Mei Tanaka',
+                  approved: true,
+                  role: 'manager',
+                  photoURL: null,
+                  team: 'yp',
+                }),
+              },
+            ],
+          });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      // The roster resolves after the loading skeleton, so the member row (and
+      // its ⋯ menu) arrives a beat later than the sections above it.
+      await waitFor(
+        () => expect(screen.getAllByRole('button', { name: 'Member options' }).length).toBeGreaterThan(0),
+        { timeout: 3000 },
+      );
+
+      // Reminder weekday chips (×21) and the team chips measured 26px tall.
+      const days = screen.getByRole('group', { name: 'Days for Full-timers' });
+      expect(within(days).getByRole('button', { name: 'Mon' }).className).toContain(
+        'pointer-coarse:min-h-11',
+      );
+      const teams = screen.getByRole('group', { name: 'Put Mei Tanaka on a team' });
+      expect(within(teams).getByRole('button', { name: 'YP team' }).className).toContain(
+        'pointer-coarse:min-h-11',
+      );
+
+      // Both switch tracks stay 44×24; the hit area is what grows.
+      const switches = screen.getAllByRole('switch');
+      expect(switches.length).toBeGreaterThanOrEqual(2);
+      for (const track of switches) {
+        expect(track.className).toContain("pointer-coarse:after:content-['']");
+      }
+
+      // The account pencil (26×26) and the roster ⋯ (32×32).
+      expect(screen.getByRole('button', { name: 'Edit name' }).className).toContain(
+        'pointer-coarse:w-11',
+      );
+      expect(screen.getAllByRole('button', { name: 'Member options' })[0].className).toContain(
+        'pointer-coarse:w-11',
+      );
+
+      // Token controls, and the one destructive control on the page.
+      expect(screen.getByRole('button', { name: 'Generate new token' }).className).toContain(
+        'pointer-coarse:min-h-11',
+      );
+    });
+
+    it('lifts the remaining short buttons that only render in other states', async () => {
+      const source = await readSource();
+      const markers = [
+        "t('settings.turn_on_web_notifications'",
+        "t('settings.send_test_web_notification'",
+        "t('settings.show_checklist'",
+        "t('settings.scan_and_purge'",
+        'aria-label="Copy token"',
+      ];
+
+      for (const marker of markers) {
+        const at = source.indexOf(marker);
+        expect(at, marker).toBeGreaterThan(-1);
+        const openingTag = source.slice(source.lastIndexOf('<button', at), at);
+        expect(openingTag, marker).toContain('pointer-coarse:min-h-11');
+      }
+    });
+
+    it('asks before replacing the sync token, and only writes on the second tap', async () => {
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'settings/integrations') {
+          callback({ exists: () => true, data: () => ({ attdSyncToken: 'old-token' }) });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      const generate = await screen.findByRole('button', { name: 'Generate new token' });
+      fireEvent.click(generate);
+
+      // Armed, not fired: the credential pasted into ~/attd is still valid.
+      expect(setDoc).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: 'Generate new token' })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(setDoc).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Generate new token' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Generate new token' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'settings/integrations' }),
+          expect.objectContaining({ attdSyncToken: expect.any(String) }),
+          { merge: true },
+        );
+      });
+    });
+  });
 });

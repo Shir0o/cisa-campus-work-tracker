@@ -31,7 +31,7 @@ export default function UsageStatsPanel({ uid }: { uid: string }) {
         </p>
       </div>
 
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 sm:p-6">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5 sm:p-6">
         {empty ? (
           <div className="py-8 text-center text-sm text-on-surface-variant">
             <BarChart3 className="w-8 h-8 mx-auto mb-3 opacity-50" />
@@ -47,7 +47,7 @@ export default function UsageStatsPanel({ uid }: { uid: string }) {
               </p>
               <button
                 onClick={clear}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant/40 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[14px] border border-outline-variant/40 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Clear readings
@@ -140,7 +140,7 @@ function ReadingCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-outline-variant/40 bg-surface-container-low p-4">
+    <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className={`w-7 h-7 rounded-full flex items-center justify-center ${tone}`}>{icon}</span>
         <h3 className="font-serif text-[15px] text-on-surface leading-tight">{title}</h3>

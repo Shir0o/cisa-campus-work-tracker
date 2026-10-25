@@ -36,6 +36,10 @@ export function Switch({
         // Track: relative for the absolute-positioned knob, and shrink-0 so the
         // switch doesn't get hugged by flex parents in label rows.
         'relative inline-flex items-center h-6 w-11 shrink-0 rounded-full transition-colors cursor-pointer',
+        // A 44 × 24 track is the right *mark* and the wrong *target* on a phone.
+        // The visual track stays 24px; the hit area grows to 44px around it
+        // through a pseudo-element, so nothing in the row shifts.
+        "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-['']",
         // The on-track uses `bg-primary` to match the existing affordance
         // (Settings.tsx previously used `bg-accent`; bringing all three sites
         // onto one signal). Off-track uses `bg-outline-variant`, not the bare
