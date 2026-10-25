@@ -65,6 +65,7 @@ import {
 } from '../../packages/core/src/data/toAsk';
 import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
+import { activitiesPageQuery, countActivities } from '../../packages/core/src/data/activities';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
@@ -186,6 +187,26 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await seedDoc(db, `contacts/${noOwnerId}`, { ...noOwner, visibleTo: [ADMIN] });
       const { id: nullEmailId, ...nullEmail } = nullEmailContact;
       await seedDoc(db, `contacts/${nullEmailId}`, { ...nullEmail, visibleTo: [ADMIN] });
+
+      // The team's record behind Looking back (#1828): three moments, so the
+      // record count and the newest page can be told apart.
+      for (const [id, day] of [
+        ['a-newest', '2026-10-03'],
+        ['a-middle', '2026-10-02'],
+        ['a-oldest', '2026-10-01'],
+      ] as const) {
+        await seedDoc(db, `activities/${id}`, {
+          userId: ADMIN,
+          userName: 'Admin',
+          action: 'created a new contact',
+          targetType: 'contact',
+          targetId: 'c-mine',
+          type: 'create',
+          targetName: 'c-mine',
+          description: '',
+          createdAt: `${day}T00:00:00.000Z`,
+        });
+      }
 
       // Subcollections behind c-mine / c-theirs for the touches + threads reads.
       await seedDoc(db, 'contacts/c-mine/interactions/i-mine', {
@@ -625,5 +646,32 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     // Negative: not a member of the room.
     await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(VIEWER), 'room-team', mark)));
     await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(TRAINEE), 'room-outside', mark)));
+  });
+
+  // ── #1828: Looking back counts the record, not the loaded page ─────────────
+  // The header's "moments" is one aggregate over the whole record, and the
+  // stream grows by pages of the same ordered read. Both are the team-wide
+  // read the rules grant to the roles that see every person; a Trainee's
+  // activity read stays pinned to a person's own history (Contact Detail), so
+  // the collection-wide count must stay denied to them.
+  it('row 24 — a Full-timer counts the whole record and pages it newest-first (#1828)', async () => {
+    const db = dbFor(ADMIN);
+    const total = await assertSucceeds(countActivities(db));
+    expect(total).toBe(3);
+
+    const page = await assertSucceeds(getDocs(activitiesPageQuery(db, 2)));
+    expect(page.docs.map((d) => d.id)).toEqual(['a-newest', 'a-middle']);
+  });
+
+  it('row 24 — a Full-timer counts the whole record, and a Trainee may not (#1828)', async () => {
+    for (const uid of [ADMIN, ADMIN_FRESH]) {
+      const total = await assertSucceeds(countActivities(dbFor(uid)));
+      expect(total).toBe(3);
+    }
+
+    // Negative: a Trainee's activity read stays pinned to a person's own
+    // history, so neither the count nor the team-wide page is theirs.
+    await assertFails(countActivities(dbFor(TRAINEE)));
+    await assertFails(getDocs(activitiesPageQuery(dbFor(TRAINEE), 2)));
   });
 });

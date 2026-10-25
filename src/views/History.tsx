@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   collection,
   query,
-  orderBy,
   onSnapshot,
-  limit,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { activitiesPageQuery, countActivities } from "../../packages/core/src/data/activities";
+import { HISTORY_PAGE_SIZE, historyHasMore } from "../../packages/core/src/history";
 import { Activity, Contact, SystemActivity } from "../types";
 import { useAuth } from "../components/AuthProvider";
 import {
@@ -43,8 +43,8 @@ type Bucket = "steps" | "prayer" | "talk" | "gather";
 
 // The stream loads in pages of this many; "Show older moments" grows the
 // window, so the whole record stays reachable instead of stopping at the
-// newest page.
-const PAGE_SIZE = 100;
+// newest page. The size lives with the paging contract (#1828).
+const PAGE_SIZE = HISTORY_PAGE_SIZE;
 
 const KINDS: { id: "all" | Bucket; label: string; i18nKey: string }[] = [
   { id: "all", label: "Everything", i18nKey: "history.everything" },
@@ -274,6 +274,7 @@ export default function History() {
   const [who, setWho] = useState("all");
   const [q, setQ] = useState("");
   const [windowSize, setWindowSize] = useState(PAGE_SIZE);
+  const [recordCount, setRecordCount] = useState<number | null>(null);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -321,7 +322,7 @@ export default function History() {
   // reachable.
   useEffect(() => {
     const unsubscribeActivities = onSnapshot(
-      query(collection(db, "activities"), orderBy("createdAt", "desc"), limit(windowSize)),
+      activitiesPageQuery(db, windowSize),
       (snapshot) => {
         setActivities(
           snapshot.docs.map((d) => {
@@ -349,6 +350,28 @@ export default function History() {
       unsubscribeActivities();
     };
   }, [windowSize, onLoadError]);
+
+  // The record's own size (#1828). The stream is a page of it, so the header
+  // asks for the count instead of reading `activities.length` — one aggregate
+  // read, re-run when the newest moment changes (a live write) or another
+  // page is asked for. If the aggregate is refused or fails, the total stays
+  // unknown and every view scopes itself to the window rather than invent one.
+  const newestId = activities[0]?.id;
+  useEffect(() => {
+    if (loading || error) return;
+    let cancelled = false;
+    countActivities(db).then(
+      (n) => {
+        if (!cancelled) setRecordCount(n);
+      },
+      () => {
+        if (!cancelled) setRecordCount(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, error, newestId, windowSize]);
 
   const openContact = (contactId?: string) => {
     if (!contactId) return;
@@ -418,9 +441,38 @@ export default function History() {
     () => new Set(activities.filter((a) => a.contactId).map((a) => a.contactId)).size,
     [activities],
   );
-  // A full window means the newest page is saturated — there may be older
-  // moments to reach. Once a wider window comes back short, this goes false.
-  const hasMore = activities.length >= windowSize;
+
+  // A short page is proof the record ended; a full page is only proof when the
+  // aggregate agrees (#1828). The count is floored by what is in view, so a
+  // live write that lands between the two reads can never print "100 of 99".
+  const pageIsShort = activities.length < windowSize;
+  const totalMoments =
+    recordCount === null
+      ? (pageIsShort ? activities.length : null)
+      : Math.max(recordCount, activities.length);
+  const recordComplete = totalMoments !== null && activities.length >= totalMoments;
+  const hasMore = historyHasMore(activities.length, windowSize, totalMoments);
+
+  // The one sentence that may describe a page: it counts exactly the moments
+  // on screen, so it is only used while the record is longer than the page.
+  const shownMomentWord = activities.length === 1 ? t('history.moment') : t('history.moments');
+  const windowDeck = t(
+    'history.deck',
+    'The small, faithful work of these days — {moments} across the team, touching {people} of the people in our care.',
+  )
+    .replace('{moments}', `${activities.length} ${shownMomentWord}`)
+    .replace('{people}', String(peopleRemembered));
+
+  // The card's moments figure. While the page is shorter than the record it
+  // says "100 of 3412" using the app's plain "{shown} of {total}" template —
+  // reused rather than minting a locale key for this one slot (#1828).
+  const momentsFigure =
+    recordComplete || totalMoments === null
+      ? String(totalMoments ?? activities.length)
+      : t('directory.of_people')
+          .replace('{shown}', String(activities.length))
+          .replace('{total}', String(totalMoments));
+
   const showOlder = () => setWindowSize((s) => s + PAGE_SIZE);
   const todayLong = new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -468,6 +520,7 @@ export default function History() {
           firstName={firstName}
           hasMore={hasMore}
           onShowOlder={showOlder}
+          totalMoments={totalMoments}
         />
       </>
     );
@@ -482,9 +535,23 @@ export default function History() {
         </div>
         <h1 className="font-serif page-title text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-          {t('history.record_small_faithful')} <span className="text-on-surface font-medium">{activities.length}</span>{" "}
-          {activities.length === 1 ? t('history.moment') : t('history.moments')} across the team, touching{" "}
-          <span className="text-on-surface font-medium">{peopleRemembered}</span> of the people in our care.
+          {totalMoments !== null ? (
+            <>
+              {t('history.record_small_faithful')}{" "}
+              <span className="text-on-surface font-medium">{totalMoments}</span>{" "}
+              {totalMoments === 1 ? t('history.moment') : t('history.moments')} across the team
+              {recordComplete ? (
+                <>
+                  , touching{" "}
+                  <span className="text-on-surface font-medium">{peopleRemembered}</span> of the people in our care.
+                </>
+              ) : (
+                "."
+              )}
+            </>
+          ) : (
+            windowDeck
+          )}
         </p>
       </header>
 
@@ -615,6 +682,10 @@ export default function History() {
         </div>
       )}
 
+      {!loading && !recordComplete && totalMoments !== null && (
+        <p className="mt-6 text-center text-[13px] text-on-surface-variant/80 italic">{windowDeck}</p>
+      )}
+
       {!loading && hasMore && (
         <div className="mt-6 text-center">
           <button
@@ -631,13 +702,20 @@ export default function History() {
       {!loading && activities.length > 0 && (
         <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-xl text-on-surface">{activities.length}</span>
+            <span className="text-xl text-on-surface">
+              {momentsFigure}
+            </span>
             <span className="text-[13px] text-on-surface-variant">{t('history.moments_noted')}</span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl text-on-surface">{peopleRemembered}</span>
-            <span className="text-[13px] text-on-surface-variant">{t('history.people_remembered')}</span>
-          </div>
+          {/* Distinct contacts cannot be counted across the record server-side,
+              so this figure is only claimed once every moment is loaded. Until
+              then the page-scoped deck under the stream carries it. */}
+          {recordComplete && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl text-on-surface">{peopleRemembered}</span>
+              <span className="text-[13px] text-on-surface-variant">{t('history.people_remembered')}</span>
+            </div>
+          )}
           <div className="flex items-baseline gap-2">
             <span className="text-xl text-on-surface">{staff.length}</span>
             <span className="text-[13px] text-on-surface-variant">{t('history.hands_at_work')}</span>
