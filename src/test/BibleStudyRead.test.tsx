@@ -137,6 +137,36 @@ describe("This week's study (#946)", () => {
     );
   });
 
+  // #1837 — Copy link and Show QR were 28×28 (`w-7 h-7`) beside a 44×44
+  // text-size trigger, 4px apart at the top of the screen: the two controls a
+  // Trainee uses to pass the study on when no Full-timer is in the room were
+  // the smallest things on the reader. On a coarse pointer they now match the
+  // text-size trigger at 44×44; a fine pointer keeps the compact header, and
+  // the 16px glyphs are untouched either way.
+  it('gives Copy link and Show QR a 44px phone target (#1837)', async () => {
+    mockChain({ entryPoints: [WEDNESDAY] });
+    renderAt();
+    await screen.findByText('Alive to God');
+
+    const copy = screen.getByRole('button', { name: 'Copy link' });
+    const qr = screen.getByRole('link', { name: 'Show QR' });
+
+    for (const [name, control] of [
+      ['Copy link', copy],
+      ['Show QR', qr],
+    ] as const) {
+      expect(control.className, name).toMatch(/(^|\s)pointer-coarse:w-11(\s|$)/);
+      expect(control.className, name).toMatch(/(^|\s)pointer-coarse:h-11(\s|$)/);
+      // Fine pointers are unchanged: the header keeps its 28px boxes.
+      expect(control.className, name).toMatch(/(^|\s)w-7(\s|$)/);
+      expect(control.className, name).toMatch(/(^|\s)h-7(\s|$)/);
+    }
+
+    // The icons stay 16px — the box grew, the visual weight did not.
+    expect(copy.querySelector('svg')).toHaveClass('w-4', 'h-4');
+    expect(qr.querySelector('svg')).toHaveClass('w-4', 'h-4');
+  });
+
   it('copies a permanent link pinned to the week being read, not the always-latest entry point', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
