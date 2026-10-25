@@ -86,7 +86,7 @@ export function TeamPrayerRow({
               <button
                 type="button"
                 onClick={() => onOpenContact(contact)}
-                className="text-sm text-accent underline underline-offset-2"
+                className="text-sm text-accent underline underline-offset-2 prt-contact-link"
               >
                 {t("prayers.for_contact", "for {name}").replace("{name}", contact.name)}
               </button>
@@ -217,7 +217,7 @@ export function TeamPrayerRow({
           )}
         </div>
 
-        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0 prt-side">
           <span className="text-xs text-on-surface-variant whitespace-nowrap">
             {agoLabel(prayer.date, t)}
           </span>
@@ -229,7 +229,7 @@ export function TeamPrayerRow({
           <button
             type="button"
             onClick={onOpenPrayerLog}
-            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-accent transition-colors"
+            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-accent transition-colors prt-log-link"
           >
             <ArrowRight className="w-3 h-3" /> {t("prayers.prayer_log", "Prayer Log")}
           </button>
@@ -454,7 +454,7 @@ export function PersonalPrayerRow({
         </div>
 
         {!open && !answering && (
-          <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+          <div className="flex flex-col items-start sm:items-end gap-2 shrink-0 prt-side">
             <span className="text-xs text-on-surface-variant whitespace-nowrap">
               {agoLabel(prayer.date, t)}
             </span>
