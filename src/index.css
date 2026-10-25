@@ -1588,9 +1588,15 @@ body.bdoc-fs-on main { overflow: hidden; }
   /* ── The Board — mobile-native list → detail push ── */
   .bdm { padding-bottom: 28px; }
   .bdm-hero { margin-bottom: 6px; }
-  .bdm-state { font-size: 14px; line-height: 1.5; color: var(--text-dim); margin: 8px 0 0; text-wrap: pretty; }
+  /* The hero's copy is the page's best writing, but three lines of it sat
+     between the reader and the first page card (#1851). It stays complete in
+     the DOM and clips to one line here. */
+  .bdm-hero .mdm-greet { margin-bottom: 4px; }
+  .bdm-state {
+    font-size: 14px; line-height: 1.5; color: var(--text-dim); margin: 4px 0 0; text-wrap: pretty;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden;
+  }
 
-  .bdm-pages .dash-sec-head { margin-bottom: 12px; }
   .bdm-list { display: flex; flex-direction: column; gap: 10px; }
   .bdm-card {
     display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;

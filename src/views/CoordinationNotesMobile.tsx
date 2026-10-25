@@ -101,6 +101,15 @@ export default function CoordinationNotesMobile({
     setMEditing(false);
   };
 
+  const createAndOpenDoc = () => {
+    newDoc();
+    // Set detail editing mode directly after a short delay to let active switch
+    setTimeout(() => {
+      setMReading(true);
+      setMEditing(true);
+    }, 100);
+  };
+
   // If reading detail view
   if (mReading && active) {
     return (
@@ -199,38 +208,32 @@ export default function CoordinationNotesMobile({
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 page dash bd-page bdoc-page bdm" data-role="ft">
-      {/* Hero */}
-      <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 mdm-hero bdm-hero">
-        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 mdm-eyebrow">
-          {t('coordination.eyebrow_board')}
-        </div>
+      {/* Hero — the eyebrow and the extra intro lines are the mobile budget:
+          the first page card is what a reader came for (issue 1851). The copy stays,
+          clipped to one line by .bdm-state; the primary action lives here as a
+          44px control instead of a small text link above the list. */}
+      <header className="px-5 pt-6 pb-5 bg-surface border-b border-outline-variant/30 mdm-hero bdm-hero">
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">{heading}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 bdm-state">{intro}</p>
+        {canEdit && (
+          <div className="flex justify-end mt-3">
+            <button
+              onClick={createAndOpenDoc}
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-sm bg-primary text-on-primary text-sm font-semibold active:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('coordination.new_page')}</span>
+            </button>
+          </div>
+        )}
       </header>
 
       {SearchBarComponent && <div className="px-5 mt-4">{SearchBarComponent}</div>}
 
-      {/* Pages Section */}
-      <section className="px-5 mt-5 bdm-pages">
-        <div className="flex items-center justify-between mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface font-semibold">{t('coordination.pages')}</h2>
-          {canEdit && (
-            <button
-              onClick={() => {
-                newDoc();
-                // Set detail editing mode directly after a short delay to let active switch
-                setTimeout(() => {
-                  setMReading(true);
-                  setMEditing(true);
-                }, 100);
-              }}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline dash-sec-link"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t('coordination.new_page')}</span>
-            </button>
-          )}
-        </div>
+      {/* Pages Section — the list keeps its name for assistive tech, but the
+          visible "Pages / New page" band above it cost 53px on a phone. */}
+      <section className="px-5 bdm-pages" aria-labelledby="bdm-pages-heading">
+        <h2 id="bdm-pages-heading" className="sr-only">{t('coordination.pages')}</h2>
 
         <div className="flex flex-col gap-3 bdm-list">
           {docs.length === 0 && (

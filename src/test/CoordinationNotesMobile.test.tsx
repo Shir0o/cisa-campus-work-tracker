@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import CoordinationNotesMobile from '../views/CoordinationNotesMobile';
 
@@ -33,7 +35,7 @@ const doc = (over: any = {}) => ({
   ...over,
 } as any);
 
-function Harness({ docs, canEdit = true, onNewDoc = vi.fn(), onDelete = vi.fn(), onPromote = vi.fn() }: any) {
+function Harness({ docs, canEdit = true, onNewDoc = vi.fn(), onDelete = vi.fn(), onPromote = vi.fn(), heading = 'The Board' }: any) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [extraDocs, setExtraDocs] = useState<any[]>([]);
   const allDocs = [...docs, ...extraDocs];
@@ -53,7 +55,7 @@ function Harness({ docs, canEdit = true, onNewDoc = vi.fn(), onDelete = vi.fn(),
       setActiveId={setActiveId}
       newDoc={handleNewDoc}
       promoteDoc={onPromote}
-      heading="The Board"
+      heading={heading}
       intro="A shared coordination space."
       uid="u1"
       meName="Sarah"
@@ -143,5 +145,37 @@ describe('CoordinationNotesMobile', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // #1851 — at 375×812 the hero spent 229px before the search field (eyebrow,
+  // a 3-line intro) and the "New page" text-link sat in a section head below
+  // it, so the first page card started 436px down. The phone hero now drops
+  // the eyebrow, keeps the intro to a single line, and carries the same
+  // "New page" action as a 44px control; the list keeps its name for
+  // assistive tech without spending a visible heading band.
+  it('gives the phone hero one line of copy and a 44px New page target (#1851)', () => {
+    const { container } = render(<Harness docs={[doc()]} heading="Coordination Notes" />);
+
+    // The eyebrow ("The Board") is gone. The heading and intro copy stay.
+    expect(screen.queryByText('The Board')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Coordination Notes' })).toBeInTheDocument();
+    expect(screen.getByText('A shared coordination space.')).toHaveClass('bdm-state');
+
+    // The action lives in the hero, once, at the 44px phone floor.
+    const newPage = screen.getByRole('button', { name: 'New page' });
+    expect(newPage.closest('header')).not.toBeNull();
+    expect(newPage).toHaveClass('min-h-11');
+    expect(screen.getAllByRole('button', { name: 'New page' })).toHaveLength(1);
+
+    // The pages list is still named for screen readers, without a visible
+    // heading band above the first card.
+    const list = container.querySelector('.bdm-pages');
+    expect(list?.querySelector('h2')).toHaveClass('sr-only');
+
+    // The intro is clamped by the phone stylesheet: the copy stays complete
+    // in the DOM and only renders as one line.
+    const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
+    const rule = css.match(/\.bdm-state\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toMatch(/-webkit-line-clamp:\s*1/);
   });
 });
