@@ -3742,6 +3742,30 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   /* filter / stage pills — comfortable min-height */
   .ppl-pill, .msgs-pill, .tt-pill, .hism-fpill, .ans-toggle-opt { min-height: 40px; }
 
+  /* My Day's remaining small controls (#1858). Each reaches the 44px floor as
+     a real box; negative margins hold its layout slot at the compact size, so
+     the home's 4,793px page does not grow. The only cost is the 2px the prayer
+     side column needs between its controls (+12px over the seeded three rows). */
+  .md-mobile .dash-sec-head .dash-sec-link {
+    min-height: 44px; padding-block: 14px; margin-block: -14px;
+  }
+  .md-status-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 44px; padding-block: 9.5px; margin-block: -9.5px;
+  }
+  .prt-side { gap: 10px; }
+  .prt-contact-link {
+    min-height: 44px; padding-block: 12px; margin-block: -12px;
+  }
+  /* The log is the last control in its column, so its hit area grows downward
+     into the row's own padding, never onto the pills above it. */
+  .prt-log-link {
+    min-height: 44px; padding-bottom: 27px; margin-bottom: -27px;
+  }
+  /* The message button on each sheep row was 42×42; the avatar beside it is
+     already 44, so the row does not grow. */
+  .mdm-person-msg { width: 44px; height: 44px; }
+
   /* Messages: the actions that a pointer finds on hover are one tap away —
      and the row that owns them says so (#1764). */
   .msgs-item-more > button { opacity: 1; width: 44px; height: 44px; font-size: 18px; }

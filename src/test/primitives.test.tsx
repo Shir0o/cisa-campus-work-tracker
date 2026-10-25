@@ -1,5 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { statusPillClass, Avatar, StatusPills, StageChip, SectionHead, Figure } from '../components/landing/primitives';
 import { ReachCard } from '../components/landing/ReachCard';
@@ -85,6 +87,33 @@ describe('primitives components', () => {
       />
     );
     expect(screen.getByText('Ongoing')).toBeDisabled();
+  });
+
+  // #1858 — the home's prayer pills were 25px tall on touch. The sizing lives
+  // in the coarse-pointer block in index.css (the same pattern the prayer page
+  // uses), reached through this marker class, so pin both halves: the class on
+  // every pill and the 44px rule the class resolves to.
+  it('marks every status pill for the coarse-pointer floor', () => {
+    render(
+      <StatusPills
+        value="ongoing"
+        options={[
+          { val: 'ongoing', label: 'Ongoing', tone: 'ongoing' },
+          { val: 'answered', label: 'Answered', tone: 'answered' },
+          { val: 'unanswered', label: 'Archive', tone: 'archived' },
+        ]}
+        onChange={vi.fn()}
+      />
+    );
+    for (const pill of screen.getAllByRole('button')) {
+      expect(pill).toHaveClass('md-status-pill');
+    }
+  });
+
+  it('pins the coarse-pointer pill height to the 44px floor', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
+    const rule = css.match(/\.md-status-pill\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toMatch(/min-height:\s*44px/);
   });
 
   it('renders StageChip, SectionHead and Figure', () => {

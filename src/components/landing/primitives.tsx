@@ -80,7 +80,7 @@ export function StatusPills({
             if (!disabled) onChange(o.val);
           }}
           className={cn(
-            "text-[11px] font-semibold border rounded-full px-2.5 py-[3px] transition-colors whitespace-nowrap",
+            "text-[11px] font-semibold border rounded-full px-2.5 py-[3px] transition-colors whitespace-nowrap md-status-pill",
             disabled
               ? value === o.val
                 ? cn(statusPillClass(true, o.tone), "opacity-60 cursor-not-allowed")
