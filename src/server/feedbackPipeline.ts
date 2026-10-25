@@ -500,6 +500,26 @@ export class DefaultFeedbackAIPort implements FeedbackAIPort {
   }
 }
 
+/**
+ * The `replyCount` to write on a Note when a Follow-up lands on it.
+ *
+ * A Note written before the field existed has no count, and incrementing from
+ * zero would report its newest Follow-up as the whole thread. So the first
+ * write counts what the thread already holds — once — and every write after
+ * that increments. Nothing is backfilled: a Note that never gets another
+ * Follow-up keeps saying "not known" rather than guessing.
+ */
+async function nextReplyCount(
+  note: Record<string, any>,
+  replies: { get(): Promise<{ size: number }> },
+): Promise<number | ReturnType<typeof FieldValue.increment>> {
+  if (typeof note.replyCount === 'number' && typeof FieldValue?.increment === 'function') {
+    return FieldValue.increment(1);
+  }
+  const existing = await replies.get();
+  return existing.size + 1;
+}
+
 export class FeedbackPipeline {
   private db: any;
   private githubPort?: GitHubFeedbackPort;
@@ -824,6 +844,10 @@ export class FeedbackPipeline {
     const authorRole: 'submitter' | 'team' = isAuthor ? 'submitter' : 'team';
     const authorName = actor.name;
 
+    // Read before the reply is added: on a legacy Note this counts the thread
+    // as it stands, so the count written below includes this Follow-up.
+    const replyCount = await nextReplyCount(note, docRef.collection('replies'));
+
     const prefix = replyPrefix(authorRole, authorName);
     let githubCommentId: number | null = null;
     if (this.githubPort && note.githubIssueUrl) {
@@ -846,7 +870,13 @@ export class FeedbackPipeline {
       createdAt: serverTimestamp,
     });
 
-    await docRef.update({ awaitingReply: authorRole === 'submitter' });
+    await docRef.update({
+      awaitingReply: authorRole === 'submitter',
+      // The collapsed card reads these off the Note, never off the thread.
+      replyCount,
+      lastReplyAt: serverTimestamp,
+      lastReplyRole: authorRole,
+    });
 
     if (authorRole === 'submitter') {
       await this.notifyFullTimers(
@@ -991,6 +1021,7 @@ export class FeedbackPipeline {
         const data = docSnap.data();
         const ownerSubmitted = await this.isOwnerSubmitter(data.userId);
         const body = ownerSubmitted ? raw : laundered;
+        const replyCount = await nextReplyCount(data, docSnap.ref.collection('replies'));
 
         await docSnap.ref.collection('replies').add({
           authorRole: 'team',
@@ -1001,6 +1032,15 @@ export class FeedbackPipeline {
           createdAt: serverTimestamp,
         });
         relayedCount += 1;
+
+        // A comment relayed from the issue is a team Follow-up like any other,
+        // so the collapsed card counts it and the team has the last word.
+        await docSnap.ref.update({
+          replyCount,
+          lastReplyAt: serverTimestamp,
+          lastReplyRole: 'team',
+          awaitingReply: false,
+        });
 
         if (data.userId && data.userId !== 'anonymous') {
           try {

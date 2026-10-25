@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -6,6 +6,7 @@ import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, Chevro
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
+import { followUpSummary, FOLLOW_UPS_SEEN_KEY } from '../lib/feedbackFollowUps';
 import { isAppOwner } from '../lib/permissions';
 import { Feedback, FeedbackReply } from '../types';
 import PageContainer from '../components/layout/PageContainer';
@@ -35,6 +36,25 @@ export default function MyNotes() {
   const [loadError, setLoadError] = useState(false);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
 
+  // When did this reader last have this page open? "New" is a comparison
+  // against that, remembered per user on this device. A first visit has no
+  // baseline and therefore claims nothing is new.
+  const [lastVisit, setLastVisit] = useState<number | null>(null);
+  const visitRecorded = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.uid || typeof window === 'undefined') return;
+    // StrictMode mounts the page twice in development; the second mount must
+    // compare against the visit that came before, not the stamp it just wrote.
+    if (visitRecorded.current === user.uid) return;
+    visitRecorded.current = user.uid;
+
+    const key = `${FOLLOW_UPS_SEEN_KEY}:${user.uid}`;
+    const stored = Number(window.localStorage.getItem(key));
+    setLastVisit(Number.isFinite(stored) && stored > 0 ? stored : null);
+    window.localStorage.setItem(key, String(Date.now()));
+  }, [user?.uid]);
+
   // The owner reads it raw unless they have switched into someone else's view.
   const asSubmitter = !isAppOwner(user?.email) || ownerViewRole !== null;
 
@@ -58,6 +78,7 @@ export default function MyNotes() {
             id: d.id,
             ...data,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+            lastReplyAt: data.lastReplyAt?.toDate?.()?.toISOString() || data.lastReplyAt,
           } as Feedback);
         });
         setNotes(items);
@@ -131,6 +152,7 @@ export default function MyNotes() {
               key={note.id}
               note={note}
               asSubmitter={asSubmitter}
+              lastVisit={lastVisit}
               expanded={openNoteId === note.id}
               onToggle={() => setOpenNoteId(openNoteId === note.id ? null : note.id)}
             />
@@ -144,11 +166,13 @@ export default function MyNotes() {
 function NoteCard({
   note,
   asSubmitter,
+  lastVisit,
   expanded,
   onToggle,
 }: {
   note: Feedback;
   asSubmitter: boolean;
+  lastVisit: number | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -162,6 +186,20 @@ function NoteCard({
   // subscribe to every thread on the list.
   const teamReplied = note.awaitingReply === false;
 
+  // How many Follow-ups the thread holds, and whether its newest team answer
+  // arrived after this reader's last visit. Both come from the Note, so a
+  // collapsed card can say them without a listener per thread.
+  const { count, isNew } = followUpSummary(note, lastVisit);
+  const countText =
+    count === null
+      ? ''
+      : count === 1
+        ? t('stream.replies_one', '1 reply')
+        : t('stream.replies_many', '{n} replies').replace('{n}', String(count));
+
+  const toggleLabel = teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups');
+  const newText = isNew ? t('stream.new', 'New') : '';
+
   const formattedDate = (() => {
     try {
       return new Date(note.createdAt).toLocaleDateString(language, {
@@ -173,6 +211,8 @@ function NoteCard({
       return note.createdAt;
     }
   })();
+
+  const toggleName = [toggleLabel, countText, newText, formattedDate].filter(Boolean).join(' · ');
 
   const OUTCOME_ICONS = {
     shipped: <Sparkles className="w-3.5 h-3.5" />,
@@ -235,14 +275,33 @@ function NoteCard({
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          aria-label={`${teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups')} · ${formattedDate}`}
+          aria-label={toggleName}
           className="flex w-full min-h-11 items-center justify-between gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
         >
-          <span className="inline-flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>{teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups')}</span>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{toggleLabel}</span>
+            {count !== null && (
+              // The count the Note carries. Not known on a Note written before
+              // the field existed, and then nothing is claimed. A pale pill on
+              // the card's own tone needs the lightest surface step to read.
+              <span
+                aria-hidden
+                className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest px-1.5 text-[11px] font-semibold tabular-nums text-on-surface-variant"
+              >
+                {count}
+              </span>
+            )}
           </span>
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <span className="inline-flex shrink-0 items-center gap-2">
+            {isNew && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-stage-accent-soft px-2 py-0.5 text-[11px] font-semibold text-stage-accent">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-stage-accent" />
+                {newText}
+              </span>
+            )}
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </span>
         </button>
       </div>
 

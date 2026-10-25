@@ -472,6 +472,15 @@ export interface Feedback {
   notifiedOutcome?: FeedbackOutcome;
   /** A Follow-up from the submitter is waiting on the team. */
   awaitingReply?: boolean;
+  /**
+   * How many Follow-ups the Note holds, written by the server as each one
+   * lands so a collapsed card can count without subscribing to the thread.
+   * Absent on Notes written before the field existed — not known, not zero.
+   */
+  replyCount?: number;
+  /** When the last Follow-up landed, and whose it was. */
+  lastReplyAt?: string;
+  lastReplyRole?: 'submitter' | 'team';
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;
