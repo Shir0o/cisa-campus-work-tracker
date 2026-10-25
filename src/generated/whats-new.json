@@ -1,6 +1,344 @@
 {
-  "latestReleaseId": "2026-10-21-v1.12.0",
+  "latestReleaseId": "2026-10-25-v1.13.0",
   "releases": [
+    {
+      "id": "2026-10-25-v1.13.0",
+      "version": "1.13.0",
+      "title": "Release 1.13.0",
+      "date": "2026-10-25",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Restore the Ink radius ladder and phone targets.",
+        "Let the interaction time picker be dismissed.",
+        "Put cards, sheet and inputs back on the radius ladder.",
+        "Lift the first phone page card above the fold."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Restore the Ink radius ladder and phone targets",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Let the interaction time picker be dismissed",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Put cards, sheet and inputs back on the radius ladder",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Lift the first phone page card above the fold",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give the Gospel empty state one CTA and no zeroes",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give Copy link and Show QR a 44px phone target",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Open a person from Answered on their own URL",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Give the row ⋯ trigger a 44px phone target",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Keep the record list mounted across renders",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bring My Day's remaining phone controls to 44px",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "44px phone targets, labelled title",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Re-anchor the Maestro rows after The Journey left",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make the full-timer screens hold up at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Your notes trustworthy and readable on a phone",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Coordination Notes usable on a phone",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Gospel read at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the Bible study read at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Gatherings safe to tap at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Looking back scannable at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Questions legible and answerable at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Answered readable and reachable at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Restore the phone contact page's person, head, keys",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make Settings honest and legible at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Let the phone Journey find a person across steps",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the public study reader read at phone width",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Give People four stated orders",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the Journey's stage editor a real phone sheet",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Count unread messages on phone conversation rows",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Keep the messages composer above the phone keyboard",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Phone nav shell sheet, row and tap-target fixes",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Stop the phone note button stealing row taps",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Stop phone shell scrolling 64px behind bottom bar",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Raise the Journey tone chips to AA at 11px",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Step pills on People replace The Journey screen",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "One Today card per stream, Seen it for plain texts",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Choose when a logged conversation happened",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make the phone prayer list honest and readable",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make the phone messages list readable and sendable",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the phone journey board navigable and legible",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the phone people list readable and reachable",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the phone contact page readable and reachable",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make the phone nav shell readable and reachable",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Make On our hearts a shared team list",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Holding a conversation row opens its action sheet",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Run the test account purge on the server and close its gaps",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Right-align the feedback sheet's sent buttons",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Pick a date for the log sheet's follow-up",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep the layout viewport fixed when Android's keyboard hides",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Stop a conversation flashing as it opens",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Record the mobile screen and flag captured screenshots in issues",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Let the reader fill wide screens so the paged deck can engage",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-10-21-v1.12.0",
       "version": "1.12.0",
