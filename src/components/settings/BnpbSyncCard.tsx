@@ -121,7 +121,7 @@ export default function BnpbSyncCard() {
         </p>
       </div>
 
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5 max-w-2xl">
         <div className="flex items-start gap-3">
           <div className="flex-none w-10 h-10 rounded-full bg-accent-soft text-stage-accent flex items-center justify-center">
             <KeyRound className="w-5 h-5" />
@@ -164,16 +164,16 @@ export default function BnpbSyncCard() {
         </div>
 
         {token && (
-          <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <div className="mt-4 rounded-lg border border-primary/25 bg-primary/5 p-4">
             <p className="text-[13px] text-on-surface-variant">{t('bnpb.token_once')}</p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 min-w-0 truncate rounded-xl bg-surface border border-outline-variant px-3 py-2 text-[13px] text-on-surface">
+              <code className="flex-1 min-w-0 truncate rounded-md bg-surface border border-outline-variant px-3 py-2 text-[13px] text-on-surface">
                 {token}
               </code>
               <button
                 type="button"
                 onClick={copy}
-                className="shrink-0 px-3 py-2 rounded-xl bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5"
+                className="shrink-0 px-3 py-2 rounded-[14px] bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5"
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? t('bnpb.copied') : t('bnpb.copy')}

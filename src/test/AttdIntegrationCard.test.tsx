@@ -103,15 +103,18 @@ describe('AttdIntegrationCard in Settings', () => {
     expect(screen.getByText('Generate new token')).toBeInTheDocument();
   });
 
-  it('generates a new token when the button is clicked', async () => {
+  it('generates a new token only after the confirm (#1817)', async () => {
     render(<Settings />);
 
     await waitFor(() => {
       expect(screen.getByText('Generate new token')).toBeInTheDocument();
     });
 
-    const genButton = screen.getByText('Generate new token');
-    fireEvent.click(genButton);
+    // One tap arms the control; the token pasted into ~/attd is still valid.
+    fireEvent.click(screen.getByRole('button', { name: 'Generate new token' }));
+    expect(setDoc).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
     await waitFor(() => {
       expect(setDoc).toHaveBeenCalledWith(

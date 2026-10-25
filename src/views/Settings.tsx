@@ -262,7 +262,7 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
           <div
             key={card.key}
             className={cn(
-              'flex gap-4 items-start p-4 rounded-3xl border transition-colors',
+              'flex gap-4 items-start p-4 rounded-xl border transition-colors',
               isActive ? 'border-primary/40 bg-primary/5' : 'bg-surface-container border-outline-variant/40',
             )}
           >
@@ -335,7 +335,7 @@ function AccountSection() {
         title={t('settings.account_session', 'Account & Session')}
         sub={t('settings.account_session_sub', 'Manage your signed-in account and session state.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4 min-w-0">
           <Avatar name={user?.displayName || user?.email} photoURL={user?.photoURL} size="lg" />
           <div className="min-w-0">
@@ -344,7 +344,7 @@ function AccountSection() {
               <button
                 type="button"
                 onClick={() => setShowEditName(true)}
-                className="p-1.5 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
+                className="p-1.5 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors"
                 aria-label="Edit name"
                 title="Edit name"
               >
@@ -374,7 +374,7 @@ function AccountSection() {
         </div>
         <button
           onClick={logOut}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-error/10 text-error hover:bg-error/20 font-medium text-sm transition-colors cursor-pointer shrink-0 min-h-[44px] w-full sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[14px] bg-error/10 text-error hover:bg-error/20 font-medium text-sm transition-colors cursor-pointer shrink-0 min-h-[44px] w-full sm:w-auto"
         >
           <LogOut className="w-4 h-4" />
           {t('actions.log_out', 'Log out')}
@@ -542,7 +542,7 @@ function SecuritySection() {
         {factors.map((f) => (
           <li
             key={f.uid}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-outline-variant/40 bg-surface px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-lg border border-outline-variant/40 bg-surface px-4 py-3"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-on-surface">
@@ -558,7 +558,7 @@ function SecuritySection() {
               type="button"
               onClick={() => handleUnenroll(f.uid)}
               disabled={busy}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50 min-h-[40px]"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-[14px] text-xs font-medium bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50 min-h-11"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {t('settings.security.remove', 'Remove')}
@@ -575,7 +575,7 @@ function SecuritySection() {
         title={t('settings.security_title', 'Security')}
         sub={t('settings.security_sub', 'A second factor protects your account even if your password is compromised.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 space-y-4">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-medium text-on-surface">
@@ -603,7 +603,7 @@ function SecuritySection() {
         </div>
 
         {!emailVerified && (
-          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4 text-sm text-on-surface space-y-2">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-on-surface space-y-2">
             <p>
               {t('settings.security.email_not_verified', 'Your email address is not verified. Verify it before adding a second factor.')}
             </p>
@@ -611,7 +611,7 @@ function SecuritySection() {
               type="button"
               onClick={handleVerifyEmail}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-warning/15 text-on-surface border border-warning/40 hover:bg-warning/25 transition-colors disabled:opacity-50 min-h-[40px]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[14px] text-xs font-medium bg-warning/15 text-on-surface border border-warning/40 hover:bg-warning/25 transition-colors disabled:opacity-50 min-h-11"
             >
               <Mail className="w-3.5 h-3.5" />
               {t('settings.security.verify_email', 'Verify email')}
@@ -620,7 +620,7 @@ function SecuritySection() {
         )}
 
         {status === 'reauth' ? (
-          <form onSubmit={handleReauth} className="space-y-3 rounded-2xl border border-outline-variant/40 bg-surface p-4">
+          <form onSubmit={handleReauth} className="space-y-3 rounded-lg border border-outline-variant/40 bg-surface p-4">
             <p className="text-sm text-on-surface">
               {t('settings.security.reauth_prompt', 'Re-confirm your identity to manage your second factor.')}
             </p>
@@ -632,14 +632,14 @@ function SecuritySection() {
                   placeholder={t('settings.security.password_placeholder', 'Password')}
                   value={reauthPassword}
                   onChange={(e) => setReauthPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 pr-12 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+                  className="w-full px-4 py-2.5 pr-12 rounded-sm pointer-coarse:min-h-11 bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowReauthPassword((v) => !v)}
                   aria-label={showReauthPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:content-['']"
                 >
                   {showReauthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -653,7 +653,7 @@ function SecuritySection() {
               <button
                 type="submit"
                 disabled={busy || (!isGoogle && !reauthPassword)}
-                className="flex-1 py-2.5 bg-primary text-on-primary rounded-2xl font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
+                className="flex-1 py-2.5 bg-primary text-on-primary rounded-[14px] font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
               >
                 {busy ? t('settings.security.confirming', 'Confirming…') : t('settings.security.confirm', 'Confirm')}
               </button>
@@ -664,21 +664,21 @@ function SecuritySection() {
                   setPendingAction(null);
                   setReauthPassword('');
                 }}
-                className="px-4 py-2.5 border border-outline text-on-surface rounded-2xl font-medium hover:bg-surface-variant transition-all min-h-[44px]"
+                className="px-4 py-2.5 border border-outline text-on-surface rounded-[14px] font-medium hover:bg-surface-variant transition-all min-h-[44px]"
               >
                 {t('actions.cancel', 'Cancel')}
               </button>
             </div>
           </form>
         ) : status === 'enrolling' && enrollment ? (
-          <div className="space-y-4 rounded-2xl border border-outline-variant/40 bg-surface p-4">
+          <div className="space-y-4 rounded-lg border border-outline-variant/40 bg-surface p-4">
             <p className="text-sm text-on-surface">
               {t('settings.security.scan_prompt', 'Scan this code with your authenticator app (Google Authenticator or similar), then enter the 6-digit code.')}
             </p>
             <div className="flex justify-center">
               <div
                 data-testid="totp-qr-container"
-                className="flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white p-3"
+                className="flex items-center justify-center rounded-[14px] border border-outline-variant/60 bg-white p-3"
               >
                 <QRCodeSVG
                   value={enrollment.qrCodeUrl}
@@ -694,7 +694,7 @@ function SecuritySection() {
             <button
               type="button"
               onClick={() => setShowSecret((v) => !v)}
-              className="text-xs text-accent underline underline-offset-2 hover:opacity-80"
+              className="text-xs text-accent underline underline-offset-2 hover:opacity-80 pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11"
             >
               {showSecret
                 ? t('settings.security.hide_secret', 'Hide manual secret')
@@ -713,13 +713,13 @@ function SecuritySection() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder={t('settings.security.code_placeholder', '6-digit code')}
-                className="w-32 px-3 py-2.5 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center tracking-[0.3em]"
+                className="w-32 px-3 py-2.5 rounded-sm pointer-coarse:min-h-11 bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center tracking-[0.3em]"
               />
               <button
                 type="button"
                 onClick={handleConfirmEnroll}
                 disabled={busy || otp.length !== 6}
-                className="flex-1 py-2.5 bg-primary text-on-primary rounded-2xl font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
+                className="flex-1 py-2.5 bg-primary text-on-primary rounded-[14px] font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
               >
                 {busy ? t('settings.security.adding', 'Adding…') : t('settings.security.add_factor', 'Add second factor')}
               </button>
@@ -731,7 +731,7 @@ function SecuritySection() {
                   setOtp('');
                 }}
                 disabled={busy}
-                className="px-4 py-2.5 border border-outline text-on-surface rounded-2xl font-medium hover:bg-surface-variant transition-all disabled:opacity-50 min-h-[44px]"
+                className="px-4 py-2.5 border border-outline text-on-surface rounded-[14px] font-medium hover:bg-surface-variant transition-all disabled:opacity-50 min-h-[44px]"
               >
                 {t('actions.cancel', 'Cancel')}
               </button>
@@ -745,7 +745,7 @@ function SecuritySection() {
                 type="button"
                 onClick={handleStartEnroll}
                 disabled={busy || !emailVerified}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50 min-h-[44px]"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[14px] bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50 min-h-[44px]"
               >
                 <Plus className="w-4 h-4" />
                 {t('settings.security.set_up', 'Set up second factor')}
@@ -796,7 +796,7 @@ function AppearanceSection({
               onClick={() => setTheme(key)}
               aria-pressed={active}
               className={cn(
-                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
+                'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-colors',
                 // The Inversion Rule: the active choice turns inside out. A 5%
                 // tint left the chosen card lighter than its neighbours.
                 active
@@ -858,7 +858,7 @@ function NavigationSection() {
               onClick={() => setPreference(key)}
               aria-pressed={active}
               className={cn(
-                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
+                'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-colors',
                 active
                   ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
@@ -889,7 +889,7 @@ function NavigationSection() {
       </p>
       <Link
         to="/help"
-        className="mt-6 flex max-w-2xl items-center gap-3 rounded-3xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm text-on-surface transition-colors hover:bg-surface-container-high"
+        className="mt-6 flex max-w-2xl items-center gap-3 rounded-xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm text-on-surface transition-colors hover:bg-surface-container-high"
       >
         <BookOpen className="h-5 w-5 text-accent" />
         <span className="flex-1">{t('settings.help_link', 'Browse Help')}</span>
@@ -977,7 +977,7 @@ function NotificationsSection() {
         title={t('settings.notifications', 'Notifications & Alerts')}
         sub={t('settings.notifications_sub', 'Configure browser alerts and diagnostic push notifications.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-4 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-4 max-w-2xl">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -1001,7 +1001,7 @@ function NotificationsSection() {
         </div>
 
         {feedbackMsg && (
-          <p className="text-xs text-on-surface-variant bg-surface-container-high px-3 py-2 rounded-xl border border-outline-variant/30">
+          <p className="text-xs text-on-surface-variant bg-surface-container-high px-3 py-2 rounded-lg border border-outline-variant/30">
             {feedbackMsg}
           </p>
         )}
@@ -1010,7 +1010,7 @@ function NotificationsSection() {
           {permStatus !== 'granted' && permStatus !== 'unsupported' && (
             <button
               onClick={enableNotifications}
-              className="px-4 py-2 rounded-2xl bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity cursor-pointer"
+              className="px-4 py-2 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity cursor-pointer"
             >
               {t('settings.turn_on_web_notifications', 'Enable browser notifications')}
             </button>
@@ -1019,7 +1019,7 @@ function NotificationsSection() {
           <button
             onClick={handleSendTest}
             disabled={testing || permStatus === 'unsupported'}
-            className="px-4 py-2 rounded-2xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer disabled:opacity-50"
           >
             {testing
               ? t('settings.sending_test_notification', 'Sending test notification…')
@@ -1053,7 +1053,7 @@ function WeeklyReminderSection({ uid, off }: { uid: string; off: boolean }) {
         title={t('reminders.yours_title', 'Your weekly reminders')}
         sub={t('reminders.yours_sub', 'The rhythm reminders that reach your phone, on the campus clock.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex items-center justify-between gap-4 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex items-center justify-between gap-4 max-w-2xl">
         <div className="min-w-0">
           <div className="text-sm font-medium text-on-surface">
             {t('reminders.yours_toggle', 'Weekly reminders')}
@@ -1119,7 +1119,7 @@ function ReminderScheduleSection() {
         {rows.map((row) => (
           <div
             key={row.id}
-            className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 flex flex-col gap-3"
+            className="rounded-xl border border-outline-variant/40 bg-surface-container p-5 flex flex-col gap-3"
           >
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-on-surface">{row.label}</span>
@@ -1137,7 +1137,7 @@ function ReminderScheduleSection() {
                       aria-label={t(day.key, day.label)}
                       onClick={() => setTime(row.id, toggleDay(row.time, day.value))}
                       className={cn(
-                        'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer',
+                        'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11',
                         active
                           ? 'bg-background text-on-surface font-medium'
                           : 'text-on-surface-variant hover:text-on-surface',
@@ -1154,7 +1154,7 @@ function ReminderScheduleSection() {
                   value={row.time.hour}
                   aria-label={t('reminders.hour_for', 'Time for {name}').replace('{name}', row.label)}
                   onChange={(e) => setTime(row.id, { ...row.time, hour: Number(e.target.value) })}
-                  className="rounded-xl border border-outline-variant/50 bg-surface px-2.5 py-1.5 text-[13px] text-on-surface cursor-pointer"
+                  className="rounded-sm pointer-coarse:min-h-11 border border-outline-variant/50 bg-surface px-2.5 py-1.5 text-[13px] text-on-surface cursor-pointer"
                 >
                   {REMINDER_HOURS.map((hour) => (
                     <option key={hour} value={hour}>
@@ -1194,7 +1194,7 @@ function LanguageSection() {
               onClick={() => setLanguage(key)}
               aria-pressed={active}
               className={cn(
-                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors cursor-pointer',
+                'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-colors cursor-pointer',
                 active
                   ? 'border-transparent bg-primary text-on-primary'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
@@ -1288,10 +1288,10 @@ function WhatsNewSection({
         title={t('settings.whats_new', "What's New")}
         sub={t('settings.whats_new_sub', 'See the latest updates, features, and improvements added to CISA.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-accent shrink-0">
+            <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center text-accent shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -1306,7 +1306,7 @@ function WhatsNewSection({
           <button
             type="button"
             onClick={onOpen}
-            className="px-5 py-2.5 rounded-xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
+            className="px-5 py-2.5 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
           >
             {t('settings.whats_new_button', 'View latest release notes')}
           </button>
@@ -1335,7 +1335,7 @@ function WhatsNewSection({
                 aria-label={t('settings.whats_new_video_url', 'Video link')}
                 value={effectiveInputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-sm bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none text-on-surface"
+                className="flex-1 px-3.5 py-2 text-sm bg-surface rounded-sm pointer-coarse:min-h-11 border border-outline-variant focus:border-primary outline-none text-on-surface"
               />
               <div className="w-full sm:w-56">
                 <Select
@@ -1344,6 +1344,7 @@ function WhatsNewSection({
                     setTargetAudience(e.target.value as 'everyone' | 'admin' | 'staff')
                   }
                   aria-label="Video audience"
+                  className="rounded-sm pointer-coarse:min-h-11"
                 >
                   <option value="everyone">Everyone</option>
                   <option value="staff">Full-timers & Trainees</option>
@@ -1365,7 +1366,7 @@ function WhatsNewSection({
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 text-xs font-medium rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                className="px-4 py-2 text-xs font-medium rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
               >
                 {saving ? t('settings.saving', 'Saving...') : t('settings.save_video', 'Save video settings')}
               </button>
@@ -1390,7 +1391,7 @@ function DayGoalSection() {
         title={t('settings.day_goal_title', "The day's goal")}
         sub={t('settings.day_goal_sub', 'A shared aim for an on-campus day — the same number for everyone.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h3 className="font-serif text-base text-on-surface leading-tight">
@@ -1422,7 +1423,7 @@ function DayGoalSection() {
 onClick={() => setCount(goal.count - 1)}
               disabled={goal.count <= GOAL_MIN}
               aria-label={t('settings.day_goal_lower', "Lower the day's goal")}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-2xl border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
+              className="inline-flex items-center justify-center w-11 h-11 rounded-[14px] border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
             >
               <Minus className="w-4 h-4" />
             </button>
@@ -1438,7 +1439,7 @@ onClick={() => setCount(goal.count - 1)}
               onClick={() => setCount(goal.count + 1)}
               disabled={goal.count >= GOAL_MAX}
               aria-label={t('settings.day_goal_raise', "Raise the day's goal")}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-2xl border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
+              className="inline-flex items-center justify-center w-11 h-11 rounded-[14px] border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -1459,7 +1460,7 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
     setTimeout(() => setCopied(false), 1600);
   };
   return (
-    <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low overflow-hidden">
+    <div className="rounded-lg border border-outline-variant/50 bg-surface-container-low overflow-hidden">
       {label && <div className="px-3 pt-2.5 text-[11px]   text-on-surface-variant">{label}</div>}
       <div className="relative">
         <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2.5 pr-14 select-all">
@@ -1467,7 +1468,7 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
         </pre>
         <button
           onClick={copy}
-          className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
+          className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-[14px] pointer-coarse:min-h-11 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
           aria-label="Copy"
         >
           {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1493,7 +1494,7 @@ function ChannelCard({
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div className="rounded-2xl border border-outline-variant/40 bg-surface-container overflow-hidden">
+    <div className="rounded-xl border border-outline-variant/40 bg-surface-container overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -1625,7 +1626,7 @@ function IntegrationsSection({
       />
       <div className="space-y-3 max-w-2xl">
         {/* Natural-language playground */}
-        <div className="rounded-2xl border border-outline-variant/40 bg-surface-container p-5">
+        <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
           <div className="flex items-start gap-3 mb-3">
             <span className="w-9 h-9 rounded-full bg-stage-violet-soft text-stage-violet flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
@@ -1675,12 +1676,12 @@ function IntegrationsSection({
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={status === 'loading'}
-              className="flex-1 px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+              className="flex-1 px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
             />
             <button
               onClick={handleQuickAdd}
               disabled={status === 'loading' || !text.trim()}
-              className="px-5 py-3 bg-primary text-on-primary font-medium rounded-xl hover:bg-primary/90 transition-colors text-sm shrink-0 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="px-5 py-3 bg-primary text-on-primary font-medium rounded-[14px] hover:bg-primary/90 transition-colors text-sm shrink-0 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {status === 'loading' ? (
                 <>
@@ -1702,7 +1703,7 @@ function IntegrationsSection({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="mt-4 p-4 bg-success/10 border border-success/30 rounded-xl text-sm"
+                className="mt-4 p-4 bg-success/10 border border-success/30 rounded-lg text-sm"
               >
                 <div className="flex items-center gap-2 text-success font-medium mb-3">
                   <CheckCircle2 className="w-4 h-4" /> Parsed into a contact
@@ -1739,7 +1740,7 @@ function IntegrationsSection({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="mt-4 p-4 bg-error/10 border border-error/30 rounded-xl text-sm flex items-start gap-2 text-error"
+                className="mt-4 p-4 bg-error/10 border border-error/30 rounded-lg text-sm flex items-start gap-2 text-error"
               >
                 <XCircle className="w-5 h-5 shrink-0" />
                 <div>
@@ -1833,7 +1834,7 @@ function IntegrationsSection({
             </p>
 
             <div className="space-y-3">
-              <div className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
+              <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <code className="font-code text-[11px] px-1.5 py-0.5 rounded bg-stage-accent-soft text-stage-accent">
                     contact
@@ -1846,7 +1847,7 @@ function IntegrationsSection({
                 <CodeBlock code="!add contact Jerry Doe is a sophomore majoring in history, phone 555-0192, met at cafeteria." />
               </div>
 
-              <div className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
+              <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <code className="font-code text-[11px] px-1.5 py-0.5 rounded bg-stage-teal-soft text-stage-teal">
                     interaction
@@ -1880,8 +1881,17 @@ function AttdIntegrationCard({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  // Replacing the token revokes the one already pasted into ~/attd, so the
+  // control arms on the first tap and only writes on the second. Same
+  // two-tap shape as a Gospel outing's Remove (Outreach.tsx).
+  const [confirmingToken, setConfirmingToken] = useState(false);
+  const confirmTokenRef = useRef<HTMLButtonElement>(null);
 
   const intakeUrl = `${appUrl}/api/attendance-sync`;
+
+  useEffect(() => {
+    if (confirmingToken) confirmTokenRef.current?.focus();
+  }, [confirmingToken]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -1929,6 +1939,7 @@ function AttdIntegrationCard({
       setSaveStatus(t('attendanceSync.attd_token_save_failed', 'Could not save sync token.'));
     } finally {
       setIsGenerating(false);
+      setConfirmingToken(false);
     }
   };
 
@@ -1948,19 +1959,43 @@ function AttdIntegrationCard({
 
       <CodeBlock label={t('attendanceSync.attd_endpoint_label', 'Intake endpoint URL')} code={intakeUrl} />
 
-      <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-3 space-y-2">
+      <div className="rounded-lg border border-outline-variant/50 bg-surface-container-low p-3 space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[11px] text-on-surface-variant font-medium">
+          <span id="attd-token-label" className="text-[11px] text-on-surface-variant font-medium">
             {t('attendanceSync.attd_token_label', 'Sync Token (x-sync-token)')}
           </span>
-          <button
-            onClick={handleGenerateToken}
-            disabled={isGenerating}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            <span>{t('attendanceSync.attd_generate_token', 'Generate new token')}</span>
-          </button>
+          {confirmingToken ? (
+            <span className="inline-flex items-center gap-1.5">
+              <button
+                ref={confirmTokenRef}
+                type="button"
+                onClick={handleGenerateToken}
+                disabled={isGenerating}
+                aria-describedby="attd-token-label"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium bg-error text-on-error hover:bg-error/90 transition-colors disabled:opacity-50"
+              >
+                {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>{t('settings.security.confirm', 'Confirm')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingToken(false)}
+                className="inline-flex items-center px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                {t('actions.cancel', 'Cancel')}
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingToken(true)}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              <span>{t('attendanceSync.attd_generate_token', 'Generate new token')}</span>
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -1970,14 +2005,14 @@ function AttdIntegrationCard({
           </div>
         ) : syncToken ? (
           <div className="relative">
-            <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2 pr-20 bg-surface border border-outline-variant/40 rounded-lg select-all">
+            <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2 pr-20 bg-surface border border-outline-variant/40 rounded-md select-all">
               {showToken ? syncToken : '•'.repeat(Math.min(syncToken.length, 32))}
             </pre>
             <div className="absolute top-1.5 right-2 flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setShowToken((prev) => !prev)}
-                className="p-1 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                className="relative p-1 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3 pointer-coarse:after:content-['']"
                 title={showToken ? 'Hide token' : 'Show token'}
                 aria-label={showToken ? 'Hide token' : 'Show token'}
               >
@@ -1990,7 +2025,7 @@ function AttdIntegrationCard({
                   setSaveStatus(t('attendanceSync.attd_token_copied', 'Sync token copied to clipboard'));
                   setTimeout(() => setSaveStatus(null), 2500);
                 }}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[14px] pointer-coarse:min-h-11 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
                 title="Copy token"
                 aria-label="Copy token"
               >
@@ -2000,7 +2035,7 @@ function AttdIntegrationCard({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-on-surface bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
+          <p className="text-xs text-on-surface bg-warning/10 border border-warning/30 p-2.5 rounded-md">
             {t('attendanceSync.attd_no_token', 'No sync token configured yet. Generate one to enable sync from ~/attd.')}
           </p>
         )}
@@ -2077,7 +2112,7 @@ function WebhookConsoleSection() {
           <button
             onClick={handleClearLogs}
             disabled={isClearing}
-            className="shrink-0 px-3 py-1.5 text-xs text-error hover:bg-error/10 font-medium rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="shrink-0 px-3 py-1.5 text-xs text-error hover:bg-error/10 font-medium rounded-[14px] pointer-coarse:min-h-11 transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Clear
@@ -2085,7 +2120,7 @@ function WebhookConsoleSection() {
         )}
       </div>
 
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
+      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
         {loadingLogs ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
             <Loader2 className="w-7 h-7 animate-spin text-accent" />
@@ -2113,7 +2148,7 @@ function WebhookConsoleSection() {
                 <div
                   key={log.dbId}
                   className={cn(
-                    'rounded-xl border bg-surface-container-low transition-colors overflow-hidden',
+                    'rounded-lg border bg-surface-container-low transition-colors overflow-hidden',
                     isSelected ? 'border-primary/40' : 'border-outline-variant/40 hover:bg-surface-container-high',
                   )}
                 >
@@ -2148,7 +2183,7 @@ function WebhookConsoleSection() {
                       >
                         <div className="p-3.5 space-y-3">
                           {log.error && (
-                            <div className="p-3 bg-error/10 border border-error/20 rounded-lg text-error text-xs">
+                            <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-xs">
                               <span className="font-medium block mb-1">Failure detail</span>
                               {log.error}
                             </div>
@@ -2157,7 +2192,7 @@ function WebhookConsoleSection() {
                             <span className="text-[11px]   text-on-surface-variant block mb-1">
                               Raw payload (POST body)
                             </span>
-                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-lg overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
+                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
                               {(() => {
                                 try {
                                   return JSON.stringify(JSON.parse(log.payload), null, 2);
@@ -2171,7 +2206,7 @@ function WebhookConsoleSection() {
                             <span className="text-[11px]   text-on-surface-variant block mb-1">
                               Request headers
                             </span>
-                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-lg overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
+                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
                               {(() => {
                                 try {
                                   return JSON.stringify(JSON.parse(log.headers), null, 2);
@@ -2203,7 +2238,7 @@ function DangerZoneSection({ onOpenPurgeModal }: { onOpenPurgeModal: () => void 
         title={t('settings.danger_zone', 'Data management & danger zone')}
         sub={t('settings.danger_zone_sub', 'Administrative tools for cleaning up database traces and test records.')}
       />
-      <div className="rounded-3xl border border-error/25 bg-surface-container p-5 max-w-2xl">
+      <div className="rounded-xl border border-error/25 bg-surface-container p-5 max-w-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h3 className="font-serif text-base text-on-surface flex items-center gap-2">
@@ -2220,7 +2255,7 @@ function DangerZoneSection({ onOpenPurgeModal }: { onOpenPurgeModal: () => void 
           <button
             type="button"
             onClick={onOpenPurgeModal}
-            className="shrink-0 px-4 py-2.5 rounded-xl border border-error/40 text-error hover:bg-error/10 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            className="shrink-0 px-4 py-2.5 rounded-[14px] pointer-coarse:min-h-11 border border-error/40 text-error hover:bg-error/10 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             {t('settings.scan_and_purge', 'Scan & Purge…')}
@@ -2266,7 +2301,7 @@ function MemberCard({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 p-3.5 rounded-3xl border transition-colors',
+        'flex items-center gap-3 p-3.5 rounded-xl border transition-colors',
         isYou ? 'border-primary/30 bg-primary/5' : 'bg-surface-container border-outline-variant/40',
       )}
     >
@@ -2289,21 +2324,21 @@ function MemberCard({
         <div className="relative shrink-0" ref={ref}>
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
+            className="p-2 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors"
             aria-label="Member options"
             aria-expanded={menuOpen}
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-xl border border-outline-variant/60 bg-surface shadow-lg py-1">
+            <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-outline-variant/60 bg-surface shadow-lg py-1">
               {canEdit && (
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high text-left pointer-coarse:min-h-11 pointer-coarse:flex pointer-coarse:items-center"
                 >
                   <Pencil className="w-3.5 h-3.5" /> Edit member
                 </button>
@@ -2314,7 +2349,7 @@ function MemberCard({
                     setMenuOpen(false);
                     onRemove();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 text-left pointer-coarse:min-h-11 pointer-coarse:flex pointer-coarse:items-center"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Remove access
                 </button>
@@ -2330,7 +2365,7 @@ function MemberCard({
 function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => void }) {
   const { t } = useLanguage();
   return (
-    <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-outline-variant/60 bg-surface-container-low">
+    <div className="flex items-center gap-3 p-3.5 rounded-xl border border-outline-variant/60 bg-surface-container-low">
       <div className="w-10 h-10 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center shrink-0">
         <Mail className="w-4 h-4" />
       </div>
@@ -2345,7 +2380,7 @@ function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => v
       </div>
       <button
         onClick={onCancel}
-        className="p-2 rounded-full text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
+        className="p-2 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
         title="Cancel invite"
         aria-label="Cancel invite"
       >
@@ -2393,7 +2428,7 @@ function EditMemberModal({
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
-        className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
+        className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
         <h3 className="font-serif text-xl text-on-surface mb-4">Edit member</h3>
         <div className="flex items-center gap-3 mb-5">
@@ -2415,7 +2450,7 @@ function EditMemberModal({
               maxLength={128}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Jane Doe"
-              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
+              className="w-full px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
               autoFocus
             />
           </div>
@@ -2427,7 +2462,7 @@ function EditMemberModal({
               id="edit-member-role"
               value={role}
               onChange={(e) => setRole(e.target.value as AppRole)}
-              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
+              className="w-full px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
             >
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -2440,14 +2475,14 @@ function EditMemberModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+              className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!canSave}
-              className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex-1 py-3 rounded-[14px] bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               Save
             </button>
@@ -2490,7 +2525,7 @@ function EditSelfNameModal({
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
-        className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
+        className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
         <h3 className="font-serif text-xl text-on-surface mb-4">Edit your name</h3>
         <form onSubmit={handleSubmit}>
@@ -2505,7 +2540,7 @@ function EditSelfNameModal({
               maxLength={128}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
+              className="w-full px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
               autoFocus
             />
           </div>
@@ -2513,14 +2548,14 @@ function EditSelfNameModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+              className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!canSave}
-              className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex-1 py-3 rounded-[14px] bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               Save
             </button>
@@ -2555,7 +2590,7 @@ function RemoveConfirmModal({
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
-        className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
+        className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
         <h3 className="font-serif text-xl text-on-surface mb-3">Remove access?</h3>
         <div className="flex items-center gap-3 mb-4">
@@ -2572,13 +2607,13 @@ function RemoveConfirmModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+            className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(user.uid)}
-            className="flex-1 py-3 rounded-xl bg-error text-on-error font-medium hover:bg-error/90 transition-colors"
+            className="flex-1 py-3 rounded-[14px] bg-error text-on-error font-medium hover:bg-error/90 transition-colors"
           >
             Remove
           </button>
@@ -2622,7 +2657,7 @@ function InviteModal({
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
-        className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
+        className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between mb-5">
           <div>
@@ -2633,7 +2668,7 @@ function InviteModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors shrink-0"
+            className="p-1.5 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors shrink-0"
             aria-label="Close"
           >
             <XCircle className="w-5 h-5" />
@@ -2652,7 +2687,7 @@ function InviteModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
-                className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
+                className="w-full pl-10 pr-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
               />
             </div>
           </div>
@@ -2663,7 +2698,7 @@ function InviteModal({
               id="pre-add-role-select"
               value={role}
               onChange={(e) => setRole(e.target.value as AppRole)}
-              className="w-full pl-4 pr-10 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
+              className="w-full pl-4 pr-10 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
             >
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -2677,14 +2712,14 @@ function InviteModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+              className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isInviting || !email}
-              className="flex-[1.4] py-3 rounded-xl bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex-[1.4] py-3 rounded-[14px] bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {isInviting ? (
                 <span className="animate-pulse">Adding…</span>
@@ -2722,8 +2757,8 @@ function CalendarSyncPanel() {
         title={t('settings.shared_calendar', 'The shared calendar')}
         sub={t('settings.shared_calendar_sub', 'Bring events from the shared calendar across as gatherings or context.')}
       />
-      <div className="cals rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
-        <label className="cals-toggle flex items-center gap-3 cursor-pointer select-none">
+      <div className="cals rounded-xl border border-outline-variant/40 bg-surface-container p-5">
+        <label className="cals-toggle flex items-center gap-3 cursor-pointer select-none pointer-coarse:min-h-11">
           <input
             type="checkbox"
             checked={isEnabled}
@@ -2804,14 +2839,14 @@ function CarePick({
   onCancel: () => void;
 }) {
   return (
-    <div className="mt-3 flex flex-col gap-1 rounded-2xl border border-outline-variant/40 bg-surface-container-high p-2">
+    <div className="mt-3 flex flex-col gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-high p-2">
       {people.length ? (
         people.map((s) => (
           <button
             key={s.uid}
             type="button"
             onClick={() => onPick(s.uid)}
-            className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm text-on-surface hover:bg-surface transition-colors cursor-pointer"
+            className="flex items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-left text-sm text-on-surface hover:bg-surface transition-colors cursor-pointer"
           >
             <Avatar name={s.displayName} photoURL={s.photoURL} size="sm" />
             <span className="truncate">{s.displayName || 'Unnamed'}</span>
@@ -2823,7 +2858,7 @@ function CarePick({
       <button
         type="button"
         onClick={onCancel}
-        className="self-start rounded-lg px-2 py-1 text-[13px] font-medium text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+        className="self-start rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 px-2 py-1 text-[13px] font-medium text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
       >
         {cancelLabel}
       </button>
@@ -2885,7 +2920,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   };
 
   const newPair = first ? (
-    <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+    <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
       <div className="font-serif text-base text-on-surface mb-1">
         {t('settings.pairs_who_with', 'Who goes out with {name}?').replace('{name}', byId[first]?.displayName || 'Unnamed')}
       </div>
@@ -2898,7 +2933,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
       />
     </div>
   ) : (
-    <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+    <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
       <label className="block mb-3">
         <span className="text-[13px] font-medium text-on-surface-variant">{t('settings.pairs_start_date', 'Started on')}</span>
         <input
@@ -2906,7 +2941,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
           value={startDate}
           max={dayKey()}
           onChange={(e) => setStartDate(e.target.value || dayKey())}
-          className="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface"
+          className="mt-1 w-full rounded-sm border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface pointer-coarse:min-h-11"
         />
       </label>
       <div className="font-serif text-base text-on-surface mb-1">
@@ -2936,7 +2971,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
           const people = p.members.map((id) => byId[id]).filter(Boolean);
           const open = !p.endDate;
           return (
-            <div key={p.id} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+            <div key={p.id} className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
               <div className="flex items-start gap-3">
                 <div className="flex -space-x-2">
                   {people.slice(0, 3).map((person) => (
@@ -2960,7 +2995,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                       setEndingId(p.id);
                       setEndDate(dayKey());
                     }}
-                    className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                    className="shrink-0 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
                   >
                     {t('settings.pairs_end', 'End')}
                   </button>
@@ -2976,7 +3011,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                       value={endDate}
                       min={p.startDate}
                       onChange={(e) => setEndDate(e.target.value || dayKey())}
-                      className="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface"
+                      className="mt-1 w-full rounded-sm border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface pointer-coarse:min-h-11"
                     />
                   </label>
                   <button
@@ -2985,14 +3020,14 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                       commit(endPairing(pairings, p.id, endDate));
                       setEndingId(null);
                     }}
-                    className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                    className="shrink-0 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
                   >
                     {t('settings.pairs_confirm_end', 'End pairing')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setEndingId(null)}
-                    className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface-variant hover:bg-surface transition-colors cursor-pointer"
+                    className="shrink-0 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 px-3 py-2 text-[13px] font-medium text-on-surface-variant hover:bg-surface transition-colors cursor-pointer"
                   >
                     {t('settings.pairs_never_mind', 'Never mind')}
                   </button>
@@ -3011,7 +3046,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
               setPicking('new');
               setStartDate(dayKey());
             }}
-            className="inline-flex items-center gap-2 self-start rounded-2xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 self-start rounded-[14px] border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" /> {t('settings.pairs_two_together', 'Two trainees going out together')}
           </button>
@@ -3027,7 +3062,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
         )}
 
         {history.length > 0 && (
-          <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
+          <div className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-5">
             <div className="font-serif text-base text-on-surface mb-3">{t('settings.pairs_history', 'Earlier arrangements')}</div>
             {history.map(([k, arr]) => (
               <div key={k} className="mb-3 last:mb-0">
@@ -3085,7 +3120,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
               aria-pressed={on}
               onClick={() => void saveUserTeam(u.uid, on ? null : tm.id)}
               className={cn(
-                'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer',
+                'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11',
                 on ? 'bg-background text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
               )}
             >
@@ -3121,7 +3156,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
         </div>
 
         {TEAMS.map((tm) => (
-          <div key={tm.id} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+          <div key={tm.id} className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
             <div className="font-serif text-base text-on-surface mb-3">{t(teamLabelKey(tm.id), tm.label)}</div>
             <div className="flex flex-col gap-1.5">
               {onTeam(tm.id).length ? (
@@ -3136,7 +3171,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
         ))}
 
         {!!unassigned.length && (
-          <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
+          <div className="rounded-xl border border-outline-variant/40 bg-surface-container-low p-5">
             <div className="font-serif text-base text-on-surface">{t('teams.unassigned', 'Not on a team yet')}</div>
             <p className="text-[13px] text-on-surface-variant mt-0.5 mb-3 leading-relaxed">
               {t(
@@ -3173,7 +3208,7 @@ function GettingStartedSection() {
         <button
           type="button"
           onClick={handleRestore}
-          className="px-4 py-2 text-sm font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full transition-colors"
+          className="px-4 py-2 text-sm font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 transition-colors"
         >
           {t('settings.show_checklist', 'Show getting started checklist')}
         </button>
@@ -3456,12 +3491,12 @@ export default function Settings() {
               aria-label={t('settings.find_teammate_label', 'Find a teammate')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+              className="w-full pl-10 pr-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
             />
           </div>
           <button
             onClick={() => setShowInviteDialog(true)}
-            className="px-4 py-3 rounded-xl bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shrink-0"
+            className="px-4 py-3 rounded-[14px] bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shrink-0"
           >
             <UserPlus className="w-4 h-4" /> {t('settings.add_someone', 'Add someone')}
           </button>
@@ -3469,7 +3504,7 @@ export default function Settings() {
 
         {/* Asking to join */}
         {!loading && pendingUsers.length > 0 && (
-          <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <div className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
             <div className="flex items-center gap-2 mb-3 text-accent">
               <KeyRound className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -3489,7 +3524,7 @@ export default function Settings() {
                   <button
                     onClick={() => toggleApproval(u.uid, u.approved)}
                     disabled={updatingId === u.uid}
-                    className="shrink-0 px-3.5 py-2 rounded-full bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="shrink-0 px-3.5 py-2 rounded-full pointer-coarse:min-h-11 bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     {updatingId === u.uid ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -3511,7 +3546,7 @@ export default function Settings() {
         {teamError ? (
           <div
             role="alert"
-            className="flex flex-col gap-3 rounded-2xl border border-error/30 bg-error/5 p-4 sm:flex-row sm:items-center"
+            className="flex flex-col gap-3 rounded-xl border border-error/30 bg-error/5 p-4 sm:flex-row sm:items-center"
           >
             <p className="flex-1 text-sm text-on-surface">
               {t('settings.team_load_failed', "Couldn't load your team.")}
@@ -3523,7 +3558,7 @@ export default function Settings() {
                 setLoading(true);
                 setTeamReloadKey((k) => k + 1);
               }}
-              className="shrink-0 rounded-lg border border-outline-variant/50 bg-surface px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors min-h-[40px]"
+              className="shrink-0 rounded-[14px] border border-outline-variant/50 bg-surface px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors min-h-11"
             >
               {t('settings.try_again', 'Try again')}
             </button>
@@ -3533,7 +3568,7 @@ export default function Settings() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 p-3.5 rounded-3xl border border-outline-variant/40 bg-surface-container"
+                className="flex items-center gap-3 p-3.5 rounded-xl border border-outline-variant/40 bg-surface-container"
               >
                 <Skeleton className="w-10 h-10 rounded-full" />
                 <div className="space-y-2 flex-1">
@@ -3544,7 +3579,7 @@ export default function Settings() {
             ))}
           </div>
         ) : approvedUsers.length === 0 && filteredInvites.length === 0 ? (
-          <div className="py-12 text-center rounded-2xl border border-outline-variant/50 bg-surface-container-low">
+          <div className="py-12 text-center rounded-xl border border-outline-variant/50 bg-surface-container-low">
             <p className="text-sm text-on-surface-variant">{t('settings.no_matches', 'No teammates or invites match your search.')}</p>
           </div>
         ) : (
@@ -3585,7 +3620,7 @@ export default function Settings() {
       {sharedTail}
 
       {/* Admin note */}
-      <div className="mt-10 rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5 flex items-start gap-3">
+      <div className="mt-10 rounded-xl border border-outline-variant/40 bg-surface-container-low p-5 flex items-start gap-3">
         <span className="w-9 h-9 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center shrink-0">
           <Shield className="w-4 h-4" />
         </span>
