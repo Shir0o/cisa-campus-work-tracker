@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Image as ImageIcon } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord } from '../types';
 import { cn } from '../lib/utils';
 import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
-import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { useLanguage } from '../components/LanguageProvider';
-import { usePreserveScroll } from '../lib/usePreserveScroll';
+import { currentHref } from '../lib/navTrail';
 import { Translate } from '../components/Translate';
 
 const TONES: ('accent' | 'violet' | 'amber' | 'sage')[] = ['accent', 'violet', 'amber', 'sage'];
@@ -161,12 +160,12 @@ function AnsweredCard({ row, contact, locale, t, onOpen }: AnsweredCardProps) {
 
 export default function AnsweredList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profileContact, setProfileContact] = useState<Contact | null>(null);
 
   const onLoadError = (e: unknown, path: string) => {
     setError('the answered prayer list');
@@ -229,17 +228,14 @@ export default function AnsweredList() {
     };
   }, [prayers]);
 
-  // People detail is a full page (the design's ContactDetail), not a popup.
-  usePreserveScroll(!!profileContact);
-  if (profileContact) {
-    return (
-      <ContactDetailsModal
-        isOpen
-        onClose={() => setProfileContact(null)}
-        contact={profileContact}
-      />
-    );
-  }
+  // A person is a page with its own URL, not a popup over the wall (#1823):
+  // pushing `/people/:id` is what gives the phone's Back button the wall to
+  // return to. `from` carries this list (filters and all) to the person page,
+  // so its trail says "Answered" and closing it comes back here.
+  const openContact = (contact: Contact) =>
+    navigate(`/people/${contact.id}`, {
+      state: { from: currentHref(location) },
+    });
 
   if (error) {
     return <DataLoadError label={error} />;
@@ -268,7 +264,7 @@ export default function AnsweredList() {
       contact={contactMap.get(row.prayer.contactId)}
       locale={language}
       t={t}
-      onOpen={setProfileContact}
+      onOpen={openContact}
     />
   );
 
