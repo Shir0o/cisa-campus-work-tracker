@@ -52,6 +52,37 @@ export default function ContactComposer({
   const formRef = useRef<HTMLFormElement | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const [menu, setMenu] = useState<null | "time" | "by">(null);
+  const timeWrapRef = useRef<HTMLSpanElement | null>(null);
+  const byWrapRef = useRef<HTMLSpanElement | null>(null);
+  const timeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const byTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // A chip's popover is a layer over the page, so it closes on a click outside
+  // it and answers Escape itself. Same contract as the reason StageMenu and the
+  // contact head's menu learned it (#1801, #1761): the open popover must never
+  // leave the reader with no way out, and Escape must close the layer, not the
+  // contact page underneath.
+  useEffect(() => {
+    if (!menu) return;
+    const wrap = menu === "time" ? timeWrapRef.current : byWrapRef.current;
+    const onDown = (e: MouseEvent) => {
+      if (wrap && !wrap.contains(e.target as Node)) setMenu(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menu]);
+
+  const closeMenu = () => {
+    const trigger = menu === "by" ? byTriggerRef.current : timeTriggerRef.current;
+    setMenu(null);
+    trigger?.focus();
+  };
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (!menu || e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeMenu();
+  };
 
   useEffect(() => {
     if (open) textRef.current?.focus();
@@ -67,11 +98,11 @@ export default function ContactComposer({
   const setDateTime = (dateTime: string) => onChange((p) => ({ ...p, dateTime }));
   const pickTime = (at: string) => {
     setDateTime(at);
-    setMenu(null);
+    closeMenu();
   };
   const pickBy = (reachedById: string) => {
     onChange((p) => ({ ...p, reachedById }));
-    setMenu(null);
+    closeMenu();
   };
   const setMode = (mode: ComposerValue["mode"]) => {
     onChange((p) => ({ ...p, mode }));
@@ -163,8 +194,9 @@ export default function ContactComposer({
                   {t(`modals.contactDetails.${TYPE_LABEL[type]}`)}
                 </button>
               ))}
-              <span className="cd-composer-pop">
+              <span className="cd-composer-pop" ref={timeWrapRef} onKeyDown={onMenuKeyDown}>
                 <button
+                  ref={timeTriggerRef}
                   type="button"
                   className="cd-composer-chip ghost"
                   aria-haspopup="dialog"
@@ -203,6 +235,11 @@ export default function ContactComposer({
                         )}
                       </button>
                     ))}
+                    {/* The native picker only leaves when the browser says so;
+                        this is the reader's own way out, focus back on the chip. */}
+                    <button type="button" className="cd-composer-item" onClick={closeMenu}>
+                      {t("actions.done")}
+                    </button>
                   </div>
                 )}
               </span>
@@ -233,8 +270,9 @@ export default function ContactComposer({
           )}
 
           {canLogOnBehalf && !isPrayer && !isEdit && (
-            <span className="cd-composer-pop">
+            <span className="cd-composer-pop" ref={byWrapRef} onKeyDown={onMenuKeyDown}>
               <button
+                ref={byTriggerRef}
                 type="button"
                 className="cd-composer-chip ghost"
                 aria-haspopup="menu"

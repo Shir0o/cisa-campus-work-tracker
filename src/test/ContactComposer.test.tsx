@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import ContactComposer from '../components/contact/ContactComposer';
 import { emptyComposer, type ComposerValue } from '../lib/contactComposer';
 
@@ -61,6 +61,60 @@ describe('ContactComposer time picker (#1495)', () => {
     const yesterday = screen.getByRole('button', { name: /^yesterday/i });
     expect(yesterday).not.toHaveTextContent('{time}');
     expect(yesterday).toHaveTextContent(/^Yesterday, \d{1,2}:\d{2}\s?(AM|PM)$/i);
+  });
+});
+
+describe('ContactComposer time picker dismissal (#1801)', () => {
+  const openTimePicker = () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: /^now$/i }));
+    return screen.getByRole('dialog', { name: /choose date and time/i });
+  };
+  const picker = () => screen.queryByRole('dialog', { name: /choose date and time/i });
+
+  it('closes with Escape after a time is typed by hand', () => {
+    openTimePicker();
+    const field = screen.getByLabelText(/^date and time$/i);
+
+    fireEvent.change(field, { target: { value: '2026-09-15T09:45' } });
+    field.focus();
+    fireEvent.keyDown(field, { key: 'Escape' });
+
+    expect(picker()).toBeNull();
+    // The hand-typed moment survives the dismissal, and focus goes home.
+    expect(screen.getByRole('button', { name: /Sep 15, 9:45/i })).toHaveFocus();
+  });
+
+  it('answers Escape itself instead of letting the page close underneath (#1761)', () => {
+    const outer = vi.fn();
+    window.addEventListener('keydown', outer);
+    try {
+      openTimePicker();
+      const field = screen.getByLabelText(/^date and time$/i);
+      fireEvent.keyDown(field, { key: 'Escape' });
+
+      expect(picker()).toBeNull();
+      expect(outer).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('keydown', outer);
+    }
+  });
+
+  it('closes when the reader clicks away', () => {
+    openTimePicker();
+
+    fireEvent.mouseDown(document.body);
+
+    expect(picker()).toBeNull();
+  });
+
+  it('offers a Done exit in the popover that returns focus to its chip', () => {
+    openTimePicker();
+
+    fireEvent.click(screen.getByRole('button', { name: /^done$/i }));
+
+    expect(picker()).toBeNull();
+    expect(screen.getByRole('button', { name: /^now$/i })).toHaveFocus();
   });
 });
 
