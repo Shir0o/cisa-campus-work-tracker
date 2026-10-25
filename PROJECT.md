@@ -43,3 +43,22 @@ Default vocabulary: label strings equal the canonical role names (`needs-triage`
 ### Domain docs
 
 Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
+## 9. Local toolchain (check this before debugging the harness)
+
+Two tool versions are load-bearing. Getting either wrong surfaces as an
+unrelated, confusing failure that looks like a bug in the code under test:
+
+- **Node 24** — pinned in `.nvmrc` and in `engines`. Web tooling (vitest +
+  jsdom) dies on Node 20 with `webidl.util.markAsUncloneable is not a function`
+  from `undici`, which reads like a broken test. CI runs the web job on Node 24
+  (`.github/workflows/ci.yml`). Run `nvm use` (or `fnm use`) before
+  `npm test` / `npx vitest`.
+- **JDK 21** — the Firebase emulator refuses to start under JDK 17 with
+  `firebase-tools no longer supports Java version before 21`. Set `JAVA_HOME`
+  before `npm run test:e2e:emulator` or
+  `npx firebase-tools emulators:start …`:
+  `export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+
+`apps/mobile` (Node 20) and `firebase-functions` (Node 22) have their own
+lockfiles and are unaffected.
