@@ -833,6 +833,62 @@ describe('BibleStudyEditor view', () => {
     }
   });
 
+  // #1861 — at 375×812 the breadcrumb links measured 16px tall ("All weeks"
+  // 56×16, "Open the study" 92×16), the toolbar 26px and B/I 24×24. The
+  // controls take the 44px floor only on a coarse pointer: a phone gets the
+  // thumb-sized row, the mouse keeps the compact one it already had.
+  it('gives the breadcrumb, toolbar and save controls the 44px floor on a coarse pointer (#1861)', async () => {
+    vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
+      cb([
+        {
+          id: 'cisa-wednesday',
+          slug: 'cisa-wednesday',
+          name: 'Wednesday Bible Study',
+          activeStudyId: 'romans-fall26',
+        },
+      ]);
+      return () => {};
+    });
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    // A 44px-tall link holds 16px type in the middle of its box, so the
+    // breadcrumb links also become centred flex boxes.
+    for (const name of ['All weeks', 'Open the study']) {
+      const link = screen.getByRole('link', { name });
+      expect(link.className, name).toMatch(/(^|\s)pointer-coarse:min-h-11(\s|$)/);
+      expect(link.className, name).toMatch(/(^|\s)pointer-coarse:inline-flex(\s|$)/);
+      expect(link.className, name).toMatch(/(^|\s)pointer-coarse:items-center(\s|$)/);
+    }
+
+    for (const name of [/^Insert$/i, /^Prompts$/i, /^Save$/i, /^Publish week$/i]) {
+      const control = screen.getByRole('button', { name });
+      expect(control.className, String(name)).toMatch(/(^|\s)pointer-coarse:min-h-11(\s|$)/);
+    }
+
+    // Bold and Italic are 24×24 squares for a mouse; on a phone they are
+    // full 44×44 targets.
+    for (const name of ['Bold', 'Italic']) {
+      const button = screen.getByRole('button', { name });
+      expect(button.className, name).toMatch(/(^|\s)pointer-coarse:w-11(\s|$)/);
+      expect(button.className, name).toMatch(/(^|\s)pointer-coarse:h-11(\s|$)/);
+    }
+  });
+
+  it('names the meeting title field rather than leaning on its placeholder (#1861)', async () => {
+    renderAt();
+    const title = await screen.findByPlaceholderText('Meeting title');
+
+    // A screen reader used to announce "text field" over the week's name.
+    expect(title).toHaveAccessibleName('Meeting title');
+
+    // The name reaches the field through a real <label>, hidden visually.
+    const label = screen.getByText('Meeting title', { selector: 'label' });
+    expect(label).toHaveClass('sr-only');
+    expect(label).toHaveAttribute('for', title.id);
+    expect(title.id).not.toBe('');
+  });
+
   it('offers "Open the study" only once an entry point points at this study (#946)', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');

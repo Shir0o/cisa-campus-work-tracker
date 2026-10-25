@@ -59,7 +59,10 @@ export function ToolbarMenu({ label, items, className }: ToolbarMenuProps) {
           if (!wrapRef.current?.contains(e.relatedTarget as Node)) close();
         }}
         className={cn(
-          'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-outline-variant bg-surface hover:bg-surface-variant transition-colors',
+          // #1861: 26px tall on a phone is a quarter-sized target. The 44px
+          // floor arrives only on a coarse pointer so the mouse toolbar keeps
+          // its compact height.
+          'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-outline-variant bg-surface hover:bg-surface-variant transition-colors pointer-coarse:min-h-11 pointer-coarse:px-4',
           open && 'bg-surface-variant text-on-surface',
         )}
       >
@@ -89,7 +92,7 @@ export function ToolbarMenu({ label, items, className }: ToolbarMenuProps) {
                   item.onSelect();
                 }}
                 className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13.5px] transition-colors',
+                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13.5px] transition-colors pointer-coarse:min-h-11',
                   item.danger
                     ? 'text-error hover:bg-error/10'
                     : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface',

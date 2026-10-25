@@ -455,7 +455,13 @@ export default function BibleStudyEditor() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 pb-4 shrink-0 border-b border-outline-variant">
         <div className="min-w-0 flex-1">
           <div className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5">
-            <Link to="/bible-study" className="font-semibold text-primary hover:underline shrink-0">
+            {/* #1861: a 16px-tall link is a 16px finger target. On a coarse
+                pointer the links take the 44px floor and centre their type
+                inside it; the mouse keeps the one-line breadcrumb. */}
+            <Link
+              to="/bible-study"
+              className="font-semibold text-primary hover:underline shrink-0 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+            >
               All weeks
             </Link>
             <span aria-hidden="true">·</span>
@@ -469,7 +475,7 @@ export default function BibleStudyEditor() {
               <>
                 <Link
                   to={`/bible-study/read?ep=${entryPoint.slug}`}
-                  className="font-semibold text-primary hover:underline shrink-0"
+                  className="font-semibold text-primary hover:underline shrink-0 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
                 >
                   Open the study
                 </Link>
@@ -485,7 +491,15 @@ export default function BibleStudyEditor() {
               </span>
             )}
           </div>
+          {/* #1861: the field was a `type="text"` named only by its
+              placeholder, so a screen reader announced "text field" over the
+              week's name. The label is real and visually hidden; the
+              placeholder stays as the sighted hint. */}
+          <label htmlFor="meeting-title" className="sr-only">
+            {t('study.meeting_title')}
+          </label>
           <input
+            id="meeting-title"
             type="text"
             value={title}
             onChange={(e) => {
@@ -510,19 +524,19 @@ export default function BibleStudyEditor() {
               setDate(e.target.value);
               autosave(800, published);
             }}
-            className="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none"
+            className="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none pointer-coarse:min-h-11"
           />
           <button
             onClick={() => handleSave(published)}
             disabled={saving}
-            className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+            className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors pointer-coarse:min-h-11"
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
           <button
             onClick={handleTogglePublish}
             disabled={saving}
-            className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors pointer-coarse:min-h-11 ${
               published
                 ? 'bg-[var(--t-sage-soft)] text-on-surface border border-[var(--t-sage)]'
                 : 'bg-primary text-on-primary hover:opacity-90'
@@ -651,7 +665,7 @@ export default function BibleStudyEditor() {
               <button
                 onClick={() => insertTextAtCursor('**', '**')}
                 onMouseDown={(e) => e.preventDefault()}
-                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant"
+                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant pointer-coarse:w-11 pointer-coarse:h-11 pointer-coarse:text-sm"
                 aria-label={t('study.bold')}
               >
                 B
@@ -659,7 +673,7 @@ export default function BibleStudyEditor() {
               <button
                 onClick={() => insertTextAtCursor('*', '*')}
                 onMouseDown={(e) => e.preventDefault()}
-                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant"
+                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant pointer-coarse:w-11 pointer-coarse:h-11 pointer-coarse:text-sm"
                 aria-label={t('study.italic')}
               >
                 I
