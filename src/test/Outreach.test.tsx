@@ -353,3 +353,61 @@ describe('Outreach', () => {
     }
   });
 });
+
+// DESIGN.md Shapes: Shell 32 → Card 24 → Sub-container 20 → Control 10, and
+// the No-Stadium-Input / Reserved Chroma rules (#1844). The ladder is read off
+// rendered elements because that is what the reader sees; the constants are
+// local to the view, so there is no shared blast radius to weigh.
+describe('Outreach honours the radius ladder (#1844)', () => {
+  beforeEach(() => {
+    asRole('admin');
+    vi.mocked(onSnapshot).mockImplementation(defaultOnSnapshot);
+    vi.clearAllMocks();
+  });
+
+  const classesOf = (node: Element | null) => (node?.getAttribute('class') ?? '').split(/\s+/);
+
+  it('gives an outing card the Card radius, and no nested row a larger one', async () => {
+    render(<Outreach />);
+    const toggle = await screen.findByRole('button', { name: /Cedar Park — the north lawn/ });
+    const card = toggle.closest('article')!;
+    expect(classesOf(card)).toContain('rounded-xl'); // 24px
+    expect(classesOf(card)).not.toContain('rounded-3xl'); // Shell 40px, not a card
+
+    fireEvent.click(toggle);
+    const row = (await screen.findByText('Duy Pham')).closest('button')!;
+    expect(classesOf(row)).toContain('rounded-lg'); // 20px, strictly inside the card
+    expect(classesOf(row)).not.toContain('rounded-xl');
+  });
+
+  it('does not use shell radius on the pending queue row', async () => {
+    render(<Outreach />);
+    const row = (await screen.findByText('Chloe Baptiste')).closest('.bg-surface-container')!;
+    expect(classesOf(row)).toContain('rounded-xl');
+    expect(classesOf(row)).not.toContain('rounded-3xl');
+  });
+
+  it('keeps the log sheet on the Card radius and its name panels one step down', async () => {
+    render(<Outreach />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
+    const sheet = (await screen.findByRole('dialog')).firstElementChild!;
+    expect(classesOf(sheet)).toContain('rounded-xl');
+    expect(classesOf(sheet)).not.toContain('rounded-[28px]');
+
+    const where = screen.getByPlaceholderText('e.g. Cedar Park — the north lawn');
+    expect(classesOf(where)).toContain('rounded-sm'); // Control 10px, not a lozenge
+
+    const panel = screen.getByPlaceholderText('Their name').closest('.rounded-lg');
+    expect(panel).toBeTruthy(); // the row group nests one step below the sheet
+  });
+
+  it('marks the open card with neutral ink, not stage chroma (#1844)', async () => {
+    render(<Outreach />);
+    const toggle = await screen.findByRole('button', { name: /Cedar Park — the north lawn/ });
+    const card = toggle.closest('article')!;
+    expect(classesOf(card)).not.toContain('border-stage-accent');
+    fireEvent.click(toggle);
+    expect(classesOf(card)).not.toContain('border-stage-accent');
+    expect(classesOf(card).some((c) => c.startsWith('border-'))).toBe(true);
+  });
+});
