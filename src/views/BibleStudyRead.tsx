@@ -248,7 +248,12 @@ export default function BibleStudyRead() {
         onClick={copyLink}
         aria-label={copied ? t('study.link_copied') : t('study.copy_link')}
         title={copied ? t('study.link_copied') : t('study.copy_link')}
-        className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+        // Copy link and Show QR are how a Trainee passes the study on with no
+        // Full-timer in the room, so on a phone they take the same 44px box as
+        // the text-size trigger beside them (#1837 — they were 28×28, 4px
+        // apart at the top of the screen). A fine pointer keeps the compact
+        // header; the 16px glyph does not change size.
+        className={`w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full transition-colors ${
           copied ? 'text-[var(--t-sage)]' : 'text-on-surface-variant hover:bg-surface-variant/60'
         }`}
       >
@@ -258,7 +263,7 @@ export default function BibleStudyRead() {
         to={`/bible-study/present?ep=${entryPoint!.slug}`}
         aria-label={t('study.show_qr')}
         title={t('study.show_qr')}
-        className="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
+        className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
       >
         <QrIcon />
       </Link>

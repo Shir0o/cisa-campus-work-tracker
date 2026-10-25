@@ -287,6 +287,24 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(word.closest('strong')).toBeNull();
   });
 
+  // #1837 — the `after:` layer reached 20.7px above and below the underline at
+  // the 20px default, under WCAG 2.5.8's 24px floor, and the dead band sat
+  // exactly where a thumb aiming at the word lands. `-0.6em` is 24px at 20px
+  // body and 26.4px at 22px; the 2px underline and the line box do not move.
+  it('extends the Blank hit layer past the 24px floor (#1837)', () => {
+    const s = section({
+      content: [{ kind: 'prose', md: 'Grace is [[free]], truly.' }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const blank = screen.getByRole('button', { name: /Blank, tap to reveal/i });
+    expect(blank.className).toMatch(/(^|\s)after:-inset-y-\[0\.6em\](\s|$)/);
+    expect(blank.className).not.toMatch(/after:-inset-y-\[0\.45em\]/);
+    // The visible line is unchanged: a 2px underline in the normal flow.
+    expect(blank.className).toMatch(/(^|\s)border-b-2(\s|$)/);
+    expect(blank.className).toMatch(/(^|\s)relative(\s|$)/);
+  });
+
   it('renders a Passage without its legacy citation and a Prompt with its kind label', () => {
     const s = section({
       content: [

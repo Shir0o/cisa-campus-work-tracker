@@ -77,9 +77,13 @@ const BlankSpan: React.FC<{
         // The blank's own box is only as tall as its 2px underline, so the
         // `after:` layer is what a thumb actually hits: it extends the target
         // to the whole line box (#1777 — the measured box was 64×2 inside a
-        // 34px line). It is a pseudo-element so the line never reflows, and the
-        // focus ring rides the same layer because a 2px-tall ring is no ring.
-        className={`relative inline-block border-b-2 cursor-pointer transition-all duration-200 mx-1 after:absolute after:inset-x-0 after:-inset-y-[0.45em] after:content-[''] focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[var(--t-sage)] ${
+        // 34px line). `-0.6em` clears WCAG 2.5.8's 24px floor — 24px tall at
+        // the 20px default, 26.4px at 22px (#1837; `-0.45em` was 20.7px and
+        // left a dead band where a thumb aiming at the word lands). It is a
+        // pseudo-element so the underline and the line box never reflow, and
+        // the focus ring rides the same layer because a 2px-tall ring is no
+        // ring.
+        className={`relative inline-block border-b-2 cursor-pointer transition-all duration-200 mx-1 after:absolute after:inset-x-0 after:-inset-y-[0.6em] after:content-[''] focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-[var(--t-sage)] ${
           isOpen
             ? 'border-transparent bg-[var(--t-sage-soft)] text-on-surface px-1.5 rounded-md font-medium'
             : 'min-w-[64px] border-[var(--accent-line)]'
