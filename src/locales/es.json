@@ -2314,6 +2314,8 @@
   },
   "study": {
     "loading": "Cargando el estudio bíblico…",
+    "page_title": "{title} · Estudio bíblico",
+    "loaded_announce": "Ahora leyendo {title}",
     "edit_week": "Editar esta semana",
     "copy_link": "Copiar enlace",
     "link_copied": "Enlace copiado",

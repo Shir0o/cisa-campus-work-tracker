@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import BibleStudyRead from '../views/BibleStudyRead';
+import { LanguageProvider, useLanguage } from '../components/LanguageProvider';
 import * as bibleData from '../lib/data/bibleStudy';
 import * as auth from '../components/AuthProvider';
 import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
@@ -232,5 +233,186 @@ describe("This week's study (#946)", () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this week");
     expect(document.querySelector('.animate-pulse')).toBeNull();
+  });
+
+  // #1838 — the page had no name: four h2s, zero h1, and a document title that
+  // stayed "CISA Campus Work Tracker". The Meeting title is the page's name,
+  // and the tab says what the page is rather than what the app is called.
+  it('names the page after the week, then gives the app title back (#1838)', async () => {
+    document.title = 'CISA Campus Work Tracker';
+    mockChain({ entryPoints: [WEDNESDAY] });
+    const { unmount } = renderAt();
+
+    await screen.findByText('Alive to God');
+
+    // One heading, and it is the week — the shared reader owns the h1 (#1814).
+    const h1s = screen.getAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent('Alive to God');
+    expect(document.title).toBe('Alive to God · Bible study');
+
+    unmount();
+    expect(document.title).toBe('CISA Campus Work Tracker');
+  });
+
+  // A Spanish reader's tab must not revert to the app's internal name when the
+  // language changes under the route: `LanguageProvider` writes `meta.title` on
+  // every language change, so the route's own name has to survive it.
+  it('keeps the page name through a language switch (#1838)', async () => {
+    function SwitchLanguage() {
+      const { setLanguage, language } = useLanguage();
+      return (
+        <button type="button" onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}>
+          switch
+        </button>
+      );
+    }
+
+    mockChain({ entryPoints: [WEDNESDAY] });
+    render(
+      <LanguageProvider>
+        <MemoryRouter initialEntries={['/bible-study/read']}>
+          <Routes>
+            <Route path="/bible-study/read" element={<BibleStudyRead />} />
+          </Routes>
+        </MemoryRouter>
+        <SwitchLanguage />
+      </LanguageProvider>,
+    );
+
+    await screen.findByText('Alive to God');
+    expect(document.title).toBe('Alive to God · Bible study');
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch' }));
+
+    expect(document.title).toBe('Alive to God · Estudio bíblico');
+  });
+
+  // The loading pulse had no spoken channel at all: a screen reader heard
+  // nothing while the page sat blank on a slow connection.
+  it('announces the wait, then the week it is now reading (#1838)', async () => {
+    mockChain({ entryPoints: [WEDNESDAY] });
+    let arrive: (() => void) | undefined;
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, cb) => {
+      arrive = () => cb([MEETING], false);
+      return () => {};
+    });
+    renderAt();
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Loading Bible Study…');
+
+    act(() => arrive?.());
+
+    // The same region carries the new message — never a region inserted with
+    // its text, which assistive technology would not speak.
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toHaveTextContent('Now reading Alive to God');
+    expect(status).toHaveClass('sr-only');
+  });
+
+  // On failure the alert is the single announcement; the status region must
+  // not repeat it.
+  it('leaves a failed load to the alert, not the status region (#1838)', async () => {
+    mockChain({ entryPoints: [WEDNESDAY] });
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, _cb, onError) => {
+      onError?.(new Error('offline'));
+      return () => {};
+    });
+    renderAt();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this week");
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  // Measured at 375×812 with the meetings listen aborted: the page read
+  // "Loading Bible Study…" for the SDK's whole ~15s reconnect window with no
+  // escape. Twelve seconds is long enough to be patient and short enough to
+  // admit the server is not answering — and it only changes what is shown:
+  // the listen stays mounted and a late answer still renders the study.
+  describe('the 12s deadline (#1838)', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('gives up at 12s but keeps listening, so a late week still renders', () => {
+      vi.useFakeTimers();
+      mockChain({ entryPoints: [WEDNESDAY] });
+      let arrive: (() => void) | undefined;
+      vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, cb) => {
+        arrive = () => cb([MEETING], false);
+        return () => {};
+      });
+      renderAt();
+
+      act(() => {
+        vi.advanceTimersByTime(11_900);
+      });
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(document.querySelector('.animate-pulse')).not.toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load this week");
+      // Never a false "empty" answer: the deadline is not permission to claim
+      // the term is over.
+      expect(screen.queryByText('Nothing running right now')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+      act(() => arrive?.());
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Alive to God');
+      expect(screen.getByRole('status')).toHaveTextContent('Now reading Alive to God');
+    });
+
+    it('never shows the failure state once the week has resolved', () => {
+      vi.useFakeTimers();
+      mockChain({ entryPoints: [WEDNESDAY] });
+      renderAt();
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Alive to God');
+
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('status')).toHaveTextContent('Now reading Alive to God');
+    });
+
+    it('bounds the entry-point list wait too, without hiding a late list', () => {
+      vi.useFakeTimers();
+      let arrive: (() => void) | undefined;
+      vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
+        arrive = () => cb([WEDNESDAY]);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, cb) => {
+        cb(WEDNESDAY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _id, cb) => {
+        cb(STUDY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, cb) => {
+        cb([MEETING], false);
+        return () => {};
+      });
+      renderAt();
+
+      act(() => {
+        vi.advanceTimersByTime(12_000);
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load this week");
+      expect(document.querySelector('.animate-pulse')).toBeNull();
+
+      // The list still arrives, and the page is not stuck on "couldn't".
+      act(() => arrive?.());
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Alive to God');
+    });
   });
 });

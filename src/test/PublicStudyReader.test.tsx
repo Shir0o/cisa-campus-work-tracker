@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PublicStudyReader from '../views/PublicStudyReader';
 import * as bibleData from '../lib/data/bibleStudy';
 import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
@@ -419,5 +419,42 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(document.title).toContain('Older Week');
     expect(document.title).toContain(formatDay(twoWeeksAgo));
     permalink.unmount();
+  });
+
+  // #1838 — the deadline lives in the shared resolution hook, so the scan
+  // route inherits it with no change to its own rendering: a page that cannot
+  // reach the server admits it instead of pulsing indefinitely, and a week
+  // that lands after the deadline still opens.
+  describe('the 12s deadline (#1838)', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('gives up at 12s but still renders a late answer', () => {
+      vi.useFakeTimers();
+      let arrive: (() => void) | undefined;
+      vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, cb) => {
+        cb(ENTRY_POINT, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _id, cb) => {
+        cb(STUDY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation((_db, _id, cb) => {
+        arrive = () => cb([sampleMeeting], false);
+        return () => {};
+      });
+      renderAt('/s/cisa-wednesday');
+
+      act(() => {
+        vi.advanceTimersByTime(12_000);
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load this week");
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+      act(() => arrive?.());
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Peace that holds');
+    });
   });
 });

@@ -769,6 +769,18 @@ describe('BibleStudyEditor view', () => {
     expect(phone.className).toMatch(/(^|\s)dark(\s|$)/);
   });
 
+  // The preview IS the reader (#890), and #1814 made the Meeting title the
+  // reader's one h1. This page has no heading of its own, so the preview owns
+  // the only one — the editor page must not gain a second (#1838).
+  it('renders the preview with one h1 — the week it previews (#1838)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const h1s = screen.getAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent('Initial Meeting');
+  });
+
   // #916 — the preview frame's layout box matches its painted size. A CSS
   // transform is paint-only, so the outer box is pre-scaled (phone × scale)
   // while the inner box keeps true phone dimensions and scales from its

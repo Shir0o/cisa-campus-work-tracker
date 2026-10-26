@@ -30,13 +30,23 @@ export type ResolvedStudy = {
   weekDateLabel: string | null;
   /**
    * A snapshot failed rather than reporting "nothing here" (a dropped
-   * connection, a blocked request, a permissions slip). The resolution then
-   * looks exactly like an empty term, so callers that show a "no study"
-   * message must check this first — otherwise a student on bad wifi is told
-   * the term is over (#1777).
+   * connection, a blocked request, a permissions slip), or an answer has not
+   * arrived before `STUDY_LOAD_DEADLINE_MS` (#1838). The resolution then looks
+   * exactly like an empty term, so callers that show a "no study" message must
+   * check this before any empty state — otherwise a student on bad wifi is told
+   * the term is over (#1777). It clears if a late snapshot lands.
    */
   loadError: boolean;
 };
+
+/**
+ * How long a page may sit waiting before it admits the server is not answering
+ * (#1838). Measured at 375×812 with the `bible_study_meetings` listen aborted:
+ * the SDK's reconnect window settled at ~15s, and until then the page pulsed
+ * "Loading Bible Study…" with no way out. Twelve seconds stays patient and
+ * still arrives before that window closes. Retuning is this one line.
+ */
+export const STUDY_LOAD_DEADLINE_MS = 12_000;
 
 /**
  * A Meeting's date as a reader reads it. An unparseable date is shown as
@@ -78,6 +88,8 @@ export function useResolvedStudy(
   // setState in an effect body.
   const requestKey = isPermalink ? `p:${permalink!.studyId}:${permalink!.date ?? ''}` : `s:${slug}`;
   const [failedFor, setFailedFor] = useState<string | null>(null);
+  // The deadline (#1838): which wait ran out, if any.
+  const [expiredWait, setExpiredWait] = useState<string | null>(null);
 
   useEffect(() => {
     if (isPermalink) {
@@ -140,7 +152,24 @@ export function useResolvedStudy(
     };
   }, [studyId, requestKey]);
 
-  const loading = !entryPointLoaded || (!!studyId && !meetingsLoaded);
+  // What the caller is waiting on, before the deadline is applied.
+  const waiting = !entryPointLoaded || (!!studyId && !meetingsLoaded);
+
+  // The deadline (#1838) is per request — a different slug, permalink or Entry
+  // point is a different question and starts a fresh one — and it only changes
+  // what is shown: the subscriptions above stay mounted, so an answer that
+  // arrives late still renders. The token names the wait that ran out, so a
+  // later wait is never judged by an earlier one's clock, and a wait that has
+  // not started yet has nothing to time out.
+  const waitKey = `${requestKey}:${studyId ?? ''}`;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setTimeout(() => setExpiredWait(waitKey), STUDY_LOAD_DEADLINE_MS);
+    return () => window.clearTimeout(timer);
+  }, [waitKey, waiting]);
+
+  const deadline = waiting && expiredWait === waitKey;
+
   const resolution = resolveScan(
     entryPoint,
     study,
@@ -169,10 +198,16 @@ export function useResolvedStudy(
   // or permalink starts clean, and a failure with no Study behind it (the
   // entry point itself never arrived) is still reported rather than looking
   // like an empty term.
-  const loadError = failedFor === requestKey;
+  //
+  // The deadline joins it (#1838): past it the page says it could not load —
+  // never an empty term — but `deadline` is read together with `waiting`, so a
+  // snapshot that lands afterwards clears the failure and renders the study.
+  const loadError = failedFor === requestKey || deadline;
 
   return {
-    loading,
+    // Past the deadline the caller must be able to choose the failure branch,
+    // which every caller checks before its pulsing branch.
+    loading: waiting && !deadline,
     entryPoint,
     study,
     resolution,

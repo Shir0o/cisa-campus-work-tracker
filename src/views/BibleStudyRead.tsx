@@ -8,7 +8,8 @@ import { staffPermalinkUrl } from '../lib/publicUrl';
 import type { EntryPoint } from '../lib/bibleStudy';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import StudyEmptyState from '../components/bibleStudy/StudyEmptyState';
-import { useResolvedStudy } from '../components/bibleStudy/useResolvedStudy';
+import { useResolvedStudy, STUDY_LOAD_DEADLINE_MS } from '../components/bibleStudy/useResolvedStudy';
+import { useDocumentTitle } from '../components/bibleStudy/useDocumentTitle';
 
 /**
  * "This week's study" (#946) — the signed-in destination at
@@ -123,6 +124,17 @@ export default function BibleStudyRead() {
 
   const { loading, entryPoint, resolution, meeting, staleDateLabel, loadError } = useResolvedStudy(slug);
 
+  // The entry-point list is this route's first question, and a first question
+  // can hang too (#1838). The list's own listen gets the same deadline the
+  // resolution hook gives the week; the listen stays mounted, so a list that
+  // lands late still opens the study.
+  const [entryPointsTimedOut, setEntryPointsTimedOut] = useState(false);
+  useEffect(() => {
+    if (entryPointsLoaded) return;
+    const timer = window.setTimeout(() => setEntryPointsTimedOut(true), STUDY_LOAD_DEADLINE_MS);
+    return () => window.clearTimeout(timer);
+  }, [entryPointsLoaded]);
+
   // Restore-on-return (#946): read once, at mount, so it is an opening
   // position rather than an owner of the reader's scroll.
   const [initialSection] = useState(() => {
@@ -145,14 +157,6 @@ export default function BibleStudyRead() {
     }
   };
 
-  if (!entryPointsLoaded) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-on-surface-variant">
-        <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
-      </div>
-    );
-  }
-
   // A failed subscription looks exactly like an empty term in `resolution`, so
   // this is checked before every empty state: a Trainee on campus wifi must not
   // be told the study is over (#1770 — measured: the meetings listen aborted,
@@ -160,8 +164,49 @@ export default function BibleStudyRead() {
   // Try again reloads rather than re-subscribing, for the same reason the
   // public route does: the Firestore channel holds its reconnect backoff, so a
   // second listen on the same client keeps answering from the failed cache.
-  if (loadError || entryPointsError) {
-    return (
+  //
+  // The deadline joins it (#1838): the resolution hook gives the week twelve
+  // seconds, and the entry-point list — this page's first wait — gets the same
+  // twelve from here. Both only change what is shown; neither listen is torn
+  // down, so a list or a week that lands late still opens the study.
+  const listFailed = entryPointsError || (entryPointsTimedOut && !entryPointsLoaded);
+  const failed = listFailed || loadError;
+
+  // The page's own name (#1838), in every state of this route: one key, with
+  // the text the page already shows as its `h1`. While the page is still
+  // waiting it has no name to give, so the app title stands.
+  const named = (title: string) => t('study.page_title').replace('{title}', title);
+  const pageTitle = (() => {
+    if (failed) return named(t('study.load_failed'));
+    if (!entryPointsLoaded || loading) return null;
+    if (entryPoints.length === 0) return named(t('study.none_set_up'));
+    if (!slug) return named(t('study.more_than_one'));
+    if (resolution.kind === 'no-active-study') return named(t('study.nothing_running'));
+    if (resolution.kind !== 'meeting') return named(t('study.never_published'));
+    return named(meeting!.title);
+  })();
+  useDocumentTitle(pageTitle);
+
+  // One status region for the whole life of the route (#1838), never inserted
+  // together with its text, so the first thing it says is an update an
+  // assistive technology will speak. Failure and the empty states are
+  // announced once, by the alert or the `h1`; on the resolved page the shared
+  // reader's own section announcement says something different, not the same
+  // fact twice.
+  const statusText = (() => {
+    if (failed) return '';
+    if (!entryPointsLoaded || loading) return t('study.loading');
+    if (meeting) return t('study.loaded_announce').replace('{title}', meeting.title);
+    return '';
+  })();
+
+  // The states below are one body of JSX rather than early returns: the
+  // status region has to keep the same position in the tree across them, or
+  // it would be removed and re-inserted (with its text) on every change.
+  let content: React.ReactNode;
+
+  if (failed) {
+    content = (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div role="alert" className="flex flex-col items-center">
           <h1 className="font-serif text-2xl mb-2 font-medium">{t('study.load_failed')}</h1>
@@ -176,24 +221,26 @@ export default function BibleStudyRead() {
         </div>
       </div>
     );
-  }
-
-  // Nothing has been set up at all. Distinct from the between-terms state:
-  // there is no standing invitation here, not even an idle one.
-  if (entryPoints.length === 0) {
-    return (
+  } else if (!entryPointsLoaded || loading) {
+    content = (
+      <div className="flex-1 flex items-center justify-center text-on-surface-variant">
+        <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
+      </div>
+    );
+  } else if (entryPoints.length === 0) {
+    // Nothing has been set up at all. Distinct from the between-terms state:
+    // there is no standing invitation here, not even an idle one.
+    content = (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <h1 className="font-serif text-2xl mb-2 font-medium">{t('study.none_set_up')}</h1>
         <p className="text-on-surface-variant text-sm max-w-sm">{t('study.none_set_up_body')}</p>
       </div>
     );
-  }
-
-  // Two or more standing invitations and no way to tell which room you are
-  // in — a week taught in two rooms is two Entry points (ADR 0011 §4), and
-  // only the person knows which one they walked into. Asked once per device.
-  if (!slug) {
-    return (
+  } else if (!slug) {
+    // Two or more standing invitations and no way to tell which room you are
+    // in — a week taught in two rooms is two Entry points (ADR 0011 §4), and
+    // only the person knows which one they walked into. Asked once per device.
+    content = (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">
           {t('study.which_study')}
@@ -213,85 +260,84 @@ export default function BibleStudyRead() {
         <p className="text-on-surface-variant text-xs max-w-xs mt-5">{t('study.chooser_note')}</p>
       </div>
     );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-on-surface-variant">
-        <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
-      </div>
-    );
-  }
-
-  if (resolution.kind !== 'meeting') {
-    return (
+  } else if (resolution.kind !== 'meeting') {
+    content = (
       <div className="flex-1 flex flex-col">
         <StudyEmptyState kind={resolution.kind} entryPoint={entryPoint} />
       </div>
     );
+  } else {
+    const headerActions = (
+      <>
+        {isAdmin && (
+          <Link
+            to={`/bible-study/${meeting!.id}`}
+            aria-label={t('study.edit_week')}
+            title={t('study.edit_week')}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
+          >
+            <PencilIcon />
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={copyLink}
+          aria-label={copied ? t('study.link_copied') : t('study.copy_link')}
+          title={copied ? t('study.link_copied') : t('study.copy_link')}
+          // Copy link and Show QR are how a Trainee passes the study on with no
+          // Full-timer in the room, so on a phone they take the same 44px box as
+          // the text-size trigger beside them (#1837 — they were 28×28, 4px
+          // apart at the top of the screen). A fine pointer keeps the compact
+          // header; the 16px glyph does not change size.
+          className={`w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full transition-colors ${
+            copied ? 'text-[var(--t-sage)]' : 'text-on-surface-variant hover:bg-surface-variant/60'
+          }`}
+        >
+          <LinkIcon />
+        </button>
+        <Link
+          to={`/bible-study/present?ep=${entryPoint!.slug}`}
+          aria-label={t('study.show_qr')}
+          title={t('study.show_qr')}
+          className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
+        >
+          <QrIcon />
+        </Link>
+      </>
+    );
+
+    // The reader fills the app shell's content area so it can measure a wide
+    // box and page (#1590); the nav and the way back are the app's own rather
+    // than a dead end.
+    //
+    // `h-full`, not `flex-1` (#1770): the shell's <main> is a block that scrolls
+    // the page, so `flex-1` here was inert and the reader's own `h-full`
+    // resolved against its content instead of the pane — measured at 375×812,
+    // a 3,031px deck that never scrolled, a counter reading 02/04 over
+    // Section 1, a progress rail 2,327px below the fold, and a sticky header
+    // that scrolled away. Claiming the pane's height gives the reader back the
+    // scroll it owns.
+    content = (
+      <div className="h-full min-h-0 flex">
+        <div className="w-full h-full bg-background text-on-surface relative overflow-hidden flex flex-col">
+          <StudyReaderView
+            meeting={meeting!}
+            staleDateLabel={staleDateLabel}
+            initialSectionIndex={initialSection}
+            onSectionChange={(index) => writeStored(LAST_SECTION_KEY, String(index))}
+            headerActions={headerActions}
+          />
+        </div>
+      </div>
+    );
   }
 
-  const headerActions = (
-    <>
-      {isAdmin && (
-        <Link
-          to={`/bible-study/${meeting!.id}`}
-          aria-label={t('study.edit_week')}
-          title={t('study.edit_week')}
-          className="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
-        >
-          <PencilIcon />
-        </Link>
-      )}
-      <button
-        type="button"
-        onClick={copyLink}
-        aria-label={copied ? t('study.link_copied') : t('study.copy_link')}
-        title={copied ? t('study.link_copied') : t('study.copy_link')}
-        // Copy link and Show QR are how a Trainee passes the study on with no
-        // Full-timer in the room, so on a phone they take the same 44px box as
-        // the text-size trigger beside them (#1837 — they were 28×28, 4px
-        // apart at the top of the screen). A fine pointer keeps the compact
-        // header; the 16px glyph does not change size.
-        className={`w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full transition-colors ${
-          copied ? 'text-[var(--t-sage)]' : 'text-on-surface-variant hover:bg-surface-variant/60'
-        }`}
-      >
-        <LinkIcon />
-      </button>
-      <Link
-        to={`/bible-study/present?ep=${entryPoint!.slug}`}
-        aria-label={t('study.show_qr')}
-        title={t('study.show_qr')}
-        className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
-      >
-        <QrIcon />
-      </Link>
-    </>
-  );
-
-  // The reader fills the app shell's content area so it can measure a wide
-  // box and page (#1590); the nav and the way back are the app's own rather
-  // than a dead end.
-  //
-  // `h-full`, not `flex-1` (#1770): the shell's <main> is a block that scrolls
-  // the page, so `flex-1` here was inert and the reader's own `h-full`
-  // resolved against its content instead of the pane — measured at 375×812,
-  // a 3,031px deck that never scrolled, a counter reading 02/04 over
-  // Section 1, a progress rail 2,327px below the fold, and a sticky header
-  // that scrolled away. Claiming the pane's height gives the reader back the
-  // scroll it owns.
   return (
-    <div className="h-full min-h-0 flex">
-      <div className="w-full h-full bg-background text-on-surface relative overflow-hidden flex flex-col">
-        <StudyReaderView
-          meeting={meeting!}
-          staleDateLabel={staleDateLabel}
-          initialSectionIndex={initialSection}
-          onSectionChange={(index) => writeStored(LAST_SECTION_KEY, String(index))}
-          headerActions={headerActions}
-        />
+    <>
+      <div role="status" aria-live="polite" className="sr-only">
+        {statusText}
       </div>
-    </div>
+      {content}
+    </>
   );
 }

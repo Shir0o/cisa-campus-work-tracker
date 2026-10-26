@@ -2314,6 +2314,8 @@
   },
   "study": {
     "loading": "Loading Bible Study…",
+    "page_title": "{title} · Bible study",
+    "loaded_announce": "Now reading {title}",
     "edit_week": "Edit this week",
     "copy_link": "Copy link",
     "link_copied": "Link copied",
