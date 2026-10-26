@@ -55,6 +55,7 @@ describe('ContactHead', () => {
     onDelete: vi.fn(),
     onOpenPrayers: vi.fn(),
     onOpenConversation: vi.fn(),
+    onRemindMe: vi.fn(),
   });
 
   it('renders header details using consolidated ContactHeaderModel', () => {
@@ -171,6 +172,35 @@ describe('ContactHead', () => {
     expect(
       screen.getByRole('button', { name: 'Conversation, New in Full-timers' }),
     ).toBeInTheDocument();
+  });
+
+  // #1802: the reminder lives in More actions, beside Add prayer — never as a
+  // third full-width button on the phone head, which has a height budget.
+  it.each([false, true])('offers Remind me inside More actions (isMobile=%s)', (isMobile) => {
+    const actions = createActions();
+    render(
+      <ContactHead model={defaultModel} actions={actions} isMobile={isMobile} isEditing={false} />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Remind me' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remind me' }));
+    expect(actions.onRemindMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides Remind me from a viewer, who cannot write a to-do', () => {
+    render(
+      <ContactHead
+        model={{ ...defaultModel, role: 'viewer', isAdmin: false, showDelete: false }}
+        actions={createActions()}
+        isMobile={false}
+        isEditing={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(screen.queryByRole('button', { name: 'Remind me' })).not.toBeInTheDocument();
   });
 
   it('omits the Delegate item for a viewer who cannot share', () => {

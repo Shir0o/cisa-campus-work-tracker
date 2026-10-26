@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Bell,
   ChevronDown,
   ChevronRight,
   Edit3,
@@ -96,6 +97,8 @@ function MoreMenu({
   contact,
   onLogInteraction,
   onAddPrayer,
+  onRemindMe,
+  showRemindMe,
   onCall,
   onText,
   onEmail,
@@ -113,6 +116,8 @@ function MoreMenu({
   contact: Contact;
   onLogInteraction: () => void;
   onAddPrayer: () => void;
+  onRemindMe: () => void;
+  showRemindMe: boolean;
   onCall: () => void;
   onText: () => void;
   onEmail: () => void;
@@ -177,6 +182,21 @@ function MoreMenu({
           <button onClick={() => { setOpen(false); onAddPrayer(); }} className={item}>
             <Heart className="w-4 h-4" /> {t('modals.contactDetails.add_prayer')}
           </button>
+          {/* #1802: a dated reminder without logging a visit. The composer this
+              opens already lives on the page; the trigger hands it focus back
+              when it closes, so Escape from the composer lands here. */}
+          {showRemindMe && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                triggerRef.current?.focus();
+                onRemindMe();
+              }}
+              className={item}
+            >
+              <Bell className="w-4 h-4" /> {t('modals.contactDetails.remind_me', 'Remind me')}
+            </button>
+          )}
           {contact.phone && (
             <button onClick={() => { setOpen(false); onCall(); }} className={item}>
               <Phone className="w-4 h-4" /> {t('modals.contactDetails.call')}
@@ -261,6 +281,8 @@ export interface ContactHeaderActions {
   onEmail: () => void;
   onLogInteraction: () => void;
   onStartPrayer: () => void;
+  /** #1802: set a dated reminder from this page, without logging a visit. */
+  onRemindMe: () => void;
   onMoveStage: (label: string) => void;
   onOpenMoveSheet: () => void;
   onOpenAbout: () => void;
@@ -326,6 +348,7 @@ export default function ContactHead(props: ContactHeadProps) {
     onEmail,
     onLogInteraction,
     onStartPrayer,
+    onRemindMe,
     onMoveStage,
     onOpenMoveSheet,
     onOpenAbout,
@@ -340,6 +363,8 @@ export default function ContactHead(props: ContactHeadProps) {
   } = actions;
 
   const { t } = useLanguage();
+  // A viewer reads the page but writes nothing, so the reminder is not offered.
+  const showRemindMe = role !== 'viewer';
   const aboutLabel = t('modals.contactDetails.about_person').replace('{name}', contact.name);
   const prayersLine = openPrayerCount > 0 && (
     <button
@@ -401,6 +426,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   contact={contact}
                   onLogInteraction={onLogInteraction}
                   onAddPrayer={onStartPrayer}
+                  onRemindMe={onRemindMe}
+                  showRemindMe={showRemindMe}
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}
@@ -654,6 +681,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   contact={contact}
                   onLogInteraction={onLogInteraction}
                   onAddPrayer={onStartPrayer}
+                  onRemindMe={onRemindMe}
+                  showRemindMe={showRemindMe}
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}

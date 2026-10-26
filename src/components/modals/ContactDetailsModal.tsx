@@ -28,6 +28,7 @@ import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
 import { isTrainee as isTraineeUid } from "../../lib/walking";
 import AddToAskModal from "../contact/AddToAskModal";
+import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { useLanguage } from "../LanguageProvider";
 import { yearToForm } from "../../lib/contactYear";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
@@ -126,6 +127,9 @@ export default function ContactDetailsModal({
   }, [contact?.id]);
 
   const [todoFrom, setTodoFrom] = useState<ThreadMessage | null>(null);
+  // #1802: a dated reminder opened from the head's More actions, over the to-do
+  // composer this page already mounts for a Conversation message.
+  const [reminderOpen, setReminderOpen] = useState(false);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   const [editTagInput, setEditTagInput] = useState("");
@@ -217,6 +221,10 @@ export default function ContactDetailsModal({
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      // The reminder's popup is the topmost layer and owns Escape (closing
+      // itself, or asking before it discards). The page must not also close
+      // underneath it (#1802).
+      if (reminderOpen) return;
       if (openThread && !isMobile) setOpenThread(null);
       else if (paneOpen) setPaneOpen(false);
       else if (openThread) setOpenThread(null);
@@ -226,7 +234,7 @@ export default function ContactDetailsModal({
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, handleClose, openThread, paneOpen, isMobile]);
+  }, [isOpen, handleClose, openThread, paneOpen, isMobile, reminderOpen]);
 
   useEffect(() => {
     if (contact) {
@@ -705,6 +713,14 @@ export default function ContactDetailsModal({
 
   const firstName = contact.name.split(" ")[0];
 
+  // #1802: the reminder opens a week out — the same lead time Log a visit's
+  // follow-up to-do uses (FOLLOW_UP_DAYS).
+  const reminderDue = (() => {
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+    return format(due, "yyyy-MM-dd");
+  })();
+
   const fmtDate = fmtContactDate;
 
   const {
@@ -904,6 +920,7 @@ export default function ContactDetailsModal({
     onOpenAbout: () => setAboutOpen(true),
     onOpenDelegate: () => setDelegateOpen(true),
     onAddToAsk: () => setAddToAskOpen(true),
+    onRemindMe: () => setReminderOpen(true),
     onChangeKind: changeKind,
     onChangeCreator: () => setReassigningCreator(true),
     onDelete: handleDelete,
@@ -1046,6 +1063,25 @@ export default function ContactDetailsModal({
         trainees={tiedTrainees}
         onClose={() => setAddToAskOpen(false)}
       />
+
+      {/* #1802: a reminder without a logged visit — the page's own to-do
+          composer, prefilled for this person and due the same week out the
+          visit follow-up uses. */}
+      {isOpen && reminderOpen && (
+        <FromEntryTodoComposer
+          key="remind-me"
+          text={t('modals.contactDetails.remind_text', 'Follow up with {first}').replace('{first}', firstName)}
+          contactId={currentContact.id}
+          contactName={currentContact.name}
+          dueDate={reminderDue}
+          source={null}
+          team={teamMembers.map((m) => ({ uid: m.id, name: m.name }))}
+          meUid={currentUid ?? ""}
+          meName={user?.displayName || "Someone"}
+          onClose={() => setReminderOpen(false)}
+          onSaved={() => showUndoSnack(t('modals.contactDetails.reminder_set', 'Reminder set'))}
+        />
+      )}
 
       {movingStage && (
         <StageMoveSheet

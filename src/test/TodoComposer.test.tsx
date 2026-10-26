@@ -338,6 +338,26 @@ describe('TodoComposer', () => {
     expect(screen.getByRole('button', { name: /add to-do/i })).toBeInTheDocument();
   });
 
+  it('closes an untouched but prefilled to-do without asking to discard it (#1802)', () => {
+    const onClose = vi.fn();
+    render(
+      <TodoComposer
+        mode="create"
+        initial={{ text: 'Follow up with Lila', assigneeId: 'u1' }}
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={onClose}
+      />,
+    );
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Follow up with Lila');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('asks before discarding a typed to-do, and keeps it on cancel (#1456)', () => {
     const onClose = vi.fn();
     render(
