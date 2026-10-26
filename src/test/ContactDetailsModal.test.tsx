@@ -4378,3 +4378,96 @@ describe('Contact detail on a phone (#1761)', () => {
     expect(descriptions).not.toContain('email:');
   });
 });
+
+// #1802 — a reminder set from the person's own page, not from a logged visit.
+// The action lives in More actions and opens the to-do composer this page
+// already mounts for "Make a to-do from this message"; nothing new is written
+// but one contact-linked task.
+describe('Remind me from the contact page (#1802)', () => {
+  const onClose = vi.fn();
+
+  const openRemindMe = () => {
+    // The stream's per-message toolbars are "More actions" too; the page's own
+    // header button comes first in the DOM (same rule as the e2e journey).
+    fireEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Remind me' }));
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: true,
+      role: 'admin',
+    });
+    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
+  });
+
+  it('opens the composer prefilled for the person and writes one contact-linked task', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+
+    openRemindMe();
+
+    // The composer already on this page, in create mode, prefilled with a
+    // follow-up about this person.
+    expect(screen.getByRole('dialog', { name: 'New to-do' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Follow up with John');
+
+    fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
+
+    await waitFor(() => expect(firestore.addDoc).toHaveBeenCalledTimes(1));
+    const [tasksRef, payload] = (firestore.addDoc as any).mock.calls[0];
+    expect(tasksRef.path).toBe('tasks');
+
+    // One task, assigned to the signed-in user, carrying the contact and a due
+    // date a week out — the same lead time the visit follow-up uses.
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+    const expectedDue = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+
+    expect(payload).toMatchObject({
+      title: 'Follow up with John',
+      assigneeId: 'user-123',
+      contactId: 'contact-abc',
+      contactName: 'John Doe',
+      dueDate: expectedDue,
+      sourceInteractionId: null,
+      sourceDocId: null,
+    });
+
+    // Nothing else moved: no interaction or visit row, and the contact document
+    // itself is untouched.
+    expect(firestore.updateDoc).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByPlaceholderText('What needs doing?')).toBeNull());
+  });
+
+  it('Escape closes only the composer and returns focus to More actions', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+
+    openRemindMe();
+    expect(screen.getByPlaceholderText('What needs doing?')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    // The composer is gone, the page and its person are still there, and the
+    // untouched prefilled text never triggered a discard question.
+    expect(screen.queryByPlaceholderText('What needs doing?')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'More actions' })[0]).toHaveFocus();
+    expect(firestore.addDoc).not.toHaveBeenCalled();
+  });
+
+  it('hides Remind me from a viewer', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-viewer', displayName: 'Community Pat' },
+      isAdmin: false,
+      role: 'viewer',
+    });
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]);
+    expect(screen.queryByRole('button', { name: 'Remind me' })).toBeNull();
+  });
+});

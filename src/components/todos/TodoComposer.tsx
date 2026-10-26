@@ -117,6 +117,17 @@ export default function TodoComposer({
 
   const canSave = texts.some((t) => t.trim().length > 0) && !!assigneeId && !saving;
 
+  // What the composer opened with, so closing an untouched but prefilled to-do
+  // (an entry point's own text, a reminder's follow-up line) doesn't ask to
+  // discard work nobody did (#1802).
+  const openedTexts = initialTexts && initialTexts.length > 0 ? initialTexts : [initial?.text ?? ""];
+  const openedSubtasks = initial?.subtasks ?? [];
+  const untouched =
+    texts.length === openedTexts.length &&
+    texts.every((x, i) => x.trim() === (openedTexts[i] ?? "").trim()) &&
+    subtasks.length === openedSubtasks.length &&
+    subtasks.every((s, i) => s.title.trim() === (openedSubtasks[i]?.title ?? "").trim());
+
   const handleAddSubtask = () => {
     setSubtasks((prev) => [...prev, { id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, title: '', done: false }]);
   };
@@ -465,7 +476,7 @@ export default function TodoComposer({
       size="sm"
       eyebrow={t("todoComposer.eyebrow")}
       title={headerTitle}
-      dirty={texts.some((x) => x.trim().length > 0) || subtasks.some((s) => s.title.trim().length > 0)}
+      dirty={!untouched}
       noun={t("todoComposer.noun")}
       footerHint={
         sourceTitle ? (

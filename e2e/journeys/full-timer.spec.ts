@@ -231,6 +231,79 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(contactPage.getByRole('button', { name: 'Edit details' })).toHaveCount(1);
   });
 
+  // #1802: a reminder from the person's own page, without logging a visit. The
+  // action opens the page's existing to-do composer, prefilled and due a week
+  // out; the write is one contact-linked task and leaves the story alone.
+  test('Remind me sets a dated to-do without logging a visit (#1802)', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await page.goto('/directory');
+    await waitForShell(page);
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
+
+    const contactPage = page.getByRole('main');
+    await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
+      timeout: 5_000,
+    });
+    const storyRows = contactPage.locator('[data-kind="conversation"]');
+    const storyBefore = await storyRows.count();
+
+    // It lives in More actions beside Add prayer — not a new head button.
+    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
+    await contactPage.getByRole('button', { name: 'Remind me' }).click();
+
+    const composer = page.getByRole('dialog', { name: 'New to-do' });
+    await expect(composer).toBeVisible({ timeout: 5_000 });
+
+    // Prefilled for this person, due one week out, keeping a custom (dated)
+    // value rather than an undated reminder.
+    const title = `Follow up with Lila ${Date.now()}`;
+    await expect(composer.getByPlaceholder('What needs doing?')).toHaveValue('Follow up with Lila');
+    const week = new Date();
+    week.setDate(week.getDate() + 7);
+    const due = `${week.getFullYear()}-${String(week.getMonth() + 1).padStart(2, '0')}-${String(week.getDate()).padStart(2, '0')}`;
+    // The date control opened on that date rather than "No date".
+    await expect(composer.getByPlaceholder(/Type a date/)).not.toHaveValue('');
+
+    // The composer's own text is editable — rename it so the My Day row below
+    // can be told apart from earlier runs.
+    await composer.getByPlaceholder('What needs doing?').fill(title);
+    await composer.getByRole('button', { name: 'Add to-do' }).click();
+    await expect(composer).toBeHidden({ timeout: 10_000 });
+    await expect(page.getByText('Reminder set')).toBeVisible({ timeout: 5_000 });
+    // The person's page is still where it was.
+    await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
+
+    // It lands in the setter's own tasks on My Day, naming the person in the
+    // follow-up line the composer prefilled.
+    await gotoHome(page);
+    const myDayRow = page.getByRole('main').getByText(title, { exact: true }).first();
+    await expect(myDayRow).toBeVisible({ timeout: 15_000 });
+
+    // Exactly one task, carrying the contact and the chosen date — polled from
+    // the emulator, because the create is optimistic in the browser.
+    await expect(async () => {
+      if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+      const snap = await adminFS().collection('tasks').where('title', '==', title).get();
+      expect(snap.size).toBe(1);
+      const task = snap.docs[0].data();
+      expect(task.contactId).toBe(CARE_ID);
+      expect(task.contactName).toBe(CARE_CONTACT);
+      expect(task.assigneeId).toBeTruthy();
+      expect(task.dueDate).toBe(due);
+      expect(task.sourceInteractionId ?? null).toBeNull();
+    }).toPass({ timeout: 15_000 });
+
+    // And no visit or interaction was invented to make the reminder.
+    await page.goto(`/people/${CARE_ID}`);
+    await waitForShell(page);
+    const reopened = page.getByRole('main');
+    await expect(reopened.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(reopened.locator('[data-kind="conversation"]')).toHaveCount(storyBefore, { timeout: 10_000 });
+  });
+
   test('Add to story writes and reads back into the story', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
