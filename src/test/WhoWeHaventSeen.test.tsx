@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import WhoWeHaventSeen, { rollingMonths, sinceWords } from '../components/visits/WhoWeHaventSeen';
 import type { Contact, Home, Visit } from '../types';
@@ -136,5 +136,92 @@ describe('WhoWeHaventSeen', () => {
     render(<WhoWeHaventSeen {...baseProps} homes={homes} />);
     expect(screen.getByText('the Oseis')).toBeInTheDocument();
     expect(screen.getByText(/Nobody lives here yet/)).toBeInTheDocument();
+  });
+});
+// The phone composition (#1857). On a 320px budget a single 13-column grid
+// cannot hold a name, twelve months and "since" at once: the shell's `main`
+// hides the overflow, so the "since" column simply fell off the right edge.
+// These assertions pin the replacement geometry — one row per person, the
+// value on the name's line, the twelve months as a strip beneath it — and the
+// desktop grid it must leave alone.
+describe('WhoWeHaventSeen — the compact reading fits a phone (#1857)', () => {
+  const reading = {
+    homes: [home({ members: ['c1', 'c2'] })],
+    contacts: [contact('c1', 'Ama Osei'), contact('c2', 'Bo Chen')],
+    visits: [visit('v1', todayISO(), ['c1'])],
+  };
+
+  /** Every fixed width an element declares, in px — the class list covers
+   *  Tailwind's arbitrary widths, the inline scan covers the rest. */
+  const declaredWidths = (root: HTMLElement): number[] =>
+    Array.from(root.querySelectorAll<HTMLElement>('*')).flatMap((el) => {
+      const fromClasses = [...(el.getAttribute('class') ?? '').matchAll(/(?:^|\s)(?:min-)?w-\[(\d+)px\]/g)].map((m) =>
+        Number(m[1]),
+      );
+      const inline = parseFloat(el.style.minWidth || el.style.width || '');
+      return Number.isNaN(inline) ? fromClasses : [...fromClasses, inline];
+    });
+
+  it('gives each person a row of their own: name and since, then twelve dots', () => {
+    render(<WhoWeHaventSeen {...baseProps} {...reading} compact />);
+
+    const ama = screen.getByRole('button', { name: 'Log a visit: Ama Osei' });
+    const [amaLineOne, amaStrip] = Array.from(ama.children);
+    expect(ama.children).toHaveLength(2);
+    expect(amaLineOne).toHaveTextContent('Ama Osei');
+    expect(amaLineOne).toHaveTextContent('3d');
+    expect(amaLineOne.querySelectorAll('[data-seen]')).toHaveLength(0);
+    expect(amaStrip.querySelectorAll('[data-seen]')).toHaveLength(12);
+    expect(amaStrip.querySelectorAll('[data-seen="true"]')).toHaveLength(1);
+
+    const bo = screen.getByRole('button', { name: 'Log a visit: Bo Chen' });
+    expect(bo).not.toBe(ama);
+    expect(bo.children[0]).toHaveTextContent('Bo Chen');
+    expect(bo.children[1].querySelectorAll('[data-seen]')).toHaveLength(12);
+  });
+
+  it('keeps a never-visited person as twelve gaps with never in the accent colour', () => {
+    render(<WhoWeHaventSeen {...baseProps} {...reading} compact />);
+
+    const bo = screen.getByRole('button', { name: 'Log a visit: Bo Chen' });
+    expect(within(bo).getByText('never')).toHaveClass('text-accent');
+    expect(bo.querySelectorAll('[data-seen="true"]')).toHaveLength(0);
+    expect(bo.querySelectorAll('[data-seen="false"]')).toHaveLength(12);
+  });
+
+  it('drops the 640px floor and the horizontal scroller on the phone', () => {
+    const { container } = render(<WhoWeHaventSeen {...baseProps} {...reading} compact />);
+
+    expect(declaredWidths(container).filter((w) => w >= 640)).toEqual([]);
+    expect(container.querySelector('.overflow-x-auto')).toBeNull();
+  });
+
+  it('labels the strip every other month at the 11px floor, since above the values', () => {
+    const { container } = render(<WhoWeHaventSeen {...baseProps} {...reading} compact />);
+
+    const cells = Array.from(container.querySelectorAll<HTMLElement>('[data-month]'));
+    expect(cells).toHaveLength(12);
+    // Twelve 11px labels need 276px of text (the widest, "May", is 23px), which
+    // the 320px phone budget does not leave once "since" is placed. Every other
+    // month stays, ending on the current one — never by shrinking the type.
+    expect(cells.filter((c) => c.textContent).map((c) => c.textContent)).toEqual(
+      rollingMonths().filter((_, i) => i % 2 === 1),
+    );
+
+    const caption = cells[0].parentElement as HTMLElement;
+    expect(caption).toHaveClass('text-[11px]');
+    expect(within(caption).getByText('since')).toBeInTheDocument();
+    expect(within(caption).queryByText('person')).not.toBeInTheDocument();
+  });
+
+  it('leaves the desktop grid alone: person caption, twelve labels, its own width floor', () => {
+    const { container } = render(<WhoWeHaventSeen {...baseProps} {...reading} />);
+
+    expect(screen.getByText('person')).toBeInTheDocument();
+    for (const month of rollingMonths()) {
+      expect(within(container).getAllByText(month).length).toBeGreaterThan(0);
+    }
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(0);
+    expect(declaredWidths(container).some((w) => w >= 640)).toBe(true);
   });
 });
