@@ -1300,6 +1300,8 @@
     "select_page": "Selecciona una página.",
     "pinned": "Fijadas",
     "today": "Hoy",
+    "status_upcoming": "Próximamente",
+    "status_past": "Ya pasó",
     "to_do_count": "{n} tareas pendientes",
     "drag_reorder": "Arrastra para reordenar la página fijada",
     "drag_reorder_aria": "Arrastra para reordenar {title}",

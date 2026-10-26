@@ -23,7 +23,7 @@ import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
 import { connectGuestRtdb } from '../lib/guestCollab';
 import { colorFor } from '../lib/presence';
 import { useLanguage } from '../components/LanguageProvider';
-import { BOARD_AUDIENCE, dateLabelOf, weekdayOf, type Audience, type GuestPermission } from '../lib/board';
+import { BOARD_AUDIENCE, longDateOf, type Audience, type GuestPermission } from '../lib/board';
 
 interface GuestDocPayload {
   doc: { id: string; title: string; date: string; audience: Audience; md: string };
@@ -119,9 +119,10 @@ function GuestStatus({ t, kind }: { t: Translate; kind: 'loading' | 'unavailable
 }
 
 function GuestHeader({ t, doc, mode }: { t: Translate; doc: GuestDocPayload['doc']; mode: 'view' | 'edit' }) {
+  const { language } = useLanguage();
   const Icon = AUDIENCE_ICON[doc.audience];
   const audienceLabel = t(`coordination.audience_${doc.audience}`, BOARD_AUDIENCE[doc.audience].label);
-  const when = doc.date ? `${weekdayOf(doc.date)}, ${dateLabelOf(doc.date)}` : '';
+  const when = doc.date ? longDateOf(doc.date, language) : '';
   return (
     <header className="border-b border-outline-variant/60 bg-surface">
       <div className="mx-auto max-w-3xl px-5 py-5">
