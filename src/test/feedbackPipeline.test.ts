@@ -52,6 +52,14 @@ function createFakeFirestore() {
               for (const [key, val] of Object.entries(updates)) {
                 if (val && typeof val === 'object' && (val as any)._delete) {
                   delete current[key];
+                } else if (
+                  val &&
+                  typeof val === 'object' &&
+                  typeof (val as any).operand === 'number' &&
+                  (val as any).constructor?.name === 'NumericIncrementTransform'
+                ) {
+                  // FieldValue.increment lands as a transform on the real SDK.
+                  current[key] = (typeof current[key] === 'number' ? current[key] : 0) + (val as any).operand;
                 } else {
                   current[key] = val;
                 }
@@ -68,6 +76,20 @@ function createFakeFirestore() {
           const id = `doc_${Math.random().toString(36).slice(2, 9)}`;
           getCollection(colName).set(id, { ...data });
           return db.collection(colName).doc(id);
+        }),
+        get: vi.fn(async () => {
+          const results = Array.from(getCollection(colName).entries()).map(([id, doc]) => ({
+            id,
+            exists: true,
+            data: () => ({ ...doc }),
+            ref: db.collection(colName).doc(id),
+          }));
+          return {
+            empty: results.length === 0,
+            size: results.length,
+            docs: results,
+            forEach: (cb: any) => results.forEach(cb),
+          };
         }),
         where(field: string, op: string, value: any) {
           return {
@@ -332,6 +354,54 @@ describe('FeedbackPipeline', () => {
       expect(notifs.some((n: any) => n.userId === 'admin_uid' && n.title === 'A follow-up on a note')).toBe(true);
     });
 
+    it('records how many follow-ups a note holds, and whose was last', async () => {
+      await pipeline.addFollowUp({
+        id: 'fb_1',
+        body: 'Any update on this?',
+        actor: { uid: 'submitter_uid', name: 'Submitter Sam' },
+      });
+
+      const note = db.getDoc('feedback', 'fb_1');
+      expect(note.replyCount).toBe(1);
+      expect(note.lastReplyRole).toBe('submitter');
+      expect(note.lastReplyAt).toBeTruthy();
+    });
+
+    it('counts the follow-ups a note already held before the field existed', async () => {
+      // The seeded thread in the issue: two replies, no count on the Note. A
+      // blind increment would report the newest reply as the whole thread.
+      db.seed('feedback/fb_1/replies', 'reply_1', { authorRole: 'team', body: 'One' });
+      db.seed('feedback/fb_1/replies', 'reply_2', { authorRole: 'team', body: 'Two' });
+
+      await pipeline.addFollowUp({
+        id: 'fb_1',
+        body: 'Thank you',
+        actor: { uid: 'submitter_uid' },
+      });
+
+      expect(db.getDoc('feedback', 'fb_1').replyCount).toBe(3);
+    });
+
+    it('increments a count it has already written, and the team has the last word', async () => {
+      db.seed('feedback', 'fb_1', {
+        userId: 'submitter_uid',
+        userName: 'Submitter Sam',
+        githubIssueUrl: 'https://github.com/org/repo/issues/101',
+        replyCount: 2,
+      });
+
+      await pipeline.addFollowUp({
+        id: 'fb_1',
+        body: 'We shipped this.',
+        actor: { uid: 'admin_uid', role: 'admin' },
+      });
+
+      const note = db.getDoc('feedback', 'fb_1');
+      expect(note.replyCount).toBe(3);
+      expect(note.lastReplyRole).toBe('team');
+      expect(note.awaitingReply).toBe(false);
+    });
+
     it('forbids an unrelated user from replying', async () => {
       await expect(
         pipeline.addFollowUp({
@@ -412,6 +482,14 @@ describe('FeedbackPipeline', () => {
       const replies = db.getDocs('feedback/fb_1/replies');
       expect(replies.length).toBe(1);
       expect(replies[0].body).toBe('Laundered: We investigated and found the fix. Shipping soon!');
+
+      // The collapsed card counts this reply and marks it new from the Note
+      // alone, so a relayed comment records itself there too.
+      const note = db.getDoc('feedback', 'fb_1');
+      expect(note.replyCount).toBe(1);
+      expect(note.lastReplyRole).toBe('team');
+      expect(note.lastReplyAt).toBeTruthy();
+      expect(note.awaitingReply).toBe(false);
 
       // Notifies user
       const notifs = db.getDocs('notifications');

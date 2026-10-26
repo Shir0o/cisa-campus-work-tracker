@@ -5,6 +5,7 @@ import React from 'react';
 import MyNotes from '../views/MyNotes';
 import { LanguageProvider } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
+import { FOLLOW_UPS_SEEN_KEY } from '../lib/feedbackFollowUps';
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
@@ -195,6 +196,87 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     render(<MyNotes />);
     expect(screen.getByRole('button', { name: 'Follow-ups · Sep 1, 2026' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Follow-ups · Aug 2, 2026' })).toBeInTheDocument();
+  });
+
+  // The count and the "new" mark come from the Note itself: the page does not
+  // subscribe to a thread until it is opened (up to 50 nested listeners on a
+  // phone), so a collapsed card can only say what the Note records.
+  describe('how many follow-ups, and which are new', () => {
+    const VISIT = '2026-09-03T12:00:00.000Z';
+
+    const answered = (over: Record<string, unknown> = {}) => ({
+      ...NOTE,
+      awaitingReply: false,
+      replyCount: 2,
+      lastReplyAt: '2026-09-04T12:00:00.000Z',
+      lastReplyRole: 'team' as const,
+      ...over,
+    });
+
+    const visitedOn = (iso: string) =>
+      localStorage.setItem(`${FOLLOW_UPS_SEEN_KEY}:u1`, String(Date.parse(iso)));
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('shows the count and marks a team reply newer than the last visit as new', () => {
+      visitedOn(VISIT);
+      noteDocs = [answered()];
+      render(<MyNotes />);
+      expect(screen.getByRole('button', { name: /Read the reply · 2 replies · New · Sep 1, 2026/ })).toBeInTheDocument();
+      expect(screen.getByText('New')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    it('does not mark a reply the reader has already seen', () => {
+      visitedOn('2026-09-05T12:00:00.000Z');
+      noteDocs = [answered()];
+      render(<MyNotes />);
+      expect(screen.getByRole('button', { name: /Read the reply · 2 replies · Sep 1, 2026/ })).toBeInTheDocument();
+      expect(screen.queryByText('New')).not.toBeInTheDocument();
+    });
+
+    it('does not mark the reader’s own last follow-up as new', () => {
+      visitedOn(VISIT);
+      noteDocs = [answered({ lastReplyRole: 'submitter', awaitingReply: true })];
+      render(<MyNotes />);
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.queryByText('New')).not.toBeInTheDocument();
+    });
+
+    it('claims nothing is new on a first visit, but still counts', () => {
+      noteDocs = [answered()];
+      render(<MyNotes />);
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.queryByText('New')).not.toBeInTheDocument();
+    });
+
+    it('leaves a note written before the fields existed exactly as it was', () => {
+      visitedOn(VISIT);
+      noteDocs = [NOTE];
+      render(<MyNotes />);
+      // No count, and no claim that one is known: the old label, untouched.
+      expect(screen.getByRole('button', { name: 'Follow-ups · Sep 1, 2026' })).toBeInTheDocument();
+      expect(screen.queryByText('New')).not.toBeInTheDocument();
+    });
+
+    it('reads a single follow-up as one reply', () => {
+      noteDocs = [answered({ replyCount: 1 })];
+      render(<MyNotes />);
+      expect(screen.getByRole('button', { name: /1 reply · Sep 1, 2026/ })).toBeInTheDocument();
+    });
+
+    it('counts and marks in Spanish with the app’s own thread vocabulary', () => {
+      visitedOn(VISIT);
+      noteDocs = [answered()];
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <MyNotes />
+        </LanguageProvider>,
+      );
+      expect(screen.getByRole('button', { name: /2 respuestas · Nuevo · 1 sept 2026/ })).toBeInTheDocument();
+    });
   });
 
   it('speaks the note’s own vocabulary in Spanish, dates included', () => {
