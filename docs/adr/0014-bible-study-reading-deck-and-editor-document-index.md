@@ -1,7 +1,7 @@
 # 0014: The reader is a scrolling deck; the editor is a document with a navigating index
 
 ## Status
-Accepted. Amended by [ADR 0043](0043-bible-study-reader-pages-on-wide-screens.md): a reader box at least 768×600 pages one Section at a time; this ADR still governs the phone.
+Accepted. Amended by [ADR 0043](0043-bible-study-reader-pages-on-wide-screens.md): a reader box at least 768×600 pages one Section at a time; this ADR still governs the phone. Amended by [ADR 0048](0048-bible-study-reader-phone-default-type-size.md): the default type size follows the reader box's measure (18px under 400px, 20px above).
 
 ## Context
 Issue [#890](https://github.com/Shir0o/cisa-campus-work-tracker/issues/890) reported two failures that share a cause: neither the reader nor the editor had a model of the whole document, so both invented per-panel or per-selection behaviour on top of it.
