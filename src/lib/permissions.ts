@@ -169,6 +169,11 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
     // Trainees are an allowlist, not a rung on the ladder, so a viewer-level
     // ROUTE_MIN_ROLE does not reach them — the two study routes are named here
     // explicitly (#946).
+    // '/attendance' is deliberately missing, even though its floor reads
+    // "operator and above" (#1834). Taking attendance is the Student's task:
+    // a Student sees the whole room, while a Trainee only sees the people they
+    // are tied to (`seesAllPeople`), so Gatherings would hand them a partial
+    // roster and a partial missed list — worse in the room than no page at all.
     const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact', '/bible-study/read', '/bible-study/present'];
     return allowedTraineeRoutes.includes(path);
   }

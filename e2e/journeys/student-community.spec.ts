@@ -96,10 +96,12 @@ const EXPECT: Record<MatrixRole, {
     landing: '/',
     nav: {
       present: ['Home', 'The Journey', 'People', 'Messages'],
-      absent: ['Coordination Notes', 'Visits'],
+      // Gatherings is the Student's task, not a rung: a Trainee only sees the
+      // people they are tied to, so attendance would be a partial room (#1834).
+      absent: ['Coordination Notes', 'Visits', 'Gatherings'],
     },
     allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
-    denied: ['/coordination', '/admin/feedback', '/settings'],
+    denied: ['/coordination', '/admin/feedback', '/settings', '/attendance'],
     fallback: '/',
   },
   fulltimer: { // admin — home nav label is "My Day", not "Home"
