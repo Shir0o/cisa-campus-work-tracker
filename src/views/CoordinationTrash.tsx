@@ -18,7 +18,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 export default function CoordinationTrash() {
   const { isAdmin } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [docs, setDocs] = useState<BoardDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +89,7 @@ export default function CoordinationTrash() {
               className="flex items-center gap-4 p-4 rounded-3xl border border-outline-variant bg-surface-container"
             >
               <div className="flex flex-col items-center justify-center w-11 shrink-0 py-1.5 rounded-lg bg-surface-variant">
-                <span className="text-[11px] font-semibold text-on-surface-variant">{weekdayShort(d.date)}</span>
+                <span className="text-[11px] font-semibold text-on-surface-variant">{weekdayShort(d.date, language)}</span>
                 <span className="text-lg font-semibold text-on-surface">{dayNum(d.date)}</span>
               </div>
               <div className="min-w-0 flex-1">

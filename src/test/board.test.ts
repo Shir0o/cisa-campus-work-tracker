@@ -4,6 +4,7 @@ import {
   sessionStatus,
   weekdayOf,
   dateLabelOf,
+  longDateOf,
   todayISO,
   byDateAsc,
   docGroup,
@@ -76,22 +77,46 @@ describe('Board Pure Helpers', () => {
 
   describe('weekdayOf', () => {
     it('returns full weekday names', () => {
-      expect(weekdayOf('2026-06-16')).toBe('Tuesday');
-      expect(weekdayOf('2026-06-17')).toBe('Wednesday');
+      expect(weekdayOf('2026-06-16', 'en')).toBe('Tuesday');
+      expect(weekdayOf('2026-06-17', 'en')).toBe('Wednesday');
+    });
+
+    it('formats the weekday in the reader\'s language (#1850)', () => {
+      expect(weekdayOf('2026-06-16', 'es')).toBe('martes');
     });
 
     it('returns empty string for invalid dates', () => {
-      expect(weekdayOf('invalid-date')).toBe('');
+      expect(weekdayOf('invalid-date', 'en')).toBe('');
+      expect(weekdayOf('invalid-date', 'es')).toBe('');
     });
   });
 
   describe('dateLabelOf', () => {
     it('returns formatted date label', () => {
-      expect(dateLabelOf('2026-06-16')).toBe('Jun 16');
+      expect(dateLabelOf('2026-06-16', 'en')).toBe('Jun 16');
+    });
+
+    it('formats the month and day in the reader\'s language (#1850)', () => {
+      expect(dateLabelOf('2026-06-16', 'es')).toBe('16 jun');
     });
 
     it('returns the input date if invalid', () => {
-      expect(dateLabelOf('invalid-date')).toBe('invalid-date');
+      expect(dateLabelOf('invalid-date', 'en')).toBe('invalid-date');
+      expect(dateLabelOf('invalid-date', 'es')).toBe('invalid-date');
+    });
+  });
+
+  describe('longDateOf', () => {
+    it('writes the weekday and date in English', () => {
+      expect(longDateOf('2026-10-24', 'en')).toBe('Saturday, Oct 24');
+    });
+
+    it('writes the weekday and date in the reader\'s language, comma included (#1850)', () => {
+      expect(longDateOf('2026-10-24', 'es')).toBe('sábado, 24 oct');
+    });
+
+    it('returns empty string for invalid dates', () => {
+      expect(longDateOf('invalid-date', 'en')).toBe('');
     });
   });
 
@@ -152,8 +177,12 @@ describe('Board Pure Helpers', () => {
 
   describe('weekdayShort', () => {
     it('returns short weekday name', () => {
-      expect(weekdayShort('2026-06-16')).toBe('Tue');
-      expect(weekdayShort('invalid-date')).toBe('');
+      expect(weekdayShort('2026-06-16', 'en')).toBe('Tue');
+      expect(weekdayShort('invalid-date', 'en')).toBe('');
+    });
+
+    it('abbreviates the weekday in the reader\'s language (#1850)', () => {
+      expect(weekdayShort('2026-06-16', 'es')).toBe('mar');
     });
   });
 
@@ -438,12 +467,12 @@ More text
     ];
 
     it('returns empty array for empty search queries', () => {
-      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '')).toEqual([]);
-      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '   ')).toEqual([]);
+      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '', 'en')).toEqual([]);
+      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '   ', 'en')).toEqual([]);
     });
 
     it('searches doc titles and content headings', () => {
-      const results = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups');
+      const results = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'en');
       expect(results).toHaveLength(1);
       expect(results[0].kind).toBe('heading');
       expect(results[0].docId).toBe('doc1');
@@ -452,11 +481,18 @@ More text
     });
 
     it('searches across notes and tasks', () => {
-      const noteResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'training');
+      const noteResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'training', 'en');
       expect(noteResults.some((r) => r.kind === 'note' && r.noteId === 'note1')).toBe(true);
 
-      const taskResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'welcome emails');
+      const taskResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'welcome emails', 'en');
       expect(taskResults.some((r) => r.kind === 'task' && r.taskId === 'task1')).toBe(true);
+    });
+
+    it('writes result dates in the reader\'s language (#1850)', () => {
+      const [en] = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'en');
+      const [es] = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'es');
+      expect(en.subtitle).toBe('Jun 25');
+      expect(es.subtitle).toBe('25 jun');
     });
   });
 });

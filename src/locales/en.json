@@ -1300,6 +1300,8 @@
     "select_page": "Select a page.",
     "pinned": "Pinned",
     "today": "Today",
+    "status_upcoming": "Coming up",
+    "status_past": "Past",
     "to_do_count": "{n} to do",
     "drag_reorder": "Drag to reorder pinned page",
     "drag_reorder_aria": "Drag to reorder {title}",

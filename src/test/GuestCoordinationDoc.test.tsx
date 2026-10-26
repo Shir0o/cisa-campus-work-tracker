@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   editor: null as any,
   nullEditor: false,
   provider: null as any,
+  language: 'en' as 'en' | 'es',
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -18,7 +19,11 @@ vi.mock('react-router-dom', () => ({
 }));
 
 vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ t: (_k: string, f?: string) => f ?? _k, language: 'en', isSpanish: false }),
+  useLanguage: () => ({
+    t: (_k: string, f?: string) => f ?? _k,
+    language: h.language,
+    isSpanish: h.language === 'es',
+  }),
 }));
 
 vi.mock('@tiptap/react', () => ({
@@ -78,6 +83,7 @@ describe('GuestCoordinationDoc', () => {
     h.editor = null;
     h.nullEditor = false;
     h.provider = null;
+    h.language = 'en';
     localStorage.clear();
   });
 
@@ -111,6 +117,19 @@ describe('GuestCoordinationDoc', () => {
     stubFetch({ ...viewPayload(), doc: { ...viewPayload().doc, md: '' } });
     render(<GuestCoordinationDoc />);
     expect(await screen.findByText('This page is empty.')).toBeTruthy();
+  });
+
+  // #1850: the shared header used locale-blind date-fns, so Spanish read "Monday, Sept 14".
+  it('writes the shared page date in the reader\'s language', async () => {
+    h.language = 'es';
+    stubFetch(viewPayload());
+    render(<GuestCoordinationDoc />);
+
+    const esDate = new Intl.DateTimeFormat('es', { weekday: 'long', month: 'short', day: 'numeric' }).format(
+      new Date('2026-09-14T00:00:00'),
+    );
+    expect(await screen.findByText(esDate)).toBeTruthy();
+    expect(screen.queryByText(/Monday/)).toBeNull();
   });
 
   it('shows the revoked screen for a 404 and for a network failure', async () => {

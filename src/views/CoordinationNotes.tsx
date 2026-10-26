@@ -121,7 +121,7 @@ import {
   canViewBoardNotes,
   boardAudiencesForRole,
   todayISO,
-  weekdayOf,
+  longDateOf,
   dateLabelOf,
   weekdayShort,
   dayNum,
@@ -526,7 +526,7 @@ function ReadOnlyDoc({
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
   const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const markdownToRender = d.md
     ? bodyMarkdownForDisplay(translatedMarkdown, translatedTitle)
@@ -549,11 +549,11 @@ function ReadOnlyDoc({
           )}
           {st && (
             <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
-              {st.label}
+              {t(st.key)}
             </span>
           )}
           <span className="text-[13px] text-on-surface-variant font-medium">
-            {weekdayOf(d.date)}, {dateLabelOf(d.date)}
+            {longDateOf(d.date, language)}
             {d.time ? ` · ${d.time}` : ''}
           </span>
           {d.place && (
@@ -1006,8 +1006,8 @@ export default function CoordinationNotes() {
 
   // Unified search calculations
   const searchResults = useMemo(() => {
-    return searchBoardContent(docs, notes, todos, boardSearchQ);
-  }, [docs, notes, todos, boardSearchQ]);
+    return searchBoardContent(docs, notes, todos, boardSearchQ, language);
+  }, [docs, notes, todos, boardSearchQ, language]);
 
   const filteredSearchResults = useMemo(() => {
     if (boardSearchTab === 'all') return searchResults;
@@ -1735,7 +1735,7 @@ export default function CoordinationNotes() {
                       </span>
                       {res.date && (
                         <span className="text-[11px] text-on-surface-variant/70 shrink-0 font-mono">
-                          {dateLabelOf(res.date)}
+                          {dateLabelOf(res.date, language)}
                         </span>
                       )}
                     </div>
@@ -1814,7 +1814,7 @@ export default function CoordinationNotes() {
       {/* Header */}
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div className="max-w-2xl">
-          <div className="text-sm text-on-surface-variant mb-1">{weekdayOf(todayISO())}, {dateLabelOf(todayISO())}</div>
+          <div className="text-sm text-on-surface-variant mb-1">{longDateOf(todayISO(), language)}</div>
           <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">{heading}</h1>
           <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">{intro}</p>
         </div>
@@ -2240,7 +2240,7 @@ function DocRow({
   const open = mdOpenTasks(md);
   const isToday = sessionStatus(d.date) === 'today';
   const audience = audienceOf(d);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   return (
     <div
       className={cn(
@@ -2251,7 +2251,7 @@ function DocRow({
       <button onClick={onClick} className="w-full grid grid-cols-[42px_1fr] gap-3 items-start text-left p-2.5">
         <span className="flex flex-col items-center pt-0.5">
           <span className={cn('text-[10.5px] font-semibold  ', active ? 'text-stage-accent' : 'text-on-surface-variant/70')}>
-            {weekdayShort(d.date)}
+            {weekdayShort(d.date, language)}
           </span>
           <span className={cn('font-serif text-[22px] leading-none', active || isToday ? 'text-stage-accent' : 'text-on-surface-variant')}>
             {dayNum(d.date)}
@@ -3175,11 +3175,11 @@ export function DocEditor({
           )}
           {st && (
             <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
-              {st.label}
+              {t(st.key)}
             </span>
           )}
           <span className="text-[13px] text-on-surface-variant font-medium">
-            {weekdayOf(d.date)}, {dateLabelOf(d.date)}
+            {longDateOf(d.date, language)}
             {d.time ? ` · ${d.time}` : ''}
           </span>
           {d.place && (
@@ -3573,7 +3573,7 @@ function NoteCard({
   onRemove?: (n: BoardNote) => void;
 }) {
   const isLearning = n.type === 'learning';
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const ageDays = Math.round((Date.now() - new Date(n.date).getTime()) / 86400000);
   const oldRecall = ageDays > 300;
   const isListMode = n.displayMode === 'list' || (n.body && n.body.split('\n').some((l) => /^\s*-\s*\[[ xX]\]/.test(l)));
@@ -3608,7 +3608,7 @@ function NoteCard({
           {oldRecall && (
             <span className="px-1.5 py-px rounded-full bg-stage-amber-soft text-stage-amber font-semibold text-[10.5px]">{t('coordination.one_year')}</span>
           )}
-          {dateLabelOf(n.date)}
+          {dateLabelOf(n.date, language)}
         </span>
 
         {canEdit && (

@@ -1203,6 +1203,70 @@ describe('CoordinationNotes', () => {
       expect(screen.getByText('2 to do')).toBeInTheDocument();
     });
 
+    // #1850: the head used to print date-fns' locale-blind "Saturday, Oct 24"
+    // and the raw DOC_STATUS label, so a Spanish page said "Today" and "Saturday".
+    it('writes the open page\'s date and status chip in the reader\'s language', async () => {
+      const pastDate = '2026-06-10';
+      const customDocs = [
+        {
+          id: `doc-${today}`,
+          data: () => ({
+            title: 'Standup page',
+            date: today,
+            weekday: 'Monday',
+            md: '# Standup page',
+            createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
+          }),
+        },
+        {
+          id: 'doc-past',
+          data: () => ({
+            title: 'Retreat page',
+            date: pastDate,
+            weekday: 'Wednesday',
+            md: '# Retreat page',
+            createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: customDocs, notes: [], team: mockTeam });
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <CoordinationNotes />
+        </LanguageProvider>
+      );
+
+      const head = await screen.findByTestId('coordination-doc-hold');
+      const esDate = (iso: string) =>
+        new Intl.DateTimeFormat('es', { weekday: 'long', month: 'short', day: 'numeric' }).format(
+          new Date(`${iso}T00:00:00`),
+        );
+
+      await waitFor(() => {
+        expect(within(head).getByText('Hoy')).toBeInTheDocument();
+        expect(within(head).getByText(esDate(today))).toBeInTheDocument();
+      });
+      expect(within(head).queryByText(/Today|Saturday|Coming up|Past/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Retreat page'));
+
+      await waitFor(() => {
+        expect(within(head).getByText('Ya pasó')).toBeInTheDocument();
+        expect(within(head).getByText(esDate(pastDate))).toBeInTheDocument();
+      });
+    });
+
+    it('keeps the head chip and date in English by default', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const head = await screen.findByTestId('coordination-doc-hold');
+      await waitFor(() => expect(within(head).getByText('Today')).toBeInTheDocument());
+      expect(within(head).queryByText(/Hoy|sábado/)).not.toBeInTheDocument();
+    });
+
     it('renders NoteCard with old recall badge (>300 days) and contributor avatars', async () => {
       const oldDate = new Date(Date.now() - 310 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const customNotes = [

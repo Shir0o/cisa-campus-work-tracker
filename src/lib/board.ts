@@ -8,6 +8,7 @@
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { AppRole } from './permissions';
+import type { AppLanguage } from './userPreferences';
 import { mdSummary } from './markdown';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
@@ -137,14 +138,25 @@ export const STATUS_LABEL: Record<SessionStatus, string> = {
   upcoming: 'Upcoming',
 };
 
-export const weekdayOf = (date: string): string => {
+export const weekdayOf = (date: string, language: AppLanguage): string => {
   const d = parseISO(date);
-  return isValid(d) ? format(d, 'EEEE') : '';
+  return isValid(d) ? d.toLocaleDateString(language, { weekday: 'long' }) : '';
 };
 
-export const dateLabelOf = (date: string): string => {
+export const dateLabelOf = (date: string, language: AppLanguage): string => {
   const d = parseISO(date);
-  return isValid(d) ? format(d, 'MMM d') : date;
+  return isValid(d) ? d.toLocaleDateString(language, { month: 'short', day: 'numeric' }) : date;
+};
+
+// The open page's head: "Saturday, Oct 24" / "sábado, 24 oct". One Intl call so
+// the comma and the word order are the locale's — both disagree between en and
+// es, and concatenating a translated weekday onto a translated month is how
+// "Sábado, 24 Oct" happens (#1850).
+export const longDateOf = (date: string, language: AppLanguage): string => {
+  const d = parseISO(date);
+  return isValid(d)
+    ? d.toLocaleDateString(language, { weekday: 'long', month: 'short', day: 'numeric' })
+    : '';
 };
 
 export const todayISO = (): string => format(new Date(), 'yyyy-MM-dd');
@@ -263,16 +275,19 @@ export const docGroup = (
 };
 
 // Status chip shown on the open document (reuses sessionStatus from the date).
-export const DOC_STATUS: Record<SessionStatus, { label: string; tone: Tone | '' }> = {
-  today: { label: 'Today', tone: 'accent' },
-  upcoming: { label: 'Coming up', tone: '' },
-  done: { label: 'Past', tone: 'teal' },
+// Keyed, not literal: the chip is translated with t(key), so a Spanish page
+// says "Hoy" like the list card does. Tone stays here because it is design, not
+// copy.
+export const DOC_STATUS: Record<SessionStatus, { key: string; tone: Tone | '' }> = {
+  today: { key: 'coordination.today', tone: 'accent' },
+  upcoming: { key: 'coordination.status_upcoming', tone: '' },
+  done: { key: 'coordination.status_past', tone: 'teal' },
 };
 
 // Row date chip: short weekday + day-of-month.
-export const weekdayShort = (date: string): string => {
+export const weekdayShort = (date: string, language: AppLanguage): string => {
   const d = parseISO(date);
-  return isValid(d) ? format(d, 'EEE') : '';
+  return isValid(d) ? d.toLocaleDateString(language, { weekday: 'short' }) : '';
 };
 export const dayNum = (date: string): string => {
   const d = parseISO(date);
@@ -584,6 +599,7 @@ export function searchBoardContent(
   notes: BoardNote[],
   tasks: Array<{ id: string; title: string; assigneeName?: string | null; status?: string; dueDate?: string | null; sourceDocId?: string | null }>,
   query: string,
+  language: AppLanguage,
 ): BoardSearchResult[] {
   const ql = query.trim().toLowerCase();
   if (!ql) return [];
@@ -607,7 +623,7 @@ export function searchBoardContent(
           kind: 'heading',
           docId: docItem.id,
           title: docTitle,
-          subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+          subtitle: dateStr ? dateLabelOf(dateStr, language) : undefined,
           headingText: h.text,
           anchorId: h.id,
           snippet: `Section: ${h.text}`,
@@ -622,7 +638,7 @@ export function searchBoardContent(
         kind: 'doc',
         docId: docItem.id,
         title: docTitle,
-        subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+        subtitle: dateStr ? dateLabelOf(dateStr, language) : undefined,
         snippet: mdSummary(docItem.md || '') || 'Page document',
         date: dateStr,
       });
@@ -645,7 +661,7 @@ export function searchBoardContent(
         kind: 'doc',
         docId: docItem.id,
         title: docTitle,
-        subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+        subtitle: dateStr ? dateLabelOf(dateStr, language) : undefined,
         anchorId: nearestAnchor,
         snippet: snippetText.length > 120 ? snippetText.slice(0, 120) + '...' : snippetText,
         date: dateStr,
