@@ -1917,7 +1917,7 @@ describe('Settings', () => {
         "t('settings.send_test_web_notification'",
         "t('settings.show_checklist'",
         "t('settings.scan_and_purge'",
-        'aria-label="Copy token"',
+        'aria-label={t(\'attendanceSync.attd_copy_token\', \'Copy token\')}',
       ];
 
       for (const marker of markers) {

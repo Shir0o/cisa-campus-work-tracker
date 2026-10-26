@@ -144,12 +144,14 @@ function roleLabel(t: (key: string, fallback?: string) => string, role: AppRole 
 }
 
 // Ordered low → high for the selects. The Full-timer (admin) option is only
-// offered to admins (RBAC) — handled where the options are rendered.
-const ROLE_OPTIONS: { value: AppRole; label: string }[] = [
-  { value: 'viewer', label: 'Community' },
-  { value: 'operator', label: 'Student' },
-  { value: 'manager', label: 'Trainee' },
-  { value: 'admin', label: 'Full-timer' },
+// offered to admins (RBAC) — handled where the options are rendered. The
+// labels are not stored here: both pickers resolve `roleLabel()` so a Spanish
+// session never reads a literal English constant (#1818).
+const ROLE_OPTIONS: { value: AppRole }[] = [
+  { value: 'viewer' },
+  { value: 'operator' },
+  { value: 'manager' },
+  { value: 'admin' },
 ];
 
 // The access chips reuse the nav labels so a Spanish reader sees the same
@@ -340,13 +342,13 @@ function AccountSection() {
           <Avatar name={user?.displayName || user?.email} photoURL={user?.photoURL} size="lg" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-serif text-xl text-on-surface truncate">{user?.displayName || 'Campus user'}</h3>
+              <h3 className="font-serif text-xl text-on-surface truncate">{user?.displayName || t('settings.campus_user', 'Campus user')}</h3>
               <button
                 type="button"
                 onClick={() => setShowEditName(true)}
                 className="p-1.5 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors"
-                aria-label="Edit name"
-                title="Edit name"
+                aria-label={t('settings.edit_name', 'Edit name')}
+                title={t('settings.edit_name', 'Edit name')}
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
@@ -638,7 +640,11 @@ function SecuritySection() {
                 <button
                   type="button"
                   onClick={() => setShowReauthPassword((v) => !v)}
-                  aria-label={showReauthPassword ? 'Hide password' : 'Show password'}
+                  aria-label={
+                    showReauthPassword
+                      ? t('settings.security.hide_password', 'Hide password')
+                      : t('settings.security.show_password', 'Show password')
+                  }
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:content-['']"
                 >
                   {showReauthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -687,7 +693,7 @@ function SecuritySection() {
                   marginSize={2}
                   bgColor="#FFFFFF"
                   fgColor="#0A0A0B"
-                  aria-label="Authenticator setup QR code"
+                  aria-label={t('settings.security.qr_label', 'Authenticator setup QR code')}
                 />
               </div>
             </div>
@@ -1076,7 +1082,7 @@ function WeeklyReminderSection({ uid, off }: { uid: string; off: boolean }) {
 }
 
 function ReminderScheduleSection() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [schedule, setSchedule] = useState<ReminderSchedule>(DEFAULT_REMINDER_SCHEDULE);
   useEffect(() => subscribeReminderSchedule(setSchedule), []);
 
@@ -1123,7 +1129,9 @@ function ReminderScheduleSection() {
           >
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-on-surface">{row.label}</span>
-              <span className="text-[12px] text-on-surface-variant">{reminderTimeSummary(row.time)}</span>
+              <span className="text-[12px] text-on-surface-variant">
+                {reminderTimeSummary(row.time, language)}
+              </span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div role="group" aria-label={t('reminders.days_for', 'Days for {name}').replace('{name}', row.label)} className="inline-flex gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1">
@@ -1276,7 +1284,7 @@ function WhatsNewSection({
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: any) {
-      setError(err?.message || 'Failed to save What’s New video settings');
+      setError(err?.message || t('settings.whats_new_save_failed', 'Failed to save What’s New video settings'));
     } finally {
       setSaving(false);
     }
@@ -1343,12 +1351,12 @@ function WhatsNewSection({
                   onChange={(e) =>
                     setTargetAudience(e.target.value as 'everyone' | 'admin' | 'staff')
                   }
-                  aria-label="Video audience"
+                  aria-label={t('settings.whats_new_audience', 'Video audience')}
                   className="rounded-sm pointer-coarse:min-h-11"
                 >
-                  <option value="everyone">Everyone</option>
-                  <option value="staff">Full-timers & Trainees</option>
-                  <option value="admin">Full-timers only</option>
+                  <option value="everyone">{t('settings.audience_everyone', 'Everyone')}</option>
+                  <option value="staff">{t('settings.audience_staff', 'Full-timers & Trainees')}</option>
+                  <option value="admin">{t('settings.audience_admin', 'Full-timers only')}</option>
                 </Select>
               </div>
             </div>
@@ -1453,6 +1461,7 @@ onClick={() => setCount(goal.count - 1)}
 // ── Integrations: "Quick add by text" (dev) ────────────────────────────
 
 function CodeBlock({ code, label }: { code: string; label?: string }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(code);
@@ -1469,10 +1478,10 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
         <button
           onClick={copy}
           className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-[14px] pointer-coarse:min-h-11 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
-          aria-label="Copy"
+          aria-label={t('actions.copy', 'Copy')}
         >
           {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
+          <span>{copied ? t('actions.copied', 'Copied') : t('actions.copy', 'Copy')}</span>
         </button>
       </div>
     </div>
@@ -1610,19 +1619,22 @@ function IntegrationsSection({
         setText('');
       } else {
         setStatus('error');
-        setErrorMsg(data.error || 'Failed to process description.');
+        setErrorMsg(data.error || t('settings.quick_add_error', 'Failed to process description.'));
       }
     } catch (err: any) {
       setStatus('error');
-      setErrorMsg(err.message || 'An error occurred connecting to the server.');
+      setErrorMsg(err.message || t('settings.quick_add_connection_error', 'An error occurred connecting to the server.'));
     }
   };
 
   return (
     <section className="mt-10">
       <SectionHeader
-        title="Quick add by text"
-        sub="Bring people in the way you actually meet them — a text, a voice note, a quick line in a group chat."
+        title={t('settings.quick_add_title', 'Quick add by text')}
+        sub={t(
+          'settings.quick_add_sub',
+          'Bring people in the way you actually meet them — a text, a voice note, a quick line in a group chat.',
+        )}
       />
       <div className="space-y-3 max-w-2xl">
         {/* Natural-language playground */}
@@ -1633,23 +1645,31 @@ function IntegrationsSection({
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif text-base text-on-surface leading-tight">Natural-language playground</h3>
+                <h3 className="font-serif text-base text-on-surface leading-tight">
+                  {t('settings.playground_title', 'Natural-language playground')}
+                </h3>
                 {geminiStatus === 'ready' && (
                   <span
                     data-testid="gemini-status-badge"
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success border border-success/20"
-                    title="Gemini API key is configured on the backend (Cloud Run). Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups will all parse with AI."
+                    title={t(
+                      'settings.gemini_ready_help',
+                      'Gemini API key is configured on the backend (Cloud Run). Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups will all parse with AI.',
+                    )}
                   >
-                    <CheckCircle2 className="w-3 h-3" /> Gemini AI ready
+                    <CheckCircle2 className="w-3 h-3" /> {t('settings.gemini_ready', 'Gemini AI ready')}
                   </span>
                 )}
                 {geminiStatus === 'missing' && (
                   <span
                     data-testid="gemini-status-badge"
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-on-surface border border-warning/30"
-                    title="The backend reports GEMINI_API_KEY is not configured. Set it on the campus-hub-backend Cloud Run service to re-enable Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups."
+                    title={t(
+                      'settings.gemini_missing_help',
+                      'The backend reports GEMINI_API_KEY is not configured. Set it on the campus-hub-backend Cloud Run service to re-enable Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups.',
+                    )}
                   >
-                    <XCircle className="w-3 h-3" /> Gemini AI not configured
+                    <XCircle className="w-3 h-3" /> {t('settings.gemini_missing', 'Gemini AI not configured')}
                   </span>
                 )}
                 {geminiStatus === 'checking' && (
@@ -1657,13 +1677,15 @@ function IntegrationsSection({
                     data-testid="gemini-status-badge"
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-container-high text-on-surface-variant border border-outline-variant/40"
                   >
-                    <Loader2 className="w-3 h-3 animate-spin" /> Checking Gemini…
+                    <Loader2 className="w-3 h-3 animate-spin" /> {t('settings.gemini_checking', 'Checking Gemini…')}
                   </span>
                 )}
               </div>
               <p className="text-[13px] text-on-surface-variant mt-0.5 leading-relaxed">
-                Type or paste a note about someone you met — the way you'd text it or say it out loud. It's parsed and
-                turned into a contact, ready to keep.
+                {t(
+                  'settings.quick_add_intro',
+                  "Type or paste a note about someone you met — the way you'd text it or say it out loud. It's parsed and turned into a contact, ready to keep.",
+                )}
               </p>
             </div>
           </div>
@@ -1671,7 +1693,10 @@ function IntegrationsSection({
 
             <input
               type="text"
-              placeholder="e.g. Met John Doe at Miller Hall. Sophomore philosophy student, phone 555-1234."
+              placeholder={t(
+                'settings.quick_add_placeholder',
+                'e.g. Met John Doe at Miller Hall. Sophomore philosophy student, phone 555-1234.',
+              )}
               aria-label={t('settings.quick_add_label', 'A description to parse into a contact')}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -1686,12 +1711,12 @@ function IntegrationsSection({
               {status === 'loading' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Reading…</span>
+                  <span>{t('settings.quick_add_reading', 'Reading…')}</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  <span>Try it</span>
+                  <span>{t('settings.quick_add_try', 'Try it')}</span>
                 </>
               )}
             </button>
@@ -1706,29 +1731,33 @@ function IntegrationsSection({
                 className="mt-4 p-4 bg-success/10 border border-success/30 rounded-lg text-sm"
               >
                 <div className="flex items-center gap-2 text-success font-medium mb-3">
-                  <CheckCircle2 className="w-4 h-4" /> Parsed into a contact
+                  <CheckCircle2 className="w-4 h-4" /> {t('settings.quick_add_parsed', 'Parsed into a contact')}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   <div>
-                    <span className="text-on-surface-variant block text-[11px]">Name</span>
+                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_name', 'Name')}</span>
                     <span className="font-medium text-on-surface">{result.name}</span>
                   </div>
                   <div>
-                    <span className="text-on-surface-variant block text-[11px]">Role / Group</span>
+                    <span className="text-on-surface-variant block text-[11px]">
+                      {t('settings.field_role_group', 'Role / Group')}
+                    </span>
                     <span className="text-on-surface">{result.role}</span>
                   </div>
                   <div>
-                    <span className="text-on-surface-variant block text-[11px]">Location</span>
+                    <span className="text-on-surface-variant block text-[11px]">
+                      {t('settings.field_location', 'Location')}
+                    </span>
                     <span className="text-on-surface">{result.location || '—'}</span>
                   </div>
                   <div>
-                    <span className="text-on-surface-variant block text-[11px]">Stage</span>
+                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_stage', 'Stage')}</span>
                     <span className="font-medium text-accent">{result.stage}</span>
                   </div>
                 </div>
                 {result.notes && (
                   <div className="mt-3 text-xs">
-                    <span className="text-on-surface-variant block text-[11px]">Notes</span>
+                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_notes', 'Notes')}</span>
                     <p className="text-on-surface mt-0.5">{result.notes}</p>
                   </div>
                 )}
@@ -1744,7 +1773,7 @@ function IntegrationsSection({
               >
                 <XCircle className="w-5 h-5 shrink-0" />
                 <div>
-                  <span className="font-medium">Something went wrong</span>
+                  <span className="font-medium">{t('settings.quick_add_failed', 'Something went wrong')}</span>
                   <p className="mt-1 text-xs opacity-90">{errorMsg}</p>
                 </div>
               </motion.div>
@@ -1755,65 +1784,107 @@ function IntegrationsSection({
         {/* Channels */}
         <ChannelCard
           Icon={Command}
-          title="Siri & iOS Shortcuts / Home Widget"
-          blurb="Add contacts from iOS Shortcuts, Home Screen widgets, Siri voice, or your own automations."
+          title={t('settings.channel_siri_title', 'Siri & iOS Shortcuts / Home Widget')}
+          blurb={t(
+            'settings.channel_siri_blurb',
+            'Add contacts from iOS Shortcuts, Home Screen widgets, Siri voice, or your own automations.',
+          )}
           defaultOpen
         >
           <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            Say “Hey Siri, Quick Add…” or tap an iOS Home Screen Quick-Add widget to pass a raw voice note or text description directly into the tracker.
+            {t(
+              'settings.channel_siri_body',
+              'Say “Hey Siri, Quick Add…” or tap an iOS Home Screen Quick-Add widget to pass a raw voice note or text description directly into the tracker.',
+            )}
           </p>
           <Steps
             items={[
-              'In the Apple Shortcuts app, create a new Shortcut named "Quick Add".',
-              'Add "Dictate Text" (for Siri voice) or "Ask for Input" (for Home Screen widget).',
-              'Add "Get Contents of URL" pointing to this POST endpoint with JSON body {"text": "<Input/Dictated Text>"}.',
-              'Add the shortcut to your iPhone Home Screen as a widget or trigger it hands-free with Siri.',
+              t(
+                'settings.channel_siri_step1',
+                'In the Apple Shortcuts app, create a new Shortcut named "Quick Add".',
+              ),
+              t(
+                'settings.channel_siri_step2',
+                'Add "Dictate Text" (for Siri voice) or "Ask for Input" (for Home Screen widget).',
+              ),
+              t(
+                'settings.channel_siri_step3',
+                'Add "Get Contents of URL" pointing to this POST endpoint with JSON body {"text": "<Input/Dictated Text>"}.',
+              ),
+              t(
+                'settings.channel_siri_step4',
+                'Add the shortcut to your iPhone Home Screen as a widget or trigger it hands-free with Siri.',
+              ),
             ]}
           />
-          <CodeBlock label="POST · curl request template" code={curlCommand} />
+          <CodeBlock
+            label={t('settings.curl_label', 'POST · curl request template')}
+            code={curlCommand}
+          />
         </ChannelCard>
 
         <ChannelCard
           Icon={Smartphone}
-          title="SMS & WhatsApp"
-          blurb="Text a new contact straight in from a single Twilio number."
+          title={t('settings.channel_sms_title', 'SMS & WhatsApp')}
+          blurb={t(
+            'settings.channel_sms_blurb',
+            'Text a new contact straight in from a single Twilio number.',
+          )}
         >
           <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            Point your Twilio number's inbound webhook here. Standard SMS and official WhatsApp messages both arrive at
-            the same place.
+            {t(
+              'settings.channel_sms_body',
+              "Point your Twilio number's inbound webhook here. Standard SMS and official WhatsApp messages both arrive at the same place.",
+            )}
           </p>
-          <CodeBlock label="Twilio inbound webhook URL" code={smsWebhookUrl} />
+          <CodeBlock
+            label={t('settings.sms_webhook_label', 'Twilio inbound webhook URL')}
+            code={smsWebhookUrl}
+          />
           <Steps
             items={[
-              'In Twilio, choose your phone or sandbox number.',
-              'Under the messaging webhook settings, paste this URL.',
-              'Set the method to HTTP POST and save.',
+              t('settings.channel_sms_step1', 'In Twilio, choose your phone or sandbox number.'),
+              t('settings.channel_sms_step2', 'Under the messaging webhook settings, paste this URL.'),
+              t('settings.channel_sms_step3', 'Set the method to HTTP POST and save.'),
             ]}
           />
         </ChannelCard>
 
         <ChannelCard
           Icon={MessageSquare}
-          title="GroupMe bot"
-          blurb="Let the whole group chat add contacts with a quick !add line."
+          title={t('settings.channel_groupme_title', 'GroupMe bot')}
+          blurb={t(
+            'settings.channel_groupme_blurb',
+            'Let the whole group chat add contacts with a quick !add line.',
+          )}
         >
           <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            Everyone in the group can text new contacts using a trigger prefix. The bot reads the message, parses it, and
-            files it for the team.
+            {t(
+              'settings.channel_groupme_body',
+              'Everyone in the group can text new contacts using a trigger prefix. The bot reads the message, parses it, and files it for the team.',
+            )}
           </p>
-          <CodeBlock label="GroupMe bot callback URL" code={groupMeWebhookUrl} />
+          <CodeBlock
+            label={t('settings.groupme_webhook_label', 'GroupMe bot callback URL')}
+            code={groupMeWebhookUrl}
+          />
           <Steps
             items={[
-              'Go to dev.groupme.com and open the Bots menu.',
-              'Click Create Bot and link your group chat.',
-              'Paste this callback URL and submit.',
+              t('settings.channel_groupme_step1', 'Go to dev.groupme.com and open the Bots menu.'),
+              t('settings.channel_groupme_step2', 'Click Create Bot and link your group chat.'),
+              t('settings.channel_groupme_step3', 'Paste this callback URL and submit.'),
             ]}
           />
 
           <div className="pt-1">
-            <div className="text-sm font-medium text-on-surface mb-1">Prefix triggers</div>
+            <div className="text-sm font-medium text-on-surface mb-1">
+              {t('settings.prefix_triggers', 'Prefix triggers')}
+            </div>
             <p className="text-[13px] text-on-surface-variant leading-relaxed mb-2">
-              Start a message with any of these so the bot knows to parse it:
+              {t(
+                'settings.prefix_triggers_body',
+                'Start a message with any of these so the bot knows to parse it:',
+              )}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {['!add', '/add', 'add:'].map((p) => (
@@ -1828,9 +1899,14 @@ function IntegrationsSection({
           </div>
 
           <div className="pt-1">
-            <div className="text-sm font-medium text-on-surface mb-1">Parsing options</div>
+            <div className="text-sm font-medium text-on-surface mb-1">
+              {t('settings.parsing_options', 'Parsing options')}
+            </div>
             <p className="text-[13px] text-on-surface-variant leading-relaxed mb-2">
-              Add an optional keyword right after the prefix to steer the parser:
+              {t(
+                'settings.parsing_options_body',
+                'Add an optional keyword right after the prefix to steer the parser:',
+              )}
             </p>
 
             <div className="space-y-3">
@@ -1839,10 +1915,15 @@ function IntegrationsSection({
                   <code className="font-code text-[11px] px-1.5 py-0.5 rounded bg-stage-accent-soft text-stage-accent">
                     contact
                   </code>
-                  <span className="text-[12px] text-on-surface-variant italic">default</span>
+                  <span className="text-[12px] text-on-surface-variant italic">
+                    {t('settings.parsing_default', 'default')}
+                  </span>
                 </div>
                 <p className="text-[13px] text-on-surface leading-relaxed">
-                  Parses name, role, details and contact info, then creates a card or merges with an existing one.
+                  {t(
+                    'settings.parsing_contact_body',
+                    'Parses name, role, details and contact info, then creates a card or merges with an existing one.',
+                  )}
                 </p>
                 <CodeBlock code="!add contact Jerry Doe is a sophomore majoring in history, phone 555-0192, met at cafeteria." />
               </div>
@@ -1854,7 +1935,10 @@ function IntegrationsSection({
                   </code>
                 </div>
                 <p className="text-[13px] text-on-surface leading-relaxed">
-                  Logs a follow-up conversation or prayer update in the history of an existing contact.
+                  {t(
+                    'settings.parsing_interaction_body',
+                    'Logs a follow-up conversation or prayer update in the history of an existing contact.',
+                  )}
                 </p>
                 <CodeBlock code="!add interaction Jerry Doe and I studied Romans today, shared about exams and prayed together." />
               </div>
@@ -2001,7 +2085,7 @@ function AttdIntegrationCard({
         {loading ? (
           <div className="flex items-center gap-2 text-xs text-on-surface-variant py-1">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Loading token…</span>
+            <span>{t('attendanceSync.attd_loading_token', 'Loading token…')}</span>
           </div>
         ) : syncToken ? (
           <div className="relative">
@@ -2013,8 +2097,16 @@ function AttdIntegrationCard({
                 type="button"
                 onClick={() => setShowToken((prev) => !prev)}
                 className="relative p-1 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3 pointer-coarse:after:content-['']"
-                title={showToken ? 'Hide token' : 'Show token'}
-                aria-label={showToken ? 'Hide token' : 'Show token'}
+                title={
+                  showToken
+                    ? t('attendanceSync.attd_hide_token', 'Hide token')
+                    : t('attendanceSync.attd_show_token', 'Show token')
+                }
+                aria-label={
+                  showToken
+                    ? t('attendanceSync.attd_hide_token', 'Hide token')
+                    : t('attendanceSync.attd_show_token', 'Show token')
+                }
               >
                 {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -2026,8 +2118,8 @@ function AttdIntegrationCard({
                   setTimeout(() => setSaveStatus(null), 2500);
                 }}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-[14px] pointer-coarse:min-h-11 text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                title="Copy token"
-                aria-label="Copy token"
+                title={t('attendanceSync.attd_copy_token', 'Copy token')}
+                aria-label={t('attendanceSync.attd_copy_token', 'Copy token')}
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>{t('actions.copy', 'Copy')}</span>
@@ -2061,6 +2153,7 @@ function AttdIntegrationCard({
 // ── API & webhook console (dev) ────────────────────────────────────────
 
 function WebhookConsoleSection() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
@@ -2084,7 +2177,7 @@ function WebhookConsoleSection() {
   }, []);
 
   const handleClearLogs = async () => {
-    if (!confirm('Clear all webhook debugging logs?')) return;
+    if (!confirm(t('settings.webhook_clear_confirm', 'Clear all webhook debugging logs?'))) return;
     setIsClearing(true);
     try {
       const snapshot = await getDocs(collection(db, 'webhook_logs'));
@@ -2103,9 +2196,14 @@ function WebhookConsoleSection() {
     <section className="mt-10">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="font-serif text-2xl text-on-surface">API &amp; webhook console</h2>
+          <h2 className="font-serif text-2xl text-on-surface">
+            {t('settings.webhook_title', 'API & webhook console')}
+          </h2>
           <p className="text-sm text-on-surface-variant mt-1 max-w-2xl leading-relaxed">
-            A developer's view of every contact arriving by API, SMS, WhatsApp, or GroupMe — with the raw payloads.
+            {t(
+              'settings.webhook_sub',
+              "A developer's view of every contact arriving by API, SMS, WhatsApp, or GroupMe — with the raw payloads.",
+            )}
           </p>
         </div>
         {logs.length > 0 && (
@@ -2115,7 +2213,7 @@ function WebhookConsoleSection() {
             className="shrink-0 px-3 py-1.5 text-xs text-error hover:bg-error/10 font-medium rounded-[14px] pointer-coarse:min-h-11 transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear
+            {t('settings.webhook_clear', 'Clear')}
           </button>
         )}
       </div>
@@ -2124,14 +2222,19 @@ function WebhookConsoleSection() {
         {loadingLogs ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
             <Loader2 className="w-7 h-7 animate-spin text-accent" />
-            <p className="text-xs">Listening for incoming requests…</p>
+            <p className="text-xs">{t('settings.webhook_listening', 'Listening for incoming requests…')}</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="py-12 text-center">
             <Sparkles className="w-7 h-7 text-on-surface-variant/40 mx-auto mb-2" />
-            <p className="text-sm font-medium text-on-surface-variant">No activity yet</p>
+            <p className="text-sm font-medium text-on-surface-variant">
+              {t('settings.webhook_empty_title', 'No activity yet')}
+            </p>
             <p className="text-xs text-on-surface-variant mt-1">
-              Send a message to your GroupMe bot or try Quick Add to see webhooks here.
+              {t(
+                'settings.webhook_empty_body',
+                'Send a message to your GroupMe bot or try Quick Add to see webhooks here.',
+              )}
             </p>
           </div>
         ) : (
@@ -2184,13 +2287,15 @@ function WebhookConsoleSection() {
                         <div className="p-3.5 space-y-3">
                           {log.error && (
                             <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-xs">
-                              <span className="font-medium block mb-1">Failure detail</span>
+                              <span className="font-medium block mb-1">
+                                {t('settings.webhook_failure_detail', 'Failure detail')}
+                              </span>
                               {log.error}
                             </div>
                           )}
                           <div>
                             <span className="text-[11px]   text-on-surface-variant block mb-1">
-                              Raw payload (POST body)
+                              {t('settings.webhook_raw_payload', 'Raw payload (POST body)')}
                             </span>
                             <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
                               {(() => {
@@ -2204,7 +2309,7 @@ function WebhookConsoleSection() {
                           </div>
                           <div>
                             <span className="text-[11px]   text-on-surface-variant block mb-1">
-                              Request headers
+                              {t('settings.webhook_headers', 'Request headers')}
                             </span>
                             <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
                               {(() => {
@@ -2308,10 +2413,10 @@ function MemberCard({
       <Avatar name={user.displayName || user.email} photoURL={user.photoURL} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-on-surface truncate">{user.displayName || 'Unnamed'}</span>
+          <span className="font-medium text-on-surface truncate">{user.displayName || t('settings.unnamed', 'Unnamed')}</span>
           {isYou && (
             <span className="text-[10px] text-accent border border-accent-line bg-surface rounded-full px-1.5 py-0.5 leading-none shrink-0">
-              you
+              {t('common.you', 'You')}
             </span>
           )}
         </div>
@@ -2325,7 +2430,7 @@ function MemberCard({
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors"
-            aria-label="Member options"
+            aria-label={t('settings.member_options', 'Member options')}
             aria-expanded={menuOpen}
           >
             <MoreHorizontal className="w-4 h-4" />
@@ -2340,7 +2445,7 @@ function MemberCard({
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high text-left pointer-coarse:min-h-11 pointer-coarse:flex pointer-coarse:items-center"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Edit member
+                  <Pencil className="w-3.5 h-3.5" /> {t('settings.edit_member', 'Edit member')}
                 </button>
               )}
               {canRemove && (
@@ -2351,7 +2456,7 @@ function MemberCard({
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 text-left pointer-coarse:min-h-11 pointer-coarse:flex pointer-coarse:items-center"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Remove access
+                  <Trash2 className="w-3.5 h-3.5" /> {t('settings.remove_access', 'Remove access')}
                 </button>
               )}
             </div>
@@ -2373,16 +2478,18 @@ function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => v
         <div className="flex items-center gap-2">
           <span className="font-medium text-on-surface truncate">{invite.email}</span>
           <span className="text-[10px] text-on-surface-variant border border-outline-variant/50 rounded-full px-1.5 py-0.5 leading-none shrink-0">
-            invite sent
+            {t('settings.invite_sent', 'invite sent')}
           </span>
         </div>
-        <div className="text-[13px] text-on-surface-variant">{roleLabel(t, invite.role)} · waiting to sign up</div>
+        <div className="text-[13px] text-on-surface-variant">
+          {roleLabel(t, invite.role)} · {t('settings.waiting_to_sign_up', 'waiting to sign up')}
+        </div>
       </div>
       <button
         onClick={onCancel}
         className="p-2 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
-        title="Cancel invite"
-        aria-label="Cancel invite"
+        title={t('settings.cancel_invite', 'Cancel invite')}
+        aria-label={t('settings.cancel_invite', 'Cancel invite')}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -2403,6 +2510,7 @@ function EditMemberModal({
 }) {
   const [displayName, setDisplayName] = useState(user.displayName || '');
   const [role, setRole] = useState<AppRole>(user.role || 'viewer');
+  const { t } = useLanguage();
   // RBAC: only an admin can grant the Full-timer (admin) role.
   const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
 
@@ -2430,18 +2538,18 @@ function EditMemberModal({
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
-        <h3 className="font-serif text-xl text-on-surface mb-4">Edit member</h3>
+        <h3 className="font-serif text-xl text-on-surface mb-4">{t('settings.edit_member', 'Edit member')}</h3>
         <div className="flex items-center gap-3 mb-5">
           <Avatar name={user.displayName || user.email} photoURL={user.photoURL} />
           <div className="min-w-0">
-            <div className="font-medium text-on-surface truncate">{user.displayName || 'Unnamed'}</div>
+            <div className="font-medium text-on-surface truncate">{user.displayName || t('settings.unnamed', 'Unnamed')}</div>
             <div className="text-[13px] text-on-surface-variant truncate">{user.email}</div>
           </div>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="edit-member-name" className="text-sm text-on-surface-variant block mb-1.5">
-              Display name
+              {t('settings.display_name', 'Display name')}
             </label>
             <input
               id="edit-member-name"
@@ -2449,14 +2557,14 @@ function EditMemberModal({
               value={displayName}
               maxLength={128}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Jane Doe"
+              placeholder={t('settings.display_name_example', 'e.g. Jane Doe')}
               className="w-full px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
               autoFocus
             />
           </div>
           <div className="mb-6">
             <label htmlFor="edit-member-role" className="text-sm text-on-surface-variant block mb-1.5">
-              Role
+              {t('settings.role', 'Role')}
             </label>
             <Select
               id="edit-member-role"
@@ -2466,7 +2574,7 @@ function EditMemberModal({
             >
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {roleLabel(t, o.value)}
                 </option>
               ))}
             </Select>
@@ -2477,14 +2585,14 @@ function EditMemberModal({
               onClick={onClose}
               className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
-              Cancel
+              {t('actions.cancel', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={!canSave}
               className="flex-1 py-3 rounded-[14px] bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Save
+              {t('actions.save', 'Save')}
             </button>
           </div>
         </form>
@@ -2503,6 +2611,7 @@ function EditSelfNameModal({
   onSave: (newName: string) => void;
 }) {
   const [name, setName] = useState(currentName);
+  const { t } = useLanguage();
   const trimmedName = name.trim();
   const canSave = trimmedName.length > 0 && trimmedName.length <= 128;
 
@@ -2527,11 +2636,11 @@ function EditSelfNameModal({
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
-        <h3 className="font-serif text-xl text-on-surface mb-4">Edit your name</h3>
+        <h3 className="font-serif text-xl text-on-surface mb-4">{t('settings.edit_your_name', 'Edit your name')}</h3>
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
             <label htmlFor="edit-self-name" className="text-sm text-on-surface-variant block mb-1.5">
-              Display name
+              {t('settings.display_name', 'Display name')}
             </label>
             <input
               id="edit-self-name"
@@ -2539,7 +2648,7 @@ function EditSelfNameModal({
               value={name}
               maxLength={128}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t('settings.your_name', 'Your name')}
               className="w-full px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
               autoFocus
             />
@@ -2550,14 +2659,14 @@ function EditSelfNameModal({
               onClick={onClose}
               className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
-              Cancel
+              {t('actions.cancel', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={!canSave}
               className="flex-1 py-3 rounded-[14px] bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Save
+              {t('actions.save', 'Save')}
             </button>
           </div>
         </form>
@@ -2592,30 +2701,32 @@ function RemoveConfirmModal({
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         className="relative w-full max-w-sm bg-surface-container rounded-xl border border-outline-variant/50 p-6 shadow-2xl"
       >
-        <h3 className="font-serif text-xl text-on-surface mb-3">Remove access?</h3>
+        <h3 className="font-serif text-xl text-on-surface mb-3">{t('settings.remove_access_title', 'Remove access?')}</h3>
         <div className="flex items-center gap-3 mb-4">
           <Avatar name={user.displayName || user.email} photoURL={user.photoURL} />
           <div className="min-w-0">
-            <div className="font-medium text-on-surface truncate">{user.displayName || 'Unnamed'}</div>
+            <div className="font-medium text-on-surface truncate">{user.displayName || t('settings.unnamed', 'Unnamed')}</div>
             <div className="text-[13px] text-on-surface-variant truncate">{roleLabel(t, user.role)}</div>
           </div>
         </div>
         <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
-          {firstName} will lose access to CISA. Their contacts, notes, and history stay with the work — you can approve
-          them again anytime.
+          {t(
+            'settings.remove_access_body',
+            '{name} will lose access to CISA. Their contacts, notes, and history stay with the work — you can approve them again anytime.',
+          ).replace('{name}', firstName)}
         </p>
         <div className="flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
           >
-            Cancel
+            {t('actions.cancel', 'Cancel')}
           </button>
           <button
             onClick={() => onConfirm(user.uid)}
             className="flex-1 py-3 rounded-[14px] bg-error text-on-error font-medium hover:bg-error/90 transition-colors"
           >
-            Remove
+            {t('actions.remove', 'Remove')}
           </button>
         </div>
       </motion.div>
@@ -2643,6 +2754,7 @@ function InviteModal({
   onClose: () => void;
 }) {
   // RBAC: only an admin can pre-add someone as a Full-timer (admin).
+  const { t } = useLanguage();
   const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -2661,15 +2773,15 @@ function InviteModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h3 className="font-serif text-xl text-on-surface">Add someone by email</h3>
+            <h3 className="font-serif text-xl text-on-surface">{t('settings.add_by_email_title', 'Add someone by email')}</h3>
             <p className="text-[13px] text-on-surface-variant mt-0.5">
-              Pre-add an email and they're matched automatically when they sign up.
+              {t('settings.add_by_email_body', "Pre-add an email and they're matched automatically when they sign up.")}
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:w-11 pointer-coarse:h-11 hover:bg-surface-container-high text-on-surface-variant transition-colors shrink-0"
-            aria-label="Close"
+            aria-label={t('actions.close', 'Close')}
           >
             <XCircle className="w-5 h-5" />
           </button>
@@ -2677,13 +2789,13 @@ function InviteModal({
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="text-sm text-on-surface-variant block mb-1.5">Email</label>
+            <label className="text-sm text-on-surface-variant block mb-1.5">{t('settings.email', 'Email')}</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
               <input
                 type="email"
                 required
-                placeholder="their@email.com"
+                placeholder={t('settings.email_placeholder', 'their@email.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
@@ -2693,7 +2805,9 @@ function InviteModal({
           </div>
 
           <div>
-            <label htmlFor="pre-add-role-select" className="text-sm text-on-surface-variant block mb-1.5">Role</label>
+            <label htmlFor="pre-add-role-select" className="text-sm text-on-surface-variant block mb-1.5">
+              {t('settings.role', 'Role')}
+            </label>
             <Select
               id="pre-add-role-select"
               value={role}
@@ -2702,7 +2816,7 @@ function InviteModal({
             >
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {roleLabel(t, o.value)}
                 </option>
               ))}
             </Select>
@@ -2714,7 +2828,7 @@ function InviteModal({
               onClick={onClose}
               className="flex-1 py-3 rounded-[14px] bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
             >
-              Cancel
+              {t('actions.cancel', 'Cancel')}
             </button>
             <button
               type="submit"
@@ -2722,10 +2836,10 @@ function InviteModal({
               className="flex-[1.4] py-3 rounded-[14px] bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {isInviting ? (
-                <span className="animate-pulse">Adding…</span>
+                <span className="animate-pulse">{t('settings.adding', 'Adding…')}</span>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4" /> Pre-add
+                  <UserPlus className="w-4 h-4" /> {t('settings.pre_add', 'Pre-add')}
                 </>
               )}
             </button>
@@ -2796,7 +2910,12 @@ function CalendarSyncPanel() {
                   {cat.label}
                 </div>
                 <div className="cals-cat-c text-xs text-on-surface-variant">
-                  {counts[cat.id] ? `${counts[cat.id]} in the next month` : 'nothing coming up'}
+                  {counts[cat.id]
+                    ? t('settings.calendar_upcoming_count', '{n} in the next month').replace(
+                        '{n}',
+                        String(counts[cat.id]),
+                      )
+                    : t('settings.calendar_nothing_coming_up', 'nothing coming up')}
                 </div>
               </div>
             ))}
@@ -2818,8 +2937,12 @@ function CalendarSyncPanel() {
 // a person either partner brings in is shared with the other from the moment
 // it's added (`coCreators`). Per term, because partners change each semester.
 
-const pairNames = (ids: string[], byId: Record<string, AppUser>): string => {
-  const names = ids.map((id) => byId[id]?.displayName || 'Unnamed');
+const pairNames = (
+  ids: string[],
+  byId: Record<string, AppUser>,
+  t: (key: string, fallback?: string) => string,
+): string => {
+  const names = ids.map((id) => byId[id]?.displayName || t('settings.unnamed', 'Unnamed'));
   if (names.length <= 1) return names[0] || '';
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
@@ -2838,6 +2961,7 @@ function CarePick({
   onPick: (uid: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="mt-3 flex flex-col gap-1 rounded-lg border border-outline-variant/40 bg-surface-container-high p-2">
       {people.length ? (
@@ -2849,7 +2973,7 @@ function CarePick({
             className="flex items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-left text-sm text-on-surface hover:bg-surface transition-colors cursor-pointer"
           >
             <Avatar name={s.displayName} photoURL={s.photoURL} size="sm" />
-            <span className="truncate">{s.displayName || 'Unnamed'}</span>
+            <span className="truncate">{s.displayName || t('settings.unnamed', 'Unnamed')}</span>
           </button>
         ))
       ) : (
@@ -2922,7 +3046,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   const newPair = first ? (
     <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
       <div className="font-serif text-base text-on-surface mb-1">
-        {t('settings.pairs_who_with', 'Who goes out with {name}?').replace('{name}', byId[first]?.displayName || 'Unnamed')}
+        {t('settings.pairs_who_with', 'Who goes out with {name}?').replace('{name}', byId[first]?.displayName || t('settings.unnamed', 'Unnamed'))}
       </div>
       <CarePick
         people={trainees.filter((s) => s.uid !== first)}
@@ -2979,7 +3103,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                   ))}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-serif text-base text-on-surface leading-tight truncate">{pairNames(p.members, byId)}</div>
+                  <div className="font-serif text-base text-on-surface leading-tight truncate">{pairNames(p.members, byId, t)}</div>
                   <div className="text-[13px] text-on-surface-variant mt-0.5">
                     {open
                       ? t('settings.pairs_since', 'Since {date}').replace('{date}', p.startDate)
@@ -3057,7 +3181,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
             {t(
               'settings.pairs_loose',
               'Going out on their own this term: {names}. Anyone they bring in stays theirs alone.',
-            ).replace('{names}', pairNames(free.map((f) => f.uid), byId))}
+            ).replace('{names}', pairNames(free.map((f) => f.uid), byId, t))}
           </p>
         )}
 
@@ -3070,7 +3194,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                 <ul className="mt-1 flex flex-col gap-1">
                   {arr.map((p) => (
                     <li key={p.id} className="text-[13px] text-on-surface-variant">
-                      {pairNames(p.members, byId)}{' '}
+                      {pairNames(p.members, byId, t)}{' '}
                       {p.endDate
                         ? t('settings.pairs_range_short', '{start}–{end}').replace('{start}', p.startDate).replace('{end}', p.endDate)
                         : t('settings.pairs_from', 'from {start}').replace('{start}', p.startDate)}
@@ -3105,7 +3229,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
   const row = (u: AppUser) => (
     <div key={u.uid} className="flex items-center gap-2.5">
       <Avatar name={u.displayName} photoURL={u.photoURL} size="sm" />
-      <span className="text-sm text-on-surface truncate">{u.displayName || 'Unnamed'}</span>
+      <span className="text-sm text-on-surface truncate">{u.displayName || t('settings.unnamed', 'Unnamed')}</span>
       <div
         role="group"
         aria-label={t('teams.set_team', 'Put {name} on a team').replace('{name}', u.displayName || '')}
@@ -3405,7 +3529,7 @@ export default function Settings() {
     try {
       const emailLower = inviteEmail.trim().toLowerCase();
       if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        alert('A user with this email already exists.');
+        alert(t('settings.invite_exists', 'A user with this email already exists.'));
         return;
       }
 
@@ -3426,14 +3550,14 @@ export default function Settings() {
       setInviteRole('operator');
     } catch (error) {
       console.error('Error adding member:', error);
-      alert('Failed to add member. Please try again.');
+      alert(t('settings.invite_failed', 'Failed to add member. Please try again.'));
     } finally {
       setIsInviting(false);
     }
   };
 
   const revokeInvitation = async (email: string) => {
-    if (!confirm('Cancel this invitation?')) return;
+    if (!confirm(t('settings.cancel_invite_confirm', 'Cancel this invitation?'))) return;
     try {
       await deleteDoc(doc(db, 'invitations', email.toLowerCase()));
     } catch (error) {
@@ -3521,7 +3645,12 @@ export default function Settings() {
           <div className="flex items-center gap-2 mb-3 text-accent">
             <KeyRound className="w-4 h-4" />
             <span className="text-sm font-medium">
-              {pendingUsers.length} {pendingUsers.length === 1 ? 'person is' : 'people are'} asking to join
+              {t(
+                pendingUsers.length === 1 ? 'settings.asking_to_join_one' : 'settings.asking_to_join_many',
+                pendingUsers.length === 1
+                  ? '{n} person is asking to join'
+                  : '{n} people are asking to join',
+              ).replace('{n}', String(pendingUsers.length))}
             </span>
           </div>
           <div className="space-y-2.5">
@@ -3529,9 +3658,11 @@ export default function Settings() {
               <div key={u.uid} className="flex items-center gap-3">
                 <Avatar name={u.displayName || u.email} photoURL={u.photoURL} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-on-surface truncate">{u.displayName || 'Unnamed'}</div>
+                  <div className="font-medium text-on-surface truncate">
+                    {u.displayName || t('settings.unnamed', 'Unnamed')}
+                  </div>
                   <div className="text-[13px] text-on-surface-variant truncate">
-                    wants {roleLabel(t, u.role)} · {u.email}
+                    {t('settings.wants_role', 'wants {role}').replace('{role}', roleLabel(t, u.role))} · {u.email}
                   </div>
                 </div>
                 <button
@@ -3544,7 +3675,7 @@ export default function Settings() {
                   ) : (
                     <Check className="w-3.5 h-3.5" />
                   )}
-                  Approve
+                  {t('actions.approve', 'Approve')}
                 </button>
               </div>
             ))}
@@ -3747,13 +3878,13 @@ export default function Settings() {
     },
     {
       id: 'settings-quick-add',
-      label: 'Quick add by text',
+      label: t('settings.quick_add_title', 'Quick add by text'),
       visible: isDev,
       node: <IntegrationsSection currentUser={currentUser} />,
     },
     {
       id: 'settings-webhooks',
-      label: 'API & webhook console',
+      label: t('settings.webhook_title', 'API & webhook console'),
       visible: isDev,
       node: <WebhookConsoleSection />,
     },

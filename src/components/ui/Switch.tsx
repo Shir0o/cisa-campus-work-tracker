@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils';
+import { useLanguage } from '../LanguageProvider';
 
 // A two-state toggle that reads as a switch to assistive tech and at a glance.
 // Three pieces of intent the field has been missing:
@@ -24,6 +25,10 @@ export function Switch({
   // requirement explicit so the type checker enforces it.
   ['aria-label']: string;
 }) {
+  // The track label is the one string on this primitive, and it is shared by
+  // every switch in the app (Settings, SeasonChip, HomesModal), so it reads the
+  // session language here rather than taking a label prop per call site (#1818).
+  const { t } = useLanguage();
   return (
     <button
       type="button"
@@ -62,7 +67,7 @@ export function Switch({
             : 'right-1.5 text-on-surface-variant',
         )}
       >
-        {checked ? 'On' : 'Off'}
+        {checked ? t('common.on', 'On') : t('common.off', 'Off')}
       </span>
       {/* Knob. Translate by the track width minus the knob minus the gap. */}
       <span

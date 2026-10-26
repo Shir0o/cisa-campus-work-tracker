@@ -6,6 +6,8 @@
 // own tests are the contract.
 import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
+import { t } from "./i18n";
+import type { AppLanguage } from "./userPreferences";
 
 /** A campus weekday, `0` = Sunday … `6` = Saturday (JS `getDay` order). */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -69,13 +71,25 @@ export function normalizeReminderSchedule(raw: unknown): ReminderSchedule {
   };
 }
 
-/** A readable "Tue, Wed · 5 pm" for the schedule's summary line. */
-export function reminderTimeSummary(time: ReminderTime): string {
-  const days = REMINDER_WEEKDAYS.filter((d) => time.days.includes(d.value)).map((d) => d.label);
-  const hour = time.hour % 12 === 0 ? 12 : time.hour % 12;
-  const suffix = time.hour < 12 ? "am" : "pm";
-  const dayText = days.length ? days.join(", ") : "No days";
-  return `${dayText} · ${hour} ${suffix}`;
+/** A readable "Tue, Wed · 5 pm" for the schedule's summary line.
+ *
+ *  The line is copy, not data, so it follows the session language (#1818):
+ *  Spanish reads its own short weekday names and a 24-hour clock ("Mar, Mié ·
+ *  17:00"). English keeps the exact shape it has always had. */
+export function reminderTimeSummary(time: ReminderTime, language: AppLanguage = "en"): string {
+  const days = REMINDER_WEEKDAYS.filter((d) => time.days.includes(d.value)).map((d) =>
+    language === "es" ? t(d.key, "es", d.label) : d.label,
+  );
+  const dayText = days.length ? days.join(", ") : t("reminders.no_days", language, "No days");
+  let timeText: string;
+  if (language === "es") {
+    timeText = `${String(time.hour).padStart(2, "0")}:00`;
+  } else {
+    const hour = time.hour % 12 === 0 ? 12 : time.hour % 12;
+    const suffix = time.hour < 12 ? "am" : "pm";
+    timeText = `${hour} ${suffix}`;
+  }
+  return `${dayText} · ${timeText}`;
 }
 
 const scheduleDoc = () => doc(db, "settings", "reminder_schedule");
