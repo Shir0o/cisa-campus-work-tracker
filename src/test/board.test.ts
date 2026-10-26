@@ -25,6 +25,8 @@ import {
   canViewBoard,
   canViewBoardNotes,
   canEditBoard,
+  AUDIENCE_ORDER,
+  BOARD_AUDIENCE,
   BOARD_SERIES,
   slugifyHeading,
   parseDocHeadings,
@@ -370,6 +372,16 @@ More text
       expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
       expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
       expect(boardAudiencesForRole('viewer')).toEqual([]);
+    });
+  });
+
+  describe('AUDIENCE_ORDER', () => {
+    it('no longer offers the trainees tier to a new page (#1849)', () => {
+      expect(AUDIENCE_ORDER).toEqual(['everyone', 'team']);
+    });
+
+    it('still labels legacy trainee-tagged pages so they render', () => {
+      expect(BOARD_AUDIENCE.trainees.label).toBe('Trainees');
     });
   });
 

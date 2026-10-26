@@ -532,11 +532,43 @@ describe('SmartImportModal', () => {
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, 'Updated Discussion Title');
     await userEvent.selectOptions(screen.getByDisplayValue('Team (Full-timers)'), 'everyone');
+    const audienceSelect = screen.getByDisplayValue('Everyone') as HTMLSelectElement;
+    expect(Array.from(audienceSelect.options).map((o) => o.value)).toEqual(['team', 'everyone']);
     const discussionMdTextarea = screen.getByDisplayValue('Old md');
     await userEvent.clear(discussionMdTextarea);
     await userEvent.type(discussionMdTextarea, 'Updated markdown');
 
     expect(screen.getByDisplayValue('Updated Discussion Title')).toBeInTheDocument();
+  });
+
+  it('maps a parsed Trainees audience to Team, since that tier is no longer offered (#1849)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          contacts: [],
+          interactions: [],
+          discussions: [
+            { tempId: 'd1', title: 'Old huddle', audience: 'trainees', content: 'Old md' },
+          ],
+        },
+      }),
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Huddle notes');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Old huddle')[0]).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getAllByTitle('Edit item details')[0]);
+
+    const audienceSelect = screen.getByDisplayValue('Team (Full-timers)') as HTMLSelectElement;
+    expect(Array.from(audienceSelect.options).map((o) => o.value)).toEqual(['team', 'everyone']);
   });
 
   it('disables Parse until text is entered', async () => {

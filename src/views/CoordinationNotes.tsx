@@ -1365,16 +1365,13 @@ export default function CoordinationNotes() {
     );
   }
 
-  // Header copy by role: editors get the working framing, trainees a read-along
-  // note, students a gentler "what's happening" look.
+  // Header copy by role: editors get the working framing, students a gentler
+  // "what's happening" look. Trainees are outside the route allowlist (#1849),
+  // so there is no read-along framing promising them this page.
   const heading = canSeeNotes ? t('coordination.coordination_notes') : t('coordination.whats_happening');
   const intro = canEdit ? (
     <>
       {t('coordination.page_per_gathering')}
-    </>
-  ) : canSeeNotes ? (
-    <>
-      {t('coordination.read_along_intro')}
     </>
   ) : (
     <>

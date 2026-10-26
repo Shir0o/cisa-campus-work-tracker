@@ -811,6 +811,15 @@ describe('CoordinationNotes', () => {
         );
       });
     });
+
+    it('offers only Open and Team when tagging a page, since Trainees cannot open it (#1849)', async () => {
+      mockActiveEditor = mockEditor;
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const picker = (await screen.findByLabelText('Page audience')) as HTMLSelectElement;
+      expect(Array.from(picker.options).map((o) => o.value)).toEqual(['everyone', 'team']);
+    });
   });
 
   // ── 9. Remove note ────────────────────────────────────────────────────────
