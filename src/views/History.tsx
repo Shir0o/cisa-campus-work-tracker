@@ -36,6 +36,7 @@ import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
+import { t as resolveKey } from '../lib/i18n';
 import { dayMark, historyRows } from './historyTime';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
@@ -105,9 +106,32 @@ const quote = (s?: string) => {
 };
 
 // Map a real logged action onto warm, human language.
-export const humanize = (a: Hist): Humanized => {
+//
+// The vocabulary is display-only (#1826): every verb and detail is derived here
+// from the persisted `action` at render time, so the records themselves never
+// change. Pass the reader's translator to hear the diary in their language;
+// without one the English resolver keeps today's output for the callers that
+// only need the bucket (filtering, counts).
+type TranslateFn = (key: string, fallback?: string) => string;
+
+const english: TranslateFn = (key, fallback) => resolveKey(key, "en", fallback);
+
+/** Fill `{slot}`s without letting a person's `$&` become a replace pattern. */
+const fill = (s: string, values: Record<string, string>) =>
+  Object.entries(values).reduce((out, [slot, value]) => out.replace(`{${slot}}`, () => value), s);
+
+// The `mark status` action stores the enum word; the diary says the label.
+const PRAYER_STATUS: Record<string, string> = {
+  answered: "prayers.status_answered",
+  ongoing: "prayers.status_ongoing",
+  unanswered: "prayers.status_unanswered",
+  pending: "prayers.status_pending",
+};
+
+export const humanize = (a: Hist, translate: TranslateFn = english): Humanized => {
   const act = a.action.toLowerCase();
   const desc = a.description;
+  const tr = (key: string, fallback: string) => translate(`history.action.${key}`, fallback);
 
   if (act.startsWith("moved contact to stage")) {
     const m = scrub(desc).match(/from\s+(.+?)\s+to\s+(.+)$/i);
@@ -115,38 +139,44 @@ export const humanize = (a: Hist): Humanized => {
     return {
       bucket: "steps",
       icon: ArrowRight,
-      lead: "walked",
-      tail: "a step further",
+      lead: tr("walked", "walked"),
+      tail: tr("a_step_further", "a step further"),
       showTarget: true,
       detail: m
-        ? `A step forward — from ${m[1].trim()} toward ${m[2].trim()}.`
+        ? fill(tr("step_from_to", "A step forward — from {from} toward {to}."), {
+            from: m[1].trim(),
+            to: m[2].trim(),
+          })
         : toStage
-          ? `A step forward — toward ${toStage}.`
+          ? fill(tr("step_toward", "A step forward — toward {to}."), { to: toStage })
           : undefined,
     };
   }
   if (act.startsWith("created a new contact") || act === "created contact") {
-    return { bucket: "steps", icon: UserPlus, lead: "welcomed", showTarget: true };
+    return { bucket: "steps", icon: UserPlus, lead: tr("welcomed", "welcomed"), showTarget: true };
   }
   if (act.startsWith("deleted contact")) {
-    return { bucket: "steps", icon: UserMinus, lead: "let go of", showTarget: true };
+    return { bucket: "steps", icon: UserMinus, lead: tr("let_go", "let go of"), showTarget: true };
   }
   if (act.startsWith("added a prayer burden for")) {
+    const quoted = quote(desc);
     return {
       bucket: "prayer",
       icon: Heart,
-      lead: "started praying for",
+      lead: tr("prayer_began", "started praying for"),
       showTarget: true,
-      detail: quote(desc) ? `Began carrying ${quote(desc)}.` : undefined,
+      detail: quoted
+        ? fill(tr("prayer_began_detail", "Began carrying {detail}."), { detail: quoted })
+        : undefined,
     };
   }
   if (act.startsWith("edited a prayer burden for")) {
     return {
       bucket: "prayer",
       icon: Heart,
-      lead: "added to a prayer for",
+      lead: tr("prayer_added", "added to a prayer for"),
       showTarget: true,
-      detail: quote(desc) ?? "Added a few lines to a prayer.",
+      detail: quote(desc) ?? tr("prayer_added_detail", "Added a few lines to a prayer."),
     };
   }
   if (act.startsWith("marked a prayer burden as")) {
@@ -155,87 +185,119 @@ export const humanize = (a: Hist): Humanized => {
       return {
         bucket: "prayer",
         icon: Heart,
-        lead: "gave thanks for an answered prayer for",
+        lead: tr("prayer_answered", "gave thanks for an answered prayer for"),
         showTarget: true,
-        detail: "Answered, after carrying it together.",
+        detail: tr("prayer_answered_detail", "Answered, after carrying it together."),
       };
     }
+    const statusLabel = status
+      ? PRAYER_STATUS[status]
+        ? translate(PRAYER_STATUS[status], status)
+        : status
+      : undefined;
     return {
       bucket: "prayer",
       icon: Heart,
-      lead: "updated a prayer for",
+      lead: tr("prayer_updated", "updated a prayer for"),
       showTarget: true,
-      detail: status ? `Now marked ${status}.` : undefined,
+      detail: statusLabel
+        ? fill(tr("prayer_updated_detail", "Now marked {status}."), { status: statusLabel })
+        : undefined,
     };
   }
   // Clearing a prayer deletes the burden (src/lib/prayers.ts), but it is still
   // the work of prayer — without this branch it fell through to the fallback
   // and was filed under Conversations (#1768).
   if (act.startsWith("cleared a prayer for")) {
+    const quoted = quote(desc);
     return {
       bucket: "prayer",
       icon: Heart,
-      lead: "cleared a prayer for",
+      lead: tr("prayer_cleared", "cleared a prayer for"),
       showTarget: true,
-      detail: quote(desc) ? `Laid down ${quote(desc)}.` : undefined,
+      detail: quoted
+        ? fill(tr("prayer_cleared_detail", "Laid down {detail}."), { detail: quoted })
+        : undefined,
     };
   }
   if (act.startsWith("logged a visit to") || act.startsWith("edited a visit to") || act.startsWith("removed a visit to")) {
     const lead = act.startsWith("logged")
-      ? "went round to"
+      ? tr("visit_went", "went round to")
       : act.startsWith("edited")
-        ? "wrote more about a visit to"
-        : "removed a visit to";
+        ? tr("visit_edited", "wrote more about a visit to")
+        : tr("visit_removed", "removed a visit to");
     const where = scrub(desc);
     return {
       bucket: "talk",
       icon: House,
       lead,
       showTarget: true,
-      detail: where ? `At ${where}.` : undefined,
+      detail: where ? fill(tr("visit_detail", "At {place}."), { place: where }) : undefined,
     };
   }
   if (act.startsWith("logged an interaction for") || act.startsWith("logged a batch interaction for")) {
     const lead =
       a.type === "call"
-        ? "called"
+        ? tr("called", "called")
         : a.type === "email"
-          ? "emailed"
+          ? tr("emailed", "emailed")
           : a.type === "event"
-            ? "met with"
+            ? tr("met_with", "met with")
             : a.type === "comment"
-              ? "left a note for"
-              : "spent time with";
+              ? tr("left_note", "left a note for")
+              : tr("spent_time", "spent time with");
     const icon =
       a.type === "call" ? Phone : a.type === "email" ? Mail : a.type === "event" ? Calendar : MessageSquare;
     return { bucket: "talk", icon, lead, showTarget: true, detail: quote(desc) };
   }
   if (act.startsWith("updated an interaction for")) {
-    return { bucket: "talk", icon: Pencil, lead: "updated a conversation with", showTarget: true };
+    return {
+      bucket: "talk",
+      icon: Pencil,
+      lead: tr("conversation_updated", "updated a conversation with"),
+      showTarget: true,
+    };
   }
   if (act.startsWith("left a comment on")) {
-    return { bucket: "talk", icon: MessageSquare, lead: "left a note for", showTarget: true, detail: quote(desc) };
+    return {
+      bucket: "talk",
+      icon: MessageSquare,
+      lead: tr("left_note", "left a note for"),
+      showTarget: true,
+      detail: quote(desc),
+    };
   }
   if (act.includes("tag")) {
     const removed = act.startsWith("removed");
     return {
       bucket: "talk",
       icon: Tag,
-      lead: removed ? "removed a tag from" : "added a tag for",
+      lead: removed ? tr("tag_removed", "removed a tag from") : tr("tag_added", "added a tag for"),
       showTarget: true,
     };
   }
   if (act.startsWith('updated attendance for "') && act.includes('" to ')) {
-    return { bucket: "gather", icon: Calendar, lead: "noted who gathered at", showTarget: true };
+    return {
+      bucket: "gather",
+      icon: Calendar,
+      lead: tr("gathering_noted", "noted who gathered at"),
+      showTarget: true,
+    };
   }
   if (act.startsWith("submitted feedback")) {
-    return { bucket: "talk", icon: MessageSquare, lead: "shared some feedback", showTarget: false, detail: quote(desc) };
+    return {
+      bucket: "talk",
+      icon: MessageSquare,
+      lead: tr("feedback_shared", "shared some feedback"),
+      showTarget: false,
+      detail: quote(desc),
+    };
   }
   if (act.startsWith("transferred a person")) {
     return {
       bucket: "talk",
       icon: ArrowRightLeft,
-      lead: "handed off",
+      lead: tr("handed_off", "handed off"),
       showTarget: true,
       detail: scrub(desc) ? scrub(desc) : undefined,
     };
@@ -244,12 +306,13 @@ export const humanize = (a: Hist): Humanized => {
     return {
       bucket: "talk",
       icon: Pencil,
-      lead: "updated details for",
+      lead: tr("details_updated", "updated details for"),
       showTarget: true,
-      detail: scrub(desc) ? "Tidied up their details." : undefined,
+      detail: scrub(desc) ? tr("details_tidied", "Tidied up their details.") : undefined,
     };
   }
-  // Fallback — keep the verb, drop the DB-isms.
+  // Fallback — keep the verb, drop the DB-isms. Actions the app writes but this
+  // catalogue does not know still speak their stored words in any language.
   return { bucket: "talk", icon: Pencil, lead: a.action, showTarget: !!a.contactId, detail: quote(desc) };
 };
 
@@ -431,6 +494,12 @@ export default function History() {
     [language, t],
   );
 
+  // The diary speaks the reader's language (#1826). The dictionary is bound
+  // here and handed to both renderers, so the phone needs no localization
+  // logic of its own — and the stored `action` stays the only key.
+  const translate = useCallback((key: string, fallback?: string) => t(key, fallback), [t]);
+  const humanizeActivity = useCallback((a: Hist) => humanize(a, translate), [translate]);
+
   const clearFilters = useCallback(() => {
     setKind("all");
     setWho("all");
@@ -515,7 +584,7 @@ export default function History() {
           onOpenContact={openContact}
           onClearFilters={clearFilters}
           loading={loading}
-          humanize={humanize}
+          humanize={humanizeActivity}
           dayInfo={dayInfo}
           firstName={firstName}
           hasMore={hasMore}
@@ -633,7 +702,7 @@ export default function History() {
               }
 
               const a = row.a;
-              const h = humanize(a);
+              const h = humanizeActivity(a);
               const Icon = h.icon;
               return (
                 <div key={row.key} className="flex gap-4 py-2.5">
@@ -667,7 +736,7 @@ export default function History() {
                       )}
                       {h.tail && <span> {h.tail}</span>}
                       <span className="mx-1.5 text-on-surface-variant/50">·</span>
-                      <span className="text-[13px] text-on-surface-variant/80">{relTime(a.createdAt)}</span>
+                      <span className="text-[13px] text-on-surface-variant/80">{relTime(a.createdAt, language)}</span>
                     </div>
                     {h.detail && (
                       <div className="text-[13.5px] text-on-surface-variant/90 leading-relaxed mt-1">

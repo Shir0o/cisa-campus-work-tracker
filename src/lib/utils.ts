@@ -45,25 +45,32 @@ export function getUserInitials(name: string | null | undefined) {
 /**
  * Warm, plain-language relative time ("just now", "5m ago", "3d ago", then a
  * short date). Shared by History ("Looking back") and Global Search.
+ *
+ * Pass the reader's language to get that language's words (#1826). Callers that
+ * pass nothing keep today's English output, byte for byte.
  */
-export function relTime(iso: any): string {
+export function relTime(iso: any, locale?: string): string {
   if (!iso) return "";
   const ms = parseMs(iso);
   if (ms == null) return "";
   const date = new Date(ms);
   const now = new Date();
+  const spanish = !!locale && locale.toLowerCase().startsWith("es");
+  // Intl carries the plurals ("hace 1 día", "hace 2 días") so no word forms
+  // are hand-authored here.
+  const ago = spanish ? new Intl.RelativeTimeFormat("es", { numeric: "always" }) : null;
   const m = Math.floor((now.getTime() - date.getTime()) / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return ago ? "ahora mismo" : "just now";
+  if (m < 60) return ago ? ago.format(-m, "minute") : `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return ago ? ago.format(-h, "hour") : `${h}h ago`;
   const dd = Math.floor(h / 24);
-  if (dd < 7) return `${dd}d ago`;
+  if (dd < 7) return ago ? ago.format(-dd, "day") : `${dd}d ago`;
   // Older than a week: show the date. Include the year when it's not this
   // year, so historical entries (e.g. "Jun 3") aren't ambiguous across years.
   const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   if (date.getFullYear() !== now.getFullYear()) options.year = "numeric";
-  return date.toLocaleDateString(undefined, options);
+  return date.toLocaleDateString(spanish ? "es" : undefined, options);
 }
 
 /** Bidirectional relative time for notifications — handles future items (events). */
