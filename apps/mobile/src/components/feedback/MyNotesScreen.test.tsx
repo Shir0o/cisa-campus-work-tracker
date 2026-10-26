@@ -108,6 +108,30 @@ describe('MyNotesScreen', () => {
     expect(() => getByText('raw team text')).toThrow();
   });
 
+  it('says an unlinked note is private, not public, under the composer', async () => {
+    const { getByText, queryByText, getByRole } = await renderScreen({ notes: [note({})], loading: false, error: null });
+
+    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+
+    expect(
+      getByText("Only you and the team can read replies on this note, because it isn't linked to an issue yet."),
+    ).toBeTruthy();
+    expect(queryByText('Replies are posted to a public issue tracker.')).toBeNull();
+  });
+
+  it('keeps the public sentence on a note linked to an issue', async () => {
+    const { getByText, queryByText, getByRole } = await renderScreen({
+      notes: [note({ githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/900' })],
+      loading: false,
+      error: null,
+    });
+
+    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+
+    expect(getByText('Replies are posted to a public issue tracker.')).toBeTruthy();
+    expect(queryByText(/Only you and the team can read replies/i)).toBeNull();
+  });
+
   it('posts a submitter reply through the server endpoint', async () => {
     const { getByText, getByRole, getByPlaceholderText } = await renderScreen({
       notes: [note({})],

@@ -138,7 +138,7 @@ function NoteCard({ note }: { note: Feedback }) {
         <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.widget.ink3 }}>{expanded ? '−' : '+'}</Text>
       </Pressable>
 
-      {expanded && <FollowUpThread noteId={note.id} />}
+      {expanded && <FollowUpThread noteId={note.id} linked={Boolean(note.githubIssueUrl)} />}
     </View>
   );
 }
@@ -156,7 +156,7 @@ function outcomeColor(outcome: Feedback['outcome'], c: any) {
   }
 }
 
-function FollowUpThread({ noteId }: { noteId: string }) {
+function FollowUpThread({ noteId, linked }: { noteId: string; linked: boolean }) {
   const { user } = useAuth();
   const uid = user?.uid;
   const { t } = useLanguage();
@@ -320,7 +320,12 @@ function FollowUpThread({ noteId }: { noteId: string }) {
           }}
         />
         <Text style={{ fontFamily: font.medium, fontSize: fs(11), color: c.widget.ink3 }}>
-          {t('feedback.reply_is_public', 'Replies are posted to a public issue tracker.')}
+          {linked
+            ? t('feedback.reply_is_public', 'Replies are posted to a public issue tracker.')
+            : t(
+                'feedback.reply_is_private',
+                "Only you and the team can read replies on this note, because it isn't linked to an issue yet.",
+              )}
         </Text>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Pressable onPress={send} disabled={sending || !draft.trim()} hitSlop={8}>

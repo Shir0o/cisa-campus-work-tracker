@@ -418,6 +418,7 @@
     "edit_follow_up": "Edit your follow-up",
     "edit_failed": "That didn't save. Try again in a moment.",
     "reply_is_public": "Replies are posted to our public issue tracker, where anyone can read them.",
+    "reply_is_private": "Only you and the team can read replies on this note, because it isn't linked to an issue yet.",
     "you": "You",
     "the_team": "The team",
     "see_your_notes": "See your notes"
