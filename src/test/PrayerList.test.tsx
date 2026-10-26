@@ -1471,7 +1471,9 @@ describe('PrayerList — phone card', () => {
   it('names the status control for assistive tech', async () => {
     seed([alice], [{
       id: 'p1',
-      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: '2026-10-20T00:00:00.000Z', status: 'pending' }),
+      // This week's prayer: the "last week" fold has its own label ("Where did
+      // it land?"), so a fixed date drifts out of the label this test names.
+      data: () => ({ contactId: 'c1', burden: 'Strength for finals', date: new Date().toISOString(), status: 'pending' }),
     }]);
 
     render(<PrayerList />);

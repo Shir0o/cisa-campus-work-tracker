@@ -48,6 +48,8 @@ interface HistoryMobileProps {
   firstName: (name: string) => string;
   hasMore: boolean;
   onShowOlder: () => void;
+  /** The record's own size, or null when it could not be read (#1828). */
+  totalMoments?: number | null;
 }
 
 const BUCKET_NODE: Record<string, string> = {
@@ -86,6 +88,7 @@ export default function HistoryMobile({
   firstName,
   hasMore,
   onShowOlder,
+  totalMoments = null,
 }: HistoryMobileProps) {
   const { t, language } = useLanguage();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -107,12 +110,15 @@ export default function HistoryMobile({
   const kindLabel = activeKindEntry ? t(activeKindEntry.i18nKey, activeKindEntry.label) : undefined;
   const whoLabel = who === 'all' ? null : firstName(who);
   const today = new Date().toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' });
-  const momentWord = activities.length === 1 ? t('history.moment', 'moment') : t('history.moments', 'moments');
+  const wordFor = (n: number) => (n === 1 ? t('history.moment', 'moment') : t('history.moments', 'moments'));
+  const momentWord = wordFor(totalMoments ?? activities.length);
+  const shownMomentWord = wordFor(activities.length);
+  const recordComplete = totalMoments !== null && activities.length >= totalMoments;
   const deck = t(
     'history.deck',
     'The small, faithful work of these days — {moments} across the team, touching {people} of the people in our care.',
   )
-    .replace('{moments}', `${activities.length} ${momentWord}`)
+    .replace('{moments}', `${activities.length} ${shownMomentWord}`)
     .replace('{people}', String(peopleRemembered));
 
   return (
@@ -124,7 +130,22 @@ export default function HistoryMobile({
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 hism-state">
-          {deck}
+          {totalMoments !== null ? (
+            <>
+              {t('history.record_small_faithful')}{' '}
+              <span className="text-on-surface font-medium">{totalMoments}</span> {momentWord} across the team
+              {recordComplete ? (
+                <>
+                  , touching{' '}
+                  <span className="text-on-surface font-medium">{peopleRemembered}</span> of the people in our care.
+                </>
+              ) : (
+                '.'
+              )}
+            </>
+          ) : (
+            deck
+          )}
         </p>
       </header>
 
@@ -283,6 +304,12 @@ export default function HistoryMobile({
           </div>
         )}
       </section>
+
+      {totalMoments !== null && !recordComplete && (
+        <div className="px-5 mt-6 text-center">
+          <p className="text-[13px] text-on-surface-variant/80 italic">{deck}</p>
+        </div>
+      )}
 
       {hasMore && (
         <div className="px-5 mt-5 text-center">

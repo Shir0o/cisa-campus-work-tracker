@@ -33,6 +33,26 @@ export interface Hist {
   createdAt: string;
 }
 
+/** How many moments one page of the record asks for (#1828). */
+export const HISTORY_PAGE_SIZE = 100;
+
+/**
+ * Whether the record holds moments older than those loaded (#1828).
+ *
+ * A page that came back short *is* the end: fewer documents than the window
+ * asked for cannot be hiding a further page. A full page is only the end when
+ * the record's own count says so — a record of exactly one page used to offer
+ * "Show older moments" and then load a page that was empty.
+ *
+ * `total` is the aggregate count, or null when it could not be read; then a
+ * full page keeps the door open rather than hide the rest of the record.
+ */
+export function historyHasMore(loaded: number, windowSize: number, total: number | null): boolean {
+  if (loaded < windowSize) return false;
+  if (total === null) return true;
+  return loaded < total;
+}
+
 export interface Humanized {
   bucket: Bucket;
   lead: string;

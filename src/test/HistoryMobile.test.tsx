@@ -66,6 +66,23 @@ describe('HistoryMobile', () => {
     expect(screen.getByText(/2 moments across the team, touching 3 of the people in our care/)).toBeInTheDocument();
   });
 
+  it('prints the record total, and scopes people to the shown page while the record is longer (#1828)', () => {
+    render(
+      <HistoryMobile
+        {...baseProps}
+        activities={[{}, {}] as any}
+        peopleRemembered={3}
+        totalMoments={3412}
+      />,
+    );
+    const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
+    expect(header).toHaveTextContent(/3412 moments across the team\.$/);
+    expect(header).not.toHaveTextContent(/touching/);
+    expect(
+      screen.getByText(/2 moments across the team, touching 3 of the people in our care/),
+    ).toBeInTheDocument();
+  });
+
   it('says nothing has been logged yet when the record itself is empty', () => {
     render(<HistoryMobile {...baseProps} />);
     expect(screen.getByText(/No moments yet/i)).toBeInTheDocument();

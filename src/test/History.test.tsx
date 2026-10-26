@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, limit } from 'firebase/firestore';
+import { onSnapshot, limit, getCountFromServer } from 'firebase/firestore';
 import HistoryView from '../views/History';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -24,6 +24,7 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn((ref) => ref),
   orderBy: vi.fn(),
   limit: vi.fn(),
+  getCountFromServer: vi.fn(),
   onSnapshot: vi.fn((ref, callback) => {
     callback({ docs: [], size: 0 });
     return vi.fn();
@@ -105,6 +106,7 @@ const mockActivities = [
 describe('History View', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (getCountFromServer as any).mockResolvedValue({ data: () => ({ count: 1 }) });
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({ docs: mockContacts, size: 1 });
@@ -610,8 +612,8 @@ describe('History View', () => {
     });
   });
 
-  it('offers older moments when the newest page is full and widens the window', async () => {
-    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+  const pageOf = (n: number, contactIds: string[] = ['c1']) =>
+    Array.from({ length: n }, (_, i) => ({
       id: `a${i}`,
       data: () => ({
         userId: 'u1',
@@ -619,22 +621,33 @@ describe('History View', () => {
         action: 'created a new contact',
         targetName: 'Alice Johnson',
         targetType: 'contact',
-        targetId: 'c1',
+        targetId: contactIds[i % contactIds.length],
         type: 'create',
         description: '',
         createdAt: new Date(Date.now() - i * 1000).toISOString(),
       }),
     }));
+
+  const mockHistory = (docs: any[], count: number | 'unreadable') => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({ docs: mockContacts, size: 1 });
       } else if (ref?.path === 'activities') {
-        callback({ docs: fullPage, size: fullPage.length });
+        callback({ docs, size: docs.length });
       } else {
         callback({ docs: [], size: 0 });
       }
       return vi.fn();
     });
+    if (count === 'unreadable') {
+      (getCountFromServer as any).mockRejectedValue(new Error('permission-denied'));
+    } else {
+      (getCountFromServer as any).mockResolvedValue({ data: () => ({ count }) });
+    }
+  };
+
+  it('offers older moments when the record is longer than the newest page and widens the window', async () => {
+    mockHistory(pageOf(100), 150);
 
     render(<HistoryView />);
 
@@ -645,6 +658,89 @@ describe('History View', () => {
     await waitFor(() => {
       expect(limit).toHaveBeenCalledWith(200);
     });
+  });
+
+  // ── The record's own size (#1828) ──────────────────────────────────
+
+  it('a record of exactly one page does not offer older moments (#1828)', async () => {
+    mockHistory(pageOf(100), 100);
+
+    render(<HistoryView />);
+
+    expect(await screen.findByText('moments noted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show older moments' })).not.toBeInTheDocument();
+  });
+
+  it('a short page is the end of the record, even when the aggregate lags (#1828)', async () => {
+    mockHistory(pageOf(40), 250);
+
+    render(<HistoryView />);
+
+    expect(await screen.findByText('moments noted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show older moments' })).not.toBeInTheDocument();
+  });
+
+  it('the header total comes from the aggregate, not the loaded page (#1828)', async () => {
+    mockHistory(pageOf(2), 3412);
+
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
+      expect(header).toHaveTextContent(/3412 moments across the team/);
+    });
+  });
+
+  it('scopes the distinct-people figure to the moments shown when the record is longer (#1828)', async () => {
+    mockHistory(pageOf(100, ['c1', 'c2', 'c2']), 3412);
+
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
+      // The record total is all-time; the people figure is not claimed for it,
+      // because distinct contacts cannot be counted server-side.
+      expect(header).toHaveTextContent(/3412 moments across the team\.$/);
+      expect(header).not.toHaveTextContent(/touching/);
+    });
+
+    // The shown window says exactly what it measures.
+    expect(
+      screen.getByText(
+        /The small, faithful work of these days — 100 moments across the team, touching 2 of the people in our care\./,
+      ),
+    ).toBeInTheDocument();
+
+    const card = screen.getByText('moments noted').parentElement!.parentElement!;
+    expect(card).toHaveTextContent('100 of 3412');
+    expect(card).toHaveTextContent('moments noted');
+    expect(card).not.toHaveTextContent(/people remembered/);
+  });
+
+  it('counts people over the whole record once every page is loaded (#1828)', async () => {
+    mockHistory(pageOf(3, ['c1', 'c2', 'c2']), 3);
+
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
+      expect(header).toHaveTextContent(/3 moments across the team, touching 2 of the people in our care\./);
+    });
+
+    const card = screen.getByText('moments noted').parentElement!.parentElement!;
+    expect(card).toHaveTextContent(/^3moments noted/);
+    expect(card).toHaveTextContent(/2people remembered/);
+  });
+
+  it('scopes to the window when the count cannot be read, and still reaches older moments (#1828)', async () => {
+    mockHistory(pageOf(100), 'unreadable');
+
+    render(<HistoryView />);
+
+    expect(await screen.findByRole('button', { name: 'Show older moments' })).toBeInTheDocument();
+    const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
+    // No total to claim, so the header says exactly what the window holds.
+    expect(header).toHaveTextContent(/100 moments across the team, touching/);
   });
 
   // ── Footer statistics ──────────────────────────────────────────────
