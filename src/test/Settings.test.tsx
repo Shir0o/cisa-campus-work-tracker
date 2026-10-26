@@ -37,7 +37,7 @@ vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false, t: (_key: string, fallback?: string) => fallback ?? _key }),
 }));
 
-vi.mock('./FeedbackList', () => ({
+vi.mock('../views/FeedbackList', () => ({
   default: () => {
     const { createElement } = require('react');
     return createElement('div', { 'data-testid': 'feedback-list' }, 'FeedbackList');
@@ -305,7 +305,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Your team')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
       });
 
       expect(screen.getByPlaceholderText('Find a teammate…')).toBeInTheDocument();
@@ -389,7 +389,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Going out together')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Going out together' })).toBeInTheDocument();
       });
       expect(screen.getByText('Trainee User and Trainee Two')).toBeInTheDocument();
       expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
@@ -401,9 +401,9 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Your team')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
       });
-      expect(screen.queryByText('Going out together')).toBeNull();
+      expect(screen.queryByRole('heading', { level: 2, name: 'Going out together' })).toBeNull();
     });
 
     it('pairs two trainees and writes the arrangement', async () => {
@@ -436,7 +436,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Going out together')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Going out together' })).toBeInTheDocument();
       });
       expect(
         screen.getByText('Going out on their own this term: Trainee Three. Anyone they bring in stays theirs alone.'),
@@ -463,7 +463,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText("The day's goal")).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: "The day's goal" })).toBeInTheDocument();
         expect(screen.getByText('Give the day a goal')).toBeInTheDocument();
       });
       expect(screen.getByText('5')).toBeInTheDocument();
@@ -474,9 +474,9 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Your team')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
       });
-      expect(screen.queryByText("The day's goal")).toBeNull();
+      expect(screen.queryByRole('heading', { level: 2, name: "The day's goal" })).toBeNull();
     });
 
     it('raising the stepper writes the count, and the toggle writes on/off', async () => {
@@ -1225,7 +1225,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('API & webhook console')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'API & webhook console' })).toBeInTheDocument();
         expect(screen.getByText('Contact added: Jerry Doe')).toBeInTheDocument();
         expect(screen.getByText('Parsing failed')).toBeInTheDocument();
       });
@@ -1329,7 +1329,9 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Data management & danger zone')).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { level: 2, name: 'Data management & danger zone' }),
+        ).toBeInTheDocument();
       });
 
       expect(screen.getByText('Test Account Purge')).toBeInTheDocument();
@@ -1348,10 +1350,12 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Your team')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('Data management & danger zone')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { level: 2, name: 'Data management & danger zone' }),
+      ).not.toBeInTheDocument();
       expect(screen.queryByText('Test Account Purge')).not.toBeInTheDocument();
     });
   });
@@ -1364,7 +1368,9 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Weekly reminder schedule')).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { level: 2, name: 'Weekly reminder schedule' }),
+        ).toBeInTheDocument();
       });
 
       const fullTimersDays = screen.getByRole('group', { name: 'Days for Full-timers' });
@@ -1385,9 +1391,11 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Your team')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
       });
-      expect(screen.queryByText('Weekly reminder schedule')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { level: 2, name: 'Weekly reminder schedule' }),
+      ).not.toBeInTheDocument();
     });
 
     it('gives everyone their own weekly reminder switch', async () => {
@@ -1442,7 +1450,9 @@ describe('Settings', () => {
       renderWithTrainees();
 
       await waitFor(() => {
-        expect(screen.getByText("Which team they're on")).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { level: 2, name: "Which team they're on" }),
+        ).toBeInTheDocument();
       });
       expect(screen.getByText('1 on YP team')).toBeInTheDocument();
       expect(screen.getByText('0 on Campus team')).toBeInTheDocument();
@@ -1952,6 +1962,143 @@ describe('Settings', () => {
           { merge: true },
         );
       });
+    });
+  });
+
+  // ── Section rail (#1816) ───────────────────────────────────────────────
+  // A Full-timer's Settings is 14 screens of one column with no way to jump.
+  // The rail is a single sticky chip row on the phone that mirrors the sections
+  // actually rendered for that viewer — one declaration drives both, so a
+  // section can never be on the page without an entry (or vice versa).
+
+  describe('section rail (#1816)', () => {
+    const railSections = () =>
+      Array.from(document.querySelectorAll('[data-settings-section]')).map((el) => ({
+        id: el.id,
+        heading: el.querySelector('h2')?.textContent?.trim() ?? '',
+      }));
+
+    it('renders one chip per rendered top-level section, in page order, for an admin', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const rail = screen.getByRole('navigation', { name: 'Section index' });
+      const chips = within(rail).getAllByRole('button');
+      const sections = railSections();
+
+      expect(sections.length).toBeGreaterThan(10);
+      expect(chips.map((chip) => chip.textContent?.trim())).toEqual(
+        sections.map((section) => section.heading),
+      );
+      expect(new Set(sections.map((section) => section.id)).size).toBe(sections.length);
+      for (const section of sections) {
+        expect(document.getElementById(section.id)).toBeInTheDocument();
+      }
+    });
+
+    it('includes the owner-only sections in the rail for the owner', () => {
+      setupManagerAuth({
+        user: {
+          uid: 'u-owner',
+          displayName: 'Owner User',
+          email: 'yilongwang05@gmail.com',
+          photoURL: null,
+          getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
+        },
+      });
+      render(<Settings />);
+
+      const rail = screen.getByRole('navigation', { name: 'Section index' });
+      const chips = within(rail).getAllByRole('button');
+      const sections = railSections();
+
+      expect(chips.map((chip) => chip.textContent?.trim())).toEqual(
+        sections.map((section) => section.heading),
+      );
+      expect(chips.map((chip) => chip.textContent?.trim())).toContain(
+        'What people are telling us',
+      );
+    });
+
+    it('jumps to the section, clears the sticky rail, and moves focus to its heading', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const rail = screen.getByRole('navigation', { name: 'Section index' });
+      const chips = within(rail).getAllByRole('button');
+      const sections = railSections();
+      const late = chips.length - 1;
+
+      const target = document.getElementById(sections[late].id) as HTMLElement;
+      const heading = target.querySelector('h2') as HTMLElement;
+      const scrollTarget = vi.spyOn(target, 'scrollIntoView');
+      const scrollChip = vi.spyOn(chips[late], 'scrollIntoView');
+
+      fireEvent.click(chips[late]);
+
+      expect(heading).toHaveFocus();
+      expect(scrollTarget).toHaveBeenCalledWith({ block: 'start' });
+      // The active chip is brought into the rail's visible width afterwards.
+      expect(scrollChip).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+      expect(target.className).toContain('scroll-mt-');
+      expect(chips[late]).toHaveAttribute('aria-current', 'location');
+    });
+
+    it('marks the section in view as current while the pane scrolls', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const rail = screen.getByRole('navigation', { name: 'Section index' });
+      const chips = within(rail).getAllByRole('button');
+      const sections = Array.from(
+        document.querySelectorAll('[data-settings-section]'),
+      ) as HTMLElement[];
+
+      vi.spyOn(rail, 'getBoundingClientRect').mockReturnValue({
+        top: 0,
+        bottom: 61,
+      } as DOMRect);
+      sections.forEach((section, i) => {
+        vi.spyOn(section, 'getBoundingClientRect').mockReturnValue({
+          top: i <= 4 ? 20 : 500,
+        } as DOMRect);
+      });
+
+      fireEvent.scroll(window);
+
+      expect(chips[4]).toHaveAttribute('aria-current', 'location');
+      for (const chip of chips.filter((_, i) => i !== 4)) {
+        expect(chip).not.toHaveAttribute('aria-current');
+      }
+    });
+
+    it('is a single sticky, horizontally scrolling row that hides at lg', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const rail = screen.getByRole('navigation', { name: 'Section index' });
+      expect(rail.className).toContain('sticky');
+      expect(rail.className).toContain('top-0');
+      expect(rail.className).toContain('lg:hidden');
+      // Its own overflow only: no fixed width, no second vertical scroller.
+      expect(rail.className).toContain('overflow-x-auto');
+      expect(rail.className).toContain('max-w-full');
+      expect(rail.className).not.toContain('overflow-y');
+
+      for (const chip of within(rail).getAllByRole('button')) {
+        // 44px target at the phone, and never wraps into a second row.
+        expect(chip.className).toContain('min-h-11');
+        expect(chip.className).toContain('shrink-0');
+        expect(chip.className).toContain('whitespace-nowrap');
+        expect(chip.className).toContain('rounded-full');
+        expect(chip).not.toHaveAttribute('tabindex');
+      }
+    });
+
+    it('is absent from the Student/Community profile branch', () => {
+      setupNonManagerAuth();
+      render(<Settings />);
+      expect(screen.queryByRole('navigation', { name: 'Section index' })).toBeNull();
     });
   });
 });

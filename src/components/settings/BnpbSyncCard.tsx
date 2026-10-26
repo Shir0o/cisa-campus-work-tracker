@@ -115,7 +115,7 @@ export default function BnpbSyncCard() {
   return (
     <section className="mt-10">
       <div className="mb-4">
-        <h2 className="font-serif text-2xl text-on-surface">{t('bnpb.settings_title')}</h2>
+        <h2 className="font-serif text-2xl text-on-surface">{t('bnpb.settings_title', 'BNPB')}</h2>
         <p className="text-sm text-on-surface-variant mt-1 max-w-2xl leading-relaxed">
           {t('bnpb.settings_sub')}
         </p>

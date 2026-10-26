@@ -508,6 +508,54 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     await expect(page.getByText('Add someone by email')).not.toBeVisible();
   });
 
+  // The phone rail (#1816): Settings is 14 screens in one column at 375×812,
+  // so the sticky chip row has to survive a scroll to the bottom and land a
+  // jump clear of itself rather than under it.
+  test.describe('phone section rail (#1816)', () => {
+    test.use({ viewport: { width: 375, height: 812 } });
+
+    test('the rail stays visible at the bottom, and a chip jumps clear of it (#1816)', async ({ page }) => {
+      await signInAs(page, 'fulltimer');
+      await page.goto('/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({
+        timeout: 15_000,
+      });
+
+      const main = page.getByRole('main');
+      const rail = page.getByRole('navigation', { name: 'Section index' });
+      await expect(rail).toBeVisible();
+
+      const railBox = await rail.boundingBox();
+      expect(railBox).not.toBeNull();
+      expect(railBox!.height).toBeLessThanOrEqual(64);
+      expect(await rail.getByRole('button').count()).toBeGreaterThan(10);
+
+      // Scrolling the pane does not take the rail with it.
+      await main.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+      await expect(rail).toBeInViewport();
+
+      // A late section, jumped to from the bottom of the page.
+      const chip = rail.getByRole('button', { name: 'Data management & danger zone' });
+      await chip.click();
+      const heading = page.getByRole('heading', {
+        level: 2,
+        name: 'Data management & danger zone',
+      });
+      await expect(heading).toBeFocused();
+
+      const [railAfter, headingBox] = await Promise.all([
+        rail.boundingBox(),
+        heading.boundingBox(),
+      ]);
+      expect(railAfter).not.toBeNull();
+      expect(headingBox).not.toBeNull();
+      // Below the rail, and close to it — not under the top bar either.
+      expect(headingBox!.y).toBeGreaterThanOrEqual(railAfter!.y + railAfter!.height - 1);
+      expect(headingBox!.y).toBeLessThan(railAfter!.y + railAfter!.height + 40);
+      await expect(rail).toBeInViewport();
+    });
+  });
+
   test('a Trainee is redirected off /settings and its admin sections', async ({ page }) => {
     await signInAs(page, 'trainee');
     await page.goto('/settings');
