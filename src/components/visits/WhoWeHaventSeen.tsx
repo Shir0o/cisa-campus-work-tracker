@@ -6,6 +6,13 @@
 // the literal per-visit grid needed 34 columns and 3,400px for a single modest
 // year, which is what settled on this shape.
 //
+// A phone cannot carry that width (#1857): the shell hides horizontal overflow,
+// so a 640px grid cut the "since" column — the reading's whole answer — off the
+// right edge with no scroller to find. The compact composition therefore gives
+// each person their own two-line row instead: name and "since" on the first
+// line, the twelve months as one dot strip beneath it, in the same columns as
+// the month labels. Same model, same twelve rolling months, no second reading.
+//
 // The reading is deliberately dumb and stable: homes in alphabetical order,
 // members by first name, no sorting and no filters. A gap must stand out by
 // visual weight alone, so the order never changes under anyone. Clicking a gap
@@ -47,12 +54,49 @@ export function sinceWords(days: number | null): string {
   return `${Math.floor(months / 12)}y`;
 }
 
+/**
+ * The phone strip's columns: twelve month tracks plus the "since" caption. The
+ * caption and every person's dot strip share this template, so the dots sit
+ * under their own month label without a nested scroller.
+ */
+const STRIP_COLUMNS = 'grid grid-cols-[repeat(12,minmax(0,1fr))_2.5rem]';
+
+function MonthCaption({ months }: { months: string[] }) {
+  const { t } = useLanguage();
+
+  return (
+    // The transparent border matches the tiles' 1px edge, so the caption's
+    // twelve tracks land exactly over the dots in each row below.
+    <div
+      className={`${STRIP_COLUMNS} border border-transparent px-4 pb-1.5 text-[11px] font-medium text-on-surface-variant`}
+    >
+      {/* Every other month. Twelve 11px labels need 276px of text (the widest,
+          "May", is 23px) and the phone budget is 280px once the page's own
+          padding is taken; with a "since" caption beside them they would have to
+          drop under DESIGN's 11px floor. So the labels thin out instead, ending
+          on the current month, and every dot keeps its own column. */}
+      {months.map((m, i) => (
+        <span
+          key={i}
+          data-month={m}
+          className="min-w-max justify-self-center whitespace-nowrap"
+        >
+          {i % 2 === 1 ? m : ''}
+        </span>
+      ))}
+      <span className="min-w-max justify-self-end whitespace-nowrap">{t('visits.since')}</span>
+    </div>
+  );
+}
+
 function HomeBlock({
   block,
   onLogVisit,
+  compact,
 }: {
   block: HomeReading;
   onLogVisit: (home: Home) => void;
+  compact: boolean;
 }) {
   const { t } = useLanguage();
   const months = rollingMonths();
@@ -71,49 +115,48 @@ function HomeBlock({
         )}
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-[minmax(140px,1fr)_repeat(12,minmax(28px,1fr))_minmax(90px,1fr)] items-center gap-1 px-4 pb-2 text-[10px] text-on-surface-variant">
-            <span>{t('visits.person')}</span>
-            {months.map((m, i) => (
-              <span key={i} className="text-center">
-                {m}
-              </span>
-            ))}
-            <span className="text-right">{t('visits.since')}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
+      {compact ? (
+        <>
+          <MonthCaption months={months} />
+          <div className="flex flex-col gap-1.5">
             {block.members.map((m) => (
               <button
                 key={m.contactId}
                 onClick={() => onLogVisit(block.home)}
                 aria-label={`${t('visits.log_a_visit')}: ${m.name}`}
-                className="grid grid-cols-[minmax(140px,1fr)_repeat(12,minmax(28px,1fr))_minmax(90px,1fr)] items-center gap-1 px-4 py-2 rounded-xl bg-surface border border-outline-variant/60 hover:border-primary/40 transition-colors text-left"
+                className="w-full px-4 py-2.5 rounded-xl bg-surface border border-outline-variant/60 hover:border-primary/40 transition-colors text-left"
               >
-                <span className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-7 h-7 rounded-full bg-primary/10 text-accent grid place-items-center text-[10px] font-semibold shrink-0">
                     {initialsOf(m.name)}
                   </span>
-                  <span className="text-sm font-medium text-on-surface truncate">{m.name}</span>
-                </span>
-                {m.months.map((seen, i) => (
-                  <span key={i} className="grid place-items-center">
-                    <span
-                      className={
-                        seen
-                          ? 'w-3.5 h-3.5 rounded-full bg-primary'
-                          : 'w-3.5 h-3.5 rounded-full bg-surface-variant/40'
-                      }
-                      data-seen={seen}
-                    />
+                  <span className="flex-1 min-w-0 text-sm font-medium text-on-surface truncate">
+                    {m.name}
                   </span>
-                ))}
-                <span className="text-right text-sm font-semibold text-on-surface">
-                  {m.everSeen ? sinceWords(m.daysSinceSeen) : (
-                    <span className="text-accent">{sinceWords(null)}</span>
-                  )}
-                </span>
+                  <span
+                    data-since
+                    className="shrink-0 text-sm font-semibold text-on-surface tabular-nums"
+                  >
+                    {m.everSeen ? sinceWords(m.daysSinceSeen) : (
+                      <span className="text-accent">{sinceWords(null)}</span>
+                    )}
+                  </span>
+                </div>
+                <div className={`${STRIP_COLUMNS} mt-2`}>
+                  {m.months.map((seen, i) => (
+                    <span key={i} className="grid place-items-center">
+                      <span
+                        className={
+                          seen
+                            ? 'w-3 h-3 rounded-full bg-primary'
+                            : 'w-3 h-3 rounded-full bg-surface-variant/40'
+                        }
+                        data-seen={seen}
+                      />
+                    </span>
+                  ))}
+                  <span aria-hidden="true" />
+                </div>
               </button>
             ))}
             {block.members.length === 0 && (
@@ -122,8 +165,62 @@ function HomeBlock({
               </div>
             )}
           </div>
+        </>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[minmax(140px,1fr)_repeat(12,minmax(28px,1fr))_minmax(90px,1fr)] items-center gap-1 px-4 pb-2 text-[10px] text-on-surface-variant">
+              <span>{t('visits.person')}</span>
+              {months.map((m, i) => (
+                <span key={i} className="text-center">
+                  {m}
+                </span>
+              ))}
+              <span className="text-right">{t('visits.since')}</span>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              {block.members.map((m) => (
+                <button
+                  key={m.contactId}
+                  onClick={() => onLogVisit(block.home)}
+                  aria-label={`${t('visits.log_a_visit')}: ${m.name}`}
+                  className="grid grid-cols-[minmax(140px,1fr)_repeat(12,minmax(28px,1fr))_minmax(90px,1fr)] items-center gap-1 px-4 py-2 rounded-xl bg-surface border border-outline-variant/60 hover:border-primary/40 transition-colors text-left"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="w-7 h-7 rounded-full bg-primary/10 text-accent grid place-items-center text-[10px] font-semibold shrink-0">
+                      {initialsOf(m.name)}
+                    </span>
+                    <span className="text-sm font-medium text-on-surface truncate">{m.name}</span>
+                  </span>
+                  {m.months.map((seen, i) => (
+                    <span key={i} className="grid place-items-center">
+                      <span
+                        className={
+                          seen
+                            ? 'w-3.5 h-3.5 rounded-full bg-primary'
+                            : 'w-3.5 h-3.5 rounded-full bg-surface-variant/40'
+                        }
+                        data-seen={seen}
+                      />
+                    </span>
+                  ))}
+                  <span className="text-right text-sm font-semibold text-on-surface">
+                    {m.everSeen ? sinceWords(m.daysSinceSeen) : (
+                      <span className="text-accent">{sinceWords(null)}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+              {block.members.length === 0 && (
+                <div className="px-4 py-2 rounded-xl bg-surface border border-outline-variant/60 text-sm text-on-surface-variant">
+                  {t('visits.no_one_at_home')}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -178,7 +275,7 @@ export default function WhoWeHaventSeen({
         </div>
       ) : (
         reading.map((block) => (
-          <HomeBlock key={block.home.id} block={block} onLogVisit={onLogVisit} />
+          <HomeBlock key={block.home.id} block={block} onLogVisit={onLogVisit} compact={compact} />
         ))
       )}
     </div>
