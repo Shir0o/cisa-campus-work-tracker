@@ -1027,7 +1027,7 @@
     "kinds": "Tipos",
     "no_gatherings_of_kind": "Aún no hay reuniones de este tipo.",
     "attended": "asistieron",
-    "missed_gatherings_since": "Faltó a {n} reuniones desde {name}",
+    "missed_gatherings_since": "Sin señales — {n} reuniones desde {name}",
     "gatherings_label": "reuniones",
     "attended_on_average": "asistieron en promedio",
     "quiet_lately": "tranquilos últimamente",

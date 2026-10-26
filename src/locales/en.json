@@ -1027,7 +1027,7 @@
     "kinds": "Kinds",
     "no_gatherings_of_kind": "No gatherings of this kind yet.",
     "attended": "attended",
-    "missed_gatherings_since": "Missed {n} gatherings since {name}",
+    "missed_gatherings_since": "Gone quiet — {n} gatherings since {name}",
     "gatherings_label": "gatherings",
     "attended_on_average": "attended on average",
     "quiet_lately": "quiet lately",
