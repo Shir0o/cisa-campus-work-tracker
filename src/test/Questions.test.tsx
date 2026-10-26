@@ -245,6 +245,14 @@ describe('Questions for the team page (#646)', () => {
     expect(screen.getByLabelText('Your question for the team')).toBeInTheDocument();
   });
 
+  it('says where an answered question goes, instead of promising nothing resolves (#1832)', () => {
+    renderPage();
+    // The subtitle promised a question "stays", while the Waiting tab it opens
+    // on drops it the moment someone answers. The words now match the tab.
+    expect(screen.getByText(/then moves to Answered/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing here resolves/)).not.toBeInTheDocument();
+  });
+
   it('never stamps the asker with a role the page cannot know (#1767)', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /^All/ }));
@@ -260,6 +268,46 @@ describe('Questions for the team page (#646)', () => {
         cb(QUESTIONS);
         return () => {};
       });
+    });
+
+    it('opens on their own questions, with the queue one tap away (#1832)', () => {
+      // Nobody has answered yet, so the Waiting queue is the two other people's
+      // questions — the ones a Trainee can only read. The phone opens on the one
+      // they asked instead.
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS.filter((q) => q.id !== 'r1'));
+        return () => {};
+      });
+      renderPage();
+      expect(screen.getByText('How do you approach people at the club table?')).toBeInTheDocument();
+      expect(screen.queryByText('What should I do during campus quiet hour?')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /^Waiting/ }));
+      expect(screen.getByText('What should I do during campus quiet hour?')).toBeInTheDocument();
+    });
+
+    it('opens on Waiting on the rail, where the queue has room (#1832)', async () => {
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS.filter((q) => q.id !== 'r1'));
+        return () => {};
+      });
+      const phone = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('min-width'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      try {
+        renderPage();
+        expect(await screen.findByText('What should I do during campus quiet hour?')).toBeInTheDocument();
+      } finally {
+        window.matchMedia = phone;
+      }
     });
 
     it("reads the whole team's archive, not just their own questions (#645)", () => {
