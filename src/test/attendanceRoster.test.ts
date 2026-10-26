@@ -201,6 +201,44 @@ describe('attendanceRoster', () => {
       expect(contactIds).not.toContain('c3');
     });
 
+    it('counts a gap across Rhythms, not only the Gathering the person is on (#1835)', () => {
+      // Casey's shape: on Friday Night's roster and present at the older
+      // Friday, with two newer held Tuesdays he was never rostered for.
+      const friday: Gathering = {
+        id: 'f1',
+        name: 'Friday Night Gathering',
+        date: '2026-06-05',
+        order: 1,
+        createdAt: '',
+        roster: ['c1'],
+        attendance: { present: ['c1'], absent: [] },
+      };
+      const tuesdayOlder: Gathering = {
+        ...friday,
+        id: 't2',
+        name: 'Tuesday Small Group',
+        date: '2026-06-12',
+        roster: [],
+        attendance: { present: [], absent: [] },
+      };
+      const tuesdayNewer: Gathering = {
+        ...friday,
+        id: 't1',
+        name: 'Tuesday Small Group',
+        date: '2026-06-19',
+        roster: [],
+        attendance: { present: [], absent: [] },
+      };
+
+      const [row] = calculateMissedContacts([contactA], [tuesdayNewer, tuesdayOlder, friday]);
+
+      // The gap spans all held Gatherings — this is the fact the card's new
+      // sentence claims, so it must not be narrowed to Friday's roster.
+      expect(row.since).toBe(2);
+      expect(row.lastSeen.id).toBe('f1');
+      expect(row.lastSeen.name).toBe('Friday Night Gathering');
+    });
+
     it('excludes cancelled Gatherings from the scan entirely', () => {
       const cancelledNewest: Gathering = { ...event1, id: 'e0', date: '2026-06-19', cancelled: true };
       const missed = calculateMissedContacts([contactA], [cancelledNewest, event1, event2]);

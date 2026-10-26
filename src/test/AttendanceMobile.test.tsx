@@ -75,9 +75,43 @@ describe('AttendanceMobile', () => {
     );
     expect(screen.getByText("Who we've missed")).toBeInTheDocument();
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
-    expect(screen.getByText(/Missed/)).toBeInTheDocument();
+    // `since` is a season-wide gap across every Rhythm, so the row may not say
+    // the absences were all this Gathering's (#1835).
+    expect(screen.getByText('Gone quiet — 3 gatherings since Bible Study')).toBeInTheDocument();
+    expect(screen.queryByText(/Missed \d+ gatherings/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Alice Smith'));
     expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it("states the season-wide gap for Casey's shape: on one roster, counted across another (#1835)", () => {
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        missed={[{ contact: contact(), since: 4, lastSeen: session({ name: 'Friday Night Gathering' }) }]}
+      />
+    );
+    // Three of the four counted sessions are Fridays; the fourth is a Tuesday
+    // he was never rostered for. The count stands — only the claim changes.
+    expect(screen.getByText('Gone quiet — 4 gatherings since Friday Night Gathering')).toBeInTheDocument();
+  });
+
+  it('says the same gap in Spanish, keeping both placeholders (#1835)', async () => {
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+    localStorage.setItem('cisa_language', 'es');
+    try {
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <AttendanceMobile
+            {...baseProps}
+            missed={[{ contact: contact(), since: 3, lastSeen: session({ name: 'Bible Study' }) }]}
+          />
+        </LanguageProvider>
+      );
+      expect(screen.getByText('Sin señales — 3 reuniones desde Bible Study')).toBeInTheDocument();
+      expect(screen.queryByText(/Faltó a \d+ reuniones/)).not.toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('messages a missed contact via openMessage', () => {
