@@ -52,6 +52,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { signInAs } from '../helpers/auth';
 import { initializeApp, getApps } from 'firebase-admin';
+import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminFS } from 'firebase-admin/firestore';
 
 const CARE_CONTACT = 'Lila Chen';
@@ -756,6 +757,70 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
     await signInAs(page, 'community');
     await page.goto('/questions');
     await expect(heading(page)).not.toBeVisible();
+  });
+});
+
+/**
+ * My Day on a phone (#1859, ADR 0015 decision 2). The five inline question
+ * stacks spent 1,691px above the reader's own work, so the home now carries one
+ * compact door to /questions instead. jsdom cannot measure the fold, so the
+ * pixel claim lives here: On you must start inside a 812px phone's scroller.
+ */
+test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
+  /** A waiting question the home must not read, only count. */
+  async function seedWaitingQuestion(body: string): Promise<string> {
+    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+    const trainee = await adminAuth().getUserByEmail('trainee.e2e@example.com');
+    const ref = adminFS().collection('asks').doc(`e2e-1859-${Date.now()}`);
+    await ref.set({
+      parentId: null,
+      owner: trainee.uid,
+      from: trainee.uid,
+      fromName: 'Zion Adeyemi',
+      kind: 'question',
+      body,
+      at: new Date().toISOString(),
+    });
+    return ref.id;
+  }
+
+  test('the questions stack is one door and On you starts in the first screen (#1859)', async ({ page }) => {
+    const body = `E2E phone question ${Date.now()}: How should we follow up after the club fair?`;
+    const askId = await seedWaitingQuestion(body);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await signInAs(page, 'fulltimer');
+    await page.goto('/');
+    await waitForShell(page);
+
+    // One line: the title, a count, and the door — 44px tall at least.
+    const row = page.getByRole('link', { name: /Questions for the team/ });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    const rowBox = await row.boundingBox();
+    expect(rowBox).not.toBeNull();
+    expect(rowBox!.height).toBeGreaterThanOrEqual(44);
+
+    // The reader's own work is inside the phone's scroller without scrolling.
+    const onYou = page.getByRole('region', { name: 'On you' });
+    await expect(onYou).toBeVisible({ timeout: 15_000 });
+    const onYouBox = await onYou.boundingBox();
+    expect(onYouBox).not.toBeNull();
+    expect(onYouBox!.y).toBeLessThan(755);
+
+    // No question is read on the home: no body, no per-question answer.
+    await expect(page.getByRole('main').getByText(body)).toHaveCount(0);
+    await expect(page.getByRole('main').getByRole('button', { name: /^Answer / })).toHaveCount(0);
+    await expect(page.getByRole('main').getByText('Mark all scanned')).toHaveCount(0);
+
+    // The door is the list, not one focused answer.
+    await row.click();
+    await expect(page).toHaveURL(/\/questions$/, { timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Questions for the team' })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+    await adminFS().collection('asks').doc(askId).delete();
   });
 });
 

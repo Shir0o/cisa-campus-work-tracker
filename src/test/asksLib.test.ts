@@ -221,6 +221,37 @@ describe('src/lib/asks.ts full coverage', () => {
     expect(stacks.length).toBe(2); // q2 and q3 are unanswered and not by ft1
   });
 
+  it('askUnreadFor counts other people\'s unanswered, unread questions only (#1859)', () => {
+    // mockMessages: q1 is answered, q2 and q3 are still waiting.
+    expect(askUnreadFor(mockMessages, 'ft1', true, () => false)).toBe(2);
+    // Reading one drops the count.
+    expect(askUnreadFor(mockMessages, 'ft1', true, (k) => k === 'ask:q2')).toBe(1);
+    // A question the full-timer asked themselves never counts.
+    const own: AskMessage = {
+      id: 'q4',
+      parentId: null,
+      owner: 'ft1',
+      from: 'ft1',
+      fromName: 'Mei Lin',
+      kind: 'question',
+      body: 'My own question',
+      at: new Date().toISOString(),
+    };
+    expect(askUnreadFor([...mockMessages, own], 'ft1', true, () => false)).toBe(2);
+    // Answering clears it.
+    const answer: AskMessage = {
+      id: 'r3',
+      parentId: 'q3',
+      owner: 't3',
+      from: 'ft1',
+      fromName: 'Mei Lin',
+      kind: 'comment',
+      body: 'Answered',
+      at: new Date().toISOString(),
+    };
+    expect(askUnreadFor([...mockMessages, answer], 'ft1', true, () => false)).toBe(1);
+  });
+
   it('adds ask message and handles failure', async () => {
     (firestore.addDoc as any).mockResolvedValueOnce({ id: 'new_ask' });
     await addAsk({ from: 't1', fromName: 'Zion', body: 'My question' });

@@ -1,8 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import MyDayMobile from '../views/MyDayMobile';
 import { useAuth } from '../components/AuthProvider';
+import { InboxReads } from '../lib/inboxReads';
 import type { AskMessage } from '../lib/asks';
 
 const mockNavigate = vi.fn();
@@ -38,23 +39,28 @@ vi.mock('../lib/threads', async (importOriginal) => {
   };
 });
 
-// AskStack (rendered in the FT mobile shell) subscribes to person-less
-// questions; keep it inert in these layout-focused tests. Per-test overrides
-// use the hoisted `asksMock` so the component and the test see the same fn.
+// The phone My Day's questions door and the On you card both subscribe to
+// person-less questions. Keep the subscription inert in these layout-focused
+// tests; the real pure selectors (askUnreadFor) still run so the count the row
+// shows is the production derivation. Per-test overrides use the hoisted
+// `asksMock` so the component and the test see the same fn.
 const asksMock = vi.hoisted(() => ({
   subscribeAsks: vi.fn<(cb: (m: AskMessage[]) => void) => () => void>(() => () => {}),
-  askStacksFor: vi.fn<(m: AskMessage[], uid: string) => AskStack[]>(() => []),
-  askWaitedDays: vi.fn(() => 0),
-  askOrigin: vi.fn(() => ({ written: false, pen: null, icon: 'msg', text: '', short: '' })),
-  askWaitedWords: vi.fn(() => ''),
-  addAskReply: vi.fn(),
-  addAsk: vi.fn(),
-  deleteAsk: vi.fn(),
 }));
-vi.mock('../lib/asks', () => asksMock);
-import type { AskStack } from '../lib/asks';
+vi.mock('../lib/asks', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    subscribeAsks: (cb: (m: AskMessage[]) => void) => asksMock.subscribeAsks(cb),
+  };
+});
 
 describe('MyDayMobile', () => {
+  beforeEach(() => {
+    asksMock.subscribeAsks.mockReset();
+    asksMock.subscribeAsks.mockReturnValue(() => {});
+  });
+
   it('renders correctly with no data', () => {
     (useAuth as any).mockReturnValue({
       user: { displayName: 'John Doe' },
@@ -768,15 +774,14 @@ describe('MyDayMobile', () => {
     expect(screen.getByText('Not connected yet')).toBeInTheDocument();
   });
 
-  it('on the mobile shell, tapping a question navigates to /questions with focusQuestionId (#646)', () => {
+  it('on the mobile shell, one compact row replaces the question stacks and opens /questions (#1859)', () => {
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { uid: 'ft1', displayName: 'Mei' },
-      effectiveUserId: 'ft1',
+      user: { uid: 'ft1859', displayName: 'Mei' },
+      effectiveUserId: 'ft1859',
       role: 'admin',
     });
-    // The mocked askStacksFor returns []; override it to surface one question.
-    const fakeItem: AskMessage = {
-      id: 'q1',
+    const question = (over: Partial<AskMessage>): AskMessage => ({
+      id: 'q',
       parentId: null,
       owner: 't1',
       from: 't1',
@@ -784,25 +789,112 @@ describe('MyDayMobile', () => {
       kind: 'question',
       body: 'How do you start a conversation?',
       at: '2026-08-25T10:00:00.000Z',
-    };
-    asksMock.askStacksFor.mockReturnValue([
-      {
-        id: 'ask:t1',
-        from: 't1',
-        at: fakeItem.at,
-        items: [fakeItem],
-      },
-    ]);
+      ...over,
+    });
+    // Two people waiting, one question already answered by a full-timer.
+    const asked: AskMessage[] = [
+      question({ id: 'q1' }),
+      question({
+        id: 'q2',
+        owner: 't2',
+        from: 't2',
+        fromName: 'Ana Lei',
+        body: 'What do I bring to the first meeting?',
+      }),
+      question({ id: 'q3', owner: 't3', from: 't3', fromName: 'Bob', body: 'Already answered' }),
+      question({
+        id: 'r3',
+        parentId: 'q3',
+        owner: 't3',
+        from: 'ft1859',
+        fromName: 'Mei',
+        kind: 'comment',
+        body: 'Here is the answer',
+      }),
+    ];
+    asksMock.subscribeAsks.mockImplementation((cb) => {
+      cb(asked);
+      return () => {};
+    });
     mockNavigate.mockReset();
+
     render(
       <MemoryRouter>
-        <MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} uid="ft1" />
+        <MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} uid="ft1859" />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByText(/^Answer Zion/));
-    expect(mockNavigate).toHaveBeenCalledWith('/questions', {
-      state: { focusQuestionId: 'q1' },
+
+    // Exactly one line, carrying the title, the waiting count and the door.
+    expect(screen.getAllByText('Questions for the team')).toHaveLength(1);
+    const row = screen.getByRole('link', { name: /Questions for the team/ });
+    expect(row).toHaveAttribute('href', '/questions');
+    expect(screen.getByText('2 new')).toBeInTheDocument();
+    expect(screen.getByText('See all')).toBeInTheDocument();
+
+    // No question is read on the home: no body, no answer button, no bulk mark.
+    expect(screen.queryByText('How do you start a conversation?')).not.toBeInTheDocument();
+    expect(screen.queryByText('What do I bring to the first meeting?')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Answer /)).not.toBeInTheDocument();
+    expect(screen.queryByText('Mark all scanned')).not.toBeInTheDocument();
+
+    // The door precedes the reader's own work.
+    const onYou = screen.getByRole('heading', { name: 'On you' });
+    expect(row.compareDocumentPosition(onYou) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(row);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0]).toEqual(['/questions']);
+  });
+
+  it('omits the questions row when nothing is waiting, and On you still renders (#1859)', () => {
+    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { uid: 'ft1859b', displayName: 'Mei' },
+      effectiveUserId: 'ft1859b',
+      role: 'admin',
     });
+    mockNavigate.mockReset();
+
+    render(
+      <MemoryRouter>
+        <MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} uid="ft1859b" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('link', { name: /Questions for the team/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'On you' })).toBeInTheDocument();
+  });
+
+  it('keeps a quiet door when every waiting question has been scanned (#1859)', () => {
+    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { uid: 'ft1859c', displayName: 'Mei' },
+      effectiveUserId: 'ft1859c',
+      role: 'admin',
+    });
+    const scanned: AskMessage = {
+      id: 'q1',
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'Already scanned but not answered',
+      at: '2026-08-25T10:00:00.000Z',
+    };
+    InboxReads.markRead('ft1859c', 'ask:q1');
+    asksMock.subscribeAsks.mockImplementation((cb) => {
+      cb([scanned]);
+      return () => {};
+    });
+
+    render(
+      <MemoryRouter>
+        <MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} uid="ft1859c" />
+      </MemoryRouter>,
+    );
+
+    // Still one tap away; the badge is gone because nothing is new.
+    expect(screen.getByRole('link', { name: /Questions for the team/ })).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ new$/)).not.toBeInTheDocument();
   });
 
   it('renders impersonated persona name in greeting when effectiveUserName is present', () => {
