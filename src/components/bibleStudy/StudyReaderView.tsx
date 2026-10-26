@@ -125,15 +125,23 @@ const PAGED_MIN_HEIGHT = 600;
 const READER_TYPE_SIZES = [16, 18, 20, 22] as const;
 export type ReaderTypeSize = (typeof READER_TYPE_SIZES)[number];
 const READER_TYPE_DEFAULT: ReaderTypeSize = 20;
+// The default under the measure floor (#1840, ADR 0048): a reader box this
+// narrow leaves a text column under ~340px, where 20px type fits ~32
+// characters and a paragraph turns into a column of phrases. One step down
+// buys ~4 characters; the four-step control is unchanged and a stored choice
+// always wins.
+const READER_TYPE_NARROW: ReaderTypeSize = 18;
+const NARROW_READER_BOX = 400;
 const READER_TYPE_STORAGE_KEY = 'cisa.reader.type-size.v1';
 
 /**
- * Reads the stored type size, falling back to the default when the stored
- * value cannot be read — the Blank-state / dismissed-card precedent: a
- * corrupt or foreign value must never error the reader, it just renders at
- * the default.
+ * Reads the stored type size, or `null` when nothing readable is stored —
+ * the Blank-state / dismissed-card precedent: a corrupt or foreign value must
+ * never error the reader, it just falls through to the default. A `null` also
+ * means "the reader has made no choice", which is what lets the box decide
+ * the default (#1840).
  */
-function readStoredTypeSize(): ReaderTypeSize {
+function readStoredTypeSize(): ReaderTypeSize | null {
   try {
     const raw = window.localStorage.getItem(READER_TYPE_STORAGE_KEY);
     if (raw !== null) {
@@ -143,9 +151,9 @@ function readStoredTypeSize(): ReaderTypeSize {
       }
     }
   } catch {
-    // Storage unavailable or unreadable — render at the default.
+    // Storage unavailable or unreadable — fall through to the default.
   }
-  return READER_TYPE_DEFAULT;
+  return null;
 }
 
 /**
@@ -339,16 +347,37 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLElement | null)[]>([]);
 
+  // The student's type size (#923): read once on mount so a returning
+  // reader applies the stored size on first paint, and written on every
+  // choice so the next visit starts where this one left off. The value
+  // drives the `--reader-fs` custom property the reader's type scale is
+  // built on; the card's inset never changes with it. A reader who has a
+  // stored size — or picks one this visit — outranks the box-derived
+  // default (#1840).
+  const readerChoseType = useRef(false);
+  const [typeSize, setTypeSize] = useState<ReaderTypeSize>(
+    () => readStoredTypeSize() ?? READER_TYPE_DEFAULT,
+  );
+
   // Which layout (#1590): the paged deck when the reader's own box clears
   // both floors, the scrolling deck otherwise. jsdom has no layout, so the
   // reader measures 0×0 in tests and stays scrolling unless a test reports a
-  // size through the ResizeObserver.
+  // size through the ResizeObserver. The same measurement settles the default
+  // type size (#1840) — one observer, one box, and it runs before paint so a
+  // phone never flashes the wide default.
   const [paged, setPaged] = useState(false);
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const apply = (width: number, height: number) =>
+    // A size stored before this visit outranks the box. Read once, on mount:
+    // the effect never re-runs, and a reader's pick this visit is the ref.
+    const hasStoredChoice = readStoredTypeSize() !== null;
+    const apply = (width: number, height: number) => {
       setPaged(width >= PAGED_MIN_WIDTH && height >= PAGED_MIN_HEIGHT);
+      // A box that measures nothing has no measure to judge.
+      if (width <= 0 || hasStoredChoice || readerChoseType.current) return;
+      setTypeSize(width < NARROW_READER_BOX ? READER_TYPE_NARROW : READER_TYPE_DEFAULT);
+    };
     const rect = root.getBoundingClientRect();
     apply(rect.width, rect.height);
     if (typeof ResizeObserver === 'undefined') return;
@@ -367,12 +396,6 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     navOpen: false,
   });
 
-  // The student's type size (#923): read once on mount so a returning
-  // reader applies the stored size on first paint, and written on every
-  // choice so the next visit starts where this one left off. The value
-  // drives the `--reader-fs` custom property the reader's type scale is
-  // built on; the card's inset never changes with it.
-  const [typeSize, setTypeSize] = useState<ReaderTypeSize>(readStoredTypeSize);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
   const typeMenuRef = useRef<HTMLDivElement>(null);
 
@@ -399,6 +422,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   }, [typeMenuOpen]);
 
   const chooseTypeSize = (size: ReaderTypeSize) => {
+    readerChoseType.current = true;
     setTypeSize(size);
     try {
       window.localStorage.setItem(READER_TYPE_STORAGE_KEY, String(size));

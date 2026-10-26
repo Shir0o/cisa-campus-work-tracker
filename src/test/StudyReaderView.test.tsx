@@ -697,11 +697,62 @@ describe('StudyReaderView (the scrolling deck)', () => {
       }
     });
 
-    it('renders body text at the raised default with no stored preference', () => {
+    it('renders body text at the raised default when the box cannot be measured', () => {
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
       const root = document.querySelector('.reader-card-surface') as HTMLElement;
       expect(root.style.getPropertyValue('--reader-fs')).toBe('20px');
+    });
+
+    // The default follows the reader's own box (#1840): under the measure
+    // floor the reader opens one step down, so a phone reads paragraphs
+    // instead of a column of phrases. A stored choice always outranks it.
+    describe('the default size follows the box (#1840)', () => {
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      it('opens one step down on a phone-width box', () => {
+        const box = stubReaderBox();
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(375, 812);
+
+        const root = document.querySelector('.reader-card-surface') as HTMLElement;
+        expect(root.style.getPropertyValue('--reader-fs')).toBe('18px');
+      });
+
+      it('keeps the raised default on a box wide enough for the measure', () => {
+        const box = stubReaderBox();
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(1280, 800);
+
+        const root = document.querySelector('.reader-card-surface') as HTMLElement;
+        expect(root.style.getPropertyValue('--reader-fs')).toBe('20px');
+      });
+
+      it('a stored choice outranks the measured box', () => {
+        localStorage.setItem('cisa.reader.type-size.v1', '22');
+        const box = stubReaderBox();
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(375, 812);
+
+        const root = document.querySelector('.reader-card-surface') as HTMLElement;
+        expect(root.style.getPropertyValue('--reader-fs')).toBe('22px');
+      });
+
+      it('a choice made on a phone survives the box growing', () => {
+        const box = stubReaderBox();
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(375, 812);
+
+        fireEvent.click(screen.getByLabelText('Text size'));
+        fireEvent.click(screen.getByRole('button', { name: '16' }));
+
+        // A wide box would default to 20; the reader's own 16 must hold.
+        box.resize(1280, 800);
+        const root = document.querySelector('.reader-card-surface') as HTMLElement;
+        expect(root.style.getPropertyValue('--reader-fs')).toBe('16px');
+      });
     });
 
     it('choosing a size records it in browser storage and applies it immediately', () => {
