@@ -23,6 +23,12 @@ export type ResolvedStudy = {
   /** The stale-week chip's text, or null when the week is current. */
   staleDateLabel: string | null;
   /**
+   * The week's own date ("Wednesday, October 21"), or null when nothing
+   * resolved. Not suppressed on a permalink, which hides the chip but still
+   * needs the date for its document title (#1814).
+   */
+  weekDateLabel: string | null;
+  /**
    * A snapshot failed rather than reporting "nothing here" (a dropped
    * connection, a blocked request, a permissions slip). The resolution then
    * looks exactly like an empty term, so callers that show a "no study"
@@ -31,6 +37,20 @@ export type ResolvedStudy = {
    */
   loadError: boolean;
 };
+
+/**
+ * A Meeting's date as a reader reads it. An unparseable date is shown as
+ * stored rather than swallowed, the same fallback the stale chip has always
+ * used.
+ */
+function formatWeekDate(date: string): string {
+  if (!date) return '';
+  try {
+    return format(parseISO(date), 'EEEE, MMMM d');
+  } catch {
+    return date;
+  }
+}
 
 /**
  * The scan chain as a hook: slug → active Study → newest published Meeting,
@@ -137,18 +157,13 @@ export function useResolvedStudy(
   // Permalinks (#1207) suppress the chip entirely.
   const staleDateLabel = (() => {
     if (isPermalink || !meeting || !isStale) return null;
-    const prefix = 'Most recent · ';
-    const formatted = meeting.date
-      ? (() => {
-          try {
-            return format(parseISO(meeting.date), 'EEEE, MMMM d');
-          } catch {
-            return meeting.date;
-          }
-        })()
-      : '';
-    return `${prefix}${formatted}`;
+    return `Most recent · ${formatWeekDate(meeting.date)}`;
   })();
+
+  // The week's date on its own, for the current week's chip and for a
+  // permalink's document title (#1814). The permalink suppression above is
+  // about the chip, not about knowing the date.
+  const weekDateLabel = meeting ? formatWeekDate(meeting.date) || null : null;
 
   // A failure belongs to the request that made it: navigating to another slug
   // or permalink starts clean, and a failure with no Study behind it (the
@@ -156,5 +171,14 @@ export function useResolvedStudy(
   // like an empty term.
   const loadError = failedFor === requestKey;
 
-  return { loading, entryPoint, study, resolution, meeting, staleDateLabel, loadError };
+  return {
+    loading,
+    entryPoint,
+    study,
+    resolution,
+    meeting,
+    staleDateLabel,
+    weekDateLabel,
+    loadError,
+  };
 }
