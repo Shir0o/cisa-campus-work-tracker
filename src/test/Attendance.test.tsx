@@ -599,6 +599,25 @@ describe('Attendance', () => {
     expect(vi.mocked(addDoc).mock.calls.at(-1)![1]).not.toHaveProperty('role');
   });
 
+  it('records a zero-attendance week with the same shape the phone writes (ADR 0005, #1836)', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Friday Gathering 2'));
+    fireEvent.click(screen.getByRole('button', { name: 'We met, nobody came' }));
+
+    // The record's existence is the fact; an empty pair is a recorded zero.
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'events', id: 'e2' }),
+        { attendance: { present: [], absent: [] } },
+      );
+    });
+  });
+
   it('renders AttendanceMobile on mobile viewport even while loading', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
