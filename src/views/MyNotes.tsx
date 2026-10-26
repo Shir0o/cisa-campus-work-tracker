@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe } from 'lucide-react';
+import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe, Lock } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -315,7 +315,7 @@ function NoteCard({
             transition={{ duration: 0.18 }}
             className="overflow-hidden pl-1"
           >
-            <FollowUpThread noteId={note.id} asSubmitter={asSubmitter} />
+            <FollowUpThread noteId={note.id} linked={Boolean(note.githubIssueUrl)} asSubmitter={asSubmitter} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -323,7 +323,15 @@ function NoteCard({
   );
 }
 
-function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: boolean }) {
+function FollowUpThread({
+  noteId,
+  linked,
+  asSubmitter,
+}: {
+  noteId: string;
+  linked: boolean;
+  asSubmitter: boolean;
+}) {
   const { user, role } = useAuth();
   const { t } = useLanguage();
 
@@ -378,11 +386,17 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
           viewer={{ uid: user?.uid ?? '', role }}
           threadMode="replace"
           footer={
-            // The thread mirrors onto a public issue tracker. Someone typing
-            // into what looks like a private app has no way to know that.
+            // Where the words go follows the Note's own link state (ADR 0019
+            // decision 4): a linked thread mirrors onto a public issue tracker,
+            // an unlinked one stays between its author and the team. The mark
+            // has to follow too, or it is the same false claim in pictogram form.
             <p className="strm-foot">
-              <Globe className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
-              <span>{t('feedback.reply_is_public')}</span>
+              {linked ? (
+                <Globe className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
+              ) : (
+                <Lock className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
+              )}
+              <span>{linked ? t('feedback.reply_is_public') : t('feedback.reply_is_private')}</span>
             </p>
           }
         />

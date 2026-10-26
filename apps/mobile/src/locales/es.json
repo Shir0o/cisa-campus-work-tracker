@@ -241,7 +241,8 @@
     "follow_ups_load_failed": "Couldn't load the follow-ups.",
     "you": "You",
     "the_team": "The team",
-    "reply_is_public": "Replies are posted to a public issue tracker.",
+    "reply_is_public": "Las respuestas se publican en un rastreador de incidencias público.",
+    "reply_is_private": "Solo tú y el equipo pueden leer las respuestas de esta nota, porque aún no está vinculada a una incidencia.",
     "follow_up_placeholder": "Write a follow-up…",
     "edit_placeholder": "Edit your follow-up…",
     "edit": "Edit"

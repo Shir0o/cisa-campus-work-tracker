@@ -370,6 +370,42 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       expect(screen.getByText(/posted to our public issue tracker/i)).toBeInTheDocument();
     });
 
+    // ADR 0019 decision 4: an unlinked Note's thread never leaves the app, so
+    // the one disclosure about where words go must not claim otherwise.
+    it('says an unlinked note is private, and does not claim its replies are public', async () => {
+      noteDocs = [{ ...NOTE, githubIssueUrl: undefined }];
+      const { container } = render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+
+      expect(
+        screen.getByText(/Only you and the team can read replies on this note, because it isn't linked to an issue yet\./i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
+      // The globe is the same false claim in pictogram form.
+      expect(container.querySelector('.lucide-lock')).toBeTruthy();
+      expect(container.querySelector('.lucide-globe')).toBeNull();
+    });
+
+    it('treats a note whose issue was unlinked as private again', async () => {
+      noteDocs = [{ ...NOTE, githubIssueUrl: null }];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+
+      expect(screen.getByText(/Only you and the team can read replies on this note/i)).toBeInTheDocument();
+      expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
+    });
+
+    it('keeps the public sentence on a note linked to an issue', async () => {
+      const { container } = render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+
+      expect(
+        screen.getByText('Replies are posted to our public issue tracker, where anyone can read them.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Only you and the team can read replies/i)).not.toBeInTheDocument();
+      expect(container.querySelector('.lucide-globe')).toBeTruthy();
+    });
+
     it('keeps Send disabled until there is something to send', async () => {
       render(<MyNotes />);
       await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
