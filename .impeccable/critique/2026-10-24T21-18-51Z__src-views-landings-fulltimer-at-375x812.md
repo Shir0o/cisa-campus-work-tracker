@@ -19,9 +19,11 @@ score_map:
 
 ⚠️ DEGRADED: single-context (no sub-agent tool in this session; one assessor read all six sources, then measured the live renders at 375×812). Every number below is measured, not estimated; computed values are labelled.
 
+> **Editor's note — scope corrected (#1862).** `/suggestions` is not a Full-timer surface and should not have been included in this pass. Only the app owner reads or settles the **Suggestion queue**: `SuggestionsQueue` redirects every other account to `/`, and `firestore.rules` gates `interactionSuggestions` on `isSuperAdmin() && isOwner(userId)`, because the suggestions name people from that one person's private life (ADR 0037 decision 3; `CONTEXT.md` "Suggestion queue"). The sixth row is left below **as measured, for the record**, but it is out of scope for this critique and for the Full-timer design overhaul. The owner gate is deliberate, not a defect, and there is no page-level work on it. Decision on #1862: it stays owner-only.
+
 # Critique: the Five Full-timer Screens at 375×812
 
-Target: `/` (`src/views/landings/Landing.tsx` → `MyDay.tsx` → `MyDayMobile.tsx` for the `admin` role), `/around` (`src/views/AroundTheTeam.tsx`), `/visits` (`src/views/Visits.tsx` → `VisitsMobile.tsx`), `/bible-study` (`BibleStudyIndex.tsx`), `/bible-study/:meetingId` (`BibleStudyEditor.tsx`), `/suggestions` (`SuggestionsQueue.tsx`). Signed in as `fulltimer.e2e@example.com` at 375×812 against the seeded emulator, on the branch that is this pass's PR.
+Target: `/` (`src/views/landings/Landing.tsx` → `MyDay.tsx` → `MyDayMobile.tsx` for the `admin` role), `/around` (`src/views/AroundTheTeam.tsx`), `/visits` (`src/views/Visits.tsx` → `VisitsMobile.tsx`), `/bible-study` (`BibleStudyIndex.tsx`), `/bible-study/:meetingId` (`BibleStudyEditor.tsx`), `/suggestions` (`SuggestionsQueue.tsx` — **out of scope: owner-only surface**, see the editor's note). Signed in as `fulltimer.e2e@example.com` at 375×812 against the seeded emulator, on the branch that is this pass's PR.
 
 ## Per-screen scores
 
@@ -34,7 +36,7 @@ The set's `total_score: 23` is the **Health Score table below**, not the mean of
 | 3 | Visits | `/visits` | **20/40** | The reading is a **640px** twelve-month grid inside a **320px** scroll window: the "since" column and every dot sit off-screen, and Dec–Oct are the only months you can see. The page also printed the same sentence twice, fixed here. |
 | 4 | Bible study weeks | `/bible-study` | **24/40** | **No page title at all** — zero `<h1>` in the DOM, and the screen opens on an admin "ENTRY POINT" card rather than the week you came to open. Title added here. |
 | 5 | Bible study editor | `/bible-study/m-romans-wk1` | **16/40** | **The header collapsed.** The meeting-title input measured **16px wide**, and the date, Save and Unpublish were painted over the breadcrumb on one line. Fixed here; it now measures 343px on its own row. |
-| 6 | Suggestion queue | `/suggestions` | **27/40** | The cleanest of the six, and the one the brief's Full-timer **cannot open**: the route redirects to `/` unless `user.email === yilongwang05@gmail.com`. Measured empty; the populated card is unreachable in the emulator (see Method). |
+| 6 | Suggestion queue | `/suggestions` | **27/40** | **Out of scope — owner-only surface, see the editor's note.** The cleanest of the set, and the one the brief's Full-timer **cannot open**: the route redirects to `/` unless `user.email === yilongwang05@gmail.com`. Measured empty; the populated card is unreachable in the emulator (see Method). |
 
 ## Design Health Score
 
