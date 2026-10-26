@@ -133,7 +133,7 @@ export default function HistoryMobile({
     return null;
   })();
 
-  // The terminator is gated on #1828's truth: the whole record is loaded, the
+  // The terminator is gated on the paging truth from 1828: the whole record is
   // total is known, there are rows, and nothing is still being fetched. While
   // any of that is false we say nothing — refusing to claim an end is the
   // honest answer, not a bug to paper over.
@@ -152,7 +152,7 @@ export default function HistoryMobile({
       {/* ── Header ──
           The band is the phone's budget: the heading, then the one sentence
           that says how much record there is. The today line that repeated the
-          first date marker is gone (#1827), and the prose clause with it. */}
+          first date marker is gone (issue 1827), and the prose clause with it. */}
       <header className="px-5 pt-6 pb-5 bg-surface border-b border-outline-variant/30 hism-hero">
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-1.5 hism-state">
