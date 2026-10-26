@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { isValid, parseISO } from 'date-fns';
 import { db } from '../../lib/firebase';
+import type { AppLanguage } from '../../lib/userPreferences';
+import { useLanguage } from '../LanguageProvider';
 import {
   resolveScan,
   type Meeting,
@@ -49,17 +51,21 @@ export type ResolvedStudy = {
 export const STUDY_LOAD_DEADLINE_MS = 12_000;
 
 /**
- * A Meeting's date as a reader reads it. An unparseable date is shown as
- * stored rather than swallowed, the same fallback the stale chip has always
- * used.
+ * A Meeting's date as a reader reads it. One `Intl` call, so the weekday, the
+ * word order and the comma are the language's rather than a translated
+ * concatenation of English parts (#1839, the shape #1905 established). An
+ * unparseable date is shown as stored rather than swallowed, the same fallback
+ * the stale chip has always used.
  */
-function formatWeekDate(date: string): string {
+function formatWeekDate(date: string, language: AppLanguage): string {
   if (!date) return '';
-  try {
-    return format(parseISO(date), 'EEEE, MMMM d');
-  } catch {
-    return date;
-  }
+  const parsed = parseISO(date);
+  if (!isValid(parsed)) return date;
+  return parsed.toLocaleDateString(language, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 /**
@@ -77,6 +83,11 @@ export function useResolvedStudy(
   permalink?: { studyId: string; date?: string },
 ): ResolvedStudy {
   const isPermalink = !!permalink?.studyId;
+  // The labels leave this hook already written, so the language has to be
+  // read here rather than threaded in from the two routes (#1839). Outside a
+  // provider `useLanguage()` answers English, which keeps every suite that
+  // renders the reader bare on the English sentence.
+  const { language, t } = useLanguage();
 
   const [entryPoint, setEntryPoint] = useState<EntryPoint | null>(null);
   const [entryPointLoaded, setEntryPointLoaded] = useState(false);
@@ -186,13 +197,16 @@ export function useResolvedStudy(
   // Permalinks (#1207) suppress the chip entirely.
   const staleDateLabel = (() => {
     if (isPermalink || !meeting || !isStale) return null;
-    return `Most recent · ${formatWeekDate(meeting.date)}`;
+    // The whole sentence is the locale's, separator included: Spanish warns
+    // that the week has passed rather than translating "Most recent", which
+    // would read as "the week on screen is current" (#1839).
+    return t('study.stale_week').replace('{date}', formatWeekDate(meeting.date, language));
   })();
 
   // The week's date on its own, for the current week's chip and for a
   // permalink's document title (#1814). The permalink suppression above is
   // about the chip, not about knowing the date.
-  const weekDateLabel = meeting ? formatWeekDate(meeting.date) || null : null;
+  const weekDateLabel = meeting ? formatWeekDate(meeting.date, language) || null : null;
 
   // A failure belongs to the request that made it: navigating to another slug
   // or permalink starts clean, and a failure with no Study behind it (the

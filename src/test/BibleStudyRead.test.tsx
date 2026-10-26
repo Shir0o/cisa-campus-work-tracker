@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { parseISO } from 'date-fns';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import BibleStudyRead from '../views/BibleStudyRead';
 import { LanguageProvider, useLanguage } from '../components/LanguageProvider';
@@ -74,6 +75,10 @@ describe("This week's study (#946)", () => {
         </Routes>
       </MemoryRouter>,
     );
+
+  /** A date the way a Spanish Intl writes it, so no weekday is hardcoded. */
+  const esDay = (iso: string) =>
+    parseISO(iso).toLocaleDateString('es', { weekday: 'long', month: 'long', day: 'numeric' });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -286,6 +291,33 @@ describe("This week's study (#946)", () => {
     fireEvent.click(screen.getByRole('button', { name: 'switch' }));
 
     expect(document.title).toBe('Alive to God · Estudio bíblico');
+  });
+
+  // The stale-week chip was the one English sentence left in a Spanish
+  // header: the resolution hook composed "Most recent · " as a literal and
+  // formatted the date without a locale, so the sentence a Spanish reader
+  // needs most — the one that says the week is old (ADR 0011 §3) — was the
+  // one they could not read (#1770, #1839).
+  it('speaks the stale week in Spanish, with a Spanish date (#1839)', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain({ entryPoints: [WEDNESDAY], meetings: [{ ...MEETING, date: twoWeeksAgo }] });
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <MemoryRouter initialEntries={['/bible-study/read']}>
+          <Routes>
+            <Route path="/bible-study/read" element={<BibleStudyRead />} />
+          </Routes>
+        </MemoryRouter>
+      </LanguageProvider>,
+    );
+
+    const chip = await screen.findByTestId('stale-date-chip');
+    expect(chip).not.toHaveTextContent('Most recent');
+    expect(chip).toHaveTextContent('La semana ya pasó ·');
+    // The date is the locale's, never a hardcoded weekday, so this assertion
+    // does not drift with the calendar.
+    expect(chip).toHaveTextContent(esDay(twoWeeksAgo));
   });
 
   // The loading pulse had no spoken channel at all: a screen reader heard

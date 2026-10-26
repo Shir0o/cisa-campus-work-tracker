@@ -2476,6 +2476,7 @@
     "never_published_body": "A brand-new study, or a code shown before the first week went up. There is nothing to fall back to.",
     "load_failed": "Couldn't load this week",
     "load_failed_body": "The study is still there — this device couldn't reach it. Check your connection and try again.",
+    "stale_week": "Most recent · {date}",
     "try_again": "Try again",
     "bold": "Bold",
     "italic": "Italic",
