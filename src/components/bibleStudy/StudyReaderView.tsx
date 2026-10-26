@@ -30,6 +30,27 @@ export type StudyReaderViewProps = {
    */
   staleDateLabel?: string | null;
   /**
+   * The current week's date, plainly ("Wednesday, October 21") — the same
+   * chip the stale week wears, without the "Most recent · " prefix (#1814).
+   * Omitted by the app shell, where the week above says where the reader is.
+   */
+  weekDateLabel?: string | null;
+  /**
+   * The study this week belongs to ("Romans · Fall 2026"), printed quietly
+   * under the title. A student who scanned a code has no app shell naming the
+   * study, so this page has to (#1814). Omitted where the surrounding page
+   * already names it.
+   */
+  studyLabel?: string | null;
+  /**
+   * Render this surface as a page: the sticky chrome becomes a `header`
+   * (a banner) and the reading region a `main` named by the meeting title.
+   * The public scan route owns its own document, so it passes this; the
+   * signed-in reader and the editor preview are already inside the app
+   * shell's `main` and must not nest another (#1814).
+   */
+  asPage?: boolean;
+  /**
    * The Section the reader should be showing, when something outside the
    * reader owns the position — the editor's preview follows the author's
    * caret this way (#920). When it changes, the reader scrolls to that
@@ -304,6 +325,9 @@ const PagedSection: React.FC<{
 const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   meeting,
   staleDateLabel = null,
+  weekDateLabel = null,
+  studyLabel = null,
+  asPage = false,
   followSectionIndex,
   initialSectionIndex,
   onSectionChange,
@@ -537,47 +561,66 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     // re-report a position that has not moved.
   }, [state.sectionIndex]);
 
+  // The surface below the chrome — the paged deck or the scrolling deck, the
+  // rail and the index — is one region, so a route that owns its own page can
+  // make it `main` while the chrome above stays outside it (where a `header`
+  // is a banner rather than a header inside main).
+  const BodyTag: React.ElementType = asPage ? 'main' : 'div';
+
   return (
     <div
       ref={rootRef}
       className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col"
       style={{ '--reader-fs': `${typeSize}px` } as React.CSSProperties}
     >
-      {/* Sticky chrome — slim: title, counter, the text-size control, and
-          the stale-week date chip. */}
-      <div
+      {/* Sticky chrome — slim: the week's date, the title, the counter and the
+          text-size control. */}
+      <header
         data-testid="reader-header"
         className={`shrink-0 sticky top-0 z-20 flex flex-wrap md:flex-nowrap items-center gap-2 pt-[calc(env(safe-area-inset-top)+2px)] pb-1 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
           showPaged ? 'px-8' : 'px-5 border-b border-outline-variant'
         }`}
       >
-        {staleDateLabel && (
+        {(staleDateLabel || weekDateLabel) && (
           // Its own row on a phone (#1777): side by side with the title it took
           // 206 of 335 px and squeezed the week's name into a 38px column —
           // three stacked words. On the paged deck it can sit inline again.
+          // The current week wears the same chip, plainly (#1814): a date
+          // only appeared once the week was already out of date.
           <div className="w-full md:w-auto min-w-0 flex">
             <span
-              data-testid="stale-date-chip"
+              data-testid={staleDateLabel ? 'stale-date-chip' : 'week-date-chip'}
               className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-full bg-surface border border-outline-variant text-[11px] text-on-surface-variant"
             >
               <ChevronIcon />
-              <span className="truncate">{staleDateLabel}</span>
+              <span className="truncate">{staleDateLabel ?? weekDateLabel}</span>
             </span>
           </div>
         )}
-        {/* The Meeting title. It wraps rather than truncates: capping the
-            text at the header's width hides the week's name exactly where
-            the preview exists to show the whole thing. `min-w-0` keeps the
-            flex row able to shrink it so the size control and counter never
-            get pushed out. */}
-        <div
-          className={`min-w-0 leading-snug ${
-            showPaged
-              ? 'font-serif font-bold text-[22px] tracking-tight text-on-surface'
-              : 'text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant'
-          }`}
-        >
-          {meeting.title}
+        {/* The Meeting title, and the page's only h1 (#1814). It wraps rather
+            than truncates: capping the text at the header's width hides the
+            week's name exactly where the preview exists to show the whole
+            thing. `min-w-0` keeps the flex row able to shrink it so the size
+            control and counter never get pushed out. The study sits under it,
+            quietly: a student who scanned has no app shell naming the study. */}
+        <div className="min-w-0 flex flex-col leading-snug">
+          <h1
+            className={
+              showPaged
+                ? 'font-serif font-bold text-[22px] tracking-tight text-on-surface'
+                : 'text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant'
+            }
+          >
+            {meeting.title}
+          </h1>
+          {studyLabel && (
+            <span
+              data-testid="study-identity"
+              className="text-[11px] font-normal tracking-normal text-on-surface-variant"
+            >
+              {studyLabel}
+            </span>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-1 shrink-0">
           {headerActions}
@@ -630,8 +673,12 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </header>
 
+      <BodyTag
+        aria-label={asPage ? meeting.title : undefined}
+        className="flex-1 min-h-0 flex flex-col"
+      >
       {showPaged && (
         <>
           {/* Section tabs (#1590), labelled from the headings. The row
@@ -848,6 +895,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
       )}
       </>
       )}
+      </BodyTag>
     </div>
   );
 };

@@ -148,6 +148,29 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(screen.getByTestId('reader-header')).toHaveTextContent('Peace that holds');
   });
 
+  it('sets the Meeting title as the page h1 and keeps the Section titles h2 (#1814)', () => {
+    render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+    const h1s = screen.getAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent('Peace that holds');
+    expect(screen.getAllByRole('heading', { level: 2 })[0]).toHaveTextContent('Where peace starts');
+  });
+
+  it('dates the current week plainly and names the study under the title (#1814)', () => {
+    render(
+      <StudyReaderView
+        meeting={meeting({})}
+        staleDateLabel={null}
+        weekDateLabel="Wednesday, September 2"
+        studyLabel="Romans · Fall 2026"
+      />,
+    );
+
+    expect(screen.getByTestId('week-date-chip')).toHaveTextContent('Wednesday, September 2');
+    expect(screen.getByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
+  });
+
   it('carries the stale-week date chip inside the sticky header, visible from any panel', () => {
     render(
       <StudyReaderView meeting={meeting({})} staleDateLabel="Most recent · September 2" />,
@@ -159,7 +182,7 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(chip.closest('[data-testid="reader-header"]')).not.toBeNull();
   });
 
-  it('shows no date chip for the current week', () => {
+  it('shows no stale chip when the newest week is current', () => {
     render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
     expect(screen.queryByTestId('stale-date-chip')).toBeNull();

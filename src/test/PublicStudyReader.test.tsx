@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PublicStudyReader from '../views/PublicStudyReader';
 import * as bibleData from '../lib/data/bibleStudy';
@@ -88,6 +89,19 @@ describe('PublicStudyReader (above the seam)', () => {
       </MemoryRouter>,
     );
   }
+
+  function renderPermalink(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  /** The reader's date format, so the assertion does not re-implement it. */
+  const formatDay = (iso: string) => format(parseISO(iso), 'EEEE, MMMM d');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -295,5 +309,115 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(robots?.getAttribute('content')).toBe('noindex');
     permalink.unmount();
     expect(document.querySelector('meta[name="robots"]')).toBeNull();
+  });
+
+  // ── Identity and page structure (#1814) ────────────────────────────────
+  // The scan page is one page and no app shell: a student who scanned a code
+  // got a deck with no study name, no date on the current week, no heading,
+  // no main region, and the internal app name in the browser tab.
+
+  it('names the study and term and dates the current week (#1814)', async () => {
+    mockChain([sampleMeeting]);
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
+    expect(screen.getByTestId('week-date-chip')).toHaveTextContent(formatDay(today));
+    // The stale week keeps its "Most recent · " prefix; a current week does
+    // not wear it.
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
+    // Identity is the study and the code that opens it — both already public.
+    // No personal contact line: a named ministry + contact person is a
+    // separate product decision.
+    expect(document.querySelector('a[href^="mailto:"]')).toBeNull();
+    expect(screen.queryByText(/contact/i)).toBeNull();
+  });
+
+  it('has exactly one h1 — the meeting title — with Section titles as h2 (#1814)', async () => {
+    mockChain([sampleMeeting]);
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
+    const h1s = screen.getAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent('Peace that holds');
+    // No skipped levels: the Sections sit directly under the page title.
+    expect(screen.getByRole('heading', { level: 2, name: 'Where peace starts' })).toBeInTheDocument();
+  });
+
+  it('wraps the scan in one main landmark and keeps the sticky chrome a banner (#1814)', async () => {
+    mockChain([sampleMeeting]);
+
+    renderAt('/s/cisa-wednesday');
+
+    await screen.findByText('Where peace starts');
+    const mains = screen.getAllByRole('main');
+    expect(mains).toHaveLength(1);
+    // Outside main, a header is the page's banner; inside it, it is not.
+    const banner = screen.getByRole('banner');
+    expect(banner).toBe(screen.getByTestId('reader-header'));
+    expect(banner.tagName).toBe('HEADER');
+    expect(within(mains[0]).queryByTestId('reader-header')).toBeNull();
+    expect(within(mains[0]).getByTestId('reader-deck')).toBeInTheDocument();
+  });
+
+  it('names the week and the study in document.title and restores the prior title on unmount (#1814)', async () => {
+    mockChain([sampleMeeting]);
+    document.title = 'CISA Campus Work Tracker';
+
+    const scan = renderAt('/s/cisa-wednesday');
+
+    await screen.findByText('Where peace starts');
+    expect(document.title).toBe('Peace that holds · Romans · Fall 2026');
+
+    scan.unmount();
+    // LanguageProvider will not re-run, so the route has to put the app's own
+    // name back when it leaves.
+    expect(document.title).toBe('CISA Campus Work Tracker');
+  });
+
+  it('gives the empty and failed states their own title, one h1 and one main (#1814)', async () => {
+    document.title = 'CISA Campus Work Tracker';
+
+    mockChain([], null, null);
+    const between = renderAt('/s/cisa-wednesday');
+    await screen.findByText('Nothing running right now');
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(document.title).toContain('Nothing running right now');
+    expect(document.title).not.toBe('CISA Campus Work Tracker');
+    between.unmount();
+
+    vi.mocked(bibleData.subscribeEntryPoint).mockImplementation((_db, _slug, _cb, onError) => {
+      onError?.(new Error('permission-denied'));
+      return () => {};
+    });
+    vi.mocked(bibleData.subscribeStudy).mockImplementation(() => () => {});
+    vi.mocked(bibleData.subscribePublishedStudyMeetings).mockImplementation(() => () => {});
+
+    const failed = renderAt('/s/cisa-wednesday');
+    await screen.findByRole('alert');
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(document.title).toContain("Couldn't load this week");
+    failed.unmount();
+  });
+
+  it("carries the week's date in a permalink's title, where the chip is suppressed (#1814)", async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain([{ ...sampleMeeting, date: twoWeeksAgo, title: 'Older Week' }]);
+    document.title = 'CISA Campus Work Tracker';
+
+    const permalink = renderPermalink('/study/romans-fall26/' + twoWeeksAgo);
+
+    await screen.findByText('Where peace starts');
+    // ADR 0011 keeps the permalink chip-free, so the date rides in the title.
+    expect(screen.queryByTestId('week-date-chip')).toBeNull();
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
+    expect(screen.getByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
+    expect(document.title).toContain('Older Week');
+    expect(document.title).toContain(formatDay(twoWeeksAgo));
+    permalink.unmount();
   });
 });
