@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { AppLanguage, saveUserPreferences, subscribeUserPreferences } from "../lib/userPreferences";
 import { useAuth } from "./AuthProvider";
 import { t as translateKey } from "../lib/i18n";
+import { claimedDocumentTitle } from "../lib/documentTitle";
 
 interface LanguageContextType {
   language: AppLanguage;
@@ -91,7 +92,10 @@ export function LanguageProvider({
     if (typeof document === "undefined") return;
 
     document.documentElement.lang = language;
-    document.title = translateKey("meta.title", language);
+    // A route that names its own page (the study readers, #1814/#1838) keeps
+    // that name through a language change: effects run before this one, so the
+    // route's title is already on the document.
+    document.title = claimedDocumentTitle() ?? translateKey("meta.title", language);
 
     let metaDescription = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!metaDescription) {

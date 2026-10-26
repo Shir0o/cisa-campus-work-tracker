@@ -3,24 +3,8 @@ import { useParams } from 'react-router-dom';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import StudyEmptyState from '../components/bibleStudy/StudyEmptyState';
 import { useResolvedStudy } from '../components/bibleStudy/useResolvedStudy';
+import { useDocumentTitle } from '../components/bibleStudy/useDocumentTitle';
 import { useLanguage } from '../components/LanguageProvider';
-
-/**
- * The public page owns its own name while it is mounted (#1814).
- * `LanguageProvider` writes the app-wide "CISA Campus Work Tracker" for every
- * route and only re-runs when the language changes, so a scanned page kept the
- * internal app name for its whole life. The previous title is put back on
- * unmount — returning into the app must not inherit this page's name.
- */
-function useDocumentTitle(title: string) {
-  useEffect(() => {
-    const previous = document.title;
-    document.title = title;
-    return () => {
-      document.title = previous;
-    };
-  }, [title]);
-}
 
 export default function PublicStudyReader() {
   const { t } = useLanguage();
