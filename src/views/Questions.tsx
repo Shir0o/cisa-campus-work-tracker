@@ -18,6 +18,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useI18n } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { AppUser } from '../types';
 import {
   AskMessage,
@@ -371,7 +372,15 @@ export default function Questions() {
   const isStaff = role === 'admin' || role === 'manager';
 
   const [asks, setAsks] = useState<AskMessage[]>([]);
-  const [filter, setFilter] = useState<Filter>('waiting');
+  // #1832: a Trainee opens this page to see whether their own question landed,
+  // and on a phone the Waiting queue is mostly other people's questions they
+  // can only read. So the phone opens on "Asked by me" for them, while a
+  // full-timer — and the roomier rail, where the queue fits — keeps Waiting.
+  // `picked` stays null until a chip is tapped, so the default can follow the
+  // viewport instead of being frozen by the first render.
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const [picked, setPicked] = useState<Filter | null>(null);
+  const filter: Filter = picked ?? (isFullTimer || isDesktop ? 'waiting' : 'mine');
   const [askOpen, setAskOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -488,7 +497,7 @@ export default function Questions() {
           <p className="text-sm text-on-surface-variant mt-1.5 max-w-[78ch] text-pretty">
             {t(
               'ask.page_sub',
-              "Questions that aren't about one person. Nothing here resolves — a question waits until someone answers it, and the first answer clears it for every full-timer.",
+              "Questions that aren't about one person. A question waits until someone answers it, then moves to Answered — the answer stays on the board.",
             )}
           </p>
         </div>
@@ -593,7 +602,7 @@ export default function Questions() {
           <button
             key={f.id}
             type="button"
-            onClick={() => setFilter(f.id)}
+            onClick={() => setPicked(f.id)}
             className={cn(
               'inline-flex items-center gap-1.5 text-[13px] font-medium rounded-full border px-3 py-1.5 transition-colors',
               filter === f.id

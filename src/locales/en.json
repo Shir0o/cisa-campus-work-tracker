@@ -955,7 +955,7 @@
     "waited_today": "asked today",
     "waited_yesterday": "waiting since yesterday",
     "waited_days": "waiting {n} days",
-    "page_sub": "Questions that aren't about one person. Nothing here resolves — a question waits until someone answers it, and the first answer clears it for every full-timer.",
+    "page_sub": "Questions that aren't about one person. A question waits until someone answers it, then moves to Answered — the answer stays on the board.",
     "ask_the_team": "Ask the team",
     "filter_waiting": "Waiting",
     "filter_answered": "Answered",

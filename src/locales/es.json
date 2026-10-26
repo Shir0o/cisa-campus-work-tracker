@@ -955,7 +955,7 @@
     "waited_today": "preguntada hoy",
     "waited_yesterday": "esperando desde ayer",
     "waited_days": "esperando {n} días",
-    "page_sub": "Preguntas que no van sobre una persona. Aquí nada se resuelve: una pregunta espera hasta que alguien la responde, y la primera respuesta la quita para todos los colaboradores a tiempo completo.",
+    "page_sub": "Preguntas que no van sobre una persona. Una pregunta espera hasta que alguien la responde; luego pasa a Respondidas y la respuesta se queda en el tablero.",
     "ask_the_team": "Pregunta al equipo",
     "filter_waiting": "Esperando",
     "filter_answered": "Respondidas",
