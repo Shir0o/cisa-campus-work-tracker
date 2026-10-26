@@ -430,6 +430,10 @@ const HeadingWithAnchor = ({
     <Tag id={id} data-anchor={id} className={cn('group flex items-center gap-2 scroll-mt-20', className)}>
       <span>{children}</span>
       {id && (
+        // #1852: hidden only where hover exists — a touch screen has none, so
+        // a prefix-less opacity-0 left a tab stop nobody could see. Focus
+        // inside the heading reveals it for keyboard users, and the coarse
+        // pointer gets a 44px hit area around the 16px icon.
         <a
           href={`#${id}`}
           onClick={(e) => {
@@ -438,7 +442,7 @@ const HeadingWithAnchor = ({
             const el = document.getElementById(id);
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-stage-accent hover:text-stage-accent-hover inline-flex items-center"
+          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 transition-opacity text-stage-accent hover:text-stage-accent-hover inline-flex items-center justify-center pointer-coarse:min-w-11 pointer-coarse:min-h-11"
           title={t('coordination.link_to_section')}
           aria-label={t('coordination.link_to_section')}
         >
@@ -3284,13 +3288,23 @@ export function DocEditor({
           </h1>
         </div>
       ) : (
-        <input
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder={t('coordination.untitled_page')}
-          spellCheck={false}
-          className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
-        />
+        <>
+          {/* #1852: the field was named only by its placeholder, so a screen
+              reader read "Untitled page" over a page that already has a title.
+              The label is real and visually hidden; the placeholder stays as
+              the sighted hint. Only one DocEditor is mounted at a time. */}
+          <label htmlFor="coordination-page-title" className="sr-only">
+            {t('coordination.page_title')}
+          </label>
+          <input
+            id="coordination-page-title"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder={t('coordination.untitled_page')}
+            spellCheck={false}
+            className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
+          />
+        </>
       )}
 
       {/* toolbar */}

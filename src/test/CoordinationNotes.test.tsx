@@ -421,6 +421,68 @@ describe('CoordinationNotes', () => {
     });
   });
 
+  // ── 1c. Title field and heading anchors (#1852) ────────────────────────────
+  describe('the page title field and heading anchors (#1852)', () => {
+    const anchorDocs = [
+      {
+        id: `doc-${today}`,
+        data: () => ({
+          title: 'Friday run of show',
+          date: today,
+          weekday: 'Friday',
+          md: '# Friday\n\n- [ ] Greeters',
+          audience: 'everyone',
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      },
+    ];
+
+    it('names the page title field rather than leaning on its placeholder (#1852)', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const title = await screen.findByPlaceholderText('Untitled page');
+
+      // A screen reader used to announce "Untitled page" as the name of a
+      // field that already holds "Monday kickoff — week 9".
+      expect(title).toHaveAccessibleName('Page title');
+      expect(title.id).not.toBe('');
+
+      // The name reaches the field through a real <label>, hidden visually.
+      const label = screen.getByText('Page title', { selector: 'label' });
+      expect(label).toHaveClass('sr-only');
+      expect(label).toHaveAttribute('for', title.id);
+
+      // The placeholder stays as the sighted hint; it just stops being the name.
+      expect(title).toHaveAttribute('placeholder', 'Untitled page');
+    });
+
+    it('never leaves a heading anchor invisible where there is no hover (#1852)', () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(traineeAuth);
+      setupSnapshots({ docs: anchorDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const [anchor] = screen.getAllByRole('link', { name: 'Link to this section' });
+      expect(anchor).toBeTruthy();
+
+      // On a touch screen there is no hover, so a prefix-less opacity-0 leaves
+      // a permanent tab stop nobody can see. It is hidden only where hover exists.
+      expect(anchor.className).not.toMatch(/(^|\s)opacity-0(\s|$)/);
+      expect(anchor.className).toContain('[@media(hover:hover)]:opacity-0');
+      // ...and focus inside the heading reveals it, so a keyboard user can see
+      // what they have focused. It keeps its tab stop; no tabindex="-1".
+      expect(anchor.className).toContain('group-focus-within:opacity-100');
+      expect(anchor).not.toHaveAttribute('tabindex', '-1');
+      expect(anchor.tabIndex).toBe(0);
+
+      // The icon stays 16px; the coarse-pointer hit area is at least 44px.
+      expect(anchor.className).toMatch(/(^|\s)pointer-coarse:min-w-11(\s|$)/);
+      expect(anchor.className).toMatch(/(^|\s)pointer-coarse:min-h-11(\s|$)/);
+      expect(anchor.querySelector('svg')?.getAttribute('class')).toContain('w-4');
+    });
+  });
+
   // ── 2. Loading state ──────────────────────────────────────────────────────
   describe('loading state', () => {
     it('renders skeleton elements when onSnapshot has not yet fired', () => {
