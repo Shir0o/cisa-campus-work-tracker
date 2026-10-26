@@ -56,6 +56,17 @@ describe('reminderTimeSummary', () => {
     expect(reminderTimeSummary({ days: [], hour: 0 })).toBe('No days · 12 am');
     expect(reminderTimeSummary({ days: [0], hour: 12 })).toBe('Sun · 12 pm');
   });
+
+  it('reads the same line in Spanish on a 24-hour clock (#1818)', () => {
+    expect(reminderTimeSummary({ days: [2, 3], hour: 17 }, 'es')).toBe('Mar, Mié · 17:00');
+    expect(reminderTimeSummary({ days: [], hour: 0 }, 'es')).toBe('Sin días · 00:00');
+    expect(reminderTimeSummary({ days: [0], hour: 9 }, 'es')).toBe('Dom · 09:00');
+  });
+
+  it('keeps the English line byte-identical when asked for English', () => {
+    expect(reminderTimeSummary({ days: [2, 3], hour: 17 }, 'en')).toBe('Tue, Wed · 5 pm');
+    expect(reminderTimeSummary({ days: [], hour: 0 }, 'en')).toBe('No days · 12 am');
+  });
 });
 
 describe('Firestore reads and writes', () => {
