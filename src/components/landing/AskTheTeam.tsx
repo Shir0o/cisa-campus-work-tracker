@@ -13,8 +13,9 @@ import {
   subscribeStaffAsks,
   askQuestions,
   askRepliesOf,
-  askWaitedDays,
   askOrigin,
+  askOriginText,
+  askWaitedText,
   addAsk,
   deleteAskReply,
   type AskMessage,
@@ -27,15 +28,6 @@ import {
 // each answer inline. Nothing to resolve, nothing to mark — a question with a
 // reply is just a question with a reply. Every staff member sees every
 // question; any full-timer can answer.
-
-function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
-  const d = askWaitedDays(m);
-  return d === 0
-    ? t("ask.waited_today", "asked today")
-    : d === 1
-      ? t("ask.waited_yesterday", "waiting since yesterday")
-      : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
-}
 
 /** A single reply bubble on the trainee home (#680). The asker of the
  *  question can clean up a reply from this surface; the inline confirm
@@ -124,6 +116,7 @@ function AskRow({
 }) {
   const { t } = useI18n();
   const org = askOrigin(m, viewerUid);
+  const orgText = askOriginText(m, viewerUid, t);
   const role = roleOf ? roleOf(m.from) : undefined;
   // The trainee home is for the asker: only the asker of the question can
   // delete a reply on this surface. A full-timer cleans up on /questions.
@@ -153,7 +146,7 @@ function AskRow({
                 ) : (
                   <MessageSquare className="w-3 h-3 shrink-0" />
                 )}
-                <span>{org.text}</span>
+                <span>{orgText}</span>
               </div>
               <span className="text-[11.5px] text-on-surface-variant mt-1 block">{relTime(m.at)}</span>
             </div>
@@ -163,7 +156,7 @@ function AskRow({
             <p className="text-xs text-on-surface-variant/80 mt-2">
               {t("ask.no_answer_yet", "No answer yet · {words}. It's with the whole team, not one person.").replace(
                 "{words}",
-                waitedWords(m, t),
+                askWaitedText(m, t),
               )}
             </p>
           ) : (
