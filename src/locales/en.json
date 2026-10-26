@@ -972,6 +972,8 @@
     "touching": "touching",
     "find_moment": "Find a moment or a name…",
     "we_write_it_down": "We write it down so nothing — and no one — is forgotten.",
+    "end_of_record": "That's everything — this record goes back to {month}.",
+    "end_of_filtered": "That's every moment matching this filter.",
     "show_older": "Show older moments",
     "action": {
       "walked": "walked",

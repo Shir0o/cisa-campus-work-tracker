@@ -66,6 +66,28 @@ describe('HistoryMobile', () => {
     expect(screen.getByText(/2 moments across the team, touching 3 of the people in our care/)).toBeInTheDocument();
   });
 
+  it('opens with the heading, not a today line above it (#1827)', () => {
+    render(<HistoryMobile {...baseProps} activities={[{}, {}] as any} />);
+    const heading = screen.getByRole('heading', { name: 'Looking back' });
+    const header = heading.closest('header');
+    // The eyebrow repeated the first date marker 20px below it; the stream's
+    // own markers carry the date, and an empty record should not be stamped
+    // with today (#1827, following #1851).
+    expect(header?.firstElementChild).toBe(heading);
+  });
+
+  it('drops the prose clause and tightens the header band to the figures sentence (#1827)', () => {
+    render(
+      <HistoryMobile {...baseProps} activities={[{}, {}] as any} peopleRemembered={3} totalMoments={2} />,
+    );
+    const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header')!;
+    expect(header).not.toHaveTextContent(/A record of the small, faithful work/);
+    expect(header).toHaveTextContent(/2 moments across the team, touching 3 of the people in our care\./);
+    // The band's own budget: pt-8/pb-6 became pt-6/pb-5, the sentence mt-2 → mt-1.5.
+    expect(header).toHaveClass('pt-6', 'pb-5');
+    expect(header.querySelector('.hism-state')).toHaveClass('mt-1.5');
+  });
+
   it('prints the record total, and scopes people to the shown page while the record is longer (#1828)', () => {
     render(
       <HistoryMobile
@@ -119,6 +141,77 @@ describe('HistoryMobile', () => {
     expect(onShowOlder).toHaveBeenCalled();
     rerender(<HistoryMobile {...baseProps} hasMore={false} />);
     expect(screen.queryByText('Show older moments')).not.toBeInTheDocument();
+  });
+
+  // #1827 — a missing button is not a statement. Once the whole record is
+  // loaded, the stream ends the way the reader ends (a hairline rule over a
+  // small centred line): where the record stops, and the line the phone never
+  // showed. Gated on #1828's truth, so it can never promise an end that is not
+  // there.
+  const datedActivities = [
+    { id: 'a2', user: 'Sarah Chen', createdAt: '2026-08-09T10:00:00' },
+    { id: 'a1', user: 'Sarah Chen', createdAt: '2026-08-01T10:00:00' },
+  ] as any;
+
+  it('ends a whole record honestly: the span and the closing line (#1827)', () => {
+    render(
+      <HistoryMobile
+        {...baseProps}
+        activities={datedActivities}
+        rows={[itemRow()]}
+        totalMoments={2}
+      />,
+    );
+    const end = screen.getByTestId('history-end');
+    expect(end).toHaveTextContent("That's everything — this record goes back to August 2026.");
+    expect(end).toHaveTextContent('We write it down so nothing — and no one — is forgotten.');
+    // The critique's charge against the old deck was that it restated the
+    // totals; a footer must not recreate that one screen lower.
+    expect(end).not.toHaveTextContent(/\d+ moments/);
+  });
+
+  it('claims no span while a filter is narrowing the record (#1827)', () => {
+    render(
+      <HistoryMobile
+        {...baseProps}
+        activities={datedActivities}
+        rows={[itemRow()]}
+        kind="prayer"
+        totalMoments={2}
+      />,
+    );
+    const end = screen.getByTestId('history-end');
+    expect(end).toHaveTextContent("That's every moment matching this filter.");
+    expect(end).not.toHaveTextContent(/goes back to/);
+  });
+
+  it('never ends the record while more exists, when the total is unknown, or on nothing (#1827)', () => {
+    const { rerender } = render(
+      <HistoryMobile
+        {...baseProps}
+        activities={datedActivities}
+        rows={[itemRow()]}
+        totalMoments={2}
+        hasMore
+      />,
+    );
+    expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
+
+    rerender(
+      <HistoryMobile {...baseProps} activities={datedActivities} rows={[itemRow()]} totalMoments={null} />,
+    );
+    expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
+
+    // A count that lags high (count says 250, a short page says 2) refuses to
+    // claim an end rather than trusting the count.
+    rerender(
+      <HistoryMobile {...baseProps} activities={datedActivities} rows={[itemRow()]} totalMoments={250} />,
+    );
+    expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
+
+    rerender(<HistoryMobile {...baseProps} />);
+    expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
+    expect(screen.getByText(/No moments yet/i)).toBeInTheDocument();
   });
 
   it('renders date marks and humanized items', () => {
