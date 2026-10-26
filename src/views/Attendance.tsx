@@ -652,6 +652,8 @@ export default function Attendance() {
           onOpenTodo={openTodoFor}
           resolvedRosterFor={resolvedRosterFor}
           onToggleRoster={handleToggleRoster}
+          onCreateWalkIn={handleCreateWalkInContact}
+          markAttendanceTaken={markAttendanceTaken}
         />
         {todoFor && (
           <FromEntryTodoComposer

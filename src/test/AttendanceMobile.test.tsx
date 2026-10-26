@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import AttendanceMobile from '../views/AttendanceMobile';
 
@@ -497,6 +497,163 @@ describe('AttendanceMobile', () => {
       expect(names[0]).toContain('Mia Smith');
       expect(names[1]).toContain('Zoe Jones');
       expect(names[2]).toContain('Aaron Walkin');
+    });
+  });
+
+  // ADR 0005 §3–4: the phone sheet must reach anyone, and let a newcomer be
+  // created from just a name — one-handed, in the room (#1836).
+  describe('walk-ins from the sheet (#1836)', () => {
+    it('checks in a walk-in found by search, then creates one from just a name', async () => {
+      const setAttendanceStatus = vi.fn().mockResolvedValue(undefined);
+      let finishCreate: (() => void) | undefined;
+      const onCreateWalkIn = vi.fn(() => new Promise<void>((resolve) => { finishCreate = resolve; }));
+      const alice = contact();
+      const charlie = contact({ id: 'c2', name: 'Charlie Brown', phone: '' });
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: '2020-01-01' })]}
+          contacts={[alice, charlie]}
+          resolvedRosterFor={() => ['c1']}
+          setAttendanceStatus={setAttendanceStatus}
+          onCreateWalkIn={onCreateWalkIn}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+
+      // The field lives in the scrollable body, so the soft keyboard cannot hide it.
+      const field = screen.getByPlaceholderText('Add attendee or walk-in...') as HTMLInputElement;
+
+      // A non-roster contact is findable by a case-insensitive substring.
+      fireEvent.change(field, { target: { value: 'charl' } });
+      fireEvent.click(screen.getByText('Charlie Brown').closest('button')!);
+      expect(setAttendanceStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }), 's1', 'present');
+      // The sheet's own mark path reports the write and can undo it.
+      expect(await screen.findByText('Charlie Brown marked as came')).toBeInTheDocument();
+      expect(field.value).toBe('');
+
+      // Nobody matches, so the sheet offers to create them — parent handler, same payload.
+      fireEvent.change(field, { target: { value: '  New Visitor  ' } });
+      const createButton = screen.getByRole('button', { name: /Create contact "New Visitor"/ });
+      fireEvent.click(createButton);
+      // A second tap while the write is in flight creates nothing.
+      fireEvent.click(createButton);
+      expect(onCreateWalkIn).toHaveBeenCalledTimes(1);
+      expect(onCreateWalkIn).toHaveBeenCalledWith('New Visitor', expect.objectContaining({ id: 's1' }));
+      await waitFor(() => expect(screen.getByRole('button', { name: /Creating/ })).toBeDisabled());
+      finishCreate?.();
+      await waitFor(() => expect(field.value).toBe(''));
+
+      // A Student gets the walk-in tools and no roster configuration.
+      expect(screen.queryByText('Edit details')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Add .* to roster/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the create action only when nobody in the searchable set has that exact name', () => {
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: '2020-01-01' })]}
+          contacts={[contact(), contact({ id: 'c2', name: 'Charlie Brown' })]}
+          resolvedRosterFor={() => ['c1']}
+          onCreateWalkIn={vi.fn().mockResolvedValue(undefined)}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      const field = screen.getByPlaceholderText('Add attendee or walk-in...');
+
+      fireEvent.change(field, { target: { value: 'Charlie Brown' } });
+      expect(screen.queryByRole('button', { name: /Create contact/ })).not.toBeInTheDocument();
+
+      fireEvent.change(field, { target: { value: 'Charlie B' } });
+      expect(screen.getByRole('button', { name: /Create contact "Charlie B"/ })).toBeInTheDocument();
+    });
+
+    it('offers We met, nobody came only on a past week nobody has recorded (ADR 0005)', async () => {
+      const markAttendanceTaken = vi.fn().mockResolvedValue(undefined);
+      const { unmount } = render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: '2020-01-01' })]}
+          contacts={[contact()]}
+          resolvedRosterFor={() => ['c1']}
+          markAttendanceTaken={markAttendanceTaken}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      const button = screen.getByRole('button', { name: 'We met, nobody came' });
+      fireEvent.click(button);
+      expect(markAttendanceTaken).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }));
+      expect(await screen.findByText(/Attendance recorded/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
+      unmount();
+
+      // A future occasion has not happened: nobody can have failed to come.
+      const future = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+      const futureRender = render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: future })]}
+          contacts={[contact()]}
+          resolvedRosterFor={() => ['c1']}
+          markAttendanceTaken={markAttendanceTaken}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
+      futureRender.unmount();
+
+      // A recorded week already says zero; the action would be a no-op.
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: '2020-01-01', attendance: { present: [], absent: [] } })]}
+          contacts={[contact()]}
+          resolvedRosterFor={() => ['c1']}
+          markAttendanceTaken={markAttendanceTaken}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
+    });
+
+    it('offers neither the walk-in field nor nobody-came on a cancelled week', () => {
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[session({ date: '2020-01-01', cancelled: true })]}
+          contacts={[contact()]}
+          resolvedRosterFor={() => ['c1']}
+          onCreateWalkIn={vi.fn().mockResolvedValue(undefined)}
+          markAttendanceTaken={vi.fn().mockResolvedValue(undefined)}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.queryByPlaceholderText('Add attendee or walk-in...')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
+    });
+
+    it('says the walk-in and zero-week controls in Spanish through the shared keys (#1836)', async () => {
+      const { LanguageProvider } = await import('../components/LanguageProvider');
+      localStorage.setItem('cisa_language', 'es');
+      try {
+        render(
+          <LanguageProvider defaultLanguage="es">
+            <AttendanceMobile
+              {...baseProps}
+              sessions={[session({ date: '2020-01-01' })]}
+              contacts={[contact()]}
+              resolvedRosterFor={() => ['c1']}
+              markAttendanceTaken={vi.fn().mockResolvedValue(undefined)}
+            />
+          </LanguageProvider>
+        );
+        fireEvent.click(screen.getByText('Bible Study'));
+        expect(screen.getByPlaceholderText('Añadir asistente o participante...')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Nos reunimos, no vino nadie' })).toBeInTheDocument();
+      } finally {
+        localStorage.clear();
+      }
     });
   });
 });

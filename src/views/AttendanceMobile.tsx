@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { isValid } from 'date-fns';
-import { Plus, X, MessageSquare, ChevronRight, Check, Users, Pencil } from 'lucide-react';
+import { isValid, startOfDay } from 'date-fns';
+import { Plus, X, MessageSquare, ChevronRight, Check, Users, Pencil, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Gathering } from '../types';
 import { Avatar } from '../components/landing/primitives';
@@ -8,7 +8,7 @@ import { openMessage } from '../lib/messaging';
 import type { TodoPerson } from '../lib/todos';
 import { useLanguage } from '../components/LanguageProvider';
 import type { CalContextItem } from '../lib/calendar/calendarSync';
-import { getSessionRoster, isAttendanceTaken, localDay, explicitlyAbsent } from '../lib/attendanceRoster';
+import { getSessionRoster, isAttendanceTaken, localDay, explicitlyAbsent, isContactPresent } from '../lib/attendanceRoster';
 import GatheringMemberChip from '../components/ui/GatheringMemberChip';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
@@ -71,6 +71,12 @@ interface AttendanceMobileProps {
   /** The Gathering's expected roster (its Rhythm's, with the week's override). */
   resolvedRosterFor?: (session: Gathering) => string[];
   onToggleRoster?: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
+  /** Creates a contact from a name and checks them in — the desktop's own
+   *  handler, so the payload is written in one place (ADR 0005 §4). */
+  onCreateWalkIn?: (name: string, gathering: Gathering) => AsyncVoid;
+  /** Writes the empty attendance record behind "We met, nobody came" — again
+   *  the desktop's handler, with its own guards (ADR 0005 §3). */
+  markAttendanceTaken?: (gathering: Gathering) => AsyncVoid;
 }
 
 export default function AttendanceMobile({
@@ -94,6 +100,8 @@ export default function AttendanceMobile({
   onOpenTodo,
   resolvedRosterFor,
   onToggleRoster,
+  onCreateWalkIn,
+  markAttendanceTaken,
 }: AttendanceMobileProps) {
   const { t } = useLanguage();
   const names = useDayNames();
@@ -327,6 +335,8 @@ export default function AttendanceMobile({
           onOpenTodo={onOpenTodo}
           resolvedRosterFor={resolvedRosterFor}
           onToggleRoster={isAdmin ? onToggleRoster : undefined}
+          onCreateWalkIn={onCreateWalkIn}
+          markAttendanceTaken={markAttendanceTaken}
           isAdmin={isAdmin}
           onClose={() => {
             setOpenSessionId(null);
@@ -351,6 +361,10 @@ interface RosterSheetProps {
   resolvedRosterFor?: (session: Gathering) => string[];
   /** Only passed for Full-timers. */
   onToggleRoster?: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
+  /** The parent's walk-in creation, threaded so the sheet never grows a second
+   *  creation path (ADR 0005 §4). */
+  onCreateWalkIn?: (name: string, gathering: Gathering) => AsyncVoid;
+  markAttendanceTaken?: (gathering: Gathering) => AsyncVoid;
   /** Edit and Remove are Full-timer work; a Student was shown both and neither
    *  did anything (issue 1769). */
   isAdmin: boolean;
@@ -369,6 +383,8 @@ function RosterSheet({
   onOpenTodo,
   resolvedRosterFor,
   onToggleRoster,
+  onCreateWalkIn,
+  markAttendanceTaken,
   isAdmin,
   onClose,
 }: RosterSheetProps) {
@@ -377,8 +393,14 @@ function RosterSheet({
   const meta = session.cancelled ? t('attendance.cancelled', 'Cancelled') : (session.location || '');
   const roster = resolvedRosterFor ? resolvedRosterFor(session) : session.roster ?? [];
   const rosterIds = new Set(roster);
-  const { present, absent } = getSessionRoster(session, contacts, roster);
-  const recorded = isAttendanceTaken(session);
+  const { present, absent, nonRoster } = getSessionRoster(session, contacts, roster);
+  // The query and the in-flight flags belong to this open sheet, not the page.
+  const [query, setQuery] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [recording, setRecording] = useState(false);
+  /** The write succeeded, so say so before the snapshot lands. */
+  const [justRecorded, setJustRecorded] = useState(false);
+  const recorded = isAttendanceTaken(session) || justRecorded;
   const titleId = React.useId();
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -408,6 +430,57 @@ function RosterSheet({
       () => { void write(contact, session.id, previous); },
     );
     void write(contact, session.id, next);
+  };
+
+  // ADR 0005 §3: the searchable set is everyone outside the resolved roster —
+  // `getSessionRoster` already computed it, so do not recompute membership.
+  // Someone already in Came is not a check-in candidate; their chip is above.
+  const needle = query.trim().toLowerCase();
+  const matches = needle
+    ? nonRoster.filter((c) => !isContactPresent(session, c.id) && c.name.toLowerCase().includes(needle))
+    : [];
+  const exactMatch = nonRoster.some((c) => c.name.trim().toLowerCase() === needle);
+  const canCreate = needle !== '' && !exactMatch && onCreateWalkIn !== undefined;
+
+  /** A future occasion has not happened, so it cannot be a zero. */
+  const day = localDay(session.date);
+  const happened =
+    day !== null && !Number.isNaN(day.getTime())
+    && startOfDay(day).getTime() <= startOfDay(new Date()).getTime();
+  const canSayNobodyCame = !recorded && happened && markAttendanceTaken !== undefined;
+
+  /** Checking in goes through the sheet's own mark so it reports itself and
+   *  Undo restores the exact prior state (issue 1769) — not `cycleAttendance`. */
+  const checkIn = (contact: Contact) => {
+    mark(contact, false);
+    setQuery('');
+  };
+
+  const createWalkIn = async () => {
+    const name = query.trim();
+    if (!name || creating || onCreateWalkIn === undefined) return;
+    setCreating(true);
+    try {
+      await onCreateWalkIn(name, session);
+      setQuery('');
+    } catch {
+      // The parent reports the failure; keeping the name lets it be retried.
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const sayNobodyCame = async () => {
+    if (recording || markAttendanceTaken === undefined) return;
+    setRecording(true);
+    try {
+      await markAttendanceTaken(session);
+      setJustRecorded(true);
+    } catch {
+      // The parent reports the failure; the strip must not claim a record.
+    } finally {
+      setRecording(false);
+    }
   };
 
   return (
@@ -450,13 +523,28 @@ function RosterSheet({
           </div>
         ) : (
           <>
-            <div className="px-5 py-2 text-[11px] italic text-on-surface-variant/80 border-b border-outline-variant/30 gthm-legend-hint">
-              {recorded
-                ? t('attendance.taken_label', 'Attendance recorded')
-                : t('attendance.unrecorded_hint', 'Attendance not recorded yet — the first tap starts the record.')}
-              {' '}
-              <span className="not-italic">·</span>{' '}
-              {t('attendance.tap_name_to_cycle')}
+            <div className="px-5 py-2.5 border-b border-outline-variant/30 gthm-legend-hint">
+              <div className="text-[11px] italic text-on-surface-variant/80">
+                {recorded
+                  ? t('attendance.taken_label', 'Attendance recorded')
+                  : t('attendance.unrecorded_hint', 'Attendance not recorded yet — the first tap starts the record.')}
+                {' '}
+                <span className="not-italic">·</span>{' '}
+                {t('attendance.tap_name_to_cycle')}
+              </div>
+              {/* Desktop's own affordance, in the same place under the header:
+                  a week we met with nobody there is a recorded zero, not an
+                  unrecorded list of absences (issue 1836). */}
+              {canSayNobodyCame && (
+                <button
+                  type="button"
+                  onClick={() => { void sayNobodyCame(); }}
+                  disabled={recording}
+                  className="mt-2 inline-flex items-center min-h-[44px] px-4 rounded-full border border-outline-variant/70 text-xs font-semibold text-on-surface active:bg-surface-variant disabled:opacity-60 transition-colors"
+                >
+                  {t('attendance.nobody_came', 'We met, nobody came')}
+                </button>
+              )}
             </div>
 
             {/* Scrollable rosters */}
@@ -502,6 +590,78 @@ function RosterSheet({
                         onToggle={() => mark(c, false)}
                         onMakeTodo={onOpenTodo ? () => onOpenTodo(c, session) : undefined}
                       />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Walk-in (ADR 0005 §3–4): reach anyone in the organization, or
+                  create a newcomer from just a name. In the scroll body, not a
+                  pinned footer — the soft keyboard would cover a footer field.
+                  Same order as desktop: after We missed, before the Full-timer
+                  actions. */}
+              <div className="pt-4 border-t border-outline-variant/30 gthm-walkin">
+                <div className="relative">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none"
+                    aria-hidden
+                  />
+                  <input
+                    type="text"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                    aria-label={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                    className="pl-10 pr-12 h-11 w-full rounded-xl bg-surface border border-outline-variant/80 focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant"
+                  />
+                  {query !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery('')}
+                      aria-label={t('search.clear_search', 'Clear search')}
+                      className="absolute right-0.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] grid place-items-center rounded-full text-on-surface-variant active:bg-surface-variant transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Nobody in the searchable set has that exact name, so the
+                    name is new. One handler, the desktop's. */}
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={() => { void createWalkIn(); }}
+                    disabled={creating}
+                    className="mt-2 w-full min-h-[44px] px-4 rounded-xl bg-primary text-on-primary text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 active:brightness-95 transition-all"
+                  >
+                    {!creating && <Plus className="w-4 h-4 shrink-0" aria-hidden />}
+                    <span className="truncate">
+                      {creating
+                        ? t('attendance.creating', 'Creating...')
+                        : t('attendance.create_contact_named', 'Create contact "{name}"').replace('{name}', query.trim())}
+                    </span>
+                  </button>
+                )}
+
+                {matches.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-outline-variant/60 divide-y divide-outline-variant/40 overflow-hidden">
+                    {matches.slice(0, 10).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => checkIn(c)}
+                        className="w-full min-h-[52px] flex items-center gap-3 px-3 text-left active:bg-surface-variant/40 transition-colors"
+                      >
+                        <Avatar contact={c} size="sm" />
+                        <span className="min-w-0 flex-1 truncate text-sm text-on-surface">{c.name}</span>
+                        <span className="shrink-0 text-xs font-semibold text-accent">
+                          {t('attendance.check_in', '+ Check in')}
+                        </span>
+                      </button>
                     ))}
                   </div>
                 )}
