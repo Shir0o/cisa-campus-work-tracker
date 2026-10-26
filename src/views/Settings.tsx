@@ -3223,6 +3223,114 @@ function GettingStartedSection() {
 }
 
 
+/**
+ * The phone's sticky section rail (#1816). Settings for a Full-timer is 14
+ * screens of one column, so a chip row that sticks under the top bar is the
+ * cheapest way to reach any section. It is navigation — a row of buttons, not
+ * a tab set — and it only exists below `lg`, where the page is a single scroller.
+ *
+ * The jump is instant (`scrollIntoView` with no `behavior`) and lands the
+ * section on its `scroll-mt` so the heading clears the rail. Focus follows to
+ * the heading, so a keyboard or screen-reader reader arrives with the new
+ * section announced rather than dropped somewhere unlabelled.
+ */
+function SettingsSectionRail({
+  sections,
+}: {
+  sections: { id: string; label: string }[];
+}) {
+  const { t } = useLanguage();
+  const railRef = useRef<HTMLElement | null>(null);
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [activeId, setActiveId] = useState(sections[0]?.id ?? '');
+  const sectionIds = sections.map((section) => section.id).join('|');
+
+  // The page's own scroller is <main>; walking up finds it in the shell and
+  // falls back to the window where a route is rendered on its own.
+  const scrollHost = (from: HTMLElement | null): HTMLElement | Window => {
+    let node = from?.parentElement ?? null;
+    while (node) {
+      if (/(auto|scroll|overlay)/.test(window.getComputedStyle(node).overflowY)) return node;
+      node = node.parentElement;
+    }
+    return window;
+  };
+
+  const currentId = sections.some((section) => section.id === activeId)
+    ? activeId
+    : (sections[0]?.id ?? '');
+
+  // Keep the current chip on the section whose top has passed under the rail.
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const ids = sectionIds ? sectionIds.split('|') : [];
+
+    const sync = () => {
+      const threshold = rail.getBoundingClientRect().bottom + 12;
+      let current = ids[0] ?? '';
+      for (const id of ids) {
+        const target = document.getElementById(id);
+        if (target && target.getBoundingClientRect().top <= threshold) current = id;
+      }
+      setActiveId(current);
+    };
+
+    const host = scrollHost(rail);
+    sync();
+    host.addEventListener('scroll', sync, { passive: true });
+    return () => host.removeEventListener('scroll', sync);
+  }, [sectionIds]);
+
+  const jumpTo = (id: string) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const heading = target.querySelector('h2') as HTMLElement | null;
+    if (heading) {
+      // A programmatic focus target only — never a stop in the tab order.
+      heading.setAttribute('tabindex', '-1');
+      heading.focus({ preventScroll: true });
+    }
+    target.scrollIntoView({ block: 'start' });
+    setActiveId(id);
+    // Bring the current chip into the rail's visible width, horizontally only.
+    chipRefs.current[id]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+
+  return (
+    <nav
+      ref={railRef}
+      aria-label={t('reader.index', 'Section index')}
+      data-testid="settings-section-rail"
+      className="sticky top-0 z-20 -mx-4 sm:-mx-6 flex gap-2 overflow-x-auto max-w-full px-4 sm:px-6 py-2 bg-background border-b border-outline-variant/40 no-scrollbar lg:hidden"
+    >
+      {sections.map((section) => {
+        const current = section.id === currentId;
+        return (
+          <button
+            key={section.id}
+            type="button"
+            ref={(el) => {
+              chipRefs.current[section.id] = el;
+            }}
+            aria-current={current ? 'location' : undefined}
+            onClick={() => jumpTo(section.id)}
+            className={cn(
+              'inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-[14px] font-semibold transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              current
+                ? 'border-on-surface bg-on-surface text-background'
+                : 'border-outline-variant/50 bg-surface text-on-surface-variant hover:bg-surface-variant/55',
+            )}
+          >
+            {section.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager, role, isApproved } = useAuth();
   const isDev = currentUser?.email?.toLowerCase() === OWNER_EMAIL || isAdmin || isManager;
@@ -3378,25 +3486,299 @@ export default function Settings() {
 
   const myRole = (role as AppRole) ?? null;
 
-  // Shared sections rendered in both the team view and the profile view.
-  const sharedTail = (
-    <>
-      {isDev && <IntegrationsSection currentUser={currentUser} />}
-      {isDev && <WebhookConsoleSection />}
-      {isOwner && (
-        <>
-          <UsageStatsPanel uid={currentUser?.uid || ''} />
-          <section className="mt-10">
-            <SectionHeader
-              title={t('settings.what_people_telling_us', 'What people are telling us')}
-              sub={t('settings.what_people_telling_us_sub', 'Feedback from the team and the community. Read it like notes from friends.')}
-            />
-            <FeedbackList />
-          </section>
-        </>
+  // "Your team" carries enough local state that it stays here rather than in a
+  // component; the descriptor below still owns its place in both lists.
+  const teamSection = (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.your_team', 'Your team')}
+        sub={t('settings.your_team_sub', 'Everyone with access to CISA. Their contacts, notes, and history stay with the work.')}
+      />
+
+      <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input
+            type="text"
+            placeholder={t('settings.find_teammate', 'Find a teammate…')}
+            aria-label={t('settings.find_teammate_label', 'Find a teammate')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+          />
+        </div>
+        <button
+          onClick={() => setShowInviteDialog(true)}
+          className="px-4 py-3 rounded-[14px] bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shrink-0"
+        >
+          <UserPlus className="w-4 h-4" /> {t('settings.add_someone', 'Add someone')}
+        </button>
+      </div>
+
+      {/* Asking to join */}
+      {!loading && pendingUsers.length > 0 && (
+        <div className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-3 text-accent">
+            <KeyRound className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {pendingUsers.length} {pendingUsers.length === 1 ? 'person is' : 'people are'} asking to join
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {pendingUsers.map((u) => (
+              <div key={u.uid} className="flex items-center gap-3">
+                <Avatar name={u.displayName || u.email} photoURL={u.photoURL} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-on-surface truncate">{u.displayName || 'Unnamed'}</div>
+                  <div className="text-[13px] text-on-surface-variant truncate">
+                    wants {roleLabel(t, u.role)} · {u.email}
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleApproval(u.uid, u.approved)}
+                  disabled={updatingId === u.uid}
+                  className="shrink-0 px-3.5 py-2 rounded-full pointer-coarse:min-h-11 bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {updatingId === u.uid ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  Approve
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-    </>
+
+      {/* Member list. A denied or failed users query used to fall through to
+          the same sentence as an empty search ("No teammates or invites match
+          your search."), so a network blip looked like a roster of nobody.
+          It says what happened and offers a way back. */}
+      {teamError ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-xl border border-error/30 bg-error/5 p-4 sm:flex-row sm:items-center"
+        >
+          <p className="flex-1 text-sm text-on-surface">
+            {t('settings.team_load_failed', "Couldn't load your team.")}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setTeamError(false);
+              setLoading(true);
+              setTeamReloadKey((k) => k + 1);
+            }}
+            className="shrink-0 rounded-[14px] border border-outline-variant/50 bg-surface px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors min-h-11"
+          >
+            {t('settings.try_again', 'Try again')}
+          </button>
+        </div>
+      ) : loading ? (
+        <div className="space-y-2.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 p-3.5 rounded-xl border border-outline-variant/40 bg-surface-container"
+            >
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : approvedUsers.length === 0 && filteredInvites.length === 0 ? (
+        <div className="py-12 text-center rounded-xl border border-outline-variant/50 bg-surface-container-low">
+          <p className="text-sm text-on-surface-variant">{t('settings.no_matches', 'No teammates or invites match your search.')}</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {approvedUsers.map((u) => {
+            const isYou = u.uid === currentUser?.uid;
+            return (
+              <MemberCard
+                key={u.uid}
+                user={u}
+                isYou={isYou}
+                canEdit={isAdmin && !isYou}
+                canRemove={isManager && !isYou}
+                onEdit={() => setEditTarget(u)}
+                onRemove={() => setRemoveTarget(u)}
+              />
+            );
+          })}
+          {filteredInvites.map((inv) => (
+            <InviteRow key={`inv-${inv.email}`} invite={inv} onCancel={() => revokeInvitation(inv.email)} />
+          ))}
+        </div>
+      )}
+    </section>
   );
+
+  // One ordered list drives both the manager page and its phone rail. A section
+  // that is not rendered must not be in the rail, and a rendered top-level
+  // section must not be missing — so the rail and the page read the same array.
+  const managerSections = [
+    {
+      id: 'settings-account',
+      label: t('settings.account_session', 'Account & Session'),
+      visible: true,
+      node: <AccountSection />,
+    },
+    {
+      id: 'settings-phone-sync',
+      label: t('bnpb.settings_title', 'BNPB'),
+      visible: isOwner,
+      node: <BnpbSyncCard />,
+    },
+    {
+      id: 'settings-security',
+      label: t('settings.security_title', 'Security'),
+      visible: true,
+      node: <SecuritySection />,
+    },
+    {
+      id: 'settings-appearance',
+      label: t('settings.appearance', 'Appearance'),
+      visible: true,
+      node: <AppearanceSection theme={theme} setTheme={setTheme} />,
+    },
+    {
+      id: 'settings-navigation',
+      label: t('settings.navigation', 'Navigation'),
+      visible: true,
+      node: <NavigationSection />,
+    },
+    {
+      id: 'settings-notifications',
+      label: t('settings.notifications', 'Notifications & Alerts'),
+      visible: true,
+      node: <NotificationsSection />,
+    },
+    {
+      id: 'settings-weekly-reminders',
+      label: t('reminders.yours_title', 'Your weekly reminders'),
+      visible: isManager,
+      node: <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />,
+    },
+    {
+      id: 'settings-language',
+      label: t('settings.language', 'Language'),
+      visible: true,
+      node: <LanguageSection />,
+    },
+    {
+      id: 'settings-whats-new',
+      label: t('settings.whats_new', "What's New"),
+      visible: true,
+      node: (
+        <WhatsNewSection
+          onOpen={() => setWhatsNewOpen(true)}
+          isAdmin={isAdmin}
+          userEmail={currentUser?.email}
+        />
+      ),
+    },
+    {
+      id: 'settings-getting-started',
+      label: t('settings.getting_started', 'Getting started'),
+      visible: true,
+      node: <GettingStartedSection />,
+    },
+    {
+      id: 'settings-roles',
+      label: t('settings.roles_access', 'Roles & access'),
+      visible: true,
+      node: (
+        <section className="mt-10">
+          <SectionHeader
+            title={t('settings.roles_access', 'Roles & access')}
+            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
+          />
+          <RolesReference currentRole={myRole} />
+        </section>
+      ),
+    },
+    {
+      id: 'settings-team',
+      label: t('settings.your_team', 'Your team'),
+      visible: true,
+      node: teamSection,
+    },
+    {
+      id: 'settings-partners',
+      label: t('settings.pairs_title', 'Going out together'),
+      visible: isAdmin,
+      node: <PartnersSection users={users} />,
+    },
+    {
+      id: 'settings-teams',
+      label: t('teams.title', "Which team they're on"),
+      visible: isAdmin,
+      node: <TeamsSection users={users} />,
+    },
+    {
+      id: 'settings-reminder-schedule',
+      label: t('reminders.schedule_title', 'Weekly reminder schedule'),
+      visible: isAdmin,
+      node: <ReminderScheduleSection />,
+    },
+    {
+      id: 'settings-day-goal',
+      label: t('settings.day_goal_title', "The day's goal"),
+      visible: isAdmin,
+      node: <DayGoalSection />,
+    },
+    {
+      id: 'settings-calendar',
+      label: t('settings.shared_calendar', 'The shared calendar'),
+      visible: isAdmin || isManager,
+      node: <CalendarSyncPanel />,
+    },
+    {
+      id: 'settings-danger-zone',
+      label: t('settings.danger_zone', 'Data management & danger zone'),
+      visible: isAdmin,
+      node: <DangerZoneSection onOpenPurgeModal={() => setShowPurgeModal(true)} />,
+    },
+    {
+      id: 'settings-quick-add',
+      label: 'Quick add by text',
+      visible: isDev,
+      node: <IntegrationsSection currentUser={currentUser} />,
+    },
+    {
+      id: 'settings-webhooks',
+      label: 'API & webhook console',
+      visible: isDev,
+      node: <WebhookConsoleSection />,
+    },
+    {
+      id: 'settings-cost',
+      label: 'What the app is costing',
+      visible: isOwner,
+      node: <UsageStatsPanel uid={currentUser?.uid || ''} />,
+    },
+    {
+      id: 'settings-feedback',
+      label: t('settings.what_people_telling_us', 'What people are telling us'),
+      visible: isOwner,
+      node: (
+        <section className="mt-10">
+          <SectionHeader
+            title={t('settings.what_people_telling_us', 'What people are telling us')}
+            sub={t('settings.what_people_telling_us_sub', 'Feedback from the team and the community. Read it like notes from friends.')}
+          />
+          <FeedbackList />
+        </section>
+      ),
+    },
+  ];
+  const visibleManagerSections = managerSections.filter((section) => section.visible);
 
   // ── Non-manager: a warm "My profile" page ──
   if (!isManager) {
@@ -3452,172 +3834,20 @@ export default function Settings() {
             : t('settings.manager_subtitle', 'Your workspace and preferences.')}
         </p>
       </header>
-      <AccountSection />
-      <BnpbSyncCard />
-      <SecuritySection />
-      <AppearanceSection theme={theme} setTheme={setTheme} />
-      <NavigationSection />
-      <NotificationsSection />
-      {isManager && <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />}
-      <LanguageSection />
-      <WhatsNewSection
-        onOpen={() => setWhatsNewOpen(true)}
-        isAdmin={isAdmin}
-        userEmail={currentUser?.email}
+      <SettingsSectionRail
+        sections={visibleManagerSections.map(({ id, label }) => ({ id, label }))}
       />
-      <GettingStartedSection />
 
-      <section className="mt-10">
-        <SectionHeader
-          title={t('settings.roles_access', 'Roles & access')}
-          sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
-        />
-        <RolesReference currentRole={myRole} />
-      </section>
-
-      {/* Your team */}
-      <section className="mt-10">
-        <SectionHeader
-          title={t('settings.your_team', 'Your team')}
-          sub={t('settings.your_team_sub', 'Everyone with access to CISA. Their contacts, notes, and history stay with the work.')}
-        />
-
-        <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder={t('settings.find_teammate', 'Find a teammate…')}
-              aria-label={t('settings.find_teammate_label', 'Find a teammate')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
-            />
-          </div>
-          <button
-            onClick={() => setShowInviteDialog(true)}
-            className="px-4 py-3 rounded-[14px] bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <UserPlus className="w-4 h-4" /> {t('settings.add_someone', 'Add someone')}
-          </button>
+      {visibleManagerSections.map((section) => (
+        <div
+          key={section.id}
+          id={section.id}
+          data-settings-section
+          className="scroll-mt-[72px]"
+        >
+          {section.node}
         </div>
-
-        {/* Asking to join */}
-        {!loading && pendingUsers.length > 0 && (
-          <div className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 mb-3 text-accent">
-              <KeyRound className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {pendingUsers.length} {pendingUsers.length === 1 ? 'person is' : 'people are'} asking to join
-              </span>
-            </div>
-            <div className="space-y-2.5">
-              {pendingUsers.map((u) => (
-                <div key={u.uid} className="flex items-center gap-3">
-                  <Avatar name={u.displayName || u.email} photoURL={u.photoURL} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-on-surface truncate">{u.displayName || 'Unnamed'}</div>
-                    <div className="text-[13px] text-on-surface-variant truncate">
-                      wants {roleLabel(t, u.role)} · {u.email}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleApproval(u.uid, u.approved)}
-                    disabled={updatingId === u.uid}
-                    className="shrink-0 px-3.5 py-2 rounded-full pointer-coarse:min-h-11 bg-primary text-on-primary text-[13px] font-medium flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {updatingId === u.uid ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Check className="w-3.5 h-3.5" />
-                    )}
-                    Approve
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Member list. A denied or failed users query used to fall through to
-            the same sentence as an empty search ("No teammates or invites match
-            your search."), so a network blip looked like a roster of nobody.
-            It says what happened and offers a way back. */}
-        {teamError ? (
-          <div
-            role="alert"
-            className="flex flex-col gap-3 rounded-xl border border-error/30 bg-error/5 p-4 sm:flex-row sm:items-center"
-          >
-            <p className="flex-1 text-sm text-on-surface">
-              {t('settings.team_load_failed', "Couldn't load your team.")}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setTeamError(false);
-                setLoading(true);
-                setTeamReloadKey((k) => k + 1);
-              }}
-              className="shrink-0 rounded-[14px] border border-outline-variant/50 bg-surface px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors min-h-11"
-            >
-              {t('settings.try_again', 'Try again')}
-            </button>
-          </div>
-        ) : loading ? (
-          <div className="space-y-2.5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3.5 rounded-xl border border-outline-variant/40 bg-surface-container"
-              >
-                <Skeleton className="w-10 h-10 rounded-full" />
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : approvedUsers.length === 0 && filteredInvites.length === 0 ? (
-          <div className="py-12 text-center rounded-xl border border-outline-variant/50 bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{t('settings.no_matches', 'No teammates or invites match your search.')}</p>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {approvedUsers.map((u) => {
-              const isYou = u.uid === currentUser?.uid;
-              return (
-                <MemberCard
-                  key={u.uid}
-                  user={u}
-                  isYou={isYou}
-                  canEdit={isAdmin && !isYou}
-                  canRemove={isManager && !isYou}
-                  onEdit={() => setEditTarget(u)}
-                  onRemove={() => setRemoveTarget(u)}
-                />
-              );
-            })}
-            {filteredInvites.map((inv) => (
-              <InviteRow key={`inv-${inv.email}`} invite={inv} onCancel={() => revokeInvitation(inv.email)} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {isAdmin && <PartnersSection users={users} />}
-
-      {isAdmin && <TeamsSection users={users} />}
-
-      {isAdmin && <ReminderScheduleSection />}
-
-      {isAdmin && <DayGoalSection />}
-
-      {(isAdmin || isManager) && <CalendarSyncPanel />}
-
-      {isAdmin && <DangerZoneSection onOpenPurgeModal={() => setShowPurgeModal(true)} />}
-
-      {sharedTail}
+      ))}
 
       {/* Admin note */}
       <div className="mt-10 rounded-xl border border-outline-variant/40 bg-surface-container-low p-5 flex items-start gap-3">
