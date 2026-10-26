@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BibleStudyIndex from '../views/BibleStudyIndex';
@@ -85,18 +85,45 @@ describe('BibleStudyIndex view', () => {
     );
   }
 
-  // A week's title can appear twice — in its row and in the scan panel — so
-  // row lookups go through the row element.
+  // At desktop width a week's title can appear twice — in its row and in the
+  // rail's scan card — so row lookups go through the row element.
   function rowFor(title: string): HTMLButtonElement | undefined {
     return screen
       .getAllByText(title)
       .map((el) => el.closest('button'))
       .find((el): el is HTMLButtonElement => el !== null);
   }
+
+  // The view picks its layout from `matchMedia`, not a CSS-only hide (#1860),
+  // so each test says which width it means. Phone is the default because that
+  // is where the duplicate statement and the clipped row were reported.
+  function setViewport(width: 'phone' | 'desktop') {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: width === 'desktop',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  }
+
+  function weeksSection(): HTMLElement {
+    const heading = screen.getByRole('heading', { name: /^Weeks/ });
+    return heading.closest('section') as HTMLElement;
+  }
+
+  function scanCard(): HTMLElement {
+    return screen.getByText('What a scan opens right now').parentElement as HTMLElement;
+  }
+
   let meetingsCb: ((meetings: Meeting[]) => void) | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setViewport('phone');
     meetingsCb = null;
     vi.mocked(auth.useAuth).mockReturnValue({
       user: mockUser,
@@ -138,11 +165,16 @@ describe('BibleStudyIndex view', () => {
 
     const draftRow = rowFor('Nothing between us');
     expect(draftRow?.textContent).toContain('4 sections');
-    expect(draftRow?.textContent).toContain('not published');
+    // The pill already says Draft, so the meta stops repeating it (#1860).
+    expect(draftRow?.textContent).not.toContain('not published');
     expect(draftRow?.textContent).toContain('Draft');
 
     const liveRow = rowFor('Alive to God');
-    expect(liveRow?.textContent).toContain('published');
+    expect(liveRow?.textContent).toContain('Live now');
+    expect(liveRow?.textContent).not.toContain('published');
+
+    // An older published week carries no pill, so its meta still says so.
+    expect(rowFor('Peace that holds')?.textContent).toContain('published');
   });
 
   it('marks the newest published week as live, not the newest week', async () => {
@@ -160,17 +192,118 @@ describe('BibleStudyIndex view', () => {
     expect(olderRow?.textContent).not.toContain('Live now');
   });
 
-  it('states what a scan opens and why a newer draft is not showing', async () => {
+  it('states what a scan opens on desktop, and why a newer draft is not showing', async () => {
+    setViewport('desktop');
     renderIndex();
 
     expect(await screen.findByText('What a scan opens right now')).toBeInTheDocument();
-    const panel = screen.getByText('What a scan opens right now').parentElement;
-    expect(panel?.textContent).toContain('Alive to God');
-    expect(panel?.textContent).toMatch(/Nothing between us is still a draft/);
+    const panel = scanCard();
+    expect(panel.textContent).toContain('Alive to God');
+    expect(panel.textContent).toMatch(/Oct 14/);
+    // The rail only summarises the live week now: the draft note lives in the
+    // weeks section, once, at every width (#1860).
+    expect(panel.textContent).not.toMatch(/is still a draft/);
+    expect(weeksSection().textContent).toMatch(/Nothing between us is still a draft/);
   });
 
-  it('shows the entry point with its name, slug and active study, linking to present mode', async () => {
-    renderIndex();
+  // ── One statement of which week a scan opens (#1860) ──────────────────
+  // The 375px screen said it twice (scan card + week row), clipped the row
+  // meta mid-word, and put admin chrome above the week list. These pin the
+  // consolidated behaviour; painted order is proven by a 375px screenshot.
+  describe('one statement of which week a scan opens (#1860)', () => {
+    it('phone: one statement of which week a scan opens (#1860)', async () => {
+      setViewport('phone');
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+
+      expect(screen.queryByText('What a scan opens right now')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Alive to God')).toHaveLength(1);
+      expect(rowFor('Alive to God')?.textContent).toContain('Live now');
+    });
+
+    it('phone: the week row meta is not clipped and the pill carries the state (#1860)', async () => {
+      setViewport('phone');
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+
+      const liveRow = rowFor('Alive to God') as HTMLElement;
+      const liveMeta = within(liveRow).getByText(/ · 4 sections$/);
+      // Nothing truncated: the full date and section count are the text.
+      expect(liveMeta.textContent).toMatch(/^\w{3}, Oct 14 · 4 sections$/);
+      expect(liveMeta.className).not.toContain('truncate');
+      // The pill already says the state, so the meta does not repeat it.
+      expect(liveMeta.textContent).not.toContain('published');
+
+      const draftRow = rowFor('Nothing between us') as HTMLElement;
+      expect(within(draftRow).getByText(/ · 4 sections$/).textContent).not.toContain(
+        'not published',
+      );
+      expect(draftRow.textContent).toContain('Draft');
+
+      // An older published week carries no pill, so its meta still ends so.
+      expect(within(rowFor('Peace that holds') as HTMLElement).getByText(/sections? · published$/)).toBeInTheDocument();
+    });
+
+    it('phone: the draft note sits in the weeks section once (#1860)', async () => {
+      setViewport('phone');
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+
+      const notes = screen.getAllByText(/is still a draft/);
+      expect(notes).toHaveLength(1);
+      expect(weeksSection().contains(notes[0])).toBe(true);
+    });
+
+    it('phone: the weeks section comes before the entry-point card (#1860)', async () => {
+      setViewport('phone');
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+
+      const weeks = weeksSection();
+      const aside = screen.getByText('Entry point').closest('aside') as HTMLElement;
+      // DOM order is the painted order: no `order-*` utility may re-sort them.
+      expect(weeks.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(weeks.className).not.toContain('order-');
+      expect(aside.className).not.toContain('order-');
+    });
+
+    it('phone: a study that never published says so in the weeks section (#1860)', async () => {
+      vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, _studyId, cb) => {
+        cb(MEETINGS.map((m) => ({ ...m, published: false })));
+        return () => {};
+      });
+      renderIndex();
+
+      const sentence = await screen.findByText(
+        /Nothing yet — the study has never published a week/,
+      );
+      expect(screen.getAllByText(/Nothing yet — the study has never published a week/)).toHaveLength(
+        1,
+      );
+      expect(weeksSection().contains(sentence)).toBe(true);
+    });
+
+    it('desktop: the rail states which week a scan opens, once (#1860)', async () => {
+      setViewport('desktop');
+      renderIndex();
+
+      expect(await screen.findByText('What a scan opens right now')).toBeInTheDocument();
+      const card = scanCard();
+      expect(card.textContent).toContain('Alive to God');
+      expect(card.textContent).toMatch(/Oct 14/);
+      // The title is in the row and in the rail — that is the rail's job at
+      // width — but the draft note is not repeated there.
+      expect(screen.getAllByText('Alive to God')).toHaveLength(2);
+      expect(screen.getAllByText(/is still a draft/)).toHaveLength(1);
+      expect(card.textContent).not.toMatch(/is still a draft/);
+    });
+  });
+
+  it('shows the entry point with its name, slug and active study, linking to present mode', async () => {    renderIndex();
 
     expect(await screen.findByText('Wednesday Bible Study')).toBeInTheDocument();
     expect(screen.getByText('/s/cisa-wednesday')).toBeInTheDocument();
@@ -213,7 +346,7 @@ describe('BibleStudyIndex view', () => {
     expect(await screen.findByText('Editor opened', {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it('renders the between-terms panel when no study is active', async () => {
+  it('says no study is active when nothing is running (#1860)', async () => {
     vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
       cb([{ ...ENTRY_POINT, activeStudyId: null }]);
       return () => {};
@@ -225,9 +358,13 @@ describe('BibleStudyIndex view', () => {
 
     renderIndex();
 
-    expect(
-      await screen.findByText(/Nothing running right now — no study is active on this code/),
-    ).toBeInTheDocument();
+    const sentence = await screen.findByText(
+      /Nothing running right now — no study is active on this code/,
+    );
+    // Said once, in the weeks section — the phone no longer has a second card
+    // to repeat it, and the desktop rail does not either.
+    expect(screen.getAllByText(/Nothing running right now/)).toHaveLength(1);
+    expect(weeksSection().contains(sentence)).toBe(true);
     expect(screen.getByRole('button', { name: /New week/i })).toBeDisabled();
   });
 
@@ -346,6 +483,7 @@ describe('BibleStudyIndex view', () => {
     });
 
     it('unpublishing is reflected immediately in what a scan opens', async () => {
+      setViewport('desktop');
       renderIndex();
 
       await screen.findByText('Nothing between us');
@@ -362,9 +500,9 @@ describe('BibleStudyIndex view', () => {
         meetingsCb?.(MEETINGS.map((m) => (m.id === 'm-5' ? { ...m, published: false } : m)));
       });
       await waitFor(() => {
-        const panel = screen.getByText('What a scan opens right now').parentElement;
-        expect(panel?.textContent).toContain('Peace that holds');
-        expect(panel?.textContent).not.toContain('Alive to God');
+        const panel = scanCard();
+        expect(panel.textContent).toContain('Peace that holds');
+        expect(panel.textContent).not.toContain('Alive to God');
       });
     });
   });
