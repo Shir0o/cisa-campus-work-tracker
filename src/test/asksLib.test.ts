@@ -8,9 +8,11 @@ import {
   askAnswered,
   askWaitedDays,
   askWaitedWords,
+  askWaitedText,
   askStacksFor,
   askTakenBy,
   askOrigin,
+  askOriginText,
   askVisibleFor,
   askUnreadFor,
   addAsk,
@@ -22,6 +24,7 @@ import {
 } from '../lib/asks';
 import * as firestore from 'firebase/firestore';
 import * as firebaseLib from '../lib/firebase';
+import { t as translate } from '../lib/i18n';
 
 vi.mock('../lib/firebase', () => ({
   db: { _type: 'firestore' },
@@ -402,6 +405,68 @@ describe('src/lib/asks.ts full coverage', () => {
       text: 'Asked in person · written down by ft3',
       short: 'Written down by ft3',
     });
+  });
+
+  it('composes the origin sentence in the reader language, name intact (#1831)', () => {
+    const en = (k: string, f?: string) => translate(k, 'en', f);
+    const es = (k: string, f?: string) => translate(k, 'es', f);
+
+    const direct: AskMessage = {
+      id: 'd1',
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'Direct question',
+      at: new Date().toISOString(),
+    };
+    const recorded: AskMessage = {
+      ...direct,
+      id: 'r1',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+    };
+
+    // All four variants, second person where the viewer is the asker.
+    expect(askOriginText(direct, 't1', es)).toBe('La preguntaste aquí, con tus propias palabras');
+    expect(askOriginText(direct, 'ft1', es)).toBe('Preguntada aquí, con sus propias palabras');
+    expect(askOriginText(recorded, 't1', es)).toBe('Preguntada en persona · Mei la escribió por ti');
+    expect(askOriginText(recorded, 'ft2', es)).toBe('Preguntada en persona · escrita por Mei');
+    // The pen reading their own handwriting gets the `origin_you` slot.
+    expect(askOriginText(recorded, 'ft1', es)).toBe('Preguntada en persona · escrita por ti');
+
+    // English is byte-for-byte what `askOrigin().text` says.
+    expect(askOriginText(direct, 't1', en)).toBe('You asked this here, in your own words');
+    expect(askOriginText(direct, 'ft1', en)).toBe('Asked here, in their own words');
+    expect(askOriginText(recorded, 't1', en)).toBe('Asked in person · Mei wrote it down for you');
+    expect(askOriginText(recorded, 'ft2', en)).toBe('Asked in person · written down by Mei');
+    expect(askOriginText(recorded, 'ft1', en)).toBe('Asked in person · written down by you');
+  });
+
+  it('says the wait in the reader language, never "1 días" (#1831)', () => {
+    const en = (k: string, f?: string) => translate(k, 'en', f);
+    const es = (k: string, f?: string) => translate(k, 'es', f);
+
+    const daysAgo = (n: number): AskMessage => ({
+      id: `w${n}`,
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'Waiting',
+      at: new Date(Date.now() - n * 86400000).toISOString(),
+    });
+
+    expect(askWaitedText(daysAgo(0), es)).toBe('preguntada hoy');
+    expect(askWaitedText(daysAgo(1), es)).toBe('esperando desde ayer');
+    expect(askWaitedText(daysAgo(2), es)).toBe('esperando 2 días');
+    expect(askWaitedText(daysAgo(2), es)).not.toContain('1 días');
+
+    expect(askWaitedText(daysAgo(0), en)).toBe('asked today');
+    expect(askWaitedText(daysAgo(1), en)).toBe('waiting since yesterday');
+    expect(askWaitedText(daysAgo(2), en)).toBe('waiting 2 days');
   });
 
   it('deleteAsk removes the question and every answer on it in one batch', async () => {

@@ -26,8 +26,8 @@ import {
   askRepliesOf,
   askAnswered,
   askOrigin,
-  askTakenBy,
-  askWaitedDays,
+  askOriginText,
+  askWaitedText,
   addAsk,
   addAskFor,
   addAskReply,
@@ -39,38 +39,17 @@ type Filter = 'waiting' | 'answered' | 'mine' | 'all';
 
 const AVATAR = 'rounded-full grid place-items-center font-semibold bg-accent-soft text-accent border border-outline-variant/40 shrink-0';
 
-/** The waiting, said in the reader's language (1767). The home's two
- *  surfaces each carry this helper; `askWaitedWords` returns English only. */
-function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
-  const d = askWaitedDays(m);
-  return d === 0
-    ? t('ask.waited_today', 'asked today')
-    : d === 1
-      ? t('ask.waited_yesterday', 'waiting since yesterday')
-      : t('ask.waited_days', `waiting ${d} days`).replace('{n}', String(d));
-}
+// The waiting and the origin (#1767) are composed by the shared translators in
+// lib/asks, so the home cards and this page say the same thing in one language.
 
-/** The origin mark (#611) — asked here, or written down in person. The words
- *  are composed here rather than read off `askOrigin().text`: that string is
- *  English only, and this page renders in the reader's language (1767). */
+/** The origin mark (#611) — asked here, or written down in person. */
 function OriginMark({ m, me }: { m: AskMessage; me: string }) {
   const { t } = useI18n();
   const org = askOrigin(m, me);
-  const pen = askTakenBy(m);
-  const mine = Boolean(me && m.from === me);
-  const first = (pen?.name || 'Someone').trim().split(' ')[0] || 'Someone';
-  const wrote = pen && pen.uid === me ? t('ask.origin_you', 'you') : first;
-  const text = !pen
-    ? mine
-      ? t('ask.origin_you_here', 'You asked this here, in your own words')
-      : t('ask.origin_here', 'Asked here, in their own words')
-    : mine
-      ? t('ask.origin_in_person_you', 'Asked in person · {first} wrote it down for you').replace('{first}', first)
-      : t('ask.origin_in_person', 'Asked in person · written down by {first}').replace('{first}', wrote);
   return (
     <div className={cn('flex items-center gap-1.5 mt-2 text-xs', org.written ? 'text-accent' : 'text-on-surface-variant')}>
       {org.written ? <Pencil className="w-3 h-3 shrink-0" /> : <MessageCircleQuestion className="w-3 h-3 shrink-0" />}
-      {text}
+      {askOriginText(m, me, t)}
     </div>
   );
 }
@@ -173,7 +152,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
         ) : (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning bg-warning-container rounded-full px-2 py-1 whitespace-nowrap">
             <Clock className="w-3 h-3" />
-            {waitedWords(m, t)}
+            {askWaitedText(m, t)}
           </span>
         )}
         {canDelete && (

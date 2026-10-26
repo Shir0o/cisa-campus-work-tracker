@@ -8,8 +8,9 @@ import { Avatar, SectionHead } from "./primitives";
 import {
   subscribeAsks,
   askStacksFor,
-  askWaitedDays,
   askOrigin,
+  askOriginText,
+  askWaitedText,
   type AskMessage,
   type AskStack as AskStackData,
 } from "../../lib/asks";
@@ -23,15 +24,6 @@ import { useInboxReads } from "../../lib/inboxReads";
 // answering to the Questions page — the row action is a navigate, not a
 // composer — so the only thing this stack does is show who is waiting and
 // mark a row scanned. Two surfaces, one composer.
-
-function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
-  const d = askWaitedDays(m);
-  return d === 0
-    ? t("ask.waited_today", "asked today")
-    : d === 1
-      ? t("ask.waited_yesterday", "waiting since yesterday")
-      : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
-}
 
 function AskStackRow({
   stack,
@@ -92,6 +84,7 @@ function AskStackRow({
           <div className="mt-1 flex flex-col gap-3">
             {stack.items.map((m) => {
               const org = askOrigin(m, uid);
+              const orgText = askOriginText(m, uid, t);
               return (
                 <div key={m.id} className="bg-surface-variant/40 rounded-xl p-3">
                   <p className="text-sm text-on-surface whitespace-pre-line leading-relaxed">{m.body}</p>
@@ -106,12 +99,12 @@ function AskStackRow({
                     ) : (
                       <MessageSquare className="w-3 h-3 shrink-0" />
                     )}
-                    <span>{org.text}</span>
+                    <span>{orgText}</span>
                   </div>
                   <p className="text-[11px] text-on-surface-variant/80 mt-1">
                     {t("ask.no_answer_yet", "No answer yet · {words}. It's with the whole team, not one person.").replace(
                       "{words}",
-                      waitedWords(m, t),
+                      askWaitedText(m, t),
                     )}
                   </p>
                   <button

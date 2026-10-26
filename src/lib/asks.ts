@@ -143,6 +143,22 @@ export function askWaitedWords(m: AskMessage): string {
   return d === 0 ? "asked today" : d === 1 ? "waiting since yesterday" : `waiting ${d} days`;
 }
 
+/** The waiting in the reader's language (#1831). One implementation for every
+ *  web surface: the home cards and the Questions page all call this. There is
+ *  no plural engine — `.replace("{n}", …)` keeps the number in the string and
+ *  the `d === 1` branch is what keeps "1 días" out of the UI. */
+export function askWaitedText(
+  m: AskMessage,
+  t: (key: string, fallback?: string) => string,
+): string {
+  const d = askWaitedDays(m);
+  return d === 0
+    ? t("ask.waited_today", "asked today")
+    : d === 1
+      ? t("ask.waited_yesterday", "waiting since yesterday")
+      : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
+}
+
 export interface AskStack {
   id: string; // "ask:<asker uid>" — one stack per ASKER
   from: string;
@@ -239,6 +255,37 @@ export function askOrigin(m: AskMessage, viewerId?: string | null): AskOriginRes
       : `Asked in person · written down by ${byWhom}`,
     short: mine ? `${first} wrote it down for you` : `Written down by ${byWhom}`,
   };
+}
+
+/** The origin sentence in the reader's language (#1831). `askOrigin().text` is
+ *  English only; every web surface composes the visible sentence here instead.
+ *  `written`/`pen`/`icon` stay language-neutral and drive the icon and colour.
+ *  The pen's name is data and is interpolated verbatim. */
+export function askOriginText(
+  m: AskMessage,
+  viewerId: string | null | undefined,
+  t: (key: string, fallback?: string) => string,
+): string {
+  const pen = askOrigin(m, viewerId).pen;
+  const mine = Boolean(viewerId && m.from === viewerId);
+
+  if (!pen) {
+    return mine
+      ? t("ask.origin_you_here", "You asked this here, in your own words")
+      : t("ask.origin_here", "Asked here, in their own words");
+  }
+
+  const first = (pen.name || "Someone").trim().split(" ")[0] || "Someone";
+  const wrote = viewerId && pen.uid === viewerId ? t("ask.origin_you", "you") : first;
+  return mine
+    ? t("ask.origin_in_person_you", "Asked in person · {first} wrote it down for you").replace(
+        "{first}",
+        first,
+      )
+    : t("ask.origin_in_person", "Asked in person · written down by {first}").replace(
+        "{first}",
+        wrote,
+      );
 }
 
 /** Ask a question. */
