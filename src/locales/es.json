@@ -2476,6 +2476,7 @@
     "never_published_body": "Un estudio recién creado, o un código mostrado antes de publicar la primera semana. No hay nada a lo que recurrir.",
     "load_failed": "No se pudo cargar esta semana",
     "load_failed_body": "El estudio sigue ahí: este dispositivo no pudo conectarse. Revisa tu conexión e inténtalo de nuevo.",
+    "stale_week": "La semana ya pasó · {date}",
     "try_again": "Reintentar",
     "bold": "Negrita",
     "italic": "Cursiva",

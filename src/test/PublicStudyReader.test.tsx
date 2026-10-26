@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PublicStudyReader from '../views/PublicStudyReader';
+import { LanguageProvider } from '../components/LanguageProvider';
 import * as bibleData from '../lib/data/bibleStudy';
 import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
 
@@ -80,31 +81,46 @@ describe('PublicStudyReader (above the seam)', () => {
     });
   }
 
-  function renderAt(path: string) {
-    return render(
+  function renderAt(path: string, language?: 'en' | 'es') {
+    const tree = (
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/s/:slug" element={<PublicStudyReader />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
+    );
+    // The app mounts the reader inside LanguageProvider; the tests that do
+    // not need it render bare, where the hook falls back to English.
+    return render(
+      language ? <LanguageProvider defaultLanguage={language}>{tree}</LanguageProvider> : tree,
     );
   }
 
-  function renderPermalink(path: string) {
-    return render(
+  function renderPermalink(path: string, language?: 'en' | 'es') {
+    const tree = (
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
+    );
+    return render(
+      language ? <LanguageProvider defaultLanguage={language}>{tree}</LanguageProvider> : tree,
     );
   }
 
   /** The reader's date format, so the assertion does not re-implement it. */
   const formatDay = (iso: string) => format(parseISO(iso), 'EEEE, MMMM d');
 
+  /** The same date as a Spanish Intl writes it — weekday, order and comma. */
+  const esDay = (iso: string) =>
+    parseISO(iso).toLocaleDateString('es', { weekday: 'long', month: 'long', day: 'numeric' });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // `LanguageProvider` remembers the language on the device, so a previous
+    // test must not hand this one its language.
+    window.localStorage.clear();
   });
 
   it('renders the resolved Meeting for an anonymous scan of /s/:slug', async () => {
@@ -229,7 +245,45 @@ describe('PublicStudyReader (above the seam)', () => {
     renderAt('/s/cisa-wednesday');
 
     expect(screen.getAllByText(/Peace that holds/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Most recent ·/);
+    // Byte-for-byte what it always said: the localized hook must not reword
+    // or re-space the English sentence (#1839).
+    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(
+      `Most recent · ${formatDay(twoWeeksAgo)}`,
+    );
+  });
+
+  // ── The shared resolution hook speaks the reader's language (#1839) ────
+  // Both routes resolve through `useResolvedStudy`, so the sentence the stale
+  // week wears moves with the hook rather than with either page.
+
+  it('says the week is old in Spanish, on the public reader too (#1839)', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain([{ ...sampleMeeting, date: twoWeeksAgo }]);
+
+    renderAt('/s/cisa-wednesday', 'es');
+
+    const chip = await screen.findByTestId('stale-date-chip');
+    expect(chip).not.toHaveTextContent('Most recent');
+    expect(chip).toHaveTextContent('La semana ya pasó ·');
+    expect(chip).toHaveTextContent(esDay(twoWeeksAgo));
+  });
+
+  it('dates the current week and a permalink title in Spanish too (#1839)', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain([sampleMeeting]);
+
+    const current = renderAt('/s/cisa-wednesday', 'es');
+    expect(await screen.findByTestId('week-date-chip')).toHaveTextContent(esDay(today));
+    current.unmount();
+
+    // A permalink hides the chip, so its date rides in the title — the same
+    // helper, or the tab stays English while the page turns Spanish.
+    mockChain([{ ...sampleMeeting, date: twoWeeksAgo, title: 'Older Week' }]);
+    document.title = 'CISA Campus Work Tracker';
+    renderPermalink('/study/romans-fall26/' + twoWeeksAgo, 'es');
+
+    await screen.findByText('Where peace starts');
+    expect(document.title).toContain(esDay(twoWeeksAgo));
   });
 
   it('renders never-published as its own state with no action offered', async () => {
