@@ -153,6 +153,21 @@ describe('History View', () => {
     });
   });
 
+  it('keeps the desktop header whole and never shows the phone terminator (#1827)', async () => {
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/started walking with Alice/i)).toBeInTheDocument();
+    });
+
+    const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header')!;
+    // The prose and the record's size stay on the wide page, and the phone's
+    // end band (a device-width fix) does not leak into it.
+    expect(header).toHaveTextContent(/A record of the small, faithful work/);
+    expect(header).toHaveTextContent(/1 moment across the team/);
+    expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
+  });
+
   it('filters activities based on category buttons and renders localized labels', async () => {
     render(<HistoryView />);
 

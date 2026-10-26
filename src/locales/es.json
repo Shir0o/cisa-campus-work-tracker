@@ -972,6 +972,8 @@
     "touching": "tocando",
     "find_moment": "Buscar un momento o un nombre…",
     "we_write_it_down": "Lo escribimos para que nada — y nadie — quede en el olvido.",
+    "end_of_record": "Eso es todo: este registro se remonta a {month}.",
+    "end_of_filtered": "Esos son todos los momentos que coinciden con este filtro.",
     "show_older": "Ver momentos más antiguos",
     "action": {
       "walked": "caminó con",

@@ -4,7 +4,7 @@ import { useLanguage } from '../components/LanguageProvider';
 import { Filter, Search, X, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact } from '../types';
-import { clockLabel } from './historyTime';
+import { clockLabel, historyMs } from './historyTime';
 
 interface Hist {
   id: string;
@@ -109,7 +109,6 @@ export default function HistoryMobile({
   const activeKindEntry = KINDS.find((k) => k.id === kind);
   const kindLabel = activeKindEntry ? t(activeKindEntry.i18nKey, activeKindEntry.label) : undefined;
   const whoLabel = who === 'all' ? null : firstName(who);
-  const today = new Date().toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' });
   const wordFor = (n: number) => (n === 1 ? t('history.moment', 'moment') : t('history.moments', 'moments'));
   const momentWord = wordFor(totalMoments ?? activities.length);
   const shownMomentWord = wordFor(activities.length);
@@ -121,18 +120,44 @@ export default function HistoryMobile({
     .replace('{moments}', `${activities.length} ${shownMomentWord}`)
     .replace('{people}', String(peopleRemembered));
 
+  // How far back the record goes, read off the oldest loaded moment — the last
+  // entry of the newest-first list. Rows the app cannot date are skipped
+  // rather than handed to `toLocaleDateString` as Invalid Date (#1768).
+  const oldestMonth = (() => {
+    for (let i = activities.length - 1; i >= 0; i--) {
+      const ms = historyMs(activities[i].createdAt);
+      if (ms != null) {
+        return new Date(ms).toLocaleDateString(language, { month: 'long', year: 'numeric' });
+      }
+    }
+    return null;
+  })();
+
+  // The terminator is gated on #1828's truth: the whole record is loaded, the
+  // total is known, there are rows, and nothing is still being fetched. While
+  // any of that is false we say nothing — refusing to claim an end is the
+  // honest answer, not a bug to paper over.
+  const recordEnds = !loading && !hasMore && recordComplete && activities.length > 0;
+  const endStatement = hasFilters
+    ? t('history.end_of_filtered', "That's every moment matching this filter.")
+    : oldestMonth
+      ? t('history.end_of_record', "That's everything — this record goes back to {month}.").replace(
+          '{month}',
+          oldestMonth,
+        )
+      : null;
+
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page history history--m" data-role="ft">
-      {/* ── Header ── */}
-      <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 hism-hero">
-        <div className="text-xs text-on-surface-variant font-semibold mb-1">
-          {today}
-        </div>
+      {/* ── Header ──
+          The band is the phone's budget: the heading, then the one sentence
+          that says how much record there is. The today line that repeated the
+          first date marker is gone (#1827), and the prose clause with it. */}
+      <header className="px-5 pt-6 pb-5 bg-surface border-b border-outline-variant/30 hism-hero">
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">{t('history.looking_back')}</h1>
-        <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 hism-state">
+        <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-1.5 hism-state">
           {totalMoments !== null ? (
             <>
-              {t('history.record_small_faithful')}{' '}
               <span className="text-on-surface font-medium">{totalMoments}</span> {momentWord} across the team
               {recordComplete ? (
                 <>
@@ -320,6 +345,22 @@ export default function HistoryMobile({
           >
             {t('history.show_older')}
           </button>
+        </div>
+      )}
+
+      {/* End of the record — the shape the reader already uses to end a reading
+          surface: a hairline rule over a small centred line. It says where the
+          record stops, and the closing sentence the phone never showed. Not the
+          totals: the header carries those, and repeating them here would be the
+          old deck's defect one screen lower. */}
+      {recordEnds && endStatement && (
+        <div
+          data-testid="history-end"
+          className="px-5 mt-8 flex flex-col items-center gap-2 text-center hism-end"
+        >
+          <span className="h-px w-12 bg-outline-variant" aria-hidden />
+          <p className="text-[13px] text-on-surface-variant font-medium">{endStatement}</p>
+          <p className="text-[13px] text-on-surface-variant/70 italic">{t('history.we_write_it_down')}</p>
         </div>
       )}
 
