@@ -301,7 +301,9 @@ describe('History View', () => {
     });
     await waitFor(() => {
       expect(screen.getByText('updated a prayer for')).toBeInTheDocument();
-      expect(screen.getByText('Now marked ongoing.')).toBeInTheDocument();
+      // The stored enum word is not a word: the diary prints the label the
+      // Prayer page shows, in English as in Spanish (#1826).
+      expect(screen.getByText('Now marked Ongoing.')).toBeInTheDocument();
     });
   });
 
