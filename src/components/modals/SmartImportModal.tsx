@@ -139,7 +139,15 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
       // Initialize selected flag as true for all parsed items
       setParsedContacts((data.contacts || []).map((c) => ({ ...c, selected: true })));
       setParsedInteractions((data.interactions || []).map((i) => ({ ...i, selected: true })));
-      setParsedDiscussions((data.discussions || []).map((d) => ({ ...d, selected: true })));
+      // 'trainees' was retired from the picker (#1849) — a parsed legacy tag
+      // becomes Team rather than importing a tier nobody can read.
+      setParsedDiscussions(
+        (data.discussions || []).map((d) => ({
+          ...d,
+          audience: d.audience === 'everyone' ? 'everyone' : 'team',
+          selected: true,
+        })),
+      );
 
       setStep('preview');
     } catch (err: any) {
@@ -817,7 +825,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                     className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
                                   >
                                     <option value="team">{t('modals.smartImport.team')}</option>
-                                    <option value="trainees">{t('modals.smartImport.trainees')}</option>
                                     <option value="everyone">{t('modals.smartImport.everyone')}</option>
                                   </select>
                                 </div>
