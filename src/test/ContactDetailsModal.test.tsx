@@ -1511,6 +1511,45 @@ describe('ContactDetailsModal Component', () => {
       );
     });
 
+    it('opens the About sheet on the reassign select when Change creator is chosen from More actions', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-123', displayName: 'Admin Tony' },
+        isAdmin: true,
+        role: 'admin',
+        isImpersonating: false,
+      });
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        if (q?.path?.includes('users') || q?.type === 'users') {
+          successCallback({
+            docs: [
+              { id: 'user-123', data: () => ({ name: 'Admin Tony', role: 'admin' }) },
+              { id: 'user-456', data: () => ({ name: 'Brother Barnabas', role: 'admin' }) },
+            ],
+          });
+        } else {
+          successCallback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      const contactWithCreator = {
+        ...mockContact,
+        createdBy: 'user-123',
+        createdByName: 'Admin Tony',
+      };
+
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCreator} />);
+      await screen.findByText('John Doe');
+
+      // The menu item is the only path a reader has from the page head; it
+      // must land them on the select, not set state that nothing renders.
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+      fireEvent.click(screen.getByText('Change creator'));
+
+      expect(await screen.findByRole('combobox', { name: 'Reassign creator' })).toBeInTheDocument();
+    });
+
     it('does not show the change creator button for non-admins', async () => {
       (useAuth as any).mockReturnValue({
         user: { uid: 'user-trainee', displayName: 'Trainee Tom' },

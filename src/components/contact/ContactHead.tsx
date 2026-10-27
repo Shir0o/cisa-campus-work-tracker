@@ -432,7 +432,7 @@ export default function ContactHead(props: ContactHeadProps) {
                   onText={onText}
                   onEmail={onEmail}
                   showDelete={showDelete}
-                  showChangeCreator={isAdmin}
+                  showChangeCreator={canEditKind}
                   onChangeCreator={onChangeCreator}
                   onDelete={onDelete}
                   showRelease={showRelease}
@@ -687,7 +687,7 @@ export default function ContactHead(props: ContactHeadProps) {
                   onText={onText}
                   onEmail={onEmail}
                   showDelete={showDelete}
-                  showChangeCreator={isAdmin}
+                  showChangeCreator={canEditKind}
                   onChangeCreator={onChangeCreator}
                   onDelete={onDelete}
                   showRelease={showRelease}

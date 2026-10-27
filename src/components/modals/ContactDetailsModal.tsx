@@ -922,7 +922,12 @@ export default function ContactDetailsModal({
     onAddToAsk: () => setAddToAskOpen(true),
     onRemindMe: () => setReminderOpen(true),
     onChangeKind: changeKind,
-    onChangeCreator: () => setReassigningCreator(true),
+    // The reassign control lives in the About sheet; selecting the menu item
+    // without opening it left the reader on an unchanged page.
+    onChangeCreator: () => {
+      setAboutOpen(true);
+      setReassigningCreator(true);
+    },
     onDelete: handleDelete,
     onRelease: handleReleaseContact,
     onOpenPrayers: () => {
