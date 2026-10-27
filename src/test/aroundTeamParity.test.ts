@@ -123,6 +123,15 @@ describe('Around the team to-work-through mirror parity (web vs core)', () => {
     expect(coreStackIds(input).sort()).toEqual(webAroundTeam(input).map((s) => s.id).sort());
   });
 
+  it('leaves out logged activity on a person who is no longer in the system, on both sides', () => {
+    const input: AroundTeamInput = { uid: ME, contacts: CONTACTS, interactions: INTERACTIONS, threads: [] };
+    // `orphan` is the contactId an interaction carries and no contact doc backs.
+    expect(webAroundTeam(input).map((s) => s.id)).not.toContain('att:contact:orphan');
+    expect(coreStackIds(input)).not.toContain('att:contact:orphan');
+    // A question on that same person was addressed to someone, so it stays (#1339).
+    expect(coreStackIds({ ...input, threads: THREADS })).toContain('att:contact:orphan-thread');
+  });
+
   it('takes a person off Around once the reader is In the Conversation there (#1604)', () => {
     const around = coreStackIds({ uid: ME, contacts: CONTACTS, interactions: [], threads: THREADS });
     expect(around).not.toContain('att:contact:heard');

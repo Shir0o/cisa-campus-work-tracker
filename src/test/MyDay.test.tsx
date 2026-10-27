@@ -1068,12 +1068,24 @@ describe('MyDay', () => {
       }),
     );
 
+  // A logged interaction is activity on a person, so the fixture has to carry
+  // the person too: the feed leaves out activity on someone who is no longer in
+  // the system, and these tests are about the bento, not the cards.
+  const teamPeople = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      contactDoc(`c-team-${i}`, {
+        name: `Team Person ${i}`,
+        createdBy: 'u2',
+        createdAt: new Date().toISOString(),
+      }),
+    );
+
   it('renders On the horizon and Your prayers exactly once, in the bento, on a busy team day', async () => {
     (useAuth as unknown as Mock).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
     });
-    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(5) }));
+    vi.mocked(onSnapshot).mockImplementation(byPath({ contacts: teamPeople(5), interactions: teamTouches(5) }));
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
@@ -1094,7 +1106,7 @@ describe('MyDay', () => {
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
     });
-    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    vi.mocked(onSnapshot).mockImplementation(byPath({ contacts: teamPeople(2), interactions: teamTouches(2) }));
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
@@ -1112,7 +1124,7 @@ describe('MyDay', () => {
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
     });
-    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    vi.mocked(onSnapshot).mockImplementation(byPath({ contacts: teamPeople(2), interactions: teamTouches(2) }));
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
@@ -1140,7 +1152,7 @@ describe('MyDay', () => {
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
     });
-    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    vi.mocked(onSnapshot).mockImplementation(byPath({ contacts: teamPeople(2), interactions: teamTouches(2) }));
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 

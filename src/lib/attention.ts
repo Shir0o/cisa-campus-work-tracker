@@ -170,9 +170,17 @@ export function buildAttentionItems(params: {
     }
 
     // 2. Team-logged interactions (except full-timer's own)
+    //
+    // A deleted person leaves their interactions behind — Firestore does not
+    // cascade a subcollection — and the collection-group read below still finds
+    // them. Logged activity on someone who is no longer in the system is not
+    // work: the card could only be titled "Contact", open a route with no
+    // record behind it, and count toward a number nobody can bring down. A
+    // *question* on such a person still reaches the reader (#1339) — it was
+    // addressed to someone, and that is what keeps this guard off threads.
     for (const i of interactions) {
       const by = i.userId ?? i.createdById;
-      if (by && by !== uid && i.contactId) {
+      if (by && by !== uid && i.contactId && contactById.has(i.contactId)) {
         const rawI = i as unknown as { title?: string };
         items.push({
           id: "interaction:" + i.id,

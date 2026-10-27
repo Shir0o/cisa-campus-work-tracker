@@ -121,10 +121,13 @@ export function aroundTeamStackIds(input: AroundTeamInput): string[] {
     if (!c.createdBy || c.createdBy !== uid) items.push({ id: "contact:" + c.id, contactId: c.id, direct: false });
   }
 
-  // Interactions a teammate logged.
+  // Interactions a teammate logged. A person who is no longer in the system
+  // keeps their interactions (no cascade), and the feed would draw a card about
+  // nobody: the same guard as the web's buildAttentionItems. Threads
+  // are left alone — a question on that person is still addressed to someone.
   for (const i of interactions) {
     const by = i.userId ?? i.createdById;
-    if (by && by !== uid && i.contactId) {
+    if (by && by !== uid && i.contactId && contactById.has(i.contactId)) {
       items.push({ id: "interaction:" + i.id, contactId: i.contactId, direct: false });
     }
   }

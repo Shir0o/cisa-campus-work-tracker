@@ -64,7 +64,10 @@ describe("aroundTeamStackIds", () => {
     ]);
   });
 
-  it("gives a teammate's activity on a person with no contact doc its own card", () => {
+  // Logged activity on a person who is no longer in the system is not work: the
+  // card could only be titled "Contact" and open a route with no record behind
+  // it. A question on that same person was addressed to someone and stays.
+  it("leaves out a teammate's activity on a person with no contact doc", () => {
     const ids = aroundTeamStackIds({
       ...base,
       contacts: [],
@@ -72,6 +75,16 @@ describe("aroundTeamStackIds", () => {
         { id: "i1", contactId: "gone", userId: "tr1" },
         { id: "i2", contactId: "gone2", userId: ME },
       ],
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("still reaches the reader when a person with no contact doc has an unanswered question", () => {
+    const ids = aroundTeamStackIds({
+      ...base,
+      contacts: [],
+      interactions: [{ id: "i1", contactId: "gone", userId: "tr1" }],
+      threads: [{ id: "q1", contactId: "gone", from: "tr1", kind: "question", at: T0 }],
     });
     expect(ids).toEqual(["att:contact:gone"]);
   });
