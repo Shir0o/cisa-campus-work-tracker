@@ -825,8 +825,8 @@ describe('MyDayMobile', () => {
     );
 
     // Exactly one line, carrying the title, the waiting count and the door.
-    expect(screen.getAllByText('Questions for the team')).toHaveLength(1);
-    const row = screen.getByRole('link', { name: /Questions for the team/ });
+    expect(screen.getAllByText('Questions for Full-timers')).toHaveLength(1);
+    const row = screen.getByRole('link', { name: /Questions for Full-timers/ });
     expect(row).toHaveAttribute('href', '/questions');
     expect(screen.getByText('2 new')).toBeInTheDocument();
     expect(screen.getByText('See all')).toBeInTheDocument();
@@ -860,7 +860,7 @@ describe('MyDayMobile', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('link', { name: /Questions for the team/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Questions for Full-timers/ })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'On you' })).toBeInTheDocument();
   });
 
@@ -893,7 +893,7 @@ describe('MyDayMobile', () => {
     );
 
     // Still one tap away; the badge is gone because nothing is new.
-    expect(screen.getByRole('link', { name: /Questions for the team/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Questions for Full-timers/ })).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ new$/)).not.toBeInTheDocument();
   });
 

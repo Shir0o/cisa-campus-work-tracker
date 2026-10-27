@@ -115,7 +115,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
               })}
             >
               <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                {t('feedback.your_notes', 'Your notes')}
+                {t('feedback.your_notes', 'Your reports')}
               </Text>
               <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
                 {t('mobile.member.your_notes_sub')}
@@ -302,7 +302,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             <Sech label={t('mobile.member.tell_the_team', 'Tell the team')} />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+              accessibilityLabel={t('mobile.member.tell_us_how_its_going', "Report a problem or idea")}
               onPress={() => setFeedbackOpen(true)}
               style={({ pressed }) => ({
                 backgroundColor: c.widget.tile,
@@ -313,7 +313,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
               })}
             >
               <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                {t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+                {t('mobile.member.tell_us_how_its_going', "Report a problem or idea")}
               </Text>
               <Text
                 style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}

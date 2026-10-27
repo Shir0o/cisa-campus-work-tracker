@@ -208,7 +208,7 @@ describe('ChatDetailsModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Conversation Details')).toBeInTheDocument();
+    expect(screen.getByText('Chat details')).toBeInTheDocument();
     expect(await screen.findByText('View Directory Contact Profile')).toBeInTheDocument();
 
     const viewProfileBtn = screen.getByText('View Directory Contact Profile');

@@ -448,7 +448,7 @@ describe('QueueScreen', () => {
       const { getByText, queryByText } = await renderAt(ON);
       expect(getByText('Sign-up form')).toBeTruthy();
       expect(getByText('Add someone new')).toBeTruthy();
-      expect(getByText('Log a conversation')).toBeTruthy();
+      expect(getByText('Log an interaction')).toBeTruthy();
       expect(getByText("You're on campus until 3pm")).toBeTruthy();
       expect(queryByText('Today · 2 left')).toBeNull();
     });
@@ -470,11 +470,11 @@ describe('QueueScreen', () => {
       expect(lastLogSheet()).toMatchObject({ visible: true, start: 'new' });
     });
 
-    it('"Log a conversation" opens the log sheet in its default flow, even after "Add someone new"', async () => {
+    it('"Log an interaction" opens the log sheet in its default flow, even after "Add someone new"', async () => {
       const { getByLabelText } = await renderAt(ON);
       await fireEvent.press(getByLabelText('Add someone new'));
       await act(() => lastLogSheet().onClose());
-      await fireEvent.press(getByLabelText('Log a conversation'));
+      await fireEvent.press(getByLabelText('Log an interaction'));
       expect(lastLogSheet().visible).toBe(true);
       expect(lastLogSheet().start).toBeUndefined();
     });

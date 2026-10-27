@@ -107,11 +107,11 @@ describe('Questions for the team page (#646)', () => {
     });
   });
   describe('the trap is gone', () => {
-    it('has no composer at all until "Ask the team" is opened', () => {
+    it('has no composer at all until "Ask a Full-timer" is opened', () => {
       renderPage();
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+      fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
       expect(screen.getByPlaceholderText(/what do you want to ask/i)).toBeInTheDocument();
     });
 
@@ -142,7 +142,7 @@ describe('Questions for the team page (#646)', () => {
       const askFor = vi.spyOn(asksLib, 'addAskFor').mockResolvedValue(undefined);
       renderPage();
 
-      fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+      fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
       fireEvent.click(screen.getByRole('button', { name: /someone asked me/i }));
       fireEvent.change(screen.getByPlaceholderText(/in their words/i), {
         target: { value: 'Recorded in the corridor.' },
@@ -165,7 +165,7 @@ describe('Questions for the team page (#646)', () => {
 
     it('defaults a full-timer to their own question, not to recording someone else\'s', () => {
       renderPage();
-      fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+      fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
       expect(screen.getByPlaceholderText(/what do you want to ask/i)).toBeInTheDocument();
       expect(screen.queryByText(/who asked it/i)).not.toBeInTheDocument();
     });
@@ -241,7 +241,7 @@ describe('Questions for the team page (#646)', () => {
 
   it('names the ask composer for assistive tech (#1767)', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
     expect(screen.getByLabelText('Your question for the team')).toBeInTheDocument();
   });
 
@@ -348,18 +348,18 @@ describe('Questions for the team page (#646)', () => {
 
     it('gets no "Someone asked me" mode — only a full-timer records in person', () => {
       renderPage();
-      fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+      fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
       expect(screen.queryByRole('button', { name: /someone asked me/i })).not.toBeInTheDocument();
     });
 
     it('asks with addAsk under their own name', async () => {
       const ask = vi.spyOn(asksLib, 'addAsk').mockResolvedValue(undefined);
       renderPage();
-      fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
+      fireEvent.click(screen.getByRole('button', { name: /ask a full-timer/i }));
       fireEvent.change(screen.getByPlaceholderText(/what do you want to ask/i), {
         target: { value: 'Is it okay to text a student first?' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Ask the team$/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Ask a Full-timer$/ }));
 
       await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
       expect(ask).toHaveBeenCalledWith({

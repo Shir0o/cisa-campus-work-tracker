@@ -242,7 +242,7 @@ export default function AskTheTeam({
   return (
     <section className={cn("mt-12", className)}>
       <SectionHead
-        title={t("ask.title", "Ask the team")}
+        title={t("ask.title", "Ask a Full-timer")}
         sub={t("ask.sub", "The questions that don't belong on anyone's page. Every full-timer sees this — any of them can answer.")}
       />
       <div className="flex flex-col gap-3">

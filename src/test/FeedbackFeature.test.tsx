@@ -103,7 +103,7 @@ describe('User Feedback Feature', () => {
       expect(fabBtn).toBeInTheDocument();
       expect(fabBtn?.querySelector('svg')).toHaveClass('lucide-message-square-plus');
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
       expect(fabBtn?.querySelector('svg')).toHaveClass('lucide-x');
     });
 
@@ -111,9 +111,9 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
 
-      expect(screen.getByRole('dialog', { name: 'Leave a note for the team' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Report a problem or idea' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
     });
 
@@ -224,7 +224,7 @@ describe('User Feedback Feature', () => {
 
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
 
       const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
       const scrollTo = (y: number) =>
@@ -290,16 +290,16 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      const fabBtn = screen.getByTitle('Leave a note for the team');
+      const fabBtn = screen.getByTitle('Report a problem or idea');
       await userAct.click(fabBtn);
 
       // Verify the warm panel + kind pills are displayed
-      expect(screen.getByText('Leave a note')).toBeInTheDocument();
-      expect(screen.getByText('A thought')).toBeInTheDocument();
-      expect(screen.getByText("Something's off")).toBeInTheDocument();
+      expect(screen.getByText('Report a problem or idea')).toBeInTheDocument();
+      expect(screen.getByText('Something else')).toBeInTheDocument();
+      expect(screen.getByText("Something's broken")).toBeInTheDocument();
 
       // Enter the note
-      const textarea = screen.getByRole('textbox', { name: /Your note/i });
+      const textarea = screen.getByRole('textbox', { name: /Your report/i });
       await userAct.type(textarea, 'Database connection is showing delay during sync');
 
       // Send it
@@ -308,7 +308,7 @@ describe('User Feedback Feature', () => {
 
       // The in-panel success state appears
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
     });
 
@@ -325,7 +325,7 @@ describe('User Feedback Feature', () => {
     it('Send button is disabled when message is empty', async () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
 
       const sendBtn = screen.getByRole('button', { name: 'Send' });
       expect(sendBtn).toBeDisabled();
@@ -335,7 +335,7 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      const fabBtn = screen.getByTitle('Leave a note for the team');
+      const fabBtn = screen.getByTitle('Report a problem or idea');
       expect(fabBtn).toHaveAttribute('aria-expanded', 'false');
 
       await userAct.click(fabBtn);
@@ -348,8 +348,8 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'Something looks off here');
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your report/i }), 'Something looks off here');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       await waitFor(() => expect(global.fetch).toHaveBeenCalled());
@@ -373,8 +373,8 @@ describe('User Feedback Feature', () => {
       const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
       expect(fabBtn).toBeInTheDocument();
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      const textarea = screen.getByRole('textbox', { name: /Your note/i });
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      const textarea = screen.getByRole('textbox', { name: /Your report/i });
       await userAct.type(textarea, 'Testing loading indication');
 
       const sendBtn = screen.getByRole('button', { name: 'Send' });
@@ -397,7 +397,7 @@ describe('User Feedback Feature', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
     });
 
@@ -411,14 +411,14 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      const textarea = screen.getByRole('textbox', { name: /Your note/i });
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      const textarea = screen.getByRole('textbox', { name: /Your report/i });
       await userAct.type(textarea, 'This will fail');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       // Should NOT show success — should stay on form
       await waitFor(() => {
-        expect(screen.queryByText('We got your note.')).not.toBeInTheDocument();
+        expect(screen.queryByText('We got your report.')).not.toBeInTheDocument();
         // Send button should be enabled again (phase reset to idle)
         expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled();
       });
@@ -428,17 +428,17 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      expect(screen.getByText('Leave a note')).toBeInTheDocument();
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      expect(screen.getByText('Report a problem or idea')).toBeInTheDocument();
 
       // Click the scrim (the overlay div with aria-hidden)
       const scrim = document.querySelector('[aria-hidden="true"]');
       expect(scrim).not.toBeNull();
       await userAct.click(scrim!);
 
-      // Panel should close — FAB title goes back to "Leave a note for the team"
+      // Panel should close — FAB title goes back to "Report a problem or idea"
       await waitFor(() => {
-        expect(screen.getByTitle('Leave a note for the team')).toBeInTheDocument();
+        expect(screen.getByTitle('Report a problem or idea')).toBeInTheDocument();
       });
     });
 
@@ -457,12 +457,12 @@ describe('User Feedback Feature', () => {
 
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'no token');
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your report/i }), 'no token');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
       expect(errSpy).toHaveBeenCalledWith('Failed to get Firebase ID token:', expect.any(Error));
       errSpy.mockRestore();
@@ -475,12 +475,12 @@ describe('User Feedback Feature', () => {
 
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'log fails');
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your report/i }), 'log fails');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
       expect(errSpy).toHaveBeenCalledWith('Feedback saved, but follow-up log failed:', expect.any(Error));
       errSpy.mockRestore();
@@ -490,19 +490,19 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'first note');
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your report/i }), 'first note');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
 
       await userAct.click(screen.getByRole('button', { name: 'Send another' }));
 
       // The panel stays open and the form is ready for a second note.
-      expect(screen.getByText('Leave a note')).toBeInTheDocument();
-      expect(screen.getByRole('textbox', { name: /Your note/i })).toHaveValue('');
+      expect(screen.getByText('Report a problem or idea')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /Your report/i })).toHaveValue('');
       expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
     });
 
@@ -516,12 +516,12 @@ describe('User Feedback Feature', () => {
       const userAct = userEvent.setup();
       const { unmount } = render(<FeedbackFAB />);
 
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'unmount me');
+      await userAct.click(screen.getByTitle('Report a problem or idea'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your report/i }), 'unmount me');
       await userAct.click(screen.getByRole('button', { name: 'Send' }));
 
       await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+        expect(screen.getByText('We got your report.')).toBeInTheDocument();
       });
 
       const autoClose = setSpy.mock.results[

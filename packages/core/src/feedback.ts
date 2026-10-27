@@ -39,16 +39,16 @@ export interface FeedbackKindMeta {
   tone: FeedbackTone;
 }
 
-// Single source of truth for the four "Leave a note" kinds — mirrors web's
+// Single source of truth for the four Report kinds — mirrors web's
 // FEEDBACK_KINDS, minus the lucide `icon` field.
 export const FEEDBACK_KINDS: readonly FeedbackKindMeta[] = [
-  { id: "thought", label: "A thought", placeholder: "What's on your mind?", tone: "accent" },
+  { id: "off", label: "Something's broken", placeholder: "Something broke when…", tone: "amber" },
   { id: "idea", label: "An idea", placeholder: "What if we tried…", tone: "violet" },
-  { id: "off", label: "Something's off", placeholder: "Something felt a bit off when…", tone: "amber" },
   { id: "request", label: "A request", placeholder: "It would help if…", tone: "teal" },
+  { id: "thought", label: "Something else", placeholder: "What's on your mind?", tone: "accent" },
 ];
 
-/** Derive the stored coarse `type` from a kind. Only "Something's off" is a bug. */
+/** Derive the stored coarse `type` from a kind. Only "Something's broken" is a bug. */
 export const kindToType = (kind: FeedbackKind): "bug" | "enhancement" =>
   kind === "off" ? "bug" : "enhancement";
 
@@ -57,7 +57,7 @@ export const typeToKind = (type: "bug" | "enhancement"): FeedbackKind =>
   type === "bug" ? "off" : "idea";
 
 export const kindMeta = (kind?: FeedbackKind): FeedbackKindMeta =>
-  FEEDBACK_KINDS.find((k) => k.id === kind) ?? FEEDBACK_KINDS[0];
+  FEEDBACK_KINDS.find((k) => k.id === kind) ?? FEEDBACK_KINDS.find((k) => k.id === "thought")!;
 
 export type FeedbackStatus = Feedback["status"];
 

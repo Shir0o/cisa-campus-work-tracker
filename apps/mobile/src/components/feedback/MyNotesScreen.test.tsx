@@ -86,7 +86,7 @@ describe('MyNotesScreen', () => {
 
   it('shows the empty state when there are no notes', async () => {
     const { getByText } = await renderScreen({ notes: [], loading: false, error: null });
-    expect(getByText(/haven't left a note yet/)).toBeTruthy();
+    expect(getByText(/haven't sent a report yet/)).toBeTruthy();
   });
 
   it('surfaces a load error instead of an empty list', async () => {
@@ -97,7 +97,7 @@ describe('MyNotesScreen', () => {
   it('expands a thread and shows laundered team replies', async () => {
     const { getByText, getByRole } = await renderScreen({ notes: [note({})], loading: false, error: null });
 
-    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+    await fireEvent.press(getByRole('button', { name: /Replies/ }));
     await act(() => {
       threadCbs?.replies([
         { id: 'r1', authorRole: 'team', body: 'raw team text', launderedBody: 'We looked at this.', createdAt: '2026-01-03T00:00:00.000Z' },
@@ -111,10 +111,10 @@ describe('MyNotesScreen', () => {
   it('says an unlinked note is private, not public, under the composer', async () => {
     const { getByText, queryByText, getByRole } = await renderScreen({ notes: [note({})], loading: false, error: null });
 
-    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+    await fireEvent.press(getByRole('button', { name: /Replies/ }));
 
     expect(
-      getByText("Only you and the team can read replies on this note, because it isn't linked to an issue yet."),
+      getByText("Only you and the team can read replies on this report, because it isn't linked to an issue yet."),
     ).toBeTruthy();
     expect(queryByText('Replies are posted to a public issue tracker.')).toBeNull();
   });
@@ -126,7 +126,7 @@ describe('MyNotesScreen', () => {
       error: null,
     });
 
-    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+    await fireEvent.press(getByRole('button', { name: /Replies/ }));
 
     expect(getByText('Replies are posted to a public issue tracker.')).toBeTruthy();
     expect(queryByText(/Only you and the team can read replies/i)).toBeNull();
@@ -139,12 +139,12 @@ describe('MyNotesScreen', () => {
       error: null,
     });
 
-    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+    await fireEvent.press(getByRole('button', { name: /Replies/ }));
     await act(() => {
       threadCbs?.replies([]);
     });
 
-    await fireEvent.changeText(getByPlaceholderText('Write a follow-up…'), 'A question from me');
+    await fireEvent.changeText(getByPlaceholderText('Write a reply…'), 'A question from me');
     await fireEvent.press(getByText('Send'));
 
     await waitFor(() => expect(require('../../lib/data/feedback').postReply).toHaveBeenCalledWith('n1', 'A question from me', 'm-uid-1'));
@@ -157,7 +157,7 @@ describe('MyNotesScreen', () => {
       error: null,
     });
 
-    await fireEvent.press(getByRole('button', { name: /Follow-ups/ }));
+    await fireEvent.press(getByRole('button', { name: /Replies/ }));
     await act(() => {
       threadCbs?.replies([
         { id: 'r1', authorRole: 'submitter', authorId: 'm-uid-1', body: 'my original reply', createdAt: '2026-01-03T00:00:00.000Z' },
@@ -165,7 +165,7 @@ describe('MyNotesScreen', () => {
     });
 
     await fireEvent.press(getByLabelText('Edit'));
-    await fireEvent.changeText(getByPlaceholderText('Edit your follow-up…'), 'my edited reply');
+    await fireEvent.changeText(getByPlaceholderText('Edit your reply…'), 'my edited reply');
     await fireEvent.press(getByText('Save'));
 
     await waitFor(() =>

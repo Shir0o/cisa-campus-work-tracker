@@ -51,7 +51,7 @@ const KINDS: { id: "all" | Bucket; label: string; i18nKey: string }[] = [
   { id: "all", label: "Everything", i18nKey: "history.everything" },
   { id: "steps", label: "Steps forward", i18nKey: "history.steps_forward" },
   { id: "prayer", label: "Prayer", i18nKey: "history.prayer" },
-  { id: "talk", label: "Conversations", i18nKey: "history.conversations" },
+  { id: "talk", label: "Interactions", i18nKey: "history.conversations" },
   { id: "gather", label: "Gatherings", i18nKey: "history.gatherings" },
 ];
 

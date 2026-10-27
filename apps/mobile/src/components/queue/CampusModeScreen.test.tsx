@@ -53,7 +53,7 @@ describe('CampusModeScreen', () => {
     expect(getByText('On campus until 3pm')).toBeTruthy();
     expect(getByText('Sign-up form')).toBeTruthy();
     expect(getByText('Add someone new')).toBeTruthy();
-    expect(getByText('Log a conversation')).toBeTruthy();
+    expect(getByText('Log an interaction')).toBeTruthy();
     expect(getByText('Someone new')).toBeTruthy();
     expect(getByText('Someone you already know')).toBeTruthy();
   });
@@ -64,7 +64,7 @@ describe('CampusModeScreen', () => {
     expect(h.onSignUp).toHaveBeenCalledTimes(1);
     await fireEvent.press(getByLabelText('Add someone new'));
     expect(h.onAddNew).toHaveBeenCalledTimes(1);
-    await fireEvent.press(getByLabelText('Log a conversation'));
+    await fireEvent.press(getByLabelText('Log an interaction'));
     expect(h.onLog).toHaveBeenCalledTimes(1);
     await fireEvent.press(getByLabelText('2 people to reach today'));
     expect(h.onOpenToday).toHaveBeenCalledTimes(1);

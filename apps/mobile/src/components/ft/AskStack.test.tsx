@@ -54,7 +54,7 @@ describe('AskStack (full-timer questions widget)', () => {
         />
       </ThemeProvider>,
     );
-    expect(queryByText('Questions for the team')).toBeNull();
+    expect(queryByText('Questions for Full-timers')).toBeNull();
   });
 
   it('renders the question and answers it, pinging the asker', async () => {
@@ -73,7 +73,7 @@ describe('AskStack (full-timer questions widget)', () => {
       </ThemeProvider>,
     );
 
-    expect(getByText('Questions for the team')).toBeTruthy();
+    expect(getByText('Questions for Full-timers')).toBeTruthy();
     expect(getByText(/Zion asked the team/)).toBeTruthy();
     expect(getByText(/How do you start a conversation at the club table/)).toBeTruthy();
 

@@ -1,4 +1,4 @@
-// #646: My Day's "Questions for the team" stack no longer answers inline. The
+// #646: My Day's "Questions for Full-timers" stack no longer answers inline. The
 // action navigates to the Questions page with focusQuestionId set; the composer
 // lives on that page. Mark-scanned on the stack stays.
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -136,7 +136,7 @@ describe("AskStack (web full-timer)", () => {
         <AskStack />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Questions for the team")).toBeTruthy();
+    expect(screen.getByText("Questions for Full-timers")).toBeTruthy();
     // newest asker first
     expect(screen.getByText(/Ana Lei asked the team/)).toBeTruthy();
     expect(screen.getByText(/Zion Park asked the team/)).toBeTruthy();

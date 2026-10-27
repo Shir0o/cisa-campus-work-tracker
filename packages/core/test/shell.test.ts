@@ -92,7 +92,7 @@ describe('the drawer and More lists', () => {
     expect(TRAINEE_DRAWER.map((l) => l.label)).toEqual([
       'People',
       'Messages',
-      'Ask the team',
+      'Ask a Full-timer',
       'Sign-up form',
       'How this works',
       'Your app',

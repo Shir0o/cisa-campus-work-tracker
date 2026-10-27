@@ -104,11 +104,11 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     expect(screen.getByText('Bob Jones')).toBeInTheDocument();
   });
 
-  it('offers Message, Email, Call and Meeting as one-tap kinds, in that order', () => {
+  it('offers Text / DM, Email, Call and Meeting as one-tap kinds, in that order', () => {
     setupOnSnapshot(mockContacts);
     render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
 
-    const kinds = ['Message', 'Email', 'Call', 'Meeting'];
+    const kinds = ['Text / DM', 'Email', 'Call', 'Meeting'];
     for (const kind of kinds) {
       expect(screen.getByRole('button', { name: kind })).toBeInTheDocument();
     }

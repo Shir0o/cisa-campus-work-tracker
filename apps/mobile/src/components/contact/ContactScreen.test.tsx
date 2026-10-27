@@ -931,7 +931,7 @@ describe('ContactScreen', () => {
       expect(queryByText('GRACE-OPEN')).toBeNull();
       expect(getByText("Only Full-timers see this — Trainees can't.")).toBeTruthy();
       // No kind chips on Full-timers.
-      expect(queryByRole('button', { name: 'Ask a follow-up' })).toBeNull();
+      expect(queryByRole('button', { name: 'Ask someone to follow up' })).toBeNull();
     });
 
     it('offers Comment, Question and Ask a follow-up on the Conversation composer, and posts the chosen kind', async () => {
@@ -943,7 +943,7 @@ describe('ContactScreen', () => {
           <ContactScreen contactId="contact1" initialTab="conversation" />
         </ThemeProvider>,
       );
-      await fireEvent.press(getByRole('button', { name: 'Ask a follow-up' }));
+      await fireEvent.press(getByRole('button', { name: 'Ask someone to follow up' }));
       await fireEvent.changeText(getByLabelText('Write to everyone tied to Sarah'), 'Text her Thursday');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
       expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'nudge', body: 'Text her Thursday', mentionedUserIds: [] });

@@ -241,10 +241,10 @@ test.describe('Impersonation journey (#1476)', () => {
     // question posted here commits and reads back.
     await clickNavLink(page, 'Questions');
     await expect(page).toHaveURL(/\/questions$/);
-    await expect(page.getByRole('heading', { name: 'Questions for the team' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toBeVisible({ timeout: 15_000 });
 
     const question = `E2E impersonated-trainee question ${Date.now()}: who covers Friday?`;
-    await page.getByRole('button', { name: 'Ask the team', exact: true }).click();
+    await page.getByRole('button', { name: 'Ask a Full-timer', exact: true }).click();
     const composer = page.getByPlaceholder(/What do you want to ask/i);
     await expect(composer).toBeVisible({ timeout: 5_000 });
     await composer.fill(question);

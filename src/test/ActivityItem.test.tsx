@@ -61,7 +61,7 @@ describe('ActivityItem', () => {
       />,
     );
 
-    expect(screen.getByText('removed a conversation for')).toBeInTheDocument();
+    expect(screen.getByText('removed an interaction for')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 

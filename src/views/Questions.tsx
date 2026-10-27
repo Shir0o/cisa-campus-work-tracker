@@ -492,7 +492,7 @@ export default function Questions() {
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl lg:text-[26px] font-medium tracking-tight text-on-surface">
-            {t('ask.questions_for_team', 'Questions for the team')}
+            {t('ask.questions_for_team', 'Questions for Full-timers')}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1.5 max-w-[78ch] text-pretty">
             {t(
@@ -507,7 +507,7 @@ export default function Questions() {
           className="inline-flex w-full items-center justify-center gap-2 h-11 px-4 rounded-[14px] bg-primary text-on-primary text-sm font-semibold shrink-0 sm:w-auto"
         >
           {askOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {askOpen ? t('actions.close', 'Close') : t('ask.ask_the_team', 'Ask the team')}
+          {askOpen ? t('actions.close', 'Close') : t('ask.ask_the_team', 'Ask a Full-timer')}
         </button>
       </header>
 
@@ -584,7 +584,7 @@ export default function Questions() {
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default max-sm:h-11"
             >
               <Send className="w-3.5 h-3.5" />
-              {mode === 'for' ? t('ask.write_it_down', 'Write it down') : t('ask.ask_the_team', 'Ask the team')}
+              {mode === 'for' ? t('ask.write_it_down', 'Write it down') : t('ask.ask_the_team', 'Ask a Full-timer')}
             </button>
             {mode === 'for' && (
               <span className="text-xs text-on-surface-variant text-pretty">

@@ -189,8 +189,8 @@ test.describe('Notification journey (#1479)', () => {
     await signInAs(page, 'fulltimer');
     await page.goto('/questions');
     await waitForShell(page);
-    await expect(page.getByRole('heading', { name: 'Questions for the team' })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('button', { name: 'Ask the team' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'Ask a Full-timer' })).toBeVisible();
   });
 });
 

@@ -56,7 +56,7 @@ describe('FtMoreScreen', () => {
     // The Journey is People's Step pills now, not a More row (ADR 0047).
     expect(queryByText('The Journey')).toBeNull();
     expect(getByText('Gatherings')).toBeTruthy();
-    expect(getByText("Tell us how it's going")).toBeTruthy();
+    expect(getByText("Report a problem or idea")).toBeTruthy();
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe('FtMoreScreen', () => {
       </ThemeProvider>,
     );
 
-    const feedbackBtn = getByText("Tell us how it's going");
+    const feedbackBtn = getByText("Report a problem or idea");
     await fireEvent.press(feedbackBtn);
 
     expect(getByTestId('feedback-sheet')).toBeTruthy();
