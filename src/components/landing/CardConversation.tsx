@@ -148,7 +148,7 @@ export function CardConversation({
       <div
         role="tablist"
         aria-label={t("whatsNew.which_thread")}
-        className="inline-flex gap-0.5 p-0.5 rounded-full bg-surface-variant"
+        className="inline-flex gap-1 p-1 rounded-full bg-surface-variant"
       >
         {tabs.map((tb) => (
           <button
@@ -161,14 +161,18 @@ export function CardConversation({
               // A comfortable target on a phone, where the page renders the
               // same strip on the same card, and the compact pill from the
               // width the filter row uses upward.
-              "rounded-full text-[11.5px] transition-colors cursor-pointer px-3 min-h-11 sm:min-h-0 sm:py-1",
+              "rounded-full text-[11.5px] transition-colors cursor-pointer px-3 whitespace-nowrap min-h-11 sm:min-h-0 sm:py-1.5",
+              // The tab you are on turns inside out, as every selected control
+              // in the product does. `bg-surface` on the track is a lighter
+              // step in light and a darker one in dark, so in the theme this
+              // card is used most it read as a dent rather than a selection.
               tab === tb.id
-                ? "bg-surface text-on-surface font-semibold shadow-xs"
+                ? "bg-primary text-on-primary font-semibold"
                 : "text-on-surface-variant font-medium hover:text-on-surface",
             )}
           >
             {tb.label}
-            {tb.count > 0 && <span className="ml-1 tabular-nums opacity-70">{tb.count}</span>}
+            {tb.count > 0 && <span className="ml-1.5 tabular-nums opacity-70">{tb.count}</span>}
           </button>
         ))}
       </div>

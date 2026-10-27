@@ -318,6 +318,32 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(within(picker).getByRole("button", { name: "Ask a follow-up" })).toBeInTheDocument();
   });
 
+  // The heart used to open a one-emoji picker whose bubble landed on the
+  // Conversation pill whenever the action row wrapped. One emoji confirmed
+  // nothing, so the heart is the action and the toast is the receipt.
+  it("posts an encouragement in one click and says so", async () => {
+    const onToast = vi.fn();
+    render(
+      <OnYouCard
+        contacts={[contact({ carers: ["u1"] })]}
+        interactions={[]}
+        threads={[{ ...question, id: "t_note", kind: "note", body: "Alex had a great week.", interactionId: null }]}
+        staffNameMap={{ u3: "Zion" }}
+        onToast={onToast}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Encourage" }));
+
+    const [contactId, input] = addThreadMessage.mock.calls[0] as unknown as [string, { kind: string; body: string }];
+    expect(contactId).toBe("c1");
+    expect(input.kind).toBe("encouragement");
+    expect(input.body).toContain("Love seeing this");
+    await vi.waitFor(() => expect(onToast).toHaveBeenCalledWith("Encouragement posted"));
+    // No second step left behind: a menu of one is not a menu.
+    expect(screen.queryByRole("button", { name: "❤️" })).toBeNull();
+  });
+
   it("handles Show more and Show less toggle for > 5 stacks", () => {
     const manyOwnedContacts: Contact[] = Array.from({ length: 8 }, (_, i) => ({
       id: `c_owned_${i}`,
