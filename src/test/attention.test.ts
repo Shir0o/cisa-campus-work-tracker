@@ -172,6 +172,46 @@ describe("partitionAttentionStacks (#595)", () => {
     expect(onYou.some((s) => s.contactId === "c_team")).toBe(true);
     expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(false);
   });
+
+  // A deleted person keeps their interactions — Firestore does not cascade a
+  // subcollection — so the collection-group read still hands them to the feed.
+  // Drawn, that is a card about nobody: titled "Contact", opening a route with
+  // no record behind it, and counted in a number only dismissal can lower.
+  // A question on the same person was addressed to someone and still
+  // reaches the reader (#1339), which is why the guard sits on interactions.
+  it("leaves out logged activity on a person who is no longer in the system", () => {
+    const ghostInteraction: Interaction = {
+      id: "i_ghost",
+      contactId: "c_gone",
+      userId: "u2",
+      content: "He said through text that he cannot make it today.",
+      createdAt: new Date().toISOString(),
+      type: "text",
+      title: "text",
+    } as unknown as Interaction;
+    const ghostQuestion: ThreadMessageWithContact = {
+      id: "q_ghost",
+      contactId: "c_gone",
+      from: "u2",
+      fromName: "Emerson",
+      kind: "question",
+      body: "Who is following up with this person?",
+      at: new Date().toISOString(),
+      interactionId: null,
+    };
+
+    const items = buildAttentionItems({
+      role: "admin",
+      uid: "u1",
+      contacts: sampleContacts,
+      interactions: [ghostInteraction],
+      threads: [ghostQuestion],
+    });
+
+    const ids = items.map((i) => i.id);
+    expect(ids).not.toContain("interaction:i_ghost");
+    expect(ids).toContain("thread:q_ghost");
+  });
 });
 
 // ── #1012: the pointer card's number ────────────────────────────────────────

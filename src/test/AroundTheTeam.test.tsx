@@ -621,7 +621,12 @@ describe('Around the team page (#943)', () => {
     expect(screen.getByTestId('pathname').textContent).toBe('/people/kofi');
   });
 
-  it('navigates to /people/:id when contact is not in contacts list (orphan interaction)', () => {
+  // A person deleted from the system keeps their logged interactions — a
+  // Firestore subcollection does not cascade — and the collection-group read
+  // still hands them to this page. Drawing one produces a card titled
+  // "Contact" that opens a route with no record behind it, and a number only
+  // dismissing it can lower. It is left out instead.
+  it('leaves out logged activity on a person who is no longer in the system', () => {
     const setSelectedContact = vi.fn();
     h.layout = { setSelectedContact };
 
@@ -655,13 +660,11 @@ describe('Around the team page (#943)', () => {
       </MemoryRouter>,
     );
 
-    const contactBtn = screen.getByRole('button', { name: 'Contact' });
-    expect(contactBtn).toBeInTheDocument();
-    fireEvent.click(contactBtn);
-
-    // Because contact was not in contactMap, layout.setSelectedContact could not receive a Contact,
-    // so it fell back to navigate to /people/orphan-123.
-    expect(screen.getByText('Back to Around')).toBeInTheDocument();
+    // No card, so nothing to open and nothing to count: the empty state stands.
+    expect(screen.queryByRole('button', { name: 'Contact' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/He said through text/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/to work through/)).not.toBeInTheDocument();
+    expect(setSelectedContact).not.toHaveBeenCalled();
   });
 });
 
