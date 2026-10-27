@@ -4304,7 +4304,11 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   background: transparent; color: var(--on-surface-variant);
   font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
 }
-.cd-pane-tab.on { background: var(--surface); color: var(--on-surface); box-shadow: var(--shadow-pop); }
+/* Selection inverts (The Inversion Rule), the same as the People filter and
+   the card's Reviewed. A lighter thumb on a light track — or a darker one on
+   the dark track, which is what `--surface` resolved to in dark — reads as a
+   hole, not as the tab you are on. */
+.cd-pane-tab.on { background: var(--accent-strong); color: var(--accent-on); }
 .cd-pane-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--danger); display: inline-block; margin-left: 5px; vertical-align: middle; }
 .cd-pane-asks {
   margin-left: auto; height: 28px; padding: 0 12px; border-radius: 999px;
@@ -4583,7 +4587,18 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-beside { flex-direction: row; gap: 16px; }
 .strm-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; }
 .strm-pane { width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border-soft); border-radius: 24px; overflow: hidden; }
-.strm-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 0 24px 6px; }
+/* A row bleeds 8px past the list so its hover fill can reach the card's edge.
+   Left unclipped, that bleed was sideways overflow: a horizontal scrollbar ran
+   across the bottom of a conversation and the whole strip could be dragged
+   sideways. The bleed is clipped; the vertical bar is quiet. */
+.strm-list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; padding: 0 24px 6px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.strm-list::-webkit-scrollbar { width: 8px; height: 0; }
+.strm-list::-webkit-scrollbar-track { background: transparent; }
+.strm-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 .strm-list.strm-top { padding-top: 8px; }
 /* Oldest at the top, but a short stream sits down on the composer. */
 .strm-flow { margin-top: auto; display: flex; flex-direction: column; }
@@ -4671,22 +4686,32 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-icon-btn { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; flex: none; color: var(--text-dim); background: transparent; border: 0; cursor: pointer; }
 .strm-icon-btn:hover { background: var(--hover); color: var(--text); }
 
-/* The one composer box (C1–C3). */
+/* The one composer box (C1–C3). One line of writing is the common case, so the
+   box is sized for it: a 26px kind chip, a single-line field, a 34px send.
+   Anything taller than ~100px is empty space between the reader and Post. */
 .strm-composer { padding: 8px 20px 16px; flex: none; position: relative; }
-.strm-aud { font-size: 11.5px; color: var(--text-dim); margin: 0 0 6px 2px; display: flex; align-items: center; gap: 6px; }
-.strm-cbox { border: 1px solid var(--border); border-radius: 16px; background: var(--bg); padding: 8px 8px 8px 12px; box-shadow: 0 1px 2px rgba(10, 10, 11, 0.04); }
+.strm-aud { font-size: 12px; color: var(--text-dim); margin: 0 0 7px 2px; display: flex; align-items: center; gap: 6px; }
+.strm-cbox { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); padding: 9px 9px 8px 12px; }
 .strm-cbox:focus-within { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
-.strm-kinds { display: flex; gap: 4px; margin: 0 0 2px -4px; flex-wrap: wrap; }
-.strm-kind { height: 28px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); cursor: pointer; }
+.strm-kinds { display: flex; gap: 2px; margin: 0 0 2px -8px; flex-wrap: wrap; }
+.strm-kind { height: 26px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); cursor: pointer; }
 .strm-kind:hover { color: var(--text); }
-.strm-kind.on { background: var(--panel); color: var(--text); border-color: var(--border); }
+.strm-kind.on { background: var(--panel-2); color: var(--text); border-color: var(--border); }
 .strm-kind.on.ask { background: var(--strm-ask-bg); color: var(--strm-ask-fg); border-color: var(--strm-ask-line); }
-.strm-ta { display: block; width: 100%; border: 0; outline: 0; resize: none; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); padding: 6px 0 4px; min-height: 40px; max-height: 160px; background: transparent; field-sizing: content; }
+.strm-ta { display: block; width: 100%; border: 0; outline: 0; resize: none; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); padding: 5px 0 3px; min-height: 28px; max-height: 160px; background: transparent; field-sizing: content; }
 .strm-ta::placeholder { color: var(--strm-mute); }
-.strm-ctools { display: flex; align-items: center; gap: 4px; }
+.strm-ctools { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+/* The send is the row's right edge. With the keyboard hint present (from 721px
+   up) the hint takes the free space; without it — every phone — the send does.
+   Left to follow the @ button, Post sat in the middle of the box. */
+.strm-ctools > .strm-send { margin-left: auto; }
+.strm-hint + .strm-send { margin-left: 0; }
 .strm-hint { font-size: 11.5px; color: var(--strm-mute); margin-left: auto; margin-right: 8px; }
-.strm-send { width: 36px; height: 36px; border-radius: 999px; background: var(--accent-strong); color: var(--accent-on); display: grid; place-items: center; border: 0; flex: none; cursor: pointer; }
-.strm-send:disabled { opacity: 0.4; cursor: default; }
+.strm-send { width: 34px; height: 34px; border-radius: 999px; background: var(--accent-strong); color: var(--accent-on); display: grid; place-items: center; border: 0; flex: none; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.strm-send:not(:disabled):hover { background: var(--accent-hover); }
+/* An empty box is not a grey blob where the send should be: the button keeps
+   its shape and loses its ink, so it reads as "nothing to send yet". */
+.strm-send:disabled { background: var(--panel-2); color: var(--text-mute); opacity: 1; cursor: default; }
 .strm-foot { display: flex; align-items: flex-start; gap: 6px; padding: 0 22px 16px; margin-top: -8px; font-size: 11.5px; line-height: 1.45; color: var(--text-dim); }
 
 /* A stream inside another surface's card (Your notes): the card pads it. */

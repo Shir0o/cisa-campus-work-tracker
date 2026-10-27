@@ -289,7 +289,7 @@ export function WorklistCard({
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [composing, setComposing] = useState(false);
-  const [reactOpen, setReactOpen] = useState(false);
+  const [encouraging, setEncouraging] = useState(false);
   const [noteExpanded, setNoteExpanded] = useState(false);
 
   // The strip replaces the swap-in composer when the page hands down both the
@@ -339,9 +339,10 @@ export function WorklistCard({
   };
 
   const handleEncourage = async (emoji: string) => {
-    if (!stack.contactId) return;
+    if (!stack.contactId || encouraging) return;
     const body = IBX_ENCOURAGE[emoji];
     if (!body) return;
+    setEncouraging(true);
     try {
       await addThreadMessage(stack.contactId, {
         from: uid,
@@ -353,6 +354,8 @@ export function WorklistCard({
       onToast?.(t("whatsNew.encouragement_posted"));
     } catch {
       onToast?.(t("whatsNew.could_not_post_encouragement"));
+    } finally {
+      setEncouraging(false);
     }
   };
 
@@ -447,7 +450,11 @@ export function WorklistCard({
               <div
                 className={cn(
                   "flex items-center gap-2",
-                  mobile ? "grid grid-cols-2 w-full" : "flex-wrap",
+                  // Content-width buttons that wrap only when the row is out of
+                  // room: two forced halves wrapped "Conversation · 1" onto two
+                  // lines inside its own pill on a 390px phone, and stretched
+                  // the label across a 340px pill on a 492px one.
+                  "flex-wrap min-w-0",
                 )}
               >
                 {verb && (
@@ -455,7 +462,7 @@ export function WorklistCard({
                     type="button"
                     onClick={() => onComplete(stack, verb)}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
@@ -473,11 +480,11 @@ export function WorklistCard({
                     aria-expanded={hasStrip ? stripOpen : undefined}
                     onClick={() => (hasStrip ? onToggleConversation!() : setComposing((v) => !v))}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
-                    <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                    <MessageSquare className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     {hasStrip
                       ? conversationCount > 0
                         ? t("whatsNew.conversation_n").replace("{n}", String(conversationCount))
@@ -495,7 +502,7 @@ export function WorklistCard({
                       window.open(`tel:${contact.phone}`);
                     }}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
@@ -507,7 +514,7 @@ export function WorklistCard({
                     href={`mailto:${contact.email}`}
                     onClick={(e) => e.stopPropagation()}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
@@ -516,14 +523,19 @@ export function WorklistCard({
                 )}
               </div>
 
-              <div className={cn("flex items-center gap-1.5", mobile ? "w-full" : "ml-auto")}>
+              {/* Everything secondary parks on the right edge, whatever the
+                  card holds: a row of two bare icons left behind under the
+                  primary pair read as an unfinished line. It shares the row
+                  with the pair when there is room and wraps under it when
+                  there is not. */}
+              <div className="ml-auto flex items-center gap-1.5">
                 {stack.items.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setOpen(!open)}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1 px-2.5 rounded-full border border-outline-variant text-[11px] font-medium text-on-surface-variant hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
-                      mobile ? "min-h-11 flex-1" : "py-1",
+                      "inline-flex items-center justify-center gap-1 px-2.5 rounded-full border border-outline-variant text-[11px] font-medium text-on-surface-variant hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
+                      mobile ? "min-h-11" : "py-1",
                     )}
                   >
                     <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} aria-hidden="true" />
@@ -533,39 +545,25 @@ export function WorklistCard({
                   </button>
                 )}
 
-                {/* A request to go and see someone is not a thing to react to. */}
+                {/* A request to go and see someone is not a thing to react to.
+                    One click, one encouragement — the floating picker this used
+                    to open held a single emoji, so it confirmed nothing and its
+                    bubble landed on the Conversation pill whenever the row's
+                    icons wrapped. The toast is the receipt. */}
                 {stack.contactId && !hasOpenAsk && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setReactOpen(!reactOpen)}
-                      title={t("whatsNew.tell_them_it_landed")}
-                      aria-label={t("whatsNew.encourage")}
-                      className={cn(
-                        "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
-                        mobile ? "w-11 h-11" : "w-8 h-8",
-                      )}
-                    >
-                      <Heart className="w-3.5 h-3.5 text-stage-accent" aria-hidden="true" />
-                    </button>
-                    {reactOpen && (
-                      <div className="absolute right-0 bottom-full mb-1 z-20 flex gap-1 p-1 bg-surface rounded-full shadow-lg border border-outline-variant">
-                        {Object.keys(IBX_ENCOURAGE).map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => {
-                              void handleEncourage(emoji);
-                              setReactOpen(false);
-                            }}
-                            className="w-7 h-7 rounded-full hover:bg-surface-variant flex items-center justify-center text-sm cursor-pointer"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleEncourage("❤️")}
+                    title={t("whatsNew.tell_them_it_landed")}
+                    aria-label={t("whatsNew.encourage")}
+                    aria-busy={encouraging || undefined}
+                    className={cn(
+                      "rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
+                      mobile ? "w-11 h-11" : "w-8 h-8",
                     )}
-                  </div>
+                  >
+                    <Heart className="w-3.5 h-3.5 text-stage-accent" aria-hidden="true" />
+                  </button>
                 )}
 
                 {stack.contactId && (
@@ -575,7 +573,7 @@ export function WorklistCard({
                     title={t("whatsNew.open_their_page")}
                     aria-label={t("whatsNew.open_their_page")}
                     className={cn(
-                      "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
+                      "rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "w-11 h-11" : "w-8 h-8",
                     )}
                   >
