@@ -469,16 +469,17 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(screen.queryByLabelText('Open section index')).toBeNull();
     });
 
-    it('heads a Passage-and-notes Section above both columns, so it opens top-left', () => {
+    it("follows the author's block order rather than setting the Passage aside", () => {
       const box = stubReaderBox();
       const m = meeting({
         sections: [
           {
-            id: 'sec-split',
-            title: 'Split Section',
+            id: 'sec-order',
+            title: 'Ordered Section',
             content: [
+              { kind: 'prose', md: 'A note before it.' },
               { kind: 'passage', passage: { before: 'The passage words' }, ref: 'Romans 5:1' },
-              { kind: 'prose', md: 'A note beside it.' },
+              { kind: 'prompt', prompt: { kind: 'question', text: 'A question after it' } },
             ],
             points: [],
           },
@@ -487,12 +488,13 @@ describe('StudyReaderView (the scrolling deck)', () => {
       render(<StudyReaderView meeting={m} staleDateLabel={null} />);
       box.resize(1280, 800);
 
-      const heading = sectionHeading();
-      const passage = screen.getByTestId('paged-passage');
-      // The heading comes first and sits outside the Passage column's row,
-      // not at the top of the notes column to the Passage's right.
-      expect(heading.compareDocumentPosition(passage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(heading.parentElement?.contains(passage)).toBe(true);
+      const card = screen.getByTestId('paged-card');
+      const order = ['Ordered Section', 'A note before it.', 'The passage words', 'A question after it'].map((text) =>
+        within(card).getByText(text),
+      );
+      for (let i = 1; i < order.length; i++) {
+        expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
     });
 
     it('steps with Previous and Next, naming the next Section and ending the Meeting', () => {

@@ -270,12 +270,9 @@ const Panel: React.FC<{
 };
 
 /**
- * One Section on the paged deck's card (#1590): the heading across the top,
- * then the Passage set large on the left and everything else on the right, in
- * the author's order.
- * A Section with no Passage, or only a Passage, takes the card's full width
- * rather than leaving half of it empty. The two columns wrap to a stack,
- * Passage first, when the card is too narrow to hold both.
+ * One Section on the paged deck's card (#1590): the heading, then every block
+ * in the author's order in one column — the Passage sits where the doc puts
+ * it rather than being lifted into a column of its own.
  */
 const PagedSection: React.FC<{
   section: Section;
@@ -283,58 +280,24 @@ const PagedSection: React.FC<{
   typeSize: ReaderTypeSize;
   openBlanks: Record<string, boolean>;
   onRevealBlank: (key: string) => void;
-}> = ({ section, index, typeSize, openBlanks, onRevealBlank }) => {
-  const hasPassage = section.content.some((b) => b.kind === 'passage');
-  const hasNotes = section.content.some((b) => b.kind !== 'passage');
-  const heading = (
+}> = ({ section, index, typeSize, openBlanks, onRevealBlank }) => (
+  // A Passage is still set larger than the notes around it, and still follows
+  // the student's text size: its block takes --reader-fs from this variable.
+  <div
+    className="flex flex-col gap-6 px-14 py-12 max-w-[820px] mx-auto [&_[data-block-kind=passage]]:[--reader-fs:var(--reader-passage-fs)]"
+    style={{ '--reader-passage-fs': `${typeSize + 7}px` } as React.CSSProperties}
+  >
     <h2 className="font-serif font-bold text-[length:calc(var(--reader-fs)*1.7)] leading-[1.08] tracking-tight text-on-surface">
       {section.title}
     </h2>
-  );
-  const body = (only: 'passage' | 'notes') => (
     <SectionBody
       section={section}
       sectionIndex={index}
       openBlanks={openBlanks}
       onRevealBlank={onRevealBlank}
-      only={only}
     />
-  );
-  // The Passage column raises the type scale so the scripture is set larger
-  // than the notes beside it, and still follows the student's text size.
-  const passage = hasPassage && (
-    <div
-      data-testid="paged-passage"
-      className="flex-1 basis-[380px] min-w-0"
-      style={{ '--reader-fs': `${typeSize + 7}px` } as React.CSSProperties}
-    >
-      {body('passage')}
-    </div>
-  );
-
-  // The heading spans both columns, so the Section visibly opens at the
-  // top-left: a heading at the top of the right column made the headless
-  // Passage on the left read as the previous Section running on.
-  if (hasPassage && hasNotes) {
-    return (
-      <div className="flex flex-col gap-6 px-14 py-12">
-        {heading}
-        <div className="flex flex-wrap items-start gap-12">
-          {passage}
-          <div className="flex-1 basis-[380px] min-w-0 flex flex-col gap-6">
-            {body('notes')}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-6 px-14 py-12 max-w-[820px] mx-auto">
-      {heading}
-      {hasPassage ? passage : body('notes')}
-    </div>
-  );
-};
+  </div>
+);
 
 const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   meeting,

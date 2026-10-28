@@ -16,7 +16,7 @@ Four directions were compared on the design canvas (reading column with an outli
 
 3. **On the paged deck the reducer's `sectionIndex` owns the position.** Section tabs, Previous / Next and Left/Right/Page Up/Page Down all dispatch the existing `jump`; no new actions, and `advance`/`back` stay deleted. On the scrolling deck scroll position stays the owner (ADR 0014 §2). Crossing the floor keeps the Section on screen and every revealed Blank.
 
-4. **One Section per screen, landscape.** The heading spans the top of the card; below it the Passage is set large on the left and the outline points and Prompts sit on the right, in the author's order. (Amended: the heading first sat atop the right column, which made the headless Passage on the left read as the previous Section running on.) A Section with no Passage, or only a Passage, takes the card's full width. The columns stack, Passage first, when the card is too narrow for both.
+4. **One Section per screen.** The heading leads the card, then every block follows in the author's order in one column; the Passage is set larger than the notes but keeps its place in the doc. (Amended: the Passage was first lifted into a left column beside the notes, with the heading atop the right column, which reordered the author's doc and made the headless Passage read as the previous Section running on.) A Section is never split across columns.
 
 5. **The tabs and a Next button that names the next Section replace the phone's edge index and dimmed peek.** The last Section ends the Meeting in place of Next. A page change is announced to screen readers and does not move focus.
 
@@ -24,6 +24,7 @@ Four directions were compared on the design canvas (reading column with an outli
 
 - **Paged everywhere, phones included.** Re-litigates ADR 0014 for the surface it was decided on: on a phone a Section often outgrows the screen, and scroll-snap's overshoot recovery is exactly what paging loses. On a wide card one Section usually fits side by side, so paging costs nothing there.
 - **The scrolling deck, widened.** Keeps one model, but a wide panel holding a phone-shaped column is the empty-space problem this issue reported.
+- **The Passage in its own left column beside the notes.** The original §4. It used the width, but it reordered the doc the author wrote, and a Passage with no heading above it read as the previous Section continuing.
 - **A swipe deck.** Rejected again for ADR 0014's reason: a swipe competes with a Blank's tap and is a gesture a reader must learn. Tabs and Next are visible.
 - **Choosing the layout with a media query.** Simpler, but wrong for the editor preview (§2).
 
