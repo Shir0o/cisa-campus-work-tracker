@@ -386,19 +386,19 @@ export default function BibleStudyIndex() {
                 type="button"
                 aria-haspopup="listbox"
                 aria-expanded={termMenuOpen}
-                aria-label="Select study term"
+                aria-label={t('study.select_term', 'Select study term')}
                 onClick={() => setTermMenuOpen((prev) => !prev)}
                 className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <span className="text-on-surface-variant text-[11px] font-normal uppercase tracking-wider">
-                  Term:
+                  {t('study.term_prefix', 'Term:')}
                 </span>
                 <span className="font-medium truncate max-w-[160px] sm:max-w-[220px]">
-                  {study ? `${study.title} · ${study.term}` : 'Select study term'}
+                  {study ? `${study.title} · ${study.term}` : t('study.select_term', 'Select study term')}
                 </span>
                 {study && study.id === entryPoint?.activeStudyId && (
                   <span className="px-1.5 py-0.5 rounded-full bg-[var(--t-sage-soft)] text-on-surface text-[10px] font-bold">
-                    Active
+                    {t('study.active', 'Active')}
                   </span>
                 )}
                 <svg
@@ -424,12 +424,12 @@ export default function BibleStudyIndex() {
                   />
                   <div
                     role="listbox"
-                    aria-label="Available terms"
+                    aria-label={t('study.available_terms', 'Available terms')}
                     className="absolute right-0 sm:right-auto sm:left-0 mt-1.5 z-30 w-72 bg-surface border border-outline-variant rounded-2xl shadow-xl p-1.5 divide-y divide-outline-variant/40"
                   >
                     <div className="py-1">
                       <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-                        Studies & Terms
+                        {t('study.studies_and_terms', 'Studies & Terms')}
                       </div>
                       {studies.map((s) => {
                         const isSelected = s.id === studyId;
@@ -457,7 +457,7 @@ export default function BibleStudyIndex() {
                             <div className="flex items-center gap-1.5 shrink-0">
                               {isActiveOnCode && (
                                 <span className="px-1.5 py-0.5 rounded-full bg-[var(--t-sage-soft)] text-on-surface text-[10px] font-bold">
-                                  Active on code
+                                  {t('study.active_on_code', 'Active on code')}
                                 </span>
                               )}
                               {isSelected && (
@@ -492,7 +492,7 @@ export default function BibleStudyIndex() {
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
-                        Start a new term...
+                        {t('study.start_new_term', 'Start a new term...')}
                       </button>
                     </div>
                   </div>
@@ -716,7 +716,7 @@ export default function BibleStudyIndex() {
                             onClick={handleMakeActiveOnCode}
                             className="inline-flex items-center text-xs text-primary font-semibold hover:underline"
                           >
-                            Set this term active on /s/{entryPoint.slug}
+                            {t('study.set_active_on_code', 'Set this term active on /s/{slug}').replace('{slug}', entryPoint.slug)}
                           </button>
                         </div>
                       )}
