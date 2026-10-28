@@ -4,6 +4,7 @@ import {
   subscribeStudyMeetings,
   subscribeMeeting,
   subscribeStudy,
+  subscribeStudies,
   subscribeEntryPoint,
   saveMeeting,
   setMeetingPublished,
@@ -216,6 +217,19 @@ describe('bibleStudy data service', () => {
     const cb2 = vi.fn();
     subscribeStudy(fakeDb, 'missing', cb2);
     expect(cb2).toHaveBeenCalledWith(null, false);
+  });
+
+  it('subscribeStudies maps every study in the collection', () => {
+    mockDocs.push(
+      { id: 'romans-fall26', data: () => ({ title: 'Romans', term: 'Fall 2026' }) },
+      { id: 'mark-fall-2026', data: () => ({ title: 'Mark', term: 'Fall 2026' }) },
+    );
+    const cb = vi.fn();
+    subscribeStudies(fakeDb, cb);
+    expect(cb).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'romans-fall26', title: 'Romans', term: 'Fall 2026' }),
+      expect.objectContaining({ id: 'mark-fall-2026', title: 'Mark', term: 'Fall 2026' }),
+    ]);
   });
 
   it('subscribeEntryPoint maps the entry point doc or null', () => {

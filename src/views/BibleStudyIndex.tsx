@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
   MEETING_SKELETON_MD,
@@ -24,6 +24,7 @@ import {
   setMeetingPublished,
   subscribeEntryPoints,
   subscribeStudy,
+  subscribeStudies,
   subscribeStudyMeetings,
 } from '../lib/data/bibleStudy';
 import { useAuth } from '../components/AuthProvider';
@@ -43,6 +44,25 @@ const SCAN_COPY = {
 const newestDraftNote = (title: string) =>
   `${title || 'The newest week'} is still a draft — publish it and it becomes what the code opens.`;
 
+const LAST_ENTRY_POINT_KEY = 'cisa.bibleStudy.entryPoint';
+const LAST_STUDY_KEY = 'cisa.bibleStudy.studyId';
+
+const readStored = (key: string): string | null => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeStored = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable
+  }
+};
+
 /**
  * The weeks index at /bible-study (ADR 0011, `Main` / `IndexPhone`
  * artboards). On a wide screen, two columns that answer different questions:
@@ -57,6 +77,10 @@ export default function BibleStudyIndex() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedStudy = searchParams.get('study');
+  const requestedEp = searchParams.get('ep');
+
   // The scan summary is a wide-screen rail, not a CSS-only clone of the week
   // row: below `lg` it is not rendered at all, so the DOM has one statement.
   const wide = useMediaQuery('(min-width: 1024px)');
@@ -66,7 +90,11 @@ export default function BibleStudyIndex() {
   // A failed read and an empty collection are different problems; without
   // this they rendered the same "not set up yet" sentence.
   const [entryPointsFailed, setEntryPointsFailed] = useState(false);
-  const entryPoint = entryPoints[0] ?? null;
+
+  const [studies, setStudies] = useState<Study[]>([]);
+  const [studiesLoaded, setStudiesLoaded] = useState(false);
+
+  const [termMenuOpen, setTermMenuOpen] = useState(false);
 
   useEffect(() => {
     return subscribeEntryPoints(
@@ -84,7 +112,64 @@ export default function BibleStudyIndex() {
     );
   }, []);
 
-  const studyId = entryPoint?.activeStudyId ?? null;
+  useEffect(() => {
+    return subscribeStudies(
+      db,
+      (list) => {
+        setStudies(list);
+        setStudiesLoaded(true);
+      },
+      () => {
+        setStudies([]);
+        setStudiesLoaded(true);
+      },
+    );
+  }, []);
+
+  const [selectedEpSlug, setSelectedEpSlug] = useState<string | null>(requestedEp || null);
+  const entryPoint = (() => {
+    if (selectedEpSlug) {
+      const match = entryPoints.find((ep) => ep.slug === selectedEpSlug);
+      if (match) return match;
+    }
+    const remembered = readStored(LAST_ENTRY_POINT_KEY);
+    if (remembered) {
+      const match = entryPoints.find((ep) => ep.slug === remembered);
+      if (match) return match;
+    }
+    return entryPoints[0] ?? null;
+  })();
+
+  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(requestedStudy || null);
+  const studyId = selectedStudyId
+    ? (studies.find((s) => s.id === selectedStudyId)?.id ?? selectedStudyId)
+    : (entryPoint?.activeStudyId ?? null);
+
+  const handleSelectStudy = (id: string) => {
+    setSelectedStudyId(id);
+    writeStored(LAST_STUDY_KEY, id);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('study', id);
+      return next;
+    }, { replace: true });
+  };
+
+  const handleSelectEntryPoint = (slug: string) => {
+    setSelectedEpSlug(slug);
+    writeStored(LAST_ENTRY_POINT_KEY, slug);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('ep', slug);
+      return next;
+    }, { replace: true });
+  };
+
+  const handleMakeActiveOnCode = async () => {
+    if (!entryPoint || !study) return;
+    await setActiveStudy(db, entryPoint.slug, study.id);
+  };
+
   const [study, setStudy] = useState<Study | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [meetingsLoaded, setMeetingsLoaded] = useState(false);
@@ -211,6 +296,7 @@ export default function BibleStudyIndex() {
           user?.uid,
         );
       }
+      handleSelectStudy(newStudyId);
       setSetupOpen(null);
     } catch {
       // Kept open with the writing still in it — the usual cause is a role
@@ -290,8 +376,130 @@ export default function BibleStudyIndex() {
         {/* The page had no title at all: on a phone the first thing on screen
             was the entry-point card, and neither the DOM nor a screen reader
             was told what this page is (issue 1776). */}
-        <header className="px-1 mb-4">
+        <header className="px-1 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="font-serif text-2xl font-bold text-on-surface">{t('nav.bible_study')}</h1>
+
+          {/* Term / Study Selector (#1932) */}
+          {studies.length > 1 && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={termMenuOpen}
+                aria-label="Select study term"
+                onClick={() => setTermMenuOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <span className="text-on-surface-variant text-[11px] font-normal uppercase tracking-wider">
+                  Term:
+                </span>
+                <span className="font-medium truncate max-w-[160px] sm:max-w-[220px]">
+                  {study ? `${study.title} · ${study.term}` : 'Select study term'}
+                </span>
+                {study && study.id === entryPoint?.activeStudyId && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-[var(--t-sage-soft)] text-on-surface text-[10px] font-bold">
+                    Active
+                  </span>
+                )}
+                <svg
+                  className={`w-3.5 h-3.5 text-on-surface-variant transition-transform duration-200 ${
+                    termMenuOpen ? 'rotate-180' : ''
+                  }`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {termMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setTermMenuOpen(false)}
+                  />
+                  <div
+                    role="listbox"
+                    aria-label="Available terms"
+                    className="absolute right-0 sm:right-auto sm:left-0 mt-1.5 z-30 w-72 bg-surface border border-outline-variant rounded-2xl shadow-xl p-1.5 divide-y divide-outline-variant/40"
+                  >
+                    <div className="py-1">
+                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                        Studies & Terms
+                      </div>
+                      {studies.map((s) => {
+                        const isSelected = s.id === studyId;
+                        const isActiveOnCode = s.id === entryPoint?.activeStudyId;
+                        return (
+                          <button
+                            key={s.id}
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              handleSelectStudy(s.id);
+                              setTermMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs text-left transition-colors ${
+                              isSelected
+                                ? 'bg-surface-variant font-semibold text-on-surface'
+                                : 'text-on-surface hover:bg-surface-variant/60 font-normal'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate">
+                                {s.title} · {s.term}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isActiveOnCode && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-[var(--t-sage-soft)] text-on-surface text-[10px] font-bold">
+                                  Active on code
+                                </span>
+                              )}
+                              {isSelected && (
+                                <svg
+                                  className="w-4 h-4 text-primary shrink-0"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-1.5 pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTermMenuOpen(false);
+                          openSetup('new-term');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-primary hover:bg-surface-variant transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Start a new term...
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </header>
       </div>
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
@@ -448,6 +656,27 @@ export default function BibleStudyIndex() {
             <div className="text-xs font-bold tracking-wider uppercase text-on-surface-variant mb-2">
               Entry point
             </div>
+            {entryPoints.length > 1 && (
+              <div className="mb-3 flex items-center gap-1.5 p-1 rounded-xl bg-surface-variant/40 border border-outline-variant/60">
+                {entryPoints.map((ep) => {
+                  const isSelectedEp = ep.slug === entryPoint?.slug;
+                  return (
+                    <button
+                      key={ep.slug}
+                      type="button"
+                      onClick={() => handleSelectEntryPoint(ep.slug)}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs transition-colors truncate ${
+                        isSelectedEp
+                          ? 'bg-surface text-on-surface shadow-xs font-semibold'
+                          : 'text-on-surface-variant hover:text-on-surface font-medium'
+                      }`}
+                    >
+                      {ep.name || ep.slug}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {entryPointsFailed ? (
               <p className="text-sm text-on-surface-variant">
                 Couldn't load the entry point. Reload the page — if it keeps failing, the
@@ -476,9 +705,21 @@ export default function BibleStudyIndex() {
                   {study ? (
                     <>
                       <span className="font-medium text-on-surface">{study.title} · {study.term}</span>{' '}
-                      <span className="ml-1 px-1.5 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold">
-                        Active
-                      </span>
+                      {entryPoint.activeStudyId === study.id ? (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold">
+                          Active
+                        </span>
+                      ) : (
+                        <div className="mt-1.5">
+                          <button
+                            type="button"
+                            onClick={handleMakeActiveOnCode}
+                            className="inline-flex items-center text-xs text-primary font-semibold hover:underline"
+                          >
+                            Set this term active on /s/{entryPoint.slug}
+                          </button>
+                        </div>
+                      )}
                     </>
                   ) : (
                     'No study is active'

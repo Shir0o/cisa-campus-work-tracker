@@ -10,6 +10,7 @@ import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
 vi.mock('../lib/data/bibleStudy', () => ({
   subscribeEntryPoints: vi.fn(),
   subscribeStudy: vi.fn(),
+  subscribeStudies: vi.fn(),
   subscribeStudyMeetings: vi.fn(),
   saveMeeting: vi.fn().mockResolvedValue('romans-fall26-2026-10-28'),
   setMeetingPublished: vi.fn().mockResolvedValue(undefined),
@@ -131,6 +132,10 @@ describe('BibleStudyIndex view', () => {
     } as ReturnType<typeof auth.useAuth>);
     vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
       cb([ENTRY_POINT]);
+      return () => {};
+    });
+    vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+      cb([STUDY]);
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, _studyId, cb) => {
@@ -619,5 +624,106 @@ describe('BibleStudyIndex view', () => {
       ),
     );
     expect(bibleData.createEntryPoint).not.toHaveBeenCalled();
+  });
+
+  describe('term and entry point selection (#1932)', () => {
+    const MARK_STUDY: Study = { id: 'mark-fall-2026', title: 'Mark', term: 'Fall 2026' };
+    const MARK_MEETINGS: Meeting[] = [
+      {
+        id: 'mark-m1',
+        studyId: 'mark-fall-2026',
+        title: 'The Contents of the Gospel',
+        date: '2026-09-09',
+        published: true,
+        sections: [{ id: 's1', title: 'Sec', content: [], points: [] }],
+      },
+    ];
+
+    it('renders a term selector button when studies are available', async () => {
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, MARK_STUDY]);
+        return () => {};
+      });
+      renderIndex();
+
+      const termBtn = await screen.findByRole('button', { name: /select study term/i });
+      expect(termBtn).toBeInTheDocument();
+      expect(within(termBtn).getByText('Romans · Fall 2026')).toBeInTheDocument();
+    });
+
+    it('switches to a different term when selected and updates meetings list', async () => {
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, MARK_STUDY]);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'mark-fall-2026') cb(MARK_STUDY, false);
+        else cb(STUDY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'mark-fall-2026') cb(MARK_MEETINGS);
+        else cb(MEETINGS);
+        return () => {};
+      });
+
+      renderIndex();
+      await screen.findByText('Nothing between us');
+
+      const termBtn = screen.getByRole('button', { name: /select study term/i });
+      fireEvent.click(termBtn);
+
+      const markOption = await screen.findByRole('option', { name: /Mark · Fall 2026/ });
+      fireEvent.click(markOption);
+
+      expect(await screen.findByText('The Contents of the Gospel')).toBeInTheDocument();
+      expect(screen.queryByText('Nothing between us')).not.toBeInTheDocument();
+    });
+
+    it('renders entry point switcher when multiple entry points exist', async () => {
+      const EP_2: EntryPoint = {
+        id: 'f26',
+        slug: 'f26',
+        name: 'F26',
+        activeStudyId: 'mark-fall-2026',
+      };
+      vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
+        cb([ENTRY_POINT, EP_2]);
+        return () => {};
+      });
+
+      renderIndex();
+
+      expect(await screen.findByRole('button', { name: 'F26' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Wednesday Bible Study' })).toBeInTheDocument();
+    });
+
+    it('allows setting current viewed term active on the selected entry point', async () => {
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, MARK_STUDY]);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'mark-fall-2026') cb(MARK_STUDY, false);
+        else cb(STUDY, false);
+        return () => {};
+      });
+
+      renderIndex();
+      const termBtn = await screen.findByRole('button', { name: /select study term/i });
+      fireEvent.click(termBtn);
+
+      const markOption = await screen.findByRole('option', { name: /Mark · Fall 2026/ });
+      fireEvent.click(markOption);
+
+      const makeActiveBtn = await screen.findByRole('button', { name: /set this term active on \/s\/cisa-wednesday/i });
+      fireEvent.click(makeActiveBtn);
+
+      expect(bibleData.setActiveStudy).toHaveBeenCalledWith(
+        expect.anything(),
+        'cisa-wednesday',
+        'mark-fall-2026',
+      );
+    });
   });
 });
