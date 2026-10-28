@@ -310,7 +310,7 @@ describe("what a row reads", () => {
   });
 
   it("says what an empty room, or a search that finds nothing, reads", () => {
-    expect(chatAdapter(input()).empty).toBe("No messages yet. Send a message to start the conversation!");
+    expect(chatAdapter(input()).empty).toBe("No messages yet. Send one to start the chat!");
     expect(chatAdapter(input({ search: "retreat" })).empty).toBe("Nothing matches “retreat”.");
   });
 

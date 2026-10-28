@@ -88,9 +88,9 @@ emulator.
 
 | Display name | Internal role | Sidebar nav destinations (Settings lives in the avatar menu) |
 | ------------ | ------------- | ----------------------------------------------------------- |
-| Community    | `viewer`      | Home, Gospel, On our hearts, Answered, Messages, Your notes, Bible study |
-| Student      | `operator`    | Home, People, Gatherings, Coordination Notes, On our hearts, Answered, Messages, Your notes, Bible study |
-| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Questions, Messages, Your notes, Bible study |
+| Community    | `viewer`      | Home, Gospel, On our hearts, Answered, Messages, Your reports, Bible study |
+| Student      | `operator`    | Home, People, Gatherings, Coordination Notes, On our hearts, Answered, Messages, Your reports, Bible study |
+| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Questions, Messages, Your reports, Bible study |
 | Full-timer   | `admin`       | All of the above, plus My Day (the home item), Visits, Around the team, and the Bible-study index |
 
 Every approved role lands on `/`; a guarded route (`/board`, `/directory`,
