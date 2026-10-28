@@ -4,6 +4,7 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -303,4 +304,15 @@ export async function setActiveStudy(
     activeStudyId: studyId,
     updatedAt: serverTimestamp(),
   });
+}
+
+/**
+ * Deletes a Study and all meetings belonging to it (#1937).
+ * Used when cleaning up test terms or terms entered in error.
+ */
+export async function deleteStudy(db: Firestore, studyId: string): Promise<void> {
+  const q = query(collection(db, 'bible_study_meetings'), where('studyId', '==', studyId));
+  const snap = await getDocs(q);
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  await deleteDoc(doc(db, 'bible_study_studies', studyId));
 }

@@ -18,6 +18,7 @@ vi.mock('../lib/data/bibleStudy', () => ({
   createStudy: vi.fn().mockResolvedValue('romans-fall-2026'),
   createEntryPoint: vi.fn().mockResolvedValue('cisa-wednesday'),
   setActiveStudy: vi.fn().mockResolvedValue(undefined),
+  deleteStudy: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -724,6 +725,105 @@ describe('BibleStudyIndex view', () => {
         'cisa-wednesday',
         'mark-fall-2026',
       );
+    });
+  });
+
+  describe('deleting a study term (#1937)', () => {
+    const TEST_STUDY: Study = { id: 'test-study', title: 'Test Study', term: 'Fall 2026' };
+    const DRAFT_MEETING: Meeting = {
+      id: 'test-m1',
+      studyId: 'test-study',
+      title: 'Draft week',
+      date: '2026-11-01',
+      published: false,
+      sections: [],
+    };
+
+    it('shows delete option and prompts confirmation modal', async () => {
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, TEST_STUDY]);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'test-study') cb(TEST_STUDY, false);
+        else cb(STUDY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'test-study') cb([DRAFT_MEETING]);
+        else cb(MEETINGS);
+        return () => {};
+      });
+
+      renderIndex();
+      // Select the test study
+      const termBtn = await screen.findByRole('button', { name: /select study term/i });
+      fireEvent.click(termBtn);
+      const testOption = await screen.findByRole('option', { name: /Test Study · Fall 2026/ });
+      fireEvent.click(testOption);
+
+      // Open term menu again to click Delete this term...
+      fireEvent.click(screen.getByRole('button', { name: /select study term/i }));
+      const termMenu = screen.getByRole('listbox');
+      const deleteItem = within(termMenu).getByRole('button', { name: /delete this term/i });
+      fireEvent.click(deleteItem);
+
+      // Confirmation dialog opens
+      expect(screen.getByRole('dialog', { name: /delete study term/i })).toBeInTheDocument();
+      expect(screen.getByText(/Delete "Test Study · Fall 2026"\?/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^delete term$/i })).toBeInTheDocument();
+
+      // Click delete term
+      fireEvent.click(screen.getByRole('button', { name: /^delete term$/i }));
+      expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'test-study');
+    });
+
+    it('blocks deletion when the term is active on an entry point', async () => {
+      // STUDY is active on ENTRY_POINT (activeStudyId: 'romans-fall26')
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY]);
+        return () => {};
+      });
+      renderIndex();
+
+      // Click delete in aside
+      const asideDeleteBtn = await screen.findByRole('button', { name: /delete this term/i });
+      fireEvent.click(asideDeleteBtn);
+
+      expect(screen.getByRole('dialog', { name: /delete study term/i })).toBeInTheDocument();
+      expect(screen.getByText(/currently active on an entry point/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^delete term$/i })).not.toBeInTheDocument();
+    });
+
+    it('blocks deletion when the term has published weeks', async () => {
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, TEST_STUDY]);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudy).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'test-study') cb(TEST_STUDY, false);
+        else cb(STUDY, false);
+        return () => {};
+      });
+      vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, studyId, cb) => {
+        if (studyId === 'test-study') cb([{ ...DRAFT_MEETING, published: true }]);
+        else cb(MEETINGS);
+        return () => {};
+      });
+
+      renderIndex();
+      // Select test study
+      const termBtn = await screen.findByRole('button', { name: /select study term/i });
+      fireEvent.click(termBtn);
+      const testOption = await screen.findByRole('option', { name: /Test Study · Fall 2026/ });
+      fireEvent.click(testOption);
+
+      const asideDeleteBtn = await screen.findByRole('button', { name: /delete this term/i });
+      fireEvent.click(asideDeleteBtn);
+
+      expect(screen.getByRole('dialog', { name: /delete study term/i })).toBeInTheDocument();
+      expect(screen.getByText(/published weeks/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^delete term$/i })).not.toBeInTheDocument();
     });
   });
 });

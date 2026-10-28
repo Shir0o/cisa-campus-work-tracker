@@ -2491,7 +2491,17 @@
     "active_on_code": "Activo en código",
     "studies_and_terms": "Estudios y períodos",
     "start_new_term": "Comenzar un nuevo período...",
-    "set_active_on_code": "Activar este período en /s/{slug}"
+    "set_active_on_code": "Activar este período en /s/{slug}",
+    "delete_this_term": "Eliminar este período...",
+    "delete_dialog_title": "Eliminar período de estudio",
+    "delete_confirm_title": "¿Eliminar \"{title} · {term}\"?",
+    "cannot_delete_active": "Este período está activo actualmente en un punto de entrada (/s/{slug}). Activa otro período antes de eliminar este.",
+    "cannot_delete_published": "Este período tiene semanas publicadas. Según las normas de seguridad del ministerio, las semanas publicadas deben despublicarse antes de poder eliminar el período.",
+    "delete_warning_no_weeks": "Este estudio y su período se eliminarán de forma permanente. Esto no se puede deshacer.",
+    "delete_warning_with_weeks": "Este estudio y todas sus {n} semana(s) en borrador se eliminarán permanentemente. Esto no se puede deshacer.",
+    "deleting": "Eliminando...",
+    "delete_term_button": "Eliminar período",
+    "delete_term": "Eliminar este período..."
   },
   "guest": {
     "loading": "Cargando la página compartida...",
