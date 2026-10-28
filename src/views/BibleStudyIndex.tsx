@@ -19,6 +19,7 @@ import {
   createEntryPoint,
   createStudy,
   deleteMeeting,
+  deleteStudy,
   saveMeeting,
   setActiveStudy,
   setMeetingPublished,
@@ -325,6 +326,8 @@ export default function BibleStudyIndex() {
   };
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Meeting | null>(null);
+  const [deleteStudyCandidate, setDeleteStudyCandidate] = useState<Study | null>(null);
+  const [deleteStudyBusy, setDeleteStudyBusy] = useState(false);
 
   const handleDuplicate = async (m: Meeting) => {
     if (!user) return;
@@ -360,6 +363,39 @@ export default function BibleStudyIndex() {
     await deleteMeeting(db, deleteCandidate.id);
     setDeleteCandidate(null);
     setMenuFor(null);
+  };
+
+  const handleDeleteStudyConfirmed = async () => {
+    if (!deleteStudyCandidate) return;
+    setDeleteStudyBusy(true);
+    try {
+      await deleteStudy(db, deleteStudyCandidate.id);
+      const lastStored = readStored(LAST_STUDY_KEY);
+      if (lastStored === deleteStudyCandidate.id) {
+        try {
+          window.localStorage.removeItem(LAST_STUDY_KEY);
+        } catch {
+          // Storage unavailable
+        }
+      }
+      const remaining = studies.filter((s) => s.id !== deleteStudyCandidate.id);
+      const nextStudyId = remaining[0]?.id ?? null;
+      setSelectedStudyId(nextStudyId);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextStudyId) {
+          next.set('study', nextStudyId);
+        } else {
+          next.delete('study');
+        }
+        return next;
+      }, { replace: true });
+      setDeleteStudyCandidate(null);
+    } catch (err) {
+      console.error('Failed to delete study', err);
+    } finally {
+      setDeleteStudyBusy(false);
+    }
   };
 
   const formatDay = (date: string) => {
@@ -479,7 +515,7 @@ export default function BibleStudyIndex() {
                       })}
                     </div>
 
-                    <div className="pt-1.5 pb-0.5">
+                    <div className="pt-1.5 pb-0.5 space-y-0.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -494,6 +530,24 @@ export default function BibleStudyIndex() {
                         </svg>
                         {t('study.start_new_term', 'Start a new term...')}
                       </button>
+
+                      {study && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTermMenuOpen(false);
+                            setDeleteStudyCandidate(study);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-error hover:bg-surface-variant transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                          {t('study.delete_this_term', 'Delete this term...')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </>
@@ -720,6 +774,15 @@ export default function BibleStudyIndex() {
                           </button>
                         </div>
                       )}
+                      <div className="mt-2 pt-2 border-t border-outline-variant/40">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStudyCandidate(study)}
+                          className="inline-flex items-center text-xs text-error font-medium hover:underline"
+                        >
+                          {t('study.delete_this_term', 'Delete this term...')}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     'No study is active'
@@ -925,6 +988,78 @@ export default function BibleStudyIndex() {
               >
                 Delete week
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Study / Term Modal (#1937) */}
+      {deleteStudyCandidate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('study.delete_dialog_title', 'Delete study term')}
+        >
+          <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <h2 className="font-serif text-xl font-bold text-on-surface mb-2">
+              {t('study.delete_confirm_title', 'Delete "{title} · {term}"?')
+                .replace('{title}', deleteStudyCandidate.title)
+                .replace('{term}', deleteStudyCandidate.term)}
+            </h2>
+
+            {entryPoints.some((ep) => ep.activeStudyId === deleteStudyCandidate.id) ? (
+              <div className="p-3 mb-5 rounded-xl bg-error/10 border border-error/20 text-xs text-error text-left">
+                {t(
+                  'study.cannot_delete_active',
+                  'This term is currently active on an entry point (/s/{slug}). Set another term active before deleting this one.',
+                ).replace(
+                  '{slug}',
+                  entryPoints.find((ep) => ep.activeStudyId === deleteStudyCandidate.id)?.slug ?? '',
+                )}
+              </div>
+            ) : meetings.some((m) => m.published) ? (
+              <div className="p-3 mb-5 rounded-xl bg-error/10 border border-error/20 text-xs text-error text-left">
+                {t(
+                  'study.cannot_delete_published',
+                  'This term has published weeks. Under ministry safety rules, published weeks must be unpublished first before the term can be deleted.',
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant mb-5">
+                {meetings.length === 0
+                  ? t(
+                      'study.delete_warning_no_weeks',
+                      'This study and its term will be permanently deleted. This cannot be undone.',
+                    )
+                  : t(
+                      'study.delete_warning_with_weeks',
+                      'This study and all {n} draft week(s) will be permanently deleted. This cannot be undone.',
+                    ).replace('{n}', String(meetings.length))}
+              </p>
+            )}
+
+            <div className="flex gap-2 justify-center">
+              <button
+                type="button"
+                onClick={() => setDeleteStudyCandidate(null)}
+                className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                {t('actions.cancel', 'Cancel')}
+              </button>
+              {!entryPoints.some((ep) => ep.activeStudyId === deleteStudyCandidate.id) &&
+                !meetings.some((m) => m.published) && (
+                  <button
+                    type="button"
+                    disabled={deleteStudyBusy}
+                    onClick={() => void handleDeleteStudyConfirmed()}
+                    className="px-4 py-2 rounded-full bg-error text-on-error text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
+                  >
+                    {deleteStudyBusy
+                      ? t('study.deleting', 'Deleting...')
+                      : t('study.delete_term_button', 'Delete term')}
+                  </button>
+                )}
             </div>
           </div>
         </div>

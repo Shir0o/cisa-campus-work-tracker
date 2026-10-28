@@ -11,9 +11,10 @@ import {
   deleteMeeting,
   createStudy,
   createEntryPoint,
+  deleteStudy,
   setActiveStudy,
 } from '../lib/data/bibleStudy';
-import { setDoc, updateDoc } from 'firebase/firestore';
+import { setDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import type { Section, Meeting } from '../lib/bibleStudy';
 
 vi.mock('../lib/firebase', () => ({ db: {} }));
@@ -49,6 +50,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn().mockResolvedValue(undefined),
   updateDoc: vi.fn().mockResolvedValue(undefined),
   deleteDoc: vi.fn().mockResolvedValue(undefined),
+  getDocs: vi.fn().mockResolvedValue({ docs: [] }),
   serverTimestamp: vi.fn(() => 'mock-server-timestamp'),
 }));
 
@@ -313,5 +315,19 @@ describe('bibleStudy data service', () => {
     await setActiveStudy(fakeDb, 'cisa-wednesday', null);
     [, data] = vi.mocked(updateDoc).mock.calls[0];
     expect(data).toMatchObject({ activeStudyId: null });
+  });
+
+  it('deleteStudy deletes the study document and its meetings', async () => {
+    const mockMeetingDoc = { ref: { path: 'bible_study_meetings/test-m1' } };
+    vi.mocked(getDocs).mockResolvedValueOnce({
+      docs: [mockMeetingDoc],
+    } as any);
+
+    await deleteStudy(fakeDb, 'test-study');
+
+    expect(deleteDoc).toHaveBeenCalledWith(mockMeetingDoc.ref);
+    expect(deleteDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'bible_study_studies/test-study' }),
+    );
   });
 });

@@ -2491,7 +2491,17 @@
     "active_on_code": "Active on code",
     "studies_and_terms": "Studies & Terms",
     "start_new_term": "Start a new term...",
-    "set_active_on_code": "Set this term active on /s/{slug}"
+    "set_active_on_code": "Set this term active on /s/{slug}",
+    "delete_this_term": "Delete this term...",
+    "delete_dialog_title": "Delete study term",
+    "delete_confirm_title": "Delete \"{title} · {term}\"?",
+    "cannot_delete_active": "This term is currently active on an entry point (/s/{slug}). Set another term active before deleting this one.",
+    "cannot_delete_published": "This term has published weeks. Under ministry safety rules, published weeks must be unpublished first before the term can be deleted.",
+    "delete_warning_no_weeks": "This study and its term will be permanently deleted. This cannot be undone.",
+    "delete_warning_with_weeks": "This study and all {n} draft week(s) will be permanently deleted. This cannot be undone.",
+    "deleting": "Deleting...",
+    "delete_term_button": "Delete term",
+    "delete_term": "Delete this term..."
   },
   "guest": {
     "loading": "Loading the shared page...",
