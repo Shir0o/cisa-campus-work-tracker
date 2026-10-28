@@ -2481,7 +2481,15 @@
     "italic": "Italic",
     "meeting_title": "Meeting title",
     "numbered_list": "Numbered list",
-    "bullet_list": "Bullet list"
+    "bullet_list": "Bullet list",
+    "select_term": "Select study term",
+    "available_terms": "Available terms",
+    "term_prefix": "Term:",
+    "active": "Active",
+    "active_on_code": "Active on code",
+    "studies_and_terms": "Studies & Terms",
+    "start_new_term": "Start a new term...",
+    "set_active_on_code": "Set this term active on /s/{slug}"
   },
   "guest": {
     "loading": "Loading the shared page...",

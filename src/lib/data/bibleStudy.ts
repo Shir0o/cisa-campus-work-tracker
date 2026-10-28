@@ -210,6 +210,22 @@ export function subscribeStudy(
 }
 
 /**
+ * Subscribes to all Studies (publicly readable).
+ */
+export function subscribeStudies(
+  db: Firestore,
+  cb: (studies: Study[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  const q = query(collection(db, 'bible_study_studies'));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map(mapStudy)),
+    (e) => (onError ? onError(e) : console.error('studies sub error', e)),
+  );
+}
+
+/**
  * Subscribes to an Entry point by slug — the slug is the document id, so the
  * durable URL is a stable lookup.
  */
