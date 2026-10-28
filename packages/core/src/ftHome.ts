@@ -116,6 +116,8 @@ export function ftInboxRows(
     contacts: Contact[];
     nameByUid: Record<string, string>;
     isRead: (id: string) => boolean;
+    /** Whether this reader carries the person. */
+    carries: (contactId: string) => boolean;
   },
 ): FtInboxRow[] {
   const byId = new Map(ctx.contacts.map((c) => [c.id, c]));
@@ -133,7 +135,9 @@ export function ftInboxRows(
             ? `${who} logged time with ${name}`
             : item.kind && item.kind !== "question"
               ? `${who} wrote about ${name}`
-              : `${who} asked you something about ${name}`,
+              : ctx.carries(item.contactId)
+                ? `${who} asked you something about ${name}`
+                : `${who} asked about ${name}`,
       sub:
         item.type === "contact"
           // Was `item.reviewed` — a field with no writer, so this always read

@@ -257,6 +257,14 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     return m;
   }, [team, contacts, interactions, threads]);
 
+  // A question only reads as put to you when you carry the person; a follower
+  // still sees it, but it was not asked of them (#1711).
+  const carried = useMemo(() => {
+    const ids = new Set(personalContactIds);
+    for (const c of contacts) if (uid && (c.carers || []).includes(uid)) ids.add(c.id);
+    return ids;
+  }, [personalContactIds, contacts, uid]);
+
   // `inbox` is a fresh wrapper per read-state change (see useInboxReads), so
   // scanning an item invalidates this memo and the widget re-sorts.
   const inboxRows = useMemo(
@@ -265,8 +273,9 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
         contacts,
         nameByUid,
         isRead: (id: string) => (uid ? inbox.isRead(uid, id) : true),
+        carries: (id: string) => carried.has(id),
       }),
-    [inboxItems, contacts, nameByUid, inbox, uid],
+    [inboxItems, contacts, nameByUid, inbox, uid, carried],
   );
   const unreadCount = useMemo(() => inboxRows.filter((r) => r.unread).length, [inboxRows]);
 

@@ -227,7 +227,7 @@ describe('ftTodos', () => {
 // ── "From the team" ────────────────────────────────────────────────────────
 
 describe('ftInboxRows', () => {
-  const ctx = { contacts: [contact()], nameByUid: NAMES, isRead: readNone };
+  const ctx = { contacts: [contact()], nameByUid: NAMES, isRead: readNone, carries: () => true };
 
   it('says who brought someone in, and whether you have looked', () => {
     const [row] = ftInboxRows([inboxItem()], ctx);
@@ -254,7 +254,7 @@ describe('ftInboxRows', () => {
     expect(row.reply).toBe('encourage');
   });
 
-  it('offers a write-back on a question, not an encouragement', () => {
+  it('offers a write-back on a question about someone you carry', () => {
     const [row] = ftInboxRows(
       [inboxItem({ id: 'thread:m1', type: 'thread', by: 'u3', body: 'Should I keep going?' })],
       ctx,
@@ -263,6 +263,16 @@ describe('ftInboxRows', () => {
     expect(row.sub).toBe('Should I keep going?');
     expect(row.reply).toBe('write-back');
     expect(row.replyKind).toBe('comment');
+  });
+
+  // #1711: a full-timer who merely follows the person is not the one asked.
+  it('does not claim a question was asked of a reader who only follows', () => {
+    const [row] = ftInboxRows(
+      [inboxItem({ id: 'thread:m1', type: 'thread', by: 'u3', body: 'Should I keep going?' })],
+      { ...ctx, carries: () => false },
+    );
+    expect(row.headline).toBe('Ana asked about Rio');
+    expect(row.reply).toBe('write-back');
   });
 
   it('does not claim a note was a question to you (#1604)', () => {
@@ -296,6 +306,7 @@ describe('ftInboxVisible', () => {
         contacts: [contact()],
         nameByUid: NAMES,
         isRead: (id) => !unreadIds.includes(id),
+        carries: () => true,
       },
     );
 
