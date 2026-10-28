@@ -698,7 +698,7 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
     await waitForShell(page);
 
     await page.getByRole('button', { name: /new/i }).first().click();
-    await page.getByRole('button', { name: /^announcements$/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /^announcements$/i }).click();
     await page.getByLabel(/channel name/i).fill(title);
     await expect(page.getByRole('dialog').getByText('Everyone in the app', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^next$/i }).click();
