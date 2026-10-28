@@ -424,7 +424,7 @@ describe('App Component', () => {
     });
   });
 
-  it.each(['/prayer', '/answered', '/attendance', '/settings'])(
+  it.each(['/prayer', '/answered', '/attendance'])(
     'redirects trainee away from %s (page not in their allowed set) to home',
     async (path) => {
       mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
@@ -441,6 +441,19 @@ describe('App Component', () => {
       expect(screen.queryByTestId('attendance-view')).not.toBeInTheDocument();
     },
   );
+
+  it('lets a Trainee open their own settings', async () => {
+    mockAuthValue.user = { uid: '123', email: 'trainee@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'manager';
+    window.history.replaceState(null, '', '/settings');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-view')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('dashboard-view')).not.toBeInTheDocument();
+  });
 
   it('allows admin to access admin-only routes', async () => {
     mockAuthValue.user = { uid: '123', email: 'admin@example.com' };

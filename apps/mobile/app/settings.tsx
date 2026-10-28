@@ -12,10 +12,11 @@ import { SettingsScreen } from '../src/components/settings/SettingsScreen';
 // design's `M2Settings`, which also absorbed the old separate "Your queue"
 // screen.
 //
-// Gated on `canSeePrefs`, NOT `canAccessRoute('/settings')`: the latter is the
-// web sidebar's rule and closes Settings to the trainee, but this screen is
-// where their queue prefs live (on-campus window, nudges, day cap, how it
-// looks). `canSeePrefs` is the predicate the design's `M2Sub` uses.
+// Gated on `canSeePrefs`, NOT `canAccessRoute('/settings')`: that one answers
+// whether a role may open the web page, and since #1819 it lets every approved
+// role through. This screen is where a Trainee's queue prefs live (on-campus
+// window, nudges, day cap, how it looks), so the gate names the two staff
+// shapes the design's `M2Sub` uses.
 //
 // The team roster that used to live here — approving a signup, inviting
 // someone, changing a role, removing access — is gone from the phone. Mobile v2

@@ -191,8 +191,8 @@ const ROLE_CARDS: {
     label: 'Trainee',
     descKey: 'settings.roles.trainee_desc',
     initials: 'TR',
-    description: 'Cares for the team. Manages users and accesses all data surfaces, minus dev-only admin.',
-    access: ['today', 'people', 'journey', 'gatherings', 'prayer', 'history'],
+    description: 'Cares for the people they are tied to, joins The Journey board, and keeps their own preferences.',
+    access: ['today', 'people', 'journey', 'settings'],
   },
   {
     key: 'operator',
@@ -3457,7 +3457,7 @@ function SettingsSectionRail({
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager, role, isApproved } = useAuth();
-  const isDev = currentUser?.email?.toLowerCase() === OWNER_EMAIL || isAdmin || isManager;
+  const isDev = currentUser?.email?.toLowerCase() === OWNER_EMAIL || isAdmin;
   const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL;
   const { theme, setTheme } = useTheme();
   const { t } = useLanguage();
@@ -3911,8 +3911,8 @@ export default function Settings() {
   ];
   const visibleManagerSections = managerSections.filter((section) => section.visible);
 
-  // ── Non-manager: a warm "My profile" page ──
-  if (!isManager) {
+  // ── Non-admin: a warm "My profile" page ──
+  if (!isAdmin) {
     return (
       <div className="p-6 md:p-8 max-w-3xl pb-24 lg:pb-8">
         <header className="mb-8">
@@ -3933,6 +3933,9 @@ export default function Settings() {
         <AppearanceSection theme={theme} setTheme={setTheme} />
         <NavigationSection />
         <NotificationsSection />
+        {/* Only staff and Trainees get a weekly reminder, so the Student and
+            Community profile pages leave the switch out. */}
+        {isManager && <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />}
         <LanguageSection />
         <WhatsNewSection
           onOpen={() => setWhatsNewOpen(true)}
@@ -3954,7 +3957,7 @@ export default function Settings() {
     );
   }
 
-  // ── Manager / admin: full settings ──
+  // ── Full-timer: full settings ──
   return (
     <PageContainer variant="reading">
       <header className="mb-8">

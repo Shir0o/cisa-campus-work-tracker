@@ -123,7 +123,7 @@ describe('canAccessRoute()', () => {
     // the room may hold up. Only '/bible-study' — the archive — stays admin.
     viewer:   ['/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/bible-study/read', '/bible-study/present'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', '/bible-study/read', '/bible-study/present'],
-    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/bible-study/read', '/bible-study/present'],
+    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/bible-study/read', '/bible-study/present'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/read', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 

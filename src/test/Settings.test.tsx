@@ -240,6 +240,33 @@ describe('Settings', () => {
       expect(screen.getByText('Your account and preferences.')).toBeInTheDocument();
       expect(screen.getByText('Approved')).toBeInTheDocument();
       expect(screen.getAllByText('Student')[0]).toBeInTheDocument();
+      // A Student gets no weekly reminder, so the switch is not offered.
+      expect(screen.queryByRole('heading', { level: 2, name: 'Your weekly reminders' })).not.toBeInTheDocument();
+    });
+
+    it('gives a Trainee their own preferences and no team administration', () => {
+      setupNonManagerAuth({ role: 'manager', isManager: true, isAdmin: false });
+
+      const { container } = render(<Settings />);
+
+      expect(within(container).getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
+      expect(within(container).getByRole('heading', { level: 2, name: 'Language' })).toBeInTheDocument();
+      expect(within(container).getByRole('heading', { level: 2, name: 'Your weekly reminders' })).toBeInTheDocument();
+
+      for (const name of [
+        'Your team',
+        'Going out together',
+        "The day's goal",
+        'Data management & danger zone',
+        'API & webhook console',
+        'Quick add by text',
+      ]) {
+        expect(within(container).queryByRole('heading', { name }), name).not.toBeInTheDocument();
+      }
+
+      const traineeCard = within(container).getByText(/Cares for the people they are tied to/).closest('div.rounded-xl') as HTMLElement;
+      expect(within(traineeCard).getByText('Settings')).toBeInTheDocument();
+      expect(within(traineeCard).queryByText('Gatherings')).not.toBeInTheDocument();
     });
   });
 
@@ -401,7 +428,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
       });
       expect(screen.queryByRole('heading', { level: 2, name: 'Going out together' })).toBeNull();
     });
@@ -474,7 +501,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
       });
       expect(screen.queryByRole('heading', { level: 2, name: "The day's goal" })).toBeNull();
     });
@@ -702,7 +729,7 @@ describe('Settings', () => {
 
       // Check descriptions are present (partial)
       expect(screen.getByText(/Full-time staff/)).toBeInTheDocument();
-      expect(screen.getByText(/Cares for the team/)).toBeInTheDocument();
+      expect(screen.getByText(/Cares for the people they are tied to/)).toBeInTheDocument();
       expect(screen.getByText(/Can add and update people/)).toBeInTheDocument();
       expect(screen.getByText(/A read-only window/)).toBeInTheDocument();
     });
@@ -1350,7 +1377,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
       });
 
       expect(
@@ -1391,7 +1418,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2, name: 'Your team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
       });
       expect(
         screen.queryByRole('heading', { level: 2, name: 'Weekly reminder schedule' }),

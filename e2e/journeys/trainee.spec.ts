@@ -135,6 +135,20 @@ test.describe('Trainee journey (#1475)', () => {
     await expect(page.getByText(VISIBLE_NOT_CARED)).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
+
+  test('Settings opens on their own preferences, not team administration', async ({ page }) => {
+    await signInAs(page, 'trainee');
+    await page.goto('/settings');
+    await waitForShell(page);
+    expect(new URL(page.url()).pathname).toBe('/settings');
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { level: 2, name: 'Your weekly reminders' })).toBeVisible();
+
+    await expect(page.getByRole('heading', { level: 2, name: 'Your team' })).not.toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Going out together' })).not.toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: "The day's goal" })).not.toBeVisible();
+  });
 });
 
 /**
