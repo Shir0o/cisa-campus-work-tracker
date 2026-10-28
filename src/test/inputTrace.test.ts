@@ -86,6 +86,16 @@ describe('inputTrace', () => {
     expect(readInputTrace()).toContain('viewport textarea#vv vv=900');
   });
 
+  it('records a tab going hidden', async () => {
+    const { installInputTrace, readInputTrace } = await freshModule();
+    installInputTrace();
+
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(readInputTrace()).toContain('visibility hidden');
+  });
+
   it('installs once, so a second call does not double-record', async () => {
     const { installInputTrace, readInputTrace } = await freshModule();
     installInputTrace();
