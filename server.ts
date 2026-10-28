@@ -254,7 +254,7 @@ export async function createApp() {
         return res.status(401).json({ error: "Unauthorized: Authorization header is required." });
       }
 
-      const { type, kind, message, screenshot, url, userAgent, viewport } = req.body;
+      const { type, kind, message, screenshot, url, userAgent, viewport, inputTrace } = req.body;
 
       if (!message || typeof message !== "string") {
         return res.status(400).json({ error: "Missing required 'message' parameter." });
@@ -271,6 +271,7 @@ export async function createApp() {
         url,
         userAgent,
         viewport,
+        inputTrace,
         screenshot,
       });
 

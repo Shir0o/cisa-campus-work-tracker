@@ -3,8 +3,10 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { initSentry } from './lib/sentry';
+import { installInputTrace } from './lib/inputTrace';
 
 initSentry();
+installInputTrace();
 
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {

@@ -11,6 +11,7 @@ import { useTranslate } from '../hooks/useTranslate';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { capturePageScreenshot } from '../lib/feedbackScreenshot';
+import { readInputTrace } from '../lib/inputTrace';
 import { FeedbackKind } from '../types';
 
 
@@ -177,6 +178,9 @@ export default function FeedbackFAB() {
       url: window.location.href,
       userAgent: navigator.userAgent,
       viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,
+      // Focus, composition and viewport events from this tab, so a keyboard
+      // bug reported here can be read without the reporter's device (#1735).
+      inputTrace: readInputTrace() || undefined,
     };
 
     // 1. Write feedback record via Backend API
