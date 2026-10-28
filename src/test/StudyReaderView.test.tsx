@@ -469,6 +469,32 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(screen.queryByLabelText('Open section index')).toBeNull();
     });
 
+    it('heads a Passage-and-notes Section above both columns, so it opens top-left', () => {
+      const box = stubReaderBox();
+      const m = meeting({
+        sections: [
+          {
+            id: 'sec-split',
+            title: 'Split Section',
+            content: [
+              { kind: 'passage', passage: { before: 'The passage words' }, ref: 'Romans 5:1' },
+              { kind: 'prose', md: 'A note beside it.' },
+            ],
+            points: [],
+          },
+        ],
+      });
+      render(<StudyReaderView meeting={m} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const heading = sectionHeading();
+      const passage = screen.getByTestId('paged-passage');
+      // The heading comes first and sits outside the Passage column's row,
+      // not at the top of the notes column to the Passage's right.
+      expect(heading.compareDocumentPosition(passage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(heading.parentElement?.contains(passage)).toBe(true);
+    });
+
     it('steps with Previous and Next, naming the next Section and ending the Meeting', () => {
       const box = stubReaderBox();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);

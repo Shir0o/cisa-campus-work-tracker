@@ -270,8 +270,9 @@ const Panel: React.FC<{
 };
 
 /**
- * One Section on the paged deck's card (#1590): the Passage set large on the
- * left, the heading and everything else on the right, in the author's order.
+ * One Section on the paged deck's card (#1590): the heading across the top,
+ * then the Passage set large on the left and everything else on the right, in
+ * the author's order.
  * A Section with no Passage, or only a Passage, takes the card's full width
  * rather than leaving half of it empty. The two columns wrap to a stack,
  * Passage first, when the card is too narrow to hold both.
@@ -311,13 +312,18 @@ const PagedSection: React.FC<{
     </div>
   );
 
+  // The heading spans both columns, so the Section visibly opens at the
+  // top-left: a heading at the top of the right column made the headless
+  // Passage on the left read as the previous Section running on.
   if (hasPassage && hasNotes) {
     return (
-      <div className="flex flex-wrap items-start gap-12 px-14 py-12">
-        {passage}
-        <div className="flex-1 basis-[380px] min-w-0 flex flex-col gap-6">
-          {heading}
-          {body('notes')}
+      <div className="flex flex-col gap-6 px-14 py-12">
+        {heading}
+        <div className="flex flex-wrap items-start gap-12">
+          {passage}
+          <div className="flex-1 basis-[380px] min-w-0 flex flex-col gap-6">
+            {body('notes')}
+          </div>
         </div>
       </div>
     );
