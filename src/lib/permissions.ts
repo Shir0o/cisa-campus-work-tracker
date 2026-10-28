@@ -174,6 +174,11 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
     // a Student sees the whole room, while a Trainee only sees the people they
     // are tied to (`seesAllPeople`), so Gatherings would hand them a partial
     // roster and a partial missed list — worse in the room than no page at all.
+    // The prayer pair is deliberately missing as well (#1794, #1822): /prayer
+    // and /answered are the team's shared list and the testimonies that came
+    // out of it, while a Trainee's prayer surface is the home card's personal
+    // list ("just between you and God"). Community and Student reach both
+    // through the ladder, so the asymmetry is the decision, not a missed entry.
     const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact', '/bible-study/read', '/bible-study/present'];
     return allowedTraineeRoutes.includes(path);
   }
