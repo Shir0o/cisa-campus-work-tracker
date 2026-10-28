@@ -273,7 +273,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
 
   // Design A · Log interaction: Message, Email, Call, Meeting, one tap each.
   const interactionTypes = [
-    { id: 'chat' as const, label: t('modals.message'), icon: MessageSquare },
+    { id: 'chat' as const, label: t('modals.text_dm'), icon: MessageSquare },
     { id: 'email' as const, label: t('directory.email'), icon: Mail },
     { id: 'call' as const, label: t('modals.call'), icon: Phone },
     { id: 'meeting' as const, label: t('modals.meeting'), icon: Coffee },

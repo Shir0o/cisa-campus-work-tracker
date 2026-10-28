@@ -177,7 +177,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
     <Sheet visible={visible} onClose={handleClose} {...v2SheetChrome(c)}>
       <View style={{ padding: 18 }}>
         <Text style={{ fontFamily: font.extra, fontSize: fs(20), color: c.card.ink, marginBottom: 4 }}>
-          {t('mobile.feedback.leave_a_note', "Tell us how it's going")}
+          {t('mobile.feedback.leave_a_note', "Report a problem or idea")}
         </Text>
         <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink3, marginBottom: 16 }}>
           {t('mobile.feedback.all_welcome', 'An idea, a snag, a thank-you — it goes straight to the team.')}
@@ -209,7 +209,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                 })}
               >
                 <Text style={{ fontFamily: font.bold, color: c.card.ink2, fontSize: fs(14) }}>
-                  {t('feedback.see_your_notes', 'See your notes')}
+                  {t('feedback.see_your_notes', 'See your reports')}
                 </Text>
               </Pressable>
               <Pressable
@@ -235,7 +235,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
           <View style={{ gap: 16 }}>
             <View>
               <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.ink2, marginBottom: 8 }}>
-                {t('feedback.kind_of_note', 'What kind of note')}
+                {t('feedback.kind_of_note', 'Kind of report')}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {FEEDBACK_KINDS.map((k) => {

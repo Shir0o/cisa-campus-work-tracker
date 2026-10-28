@@ -277,7 +277,7 @@ describe('HistoryMobile', () => {
     expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Interactions' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Prayer' }));
@@ -305,7 +305,7 @@ describe('HistoryMobile', () => {
       expect(screen.getByRole('button', { name: 'Todo' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Interacciones' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
     } finally {
       localStorage.clear();

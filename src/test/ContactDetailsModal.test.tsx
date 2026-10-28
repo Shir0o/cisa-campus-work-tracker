@@ -2800,7 +2800,7 @@ describe('removing interactions (#650)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
 
     expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
-    expect(screen.getByText('Conversation removed')).toBeInTheDocument();
+    expect(screen.getByText('Interaction removed')).toBeInTheDocument();
     expect(firestore.deleteDoc).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -2855,7 +2855,7 @@ describe('removing interactions (#650)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
 
     expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
-    expect(screen.getByText('Conversation removed')).toBeInTheDocument();
+    expect(screen.getByText('Interaction removed')).toBeInTheDocument();
     confirmSpy.mockRestore();
   });
 
@@ -3382,7 +3382,7 @@ describe('desktop story layout (design D)', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} initialTab="thread" />);
     const drawer = screen.getByRole('region', { name: 'Conversation' });
 
-    fireEvent.click(within(drawer).getByRole('button', { name: 'Ask a follow-up' }));
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Ask someone to follow up' }));
     expect(within(drawer).getByText('Everyone tied to John sees this and can say they followed up.')).toBeInTheDocument();
     fireEvent.change(within(drawer).getByPlaceholderText(/What wants doing/), { target: { value: 'Text John about Thursday' } });
     fireEvent.click(within(drawer).getByRole('button', { name: 'Post' }));
@@ -3638,7 +3638,7 @@ describe('desktop story layout (design D)', () => {
         within(drawer).getByText("Only Full-timers see this — Trainees can't."),
       );
       expect(within(drawer).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
-      expect(within(drawer).getByText('Nothing here yet — start the team\'s discussion below.')).toBeInTheDocument();
+      expect(within(drawer).getByText('Nothing here yet — start it below.')).toBeInTheDocument();
     });
 
     it('offers no kind chips', () => {
@@ -3722,7 +3722,7 @@ describe('desktop story layout (design D)', () => {
       fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
 
       const thread = screen.getByRole('region', { name: 'Thread' });
-      expect(within(thread).getByText(/^Josh's conversation · /)).toBeInTheDocument();
+      expect(within(thread).getByText(/^Josh's interaction · /)).toBeInTheDocument();
       expect(within(thread).getByText('Sat with him at the Thursday gathering')).toBeInTheDocument();
       expect(within(thread).getByText('On an interaction · everyone tied to John sees this.')).toBeInTheDocument();
       expect(within(thread).queryByRole('group', { name: 'What are you writing' })).toBeNull();

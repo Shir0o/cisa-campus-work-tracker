@@ -92,7 +92,7 @@ describe('navTrailFor', () => {
     // it a name and no section crumb, like any other top-level route.
     expect(navTrailFor('/feedback', 'admin')).toEqual({
       section: null,
-      current: 'Your notes',
+      current: 'Your reports',
       currentIsLabel: true,
     });
   });

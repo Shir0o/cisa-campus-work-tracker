@@ -387,15 +387,15 @@ describe("Stream — the composer (C1–C3)", () => {
     const adapter = fakeAdapter();
     renderStream(adapter);
     const kinds = screen.getByRole("group", { name: "What are you writing" });
-    fireEvent.click(within(kinds).getByRole("button", { name: "Ask a follow-up" }));
-    expect(within(kinds).getByRole("button", { name: "Ask a follow-up" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(kinds).getByRole("button", { name: "Ask someone to follow up" }));
+    expect(within(kinds).getByRole("button", { name: "Ask someone to follow up" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("Everyone tied to Daniel sees this and can say they followed up.")).toBeInTheDocument();
     const box = screen.getByPlaceholderText(/What wants doing/);
     await userEvent.type(box, "Text him about Thursday");
     fireEvent.click(screen.getByRole("button", { name: "Post" }));
     expect(adapter.post).toHaveBeenCalledWith({ body: "Text him about Thursday", kind: "nudge", mentionedUserIds: [] });
     // Back to a comment for the next one.
-    expect(within(kinds).getByRole("button", { name: "Comment" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(kinds).getByRole("button", { name: "Update" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("shows no kind chips where the adapter allows no kinds", () => {
@@ -577,13 +577,13 @@ describe("Stream — optional adapter capabilities", () => {
     try {
       renderStream(
         fakeAdapter({
-          composer: { placeholder: "Ask a follow-up…", label: "Ask a follow-up", submitLabel: "Send", hint: "⌘↵ to send" },
+          composer: { placeholder: "Ask a follow-up…", label: "Ask someone to follow up", submitLabel: "Send", hint: "⌘↵ to send" },
           capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
         }),
         { footer: <p>Replies are public.</p> },
       );
       const box = screen.getByPlaceholderText("Ask a follow-up…");
-      expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBe(box);
+      expect(screen.getByRole("textbox", { name: "Ask someone to follow up" })).toBe(box);
       expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
       expect(screen.getByText("⌘↵ to send")).toBeInTheDocument();
       const footer = screen.getByText("Replies are public.");

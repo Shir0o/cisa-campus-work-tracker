@@ -165,8 +165,8 @@ const VOCABULARY: { action: string; over?: Record<string, unknown>; en: string; 
   { action: 'logged a batch interaction for', over: { type: 'event' }, en: 'met with', es: 'se reunió con' },
   {
     action: 'updated an interaction for',
-    en: 'updated a conversation with',
-    es: 'actualizó la conversación con',
+    en: 'updated an interaction with',
+    es: 'actualizó la interacción con',
   },
   { action: 'left a comment on', en: 'left a note for', es: 'dejó una nota para' },
   { action: 'added tag "leader" to', en: 'added a tag for', es: 'añadió una etiqueta a' },

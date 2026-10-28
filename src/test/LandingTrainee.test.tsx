@@ -323,7 +323,7 @@ describe('LandingTrainee component', () => {
       "What's waiting on you",
       'Your people',
       "Prayers we're praying for",
-      'Ask the team',
+      'Ask a Full-timer',
     ].map((name) => screen.getByRole('heading', { name }));
     for (let i = 1; i < order.length; i++) {
       expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

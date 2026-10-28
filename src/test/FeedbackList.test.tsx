@@ -649,8 +649,8 @@ describe('FeedbackList View', () => {
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
     });
 
-    // Filter by kind tab: "Something's off"
-    const bugTab = screen.getByRole('button', { name: /Something's off/i });
+    // Filter by kind tab: "Something's broken"
+    const bugTab = screen.getByRole('button', { name: /Something's broken/i });
     fireEvent.click(bugTab);
     await waitFor(() => {
       expect(screen.getByText('Actual bug message')).toBeInTheDocument();

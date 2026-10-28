@@ -35,16 +35,16 @@ export interface FeedbackKindMeta {
   tone: FeedbackTone;
 }
 
-// Single source of truth for the four "Leave a note" kinds, shared by the FAB,
+// Single source of truth for the four Report kinds, shared by the FAB,
 // the full-page form, and the admin inbox so labels/placeholders never drift.
 export const FEEDBACK_KINDS: readonly FeedbackKindMeta[] = [
-  { id: 'thought', label: 'A thought',      placeholder: "What's on your mind?",            icon: MessageSquareText, tone: 'accent' },
-  { id: 'idea',    label: 'An idea',         placeholder: 'What if we tried…',               icon: Lightbulb,         tone: 'violet' },
-  { id: 'off',     label: "Something's off", placeholder: 'Something felt a bit off when…',  icon: Bug,               tone: 'amber'  },
-  { id: 'request', label: 'A request',       placeholder: 'It would help if…',               icon: HelpingHand,       tone: 'teal'   },
+  { id: 'off',     label: "Something's broken", placeholder: 'Something broke when…',     icon: Bug,               tone: 'amber'  },
+  { id: 'idea',    label: 'An idea',            placeholder: 'What if we tried…',         icon: Lightbulb,         tone: 'violet' },
+  { id: 'request', label: 'A request',          placeholder: 'It would help if…',         icon: HelpingHand,       tone: 'teal'   },
+  { id: 'thought', label: 'Something else',     placeholder: "What's on your mind?",      icon: MessageSquareText, tone: 'accent' },
 ];
 
-/** Derive the stored coarse `type` from a kind. Only "Something's off" is a bug. */
+/** Derive the stored coarse `type` from a kind. Only "Something's broken" is a bug. */
 export const kindToType = (kind: FeedbackKind): 'bug' | 'enhancement' =>
   kind === 'off' ? 'bug' : 'enhancement';
 
@@ -53,7 +53,7 @@ export const typeToKind = (type: 'bug' | 'enhancement'): FeedbackKind =>
   type === 'bug' ? 'off' : 'idea';
 
 export const kindMeta = (kind: FeedbackKind): FeedbackKindMeta =>
-  FEEDBACK_KINDS.find((k) => k.id === kind) ?? FEEDBACK_KINDS[0];
+  FEEDBACK_KINDS.find((k) => k.id === kind) ?? FEEDBACK_KINDS.find((k) => k.id === 'thought')!;
 
 // Static literal Tailwind classes per tone. Tailwind v4 JIT only emits classes
 // it can see as literals in source — never build `bg-stage-${tone}-soft`.

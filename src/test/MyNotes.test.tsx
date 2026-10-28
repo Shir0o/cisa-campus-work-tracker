@@ -111,7 +111,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     render(<MyNotes />);
 
     expect(screen.getByTestId('my-notes-loading-skeletons')).toBeInTheDocument();
-    expect(screen.queryByText(/haven't left a note yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/haven't sent a report yet/i)).not.toBeInTheDocument();
 
     // Now resolve with empty notes
     act(() => {
@@ -119,7 +119,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     });
 
     expect(screen.queryByTestId('my-notes-loading-skeletons')).not.toBeInTheDocument();
-    expect(screen.getByText(/haven't left a note yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/haven't sent a report yet/i)).toBeInTheDocument();
   });
 
   it('transitions from skeleton loaders to rendered note cards when data arrives', () => {
@@ -143,7 +143,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
 
   it('renders the notes heading', () => {
     render(<MyNotes />);
-    expect(screen.getByRole('heading', { name: 'Your notes' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Your reports' })).toBeInTheDocument();
   });
 
   it('is no longer a composer — there is no kind picker on the page', () => {
@@ -155,13 +155,13 @@ describe('MyNotes — your own notes and their follow-ups', () => {
 
   it('points a first-time visitor at the note button', () => {
     render(<MyNotes />);
-    expect(screen.getByText(/haven't left a note yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/haven't sent a report yet/i)).toBeInTheDocument();
   });
 
   it('says so when the notes query fails, instead of rendering nothing', () => {
     notesError = new Error('permission-denied');
     render(<MyNotes />);
-    expect(screen.getByRole('alert')).toHaveTextContent(/couldn't load your notes/i);
+    expect(screen.getByRole('alert')).toHaveTextContent(/couldn't load your reports/i);
   });
 
   it('shows an open note as having no news rather than promising a resolution', () => {
@@ -188,14 +188,14 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     render(<MyNotes />);
     expect(screen.queryByText('The team replied')).not.toBeInTheDocument();
     expect(screen.getByText('We have this — no news yet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Follow-ups/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Replies/i })).toBeInTheDocument();
   });
 
   it('names each follow-ups control after the note it belongs to', () => {
     noteDocs = [NOTE, { ...NOTE, id: 'n2', createdAt: '2026-08-02T12:00:00.000Z' }];
     render(<MyNotes />);
-    expect(screen.getByRole('button', { name: 'Follow-ups · Sep 1, 2026' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Follow-ups · Aug 2, 2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Replies · Sep 1, 2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Replies · Aug 2, 2026' })).toBeInTheDocument();
   });
 
   // The count and the "new" mark come from the Note itself: the page does not
@@ -257,7 +257,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       noteDocs = [NOTE];
       render(<MyNotes />);
       // No count, and no claim that one is known: the old label, untouched.
-      expect(screen.getByRole('button', { name: 'Follow-ups · Sep 1, 2026' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Replies · Sep 1, 2026' })).toBeInTheDocument();
       expect(screen.queryByText('New')).not.toBeInTheDocument();
     });
 
@@ -347,13 +347,13 @@ describe('MyNotes — your own notes and their follow-ups', () => {
 
       signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: null });
       const { unmount } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getByText(/Superseded by #917/)).toBeInTheDocument();
       unmount();
 
       signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: 'viewer' });
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getByText("We're handling this as part of a toolbar fix.")).toBeInTheDocument();
       expect(screen.queryByText(/Superseded by #917/)).not.toBeInTheDocument();
     });
@@ -366,7 +366,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
 
     it('opens the thread and warns that a reply is public before anything is typed', async () => {
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getByText(/posted to our public issue tracker/i)).toBeInTheDocument();
     });
 
@@ -375,10 +375,10 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     it('says an unlinked note is private, and does not claim its replies are public', async () => {
       noteDocs = [{ ...NOTE, githubIssueUrl: undefined }];
       const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
 
       expect(
-        screen.getByText(/Only you and the team can read replies on this note, because it isn't linked to an issue yet\./i)
+        screen.getByText(/Only you and the team can read replies on this report, because it isn't linked to an issue yet\./i)
       ).toBeInTheDocument();
       expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
       // The globe is the same false claim in pictogram form.
@@ -389,15 +389,15 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     it('treats a note whose issue was unlinked as private again', async () => {
       noteDocs = [{ ...NOTE, githubIssueUrl: null }];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
 
-      expect(screen.getByText(/Only you and the team can read replies on this note/i)).toBeInTheDocument();
+      expect(screen.getByText(/Only you and the team can read replies on this report/i)).toBeInTheDocument();
       expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
     });
 
     it('keeps the public sentence on a note linked to an issue', async () => {
       const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
 
       expect(
         screen.getByText('Replies are posted to our public issue tracker, where anyone can read them.')
@@ -408,13 +408,13 @@ describe('MyNotes — your own notes and their follow-ups', () => {
 
     it('keeps Send disabled until there is something to send', async () => {
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getByRole('button', { name: /^Send$/i })).toBeDisabled();
     });
 
     it('posts a follow-up through the server route, which is the only write path', async () => {
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.type(screen.getByRole('textbox'), 'Which screen is it on?');
       await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
 
@@ -432,7 +432,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     it('surfaces a failure instead of losing the reply silently', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.type(screen.getByRole('textbox'), 'Any news?');
       await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
 
@@ -447,7 +447,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r2', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       // Rows, not bubbles: your own name shows (never "You"), and the team
       // is "The team" rather than whoever on it happened to write.
       expect(screen.queryByText('You')).not.toBeInTheDocument();
@@ -463,7 +463,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r3', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
       ];
       const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(container.querySelectorAll('[data-stream-row]')).toHaveLength(3);
       // The second message within five minutes drops the name.
       expect(screen.getAllByText('Jane Student')).toHaveLength(1);
@@ -476,13 +476,13 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r2', authorRole: 'team', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getAllByText(/Edited/)).toHaveLength(1);
     });
 
     it('keeps the public-tracker line under the composer', async () => {
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       const box = screen.getByRole('textbox');
       const line = screen.getByText(/posted to our public issue tracker/i);
       expect(box.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -491,7 +491,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     it('keeps what you typed when the send fails', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.type(screen.getByRole('textbox'), 'Any news?');
       await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
       await screen.findByRole('alert');
@@ -503,7 +503,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.queryByRole('button', { name: /mention/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /reply in thread/i })).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
@@ -517,7 +517,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r3', authorRole: 'submitter', authorId: 'u2', authorName: 'Somebody Else', body: 'Not mine.', createdAt: '2026-09-04T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.getAllByRole('button', { name: /edit/i })).toHaveLength(1);
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
@@ -527,7 +527,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r1', authorRole: 'team', authorName: 'Tony Wang', body: 'Superseded by #917.', launderedBody: 'Handled.', relayed: true, createdAt: '2026-09-02T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
     });
 
@@ -536,9 +536,9 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      const editor = screen.getByRole('textbox', { name: /edit your follow-up/i });
+      const editor = screen.getByRole('textbox', { name: /edit your reply/i });
       await userEvent.clear(editor);
       await userEvent.type(editor, 'Changed my question');
       await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
@@ -560,9 +560,9 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      const editor = screen.getByRole('textbox', { name: /edit your follow-up/i });
+      const editor = screen.getByRole('textbox', { name: /edit your reply/i });
       await userEvent.clear(editor);
       await userEvent.type(editor, 'Should not persist');
       await userEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
@@ -578,10 +578,10 @@ describe('MyNotes — your own notes and their follow-ups', () => {
         { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
       ];
       render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
       await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      await userEvent.clear(screen.getByRole('textbox', { name: /edit your follow-up/i }));
-      await userEvent.type(screen.getByRole('textbox', { name: /edit your follow-up/i }), 'Changed');
+      await userEvent.clear(screen.getByRole('textbox', { name: /edit your reply/i }));
+      await userEvent.type(screen.getByRole('textbox', { name: /edit your reply/i }), 'Changed');
       await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
 
       await waitFor(() => {

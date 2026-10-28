@@ -300,7 +300,7 @@ describe('TopNav primary tabs per role', () => {
       'Questions',
       'The Journey',
       'Visits',
-      'Your notes',
+      'Your reports',
     ]);
   });
 
@@ -641,10 +641,10 @@ describe('Your notes as its own destination', () => {
     expect(canAccessRoute(null, '/feedback')).toBe(false);
   });
 
-  it('is labelled "Your notes" and sits in the rail Today group', () => {
+  it('is labelled "Your reports" and sits in the rail Today group', () => {
     const item = NAV_ITEMS.find((i) => i.href === '/feedback');
     expect(item).toBeDefined();
-    expect(item?.label).toBe('Your notes');
+    expect(item?.label).toBe('Your reports');
     expect(item?.minRole).toBe('viewer');
 
     const today = groupedNavFor('viewer').find((g) => g.label === 'Today');

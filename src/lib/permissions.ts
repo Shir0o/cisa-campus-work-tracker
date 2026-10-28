@@ -143,15 +143,15 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/answered', label: 'Answered', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },
   { href: '/messages', label: 'Messages', minRole: 'viewer' },
-  // "Questions", not "Questions for the team" — the long form does not fit one
+  // "Questions", not "Questions for Full-timers" — the long form does not fit one
   // line in the 224px More menu. The page heading keeps the full name.
   { href: '/questions', label: 'Questions', minRole: 'manager' },
   // "Around the team" — the label the team already says, not renamed (#943).
   { href: '/around', label: 'Around the team', minRole: 'admin' },
-  // Your notes (`/feedback`) is the submitter's own side of the feedback
+  // Your reports (`/feedback`) is the submitter's own side of the feedback
   // loop (ADR 0019). It reads as a personal inbox, so it sits in Today
   // beside the other things aimed at you.
-  { href: '/feedback', label: 'Your notes', minRole: 'viewer' },
+  { href: '/feedback', label: 'Your reports', minRole: 'viewer' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 

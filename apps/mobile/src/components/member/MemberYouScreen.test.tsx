@@ -65,8 +65,8 @@ describe('MemberYouScreen', () => {
     );
 
     expect(getByText('Tell the team')).toBeTruthy();
-    expect(getByText("Tell us how it's going")).toBeTruthy();
-    expect(getByText('An idea, something that felt off, or a thank-you')).toBeTruthy();
+    expect(getByText("Report a problem or idea")).toBeTruthy();
+    expect(getByText('Goes to the people who build the app.')).toBeTruthy();
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });
 
@@ -77,7 +77,7 @@ describe('MemberYouScreen', () => {
       </ThemeProvider>,
     );
 
-    const feedbackBtn = getByText("Tell us how it's going");
+    const feedbackBtn = getByText("Report a problem or idea");
     await fireEvent.press(feedbackBtn);
 
     expect(getByTestId('feedback-sheet')).toBeTruthy();

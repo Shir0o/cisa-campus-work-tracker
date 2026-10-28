@@ -183,7 +183,7 @@ export function AskScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: c.room.bg }}>
-      <V2Screen title={t('mobile.ask.title', 'Ask the team')} onBack={() => router.back()}>
+      <V2Screen title={t('mobile.ask.title', 'Ask a Full-timer')} onBack={() => router.back()}>
         {/* Composer at the top */}
         <View
           style={{

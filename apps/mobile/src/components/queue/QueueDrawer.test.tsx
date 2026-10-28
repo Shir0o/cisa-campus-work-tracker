@@ -37,10 +37,10 @@ describe('QueueDrawer', () => {
     // People is the one door; The Journey is its Step pills (ADR 0047).
     expect(queryByText('The Journey')).toBeNull();
     expect(getByText('Messages')).toBeTruthy();
-    expect(getByText('Ask the team')).toBeTruthy();
+    expect(getByText('Ask a Full-timer')).toBeTruthy();
     expect(getByText('Sign-up form')).toBeTruthy();
     expect(getByText('How this works')).toBeTruthy();
-    expect(getByText("Tell us how it's going")).toBeTruthy();
+    expect(getByText("Report a problem or idea")).toBeTruthy();
     expect(getByText('Your app')).toBeTruthy();
   });
 
@@ -54,7 +54,7 @@ describe('QueueDrawer', () => {
       </ThemeProvider>,
     );
 
-    const feedbackBtn = getByText("Tell us how it's going");
+    const feedbackBtn = getByText("Report a problem or idea");
     await fireEvent.press(feedbackBtn);
 
     expect(onClose).toHaveBeenCalledTimes(1);

@@ -24,7 +24,7 @@ export function MyNotesScreen() {
   return (
     <MemberScreen loading={loading} error={error}>
       <MemberBack />
-      <MemberHead greeting={t('feedback.your_notes', 'Your notes')} showDate={false} />
+      <MemberHead greeting={t('feedback.your_notes', 'Your reports')} showDate={false} />
       <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.room.ink2, marginTop: -12 }}>
         {t('feedback.your_notes_intro', 'What came of the notes you left, and the follow-ups.')}
       </Text>
@@ -127,13 +127,13 @@ function NoteCard({ note }: { note: Feedback }) {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t('feedback.follow_ups', 'Follow-ups')}
+        accessibilityLabel={t('feedback.follow_ups', 'Replies')}
         onPress={() => setExpanded((v) => !v)}
         hitSlop={8}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
       >
         <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.link }}>
-          {t('feedback.follow_ups', 'Follow-ups')}
+          {t('feedback.follow_ups', 'Replies')}
         </Text>
         <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.widget.ink3 }}>{expanded ? '−' : '+'}</Text>
       </Pressable>
@@ -304,7 +304,7 @@ function FollowUpThread({ noteId, linked }: { noteId: string; linked: boolean })
           multiline
           value={draft}
           onChangeText={setDraft}
-          placeholder={t('feedback.follow_up_placeholder', 'Write a follow-up…')}
+          placeholder={t('feedback.follow_up_placeholder', 'Write a reply…')}
           placeholderTextColor={c.widget.ink3}
           style={{
             borderWidth: 1,

@@ -192,7 +192,7 @@ function FtMore() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('mobile.ft_more.tell_us_how_its_going', "Tell us how it's going")}
+            accessibilityLabel={t('mobile.ft_more.tell_us_how_its_going', "Report a problem or idea")}
             onPress={() => setFeedbackOpen(true)}
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -205,7 +205,7 @@ function FtMore() {
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
-              {t('mobile.ft_more.tell_us_how_its_going', "Tell us how it's going")}
+              {t('mobile.ft_more.tell_us_how_its_going', "Report a problem or idea")}
             </Text>
             <View
               style={{

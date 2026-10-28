@@ -97,7 +97,7 @@ describe('CreateChatModal Component', () => {
     expect(screen.getByText('Alice Green')).toBeInTheDocument();
     expect(screen.getByText('Bob Brown')).toBeInTheDocument();
     // The start button is disabled until someone is picked.
-    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Start chat/i })).toBeDisabled();
   });
 
   it('filters users list by search input', async () => {
@@ -128,7 +128,7 @@ describe('CreateChatModal Component', () => {
     );
 
     fireEvent.click(screen.getByText('Alice Green'));
-    fireEvent.click(screen.getByRole('button', { name: /Start conversation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Start chat/i }));
 
     await waitFor(() => {
       expect(chatService.getOrCreateDirectChat).toHaveBeenCalledWith(
@@ -192,7 +192,7 @@ describe('CreateChatModal Component', () => {
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
 
     // Switch to Announcement tab
-    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Announcements$/i }));
     expect(screen.getByText(/Only Full-timers can open one/i)).toBeInTheDocument();
 
     // Step 1: Channel name and Audience presets
@@ -293,7 +293,7 @@ describe('CreateChatModal Component', () => {
     fireEvent.click(within(chip!).getByRole('button'));
 
     expect(chatService.getOrCreateDirectChat).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Start chat/i })).toBeDisabled();
   });
 
   it('falls back to first names for the group name when none is given', async () => {
@@ -320,7 +320,7 @@ describe('CreateChatModal Component', () => {
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
 
     fireEvent.click(screen.getByText('Alice Green'));
-    fireEvent.click(screen.getByRole('button', { name: /Start conversation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Start chat/i }));
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to start conversation:', expect.any(Error));
@@ -339,7 +339,7 @@ describe('CreateChatModal Component', () => {
     (chatService.createAnnouncementRoom as any).mockRejectedValueOnce(new Error('boom'));
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Announcements$/i }));
     fireEvent.change(screen.getByPlaceholderText(/Weekly notes/i), {
       target: { value: 'Weekly notes' },
     });
@@ -365,12 +365,12 @@ describe('CreateChatModal Component', () => {
     fireEvent.click(screen.getByText('Alice Green'));
 
     // Move to the announcement tab — step is 1, channel name input is shown.
-    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Announcements$/i }));
     expect(screen.getByLabelText(/Channel name/i)).toBeInTheDocument();
 
     // And back to Message — still empty.
-    fireEvent.click(screen.getByRole('button', { name: /^Message$/i }));
-    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /^Chat$/i }));
+    expect(screen.getByRole('button', { name: /Start chat/i })).toBeDisabled();
   });
 
   it('renders through the shared popup frame, labelled with its title (#1453)', () => {
@@ -378,7 +378,7 @@ describe('CreateChatModal Component', () => {
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
     expect(screen.getByRole('dialog', { name: 'New message' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start chat/i })).toBeInTheDocument();
   });
 
   it('asks before discarding a chat you have started, and keeps it on cancel (#1453)', () => {

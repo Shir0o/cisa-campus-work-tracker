@@ -193,7 +193,7 @@ export default function AskStack({
   return (
     <section className={cn("flex flex-col gap-3", className)}>
       <SectionHead
-        title={t("ask.questions_for_team", "Questions for the team")}
+        title={t("ask.questions_for_team", "Questions for Full-timers")}
         sub={
           <span className="flex flex-wrap items-center gap-2">
             <span>{t("ask.questions_for_team_sub", "Trainees' questions that aren't about one person. Answering clears them for everyone.")}</span>

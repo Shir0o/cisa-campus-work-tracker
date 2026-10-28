@@ -26,33 +26,33 @@ _Avoid_: Quota, target metric, daily KPI
 The dedicated non-production Firestore database instance in the `sac-campus-hub` project used for E2E tests and staging validation.
 _Avoid_: Test database, sandbox Firestore, staging db
 
-**Feedback Note ("Tell us how it's going")**:
-An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators. Submitted only through the note button; **Your notes** is where a submitter reads their own Notes back, with each one's outcome and its Follow-ups.
-_Avoid_: Bug ticket, customer support issue, help desk ticket
+**Report ("Report a problem or idea")**:
+A problem, idea, or request about the app itself — sent as one of **Something's broken**, **An idea**, **A request**, or **Something else** — sent by any user to the people who build it — not to their Full-timer. Submitted only through the report button; **Your reports** is where a submitter reads their own Reports back, with each one's outcome and its Replies. Formerly a "Feedback Note" behind "Tell us how it's going", which hid that it went to the app's makers rather than the ministry team.
+_Avoid_: Note, feedback note, "Tell us…", bug ticket, help desk ticket
 
-**Outcome (of a Feedback Note)**:
-What became of a Note, as its submitter would put it — it shipped, it is not planned, or it is already there. Distinct from the Note's **status**, which is where it sits in the team's own pipeline: status belongs to the team, an outcome belongs to the person who wrote the Note. It is set once when the work behind the Note is closed, and cleared if that reopens.
+**Outcome (of a Report)**:
+What became of a Report, as its submitter would put it — it shipped, it is not planned, or it is already there. Distinct from the Report’s **status**, which is where it sits in the team's own pipeline: status belongs to the team, an outcome belongs to the person who sent the Report. It is set once when the work behind the Report is closed, and cleared if that reopens.
 _Avoid_: Resolution, disposition, ticket state
 
 **What came of it**:
-What a submitter is told when their Note reaches an outcome, shown on **Your notes** and pushed as a notification. When the work shipped through a pull request, the sentence is written from that pull request; otherwise it is the **Canned response** for the outcome.
+What a submitter is told when their Report reaches an outcome, shown on **Your reports** and pushed as a notification. When the work shipped through a pull request, the sentence is written from that pull request; otherwise it is the **Canned response** for the outcome.
 _Avoid_: Reply, response, resolution message, support reply
 
 **Canned response**:
 The short fixed sentence for an outcome — one per outcome, never edited. It is the fallback when nothing can be written from a pull request, and so the guarantee that a submitter always hears *something*. It is no longer the only thing a submitter can be told.
 _Avoid_: Template, auto-reply, boilerplate
 
-**Follow-up (on a Feedback Note)**:
-A message on a Note, in either direction: the submitter asking about their own Note, or the team answering. A Note's Follow-ups mirror the comments on its linked GitHub issue both ways — a comment made there is restated for the submitter before they see it, and a Follow-up written here is posted onto the issue, where it is public. A Follow-up never changes a Note's status or outcome; one from a submitter marks the Note as waiting on the team.
-_Avoid_: Reply, comment, thread, message, question, ask — each of those already names something else in this product
+**Reply (on a Report)**:
+A message on a Report, in either direction: the submitter asking about their own Report, or the app's makers answering. A Report's Replies mirror the comments on its linked GitHub issue both ways — a comment made there is restated for the submitter before they see it, and a Reply written here is posted onto the issue, where it is public. A Reply never changes a Report's status or outcome; one from a submitter marks the Report as waiting on the makers. Replies on a Report are a flat list, not a **Thread**. Formerly "Follow-up", which belongs to reaching a person.
+_Avoid_: Follow-up, comment, message
 
-**Your notes (`/feedback`)**:
-The submitter's own side of the feedback loop: every Note they have left, what came of it, and its Follow-ups. It is not a place to submit — the note button is the only composer. The owner reads the loop raw here and switches to what a submitter sees through **owner view**.
-_Avoid_: Send feedback, feedback page, my tickets
+**Your reports (`/feedback`)**:
+The submitter's own side of the feedback loop: every Report they have sent, what came of it, and its Replies. It is not a place to submit — the note button is the only composer. The owner reads the loop raw here and switches to what a submitter sees through **owner view**.
+_Avoid_: Your notes, feedback page, my tickets
 
 **Remove an interaction**:
-Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer, and only on a person they can see (#1350); reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
-_Avoid_: Archive entry, trash a conversation
+Permanently deleting a logged Interaction from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer, and only on a person they can see (#1350); reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
+_Avoid_: Archive entry, trash a conversation, Remove conversation — **Conversation** is the staff stream, never an Interaction
 
 **Remove from prayer list**:
 Taking a person off `/prayer` — the row menu's destructive action on the web card, the × on the mobile card. It is team-wide: the removal is stored on the contact as `prayerListRemoved`, written by a Student or above who can see the person, so every teammate's page agrees. Nothing is deleted, and Undo clears it. Adding them back to the team list (a burden on the page, or "Choose people") also clears it. Distinct from **Archived**, which is a mark on a single prayer, not something you do to a person (#714, #715, #1692).
@@ -64,9 +64,25 @@ The desktop search palette that opens the do-everything navigation: jump to any 
 The text search on the Directory that finds a contact by matching their name, email, spiritual background, tags, and the teammates tied to them (founders, carers, co-creators). Name matches rank first, and matching is word-boundary rather than substring — "ian" surfaces a person named Ian, not every contact with "christian" in a field — while a contact matched only through a tied teammate is still shown, just demoted beneath any name matches.
 _Avoid_: Find someone, person search, name search
 
-**Questions for the team**:
-The Full-timer destination for trainee questions that aren't about one person, at `/questions`. My Day's "Questions for the team" stack is a summary that points here — answering happens in exactly one place, on the page's question cards.
-_Avoid_: Ask the team board
+**Messages**:
+The in-app place where people write to each other outside any one contact: **Chats** and **Announcements**. Never the off-app texting logged as an Interaction, which is **Text / DM**.
+_Avoid_: Conversations (for chats), inbox
+
+**Chat**:
+A direct or group exchange in **Messages**, where everyone in it can write.
+_Avoid_: Conversation, message (for the whole exchange), DM
+
+**Announcements**:
+A room in **Messages** that everyone in it reads, where only Full-timers post at the top level and anyone may answer in a **Thread**. Distinct from the **What's New Announcement**, which is about the app.
+_Avoid_: Channel, broadcast
+
+**Text / DM**:
+The Interaction type for reaching a person by text, DM, or any other written message outside the app.
+_Avoid_: Chat / Message, Message
+
+**Questions for Full-timers**:
+The Full-timer destination for trainee questions that aren't about one person, at `/questions`. A Trainee raises one through **Ask a Full-timer**; page and button both name who answers, because "the team" also means the YP and Campus teams. My Day's "Questions for Full-timers" stack is a summary that points here — answering happens in exactly one place, on the page's question cards.
+_Avoid_: Questions for the team, Ask the team, Ask the team board
 
 **`--accent` (CSS token)**:
 The interactive-text signal — links, clickable names, and `hover:text-*`
@@ -143,7 +159,7 @@ The one sentence a Section turns on, lifted out and set large on its own — eit
 _Avoid_: Highlight, pull quote, takeaway, big idea
 
 **Prompt**:
-The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
+The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to **Questions for Full-timers** at `/questions`, which is trainees asking Full-timers.
 _Avoid_: Question (bare), exercise, discussion question
 
 **Blank**:
@@ -214,7 +230,7 @@ _Avoid_: The reader, scan view, bible study page, the study (bare)
 The Full-timers-only stream of messages on a contact, where staff reason together about how to care for that person. It shares the side pane of the contact detail page with **Conversation**, behind a switch, and a Trainee's pane has no switch because they cannot see it. It is named for its audience on purpose: **Conversation** is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat
 
-Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
+Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for Full-timers** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
 
 **Mention**:
 Explicitly tagging a teammate in a Conversation, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
@@ -244,8 +260,8 @@ One staff member saying a **Follow up** wants doing, written into a contact's **
 _Avoid_: Nudge, reminder, assigned follow-up, task
 
 **Conversation (on a contact)**:
-The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** stream, which is the same kind of thread restricted to staff.
-_Avoid_: Follow-up, Thread, Comments, Walking together
+The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. What is written there comes in three kinds, each named for what it does: **Update**, **Question**, and **Ask someone to follow up** (which raises a Follow-up ask). The word means only this stream — a logged contact with the person is an **Interaction**, and an exchange in **Messages** is a **Chat**. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** stream, which is the same kind of thread restricted to staff.
+_Avoid_: Follow-up, Thread, Comments, Walking together; Comment (for the Update kind); Ask a follow-up (reads as a follow-up question)
 
 **The story so far**:
 What has happened *with* a person, in one list, newest first: logged **Interactions**, every **Gathering** they came to, prayers, messages someone chose to **Add to story**, and every change anyone made — step, kind, shares, **Delegates**, carers, tags, profile edits — each showing what it was and what it became. Things people did stand as full entries; things people changed are one-line entries, and a run of changes by one person folds into one. Coming to a Gathering is read from its attendance rather than logged separately, so unmarking someone takes it back out; weeks in a row at the same Rhythm fold into one entry ("came to College Meeting · 6 weeks running"), and absences are never shown. What staff *say about* the person is not in it: that is the **Conversation**, read beside the story rather than inside it, because a conversation has to read top-down to be answered and a story reads best newest first. Whoever can see the person sees all of it. There is exactly one story per person — no separate history, interactions, or prayer list beside it.

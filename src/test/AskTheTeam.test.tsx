@@ -111,7 +111,7 @@ beforeEach(() => {
 
 const PLACEHOLDER = "What do you want to ask? Say it how you'd say it out loud.";
 const openComposer = () => {
-  fireEvent.click(screen.getByRole("button", { name: "Ask the team…" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ask a Full-timer…" }));
   return screen.getByRole("textbox", { name: "Your question for the team" });
 };
 
@@ -182,7 +182,7 @@ describe("AskTheTeam collapsed composer", () => {
 
   it("starts as a single trigger row with no textarea", () => {
     render(<AskTheTeam meUid="t1" />);
-    expect(screen.getByRole("button", { name: "Ask the team…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask a Full-timer…" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
@@ -190,7 +190,7 @@ describe("AskTheTeam collapsed composer", () => {
     render(<AskTheTeam meUid="t1" />);
     const textarea = openComposer();
     expect(textarea).toHaveFocus();
-    expect(screen.queryByRole("button", { name: "Ask the team…" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ask a Full-timer…" })).not.toBeInTheDocument();
   });
 
   it("Escape collapses it and returns focus to the trigger", () => {
@@ -199,7 +199,7 @@ describe("AskTheTeam collapsed composer", () => {
     fireEvent.change(textarea, { target: { value: "half a thought" } });
     fireEvent.keyDown(textarea, { key: "Escape" });
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ask the team…" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Ask a Full-timer…" })).toHaveFocus();
     // The draft survives a collapse.
     expect(openComposer()).toHaveValue("half a thought");
   });

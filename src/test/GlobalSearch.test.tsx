@@ -297,7 +297,7 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
     expect(screen.getAllByText('People').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Conversations').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Interactions').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Coordination Notes').length).toBeGreaterThan(0);
 
     // History is opt-in behind a pill toggle.
@@ -321,7 +321,7 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
     expect(screen.getAllByText('People').length).toBeGreaterThan(0);
-    expect(screen.queryAllByText('Conversations').length).toBe(0);
+    expect(screen.queryAllByText('Interactions').length).toBe(0);
     expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
     expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
   });
@@ -344,7 +344,7 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
     expect(firestore.collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'interactions');
-    expect(screen.getAllByText('Conversations').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Interactions').length).toBeGreaterThan(0);
   });
 
   it('↓ then ↵ opens the focused contact', () => {
@@ -409,7 +409,7 @@ describe('GlobalSearch', () => {
   it('handles mobile overlay input, clear, and cancel functionality', () => {
     render(<GlobalSearch />);
     
-    const mobileInput = screen.getByPlaceholderText('Search people, conversations, notes…') as HTMLInputElement;
+    const mobileInput = screen.getByPlaceholderText('Search people, interactions, notes…') as HTMLInputElement;
     
     // Type query in mobile input
     fireEvent.change(mobileInput, { target: { value: 'bob' } });
@@ -470,7 +470,7 @@ describe('GlobalSearch', () => {
   it('clicking a Conversation result row opens the contact it belongs to', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
-    const row = screen.getAllByText('Conversations')[0]
+    const row = screen.getAllByText('Interactions')[0]
       .closest('div')!.parentElement!.querySelector('button')!;
     fireEvent.click(row);
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
@@ -554,7 +554,7 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     await new Promise((r) => setTimeout(r, 80));
     expect(matchMediaMock).toHaveBeenCalledWith('(min-width: 1024px)');
-    expect(screen.getByPlaceholderText('Search people, conversations, notes…')).toHaveFocus();
+    expect(screen.getByPlaceholderText('Search people, interactions, notes…')).toHaveFocus();
     window.matchMedia = origMatchMedia;
   });
 
@@ -776,7 +776,7 @@ describe('GlobalSearch', () => {
   it('leaves the mobile overlay a separate full-screen surface, not the desktop dialog', () => {
     render(<GlobalSearch />);
     const mobileOverlay = screen
-      .getByPlaceholderText('Search people, conversations, notes\u2026')
+      .getByPlaceholderText('Search people, interactions, notes\u2026')
       .closest('.fixed')!;
 
     expect(mobileOverlay.className).toContain('lg:hidden');

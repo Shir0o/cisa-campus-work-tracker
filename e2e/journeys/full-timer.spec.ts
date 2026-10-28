@@ -698,7 +698,7 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
     await waitForShell(page);
 
     await page.getByRole('button', { name: /new/i }).first().click();
-    await page.getByRole('button', { name: /^announcement$/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /^announcements$/i }).click();
     await page.getByLabel(/channel name/i).fill(title);
     await expect(page.getByRole('dialog').getByText('Everyone in the app', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^next$/i }).click();
@@ -789,7 +789,7 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
 test.describe('Full-timer journey — Questions for the team (#1477)', () => {
   test.describe.configure({ mode: 'serial' });
 
-  const heading = (page: Page) => page.getByRole('heading', { name: 'Questions for the team' });
+  const heading = (page: Page) => page.getByRole('heading', { name: 'Questions for Full-timers' });
   const OWN_PLACEHOLDER = /What do you want to ask/;
 
   async function openQuestions(page: Page) {
@@ -798,7 +798,7 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
   }
 
   async function openAskPanel(page: Page) {
-    await page.getByRole('button', { name: 'Ask the team', exact: true }).click();
+    await page.getByRole('button', { name: 'Ask a Full-timer', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
   }
 
@@ -915,7 +915,7 @@ test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
     await waitForShell(page);
 
     // One line: the title, a count, and the door — 44px tall at least.
-    const row = page.getByRole('link', { name: /Questions for the team/ });
+    const row = page.getByRole('link', { name: /Questions for Full-timers/ });
     await expect(row).toBeVisible({ timeout: 15_000 });
     const rowBox = await row.boundingBox();
     expect(rowBox).not.toBeNull();
@@ -936,7 +936,7 @@ test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
     // The door is the list, not one focused answer.
     await row.click();
     await expect(page).toHaveURL(/\/questions$/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Questions for the team' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -956,7 +956,7 @@ test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
       await signInAs(page, role);
       await page.goto('/feedback');
       await waitForShell(page);
-      await expect(page.getByRole('heading', { name: /your notes/i })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole('heading', { name: /your reports/i })).toBeVisible({ timeout: 10_000 });
       await expect(page.locator('#form-message')).toHaveCount(0);
       await expect(page.getByText(/what kind of note is it/i)).toHaveCount(0);
     }

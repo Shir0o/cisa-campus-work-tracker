@@ -1002,7 +1002,7 @@ export default function Messages() {
                   </div>
                   {annRooms.map(renderRoomItem)}
                   <div className="sech">
-                    <span>{t('common.conversations', 'Conversations')}</span>
+                    <span>{t('common.conversations', 'Chats')}</span>
                     <span className="rule" />
                   </div>
                   {convRooms.map(renderRoomItem)}

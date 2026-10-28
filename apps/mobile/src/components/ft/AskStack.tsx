@@ -37,7 +37,7 @@ export function AskStack({
   if (stacks.length === 0) return null;
 
   return (
-    <Widget label={t('mobile.ask.questions_for_team', 'Questions for the team')} count={unread}>
+    <Widget label={t('mobile.ask.questions_for_team', 'Questions for Full-timers')} count={unread}>
       {stacks.flatMap((stack) =>
         stack.items.map((m, i) => {
           const who = nameByUid[m.from] || m.fromName || 'Someone';

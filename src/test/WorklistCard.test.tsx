@@ -313,9 +313,9 @@ describe("the worklist card, through On you (#813, #943)", () => {
     card();
     fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
     const picker = screen.getByRole("group", { name: "What are you writing" });
-    expect(within(picker).getByRole("button", { name: "Comment" })).toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: "Update" })).toBeInTheDocument();
     expect(within(picker).getByRole("button", { name: "Question" })).toBeInTheDocument();
-    expect(within(picker).getByRole("button", { name: "Ask a follow-up" })).toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: "Ask someone to follow up" })).toBeInTheDocument();
   });
 
   // The heart used to open a one-emoji picker whose bubble landed on the

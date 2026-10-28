@@ -854,10 +854,10 @@ describe('Messages View Component', () => {
     fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Conversation details' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Chat details' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversation details' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chat details' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('chat-details-modal')).toBeInTheDocument();
@@ -919,7 +919,7 @@ describe('Messages View Component', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('create-chat-modal')).toBeNull();
     });
-    expect(await screen.findByText('No messages yet. Send a message to start the conversation!')).toBeInTheDocument();
+    expect(await screen.findByText('No messages yet. Send one to start the chat!')).toBeInTheDocument();
   });
 
   it('handles errors when fetching rooms', async () => {
@@ -1158,7 +1158,7 @@ describe('Messages View Component', () => {
       renderWithAnnouncement();
       // Verify rail sectioning when Announcements and Conversations coexist
       expect(document.querySelector('.sech')).toBeInTheDocument();
-      expect(screen.getByText('Conversations')).toBeInTheDocument();
+      expect(screen.getByText('Chats')).toBeInTheDocument();
       openTheRoom();
 
       await waitFor(() => {
@@ -1769,7 +1769,7 @@ describe('Messages View Component', () => {
       // Room is hidden and banner appears
       await waitFor(() => {
         expect(screen.queryByText('Delete Test Group')).toBeNull();
-        expect(screen.getByText(/One conversation is hidden from your list/i)).toBeTruthy();
+        expect(screen.getByText(/One chat is hidden from your list/i)).toBeTruthy();
       });
 
       // Bring it back
@@ -1788,7 +1788,7 @@ describe('Messages View Component', () => {
       fireEvent.click(deleteForEveryoneBtn);
 
       // Confirmation prompt appears
-      expect(screen.getByText(/Delete this conversation for everyone\?/i)).toBeTruthy();
+      expect(screen.getByText(/Delete this chat for everyone\?/i)).toBeTruthy();
 
       const confirmBtn = screen.getByText('Yes, delete it');
       fireEvent.click(confirmBtn);
@@ -1911,10 +1911,10 @@ describe('Messages View Component', () => {
       fireEvent.click(moreBtn);
 
       fireEvent.click(screen.getByText('Delete for everyone'));
-      expect(screen.getByText(/Delete this conversation for everyone\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/Delete this chat for everyone\?/i)).toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Keep it'));
-      expect(screen.queryByText(/Delete this conversation for everyone\?/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Delete this chat for everyone\?/i)).not.toBeInTheDocument();
       expect(chatService.deleteChatRoom).not.toHaveBeenCalled();
 
       fireEvent.click(container.querySelector('.msgb-menu-away')!);

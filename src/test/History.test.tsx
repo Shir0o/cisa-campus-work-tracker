@@ -179,7 +179,7 @@ describe('History View', () => {
     expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Interactions' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
 
     // Click 'Prayer' category button (which is type 'prayer')
@@ -388,13 +388,13 @@ describe('History View', () => {
     });
   });
 
-  it('humanize: "updated an interaction for" shows updated a conversation with', async () => {
+  it('humanize: "updated an interaction for" shows updated an interaction with', async () => {
     renderWithActivity({
       action: 'updated an interaction for Alice',
       description: '',
     });
     await waitFor(() => {
-      expect(screen.getByText('updated a conversation with')).toBeInTheDocument();
+      expect(screen.getByText('updated an interaction with')).toBeInTheDocument();
     });
   });
 
@@ -850,7 +850,7 @@ describe('History View', () => {
 
       expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Interacciones' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
     } finally {
       spy.mockRestore();

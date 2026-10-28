@@ -138,12 +138,12 @@ describe('FeedbackSheet', () => {
     expect(body.screenshot).toBe('');
   });
 
-  it('offers "See your notes" after a submit, linking into the read-back view', async () => {
+  it('offers "See your reports" after a submit, linking into the read-back view', async () => {
     const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
 
     await submit(getByPlaceholderText, getByText);
 
-    await fireEvent.press(getByText('See your notes'));
+    await fireEvent.press(getByText('See your reports'));
     const { useRouter } = require('expo-router');
     expect(useRouter().push).toHaveBeenCalledWith('/your-notes');
   });
