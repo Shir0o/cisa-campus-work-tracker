@@ -220,6 +220,35 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/history');
   });
 
+  it('sends a Trainee to the prayer list, not a record they cannot open (#1825)', () => {
+    mockUseAuth.mockReturnValue({ role: 'manager' });
+    triggerOnSnapshotCallbacks([
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'New Prayer Request',
+        body: 'Please pray for Bob',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    // Looking back is Full-timer-only (#1825), so the footer must not offer it.
+    expect(screen.queryByRole('button', { name: /See the whole record/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Open Prayer/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+  });
+
   it('marks notification read and navigates to link on item click', async () => {
     const mockNotifs = [
       {
