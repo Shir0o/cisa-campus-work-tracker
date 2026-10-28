@@ -183,7 +183,10 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
     // out of it, while a Trainee's prayer surface is the home card's personal
     // list ("just between you and God"). Community and Student reach both
     // through the ladder, so the asymmetry is the decision, not a missed entry.
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact', '/bible-study/read', '/bible-study/present'];
+    // '/settings' is here because a Trainee sets their own preferences. The
+    // team surface stays Full-timer-only: Settings branches on isAdmin, so a
+    // Trainee lands on the personal page and never the staff one.
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/read', '/bible-study/present'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;

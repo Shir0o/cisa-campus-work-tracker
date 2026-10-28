@@ -541,7 +541,8 @@ test.describe('Full-timer journey — a removal belongs to the team (#1692)', ()
 
 /**
  * Folded from `settings-and-partners.spec.ts` (#629). The Full-timer's admin
- * Settings surface and the role gate that keeps everyone else off it.
+ * Settings surface, and the role gate that keeps team administration to
+ * Full-timers while everyone else gets their own preferences.
  */
 test.describe('Full-timer journey — Settings and the role gate (#1477)', () => {
   test('the Full-timer manages partners, the day goal, and roles in Settings', async ({ page }) => {
@@ -629,13 +630,16 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     });
   });
 
-  test('a Trainee is redirected off /settings and its admin sections', async ({ page }) => {
+  test('a Trainee sees only their own preferences in Settings', async ({ page }) => {
     await signInAs(page, 'trainee');
     await page.goto('/settings');
-    await page.getByLabel('Main Navigation').waitFor({ state: 'visible', timeout: 20_000 });
-    expect(new URL(page.url()).pathname).toBe('/');
-    await expect(page.getByRole('heading', { level: 2, name: 'Going out together' })).not.toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: "The day's goal" })).not.toBeVisible();
+    await waitForShell(page);
+    expect(new URL(page.url()).pathname).toBe('/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText('Your account and preferences.')).toBeVisible();
+    await expect(page.getByText('Your team')).not.toBeVisible();
+    await expect(page.getByText('Going out together')).not.toBeVisible();
+    await expect(page.getByText("The day's goal")).not.toBeVisible();
   });
 
   test('Student and Community see only their profile in Settings', async ({ page }) => {

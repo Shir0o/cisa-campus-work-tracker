@@ -100,8 +100,8 @@ const EXPECT: Record<MatrixRole, {
       // people they are tied to, so attendance would be a partial room (#1834).
       absent: ['Coordination Notes', 'Visits', 'Gatherings'],
     },
-    allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
-    denied: ['/coordination', '/admin/feedback', '/settings', '/attendance'],
+    allowed: ['/', '/board', '/directory', '/messages', '/feedback', '/settings'],
+    denied: ['/coordination', '/admin/feedback', '/attendance'],
     fallback: '/',
   },
   fulltimer: { // admin — home nav label is "My Day", not "Home"
