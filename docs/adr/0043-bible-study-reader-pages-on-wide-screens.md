@@ -16,7 +16,7 @@ Four directions were compared on the design canvas (reading column with an outli
 
 3. **On the paged deck the reducer's `sectionIndex` owns the position.** Section tabs, Previous / Next and Left/Right/Page Up/Page Down all dispatch the existing `jump`; no new actions, and `advance`/`back` stay deleted. On the scrolling deck scroll position stays the owner (ADR 0014 §2). Crossing the floor keeps the Section on screen and every revealed Blank.
 
-4. **One Section per screen.** The heading leads the card, then every block follows in the author's order in one column; the Passage is set larger than the notes but keeps its place in the doc. (Amended: the Passage was first lifted into a left column beside the notes, with the heading atop the right column, which reordered the author's doc and made the headless Passage read as the previous Section running on.) A Section is never split across columns.
+4. **A Section is set as a book, two pages to a spread.** The heading leads, then every block follows in the author's order, flowing down the left page and on to the right at the card's height; the Passage is set larger than the notes but keeps its place in the doc. A Section longer than a spread runs on to further spreads, and Next / Previous (and the paging keys) turn a page before they change Section — Previous from a Section's first spread lands on the last spread of the one before. Every Section opens on a left page: when a Section ends on a left page, the right page stays blank rather than starting the next Section. (Amended: the Passage was first lifted into a left column beside the notes, with the card scrolling, which reordered the author's doc and made the headless Passage read as the previous Section running on.)
 
 5. **The tabs and a Next button that names the next Section replace the phone's edge index and dimmed peek.** The last Section ends the Meeting in place of Next. A page change is announced to screen readers and does not move focus.
 
@@ -24,7 +24,9 @@ Four directions were compared on the design canvas (reading column with an outli
 
 - **Paged everywhere, phones included.** Re-litigates ADR 0014 for the surface it was decided on: on a phone a Section often outgrows the screen, and scroll-snap's overshoot recovery is exactly what paging loses. On a wide card one Section usually fits side by side, so paging costs nothing there.
 - **The scrolling deck, widened.** Keeps one model, but a wide panel holding a phone-shaped column is the empty-space problem this issue reported.
-- **The Passage in its own left column beside the notes.** The original §4. It used the width, but it reordered the doc the author wrote, and a Passage with no heading above it read as the previous Section continuing.
+- **The Passage in its own left column beside the notes.** The original §4. It reordered the doc the author wrote, and a Passage with no heading above it read as the previous Section continuing.
+- **One column in the author's order, scrolling.** Keeps the order but leaves half a wide screen empty again.
+- **Two balanced columns, scrolling.** Keeps order and width, but a long Section makes both columns tall: the reader scrolls down the left, then back up for the right.
 - **A swipe deck.** Rejected again for ADR 0014's reason: a swipe competes with a Blank's tap and is a gesture a reader must learn. Tabs and Next are visible.
 - **Choosing the layout with a media query.** Simpler, but wrong for the editor preview (§2).
 

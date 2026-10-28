@@ -114,6 +114,9 @@ const PANEL_TOP_PAD = 18;
 // phone preview stays a phone inside a wide desktop window.
 const PAGED_MIN_WIDTH = 768;
 const PAGED_MIN_HEIGHT = 600;
+// The gutter between the two pages of a spread, in px. A spread is two page
+// columns and this gap, so the next spread starts one viewport + one gap on.
+const PAGE_GAP = 64;
 
 // The reader's type scale (#923): body text sizes in px, the raised default
 // first. The student's choice is remembered in that browser's storage — the
@@ -270,9 +273,12 @@ const Panel: React.FC<{
 };
 
 /**
- * One Section on the paged deck's card (#1590): the heading, then every block
- * in the author's order in one column — the Passage sits where the doc puts
- * it rather than being lifted into a column of its own.
+ * One Section on the paged deck's card (#1590), set as a book: the heading
+ * and then every block in the author's order flow down the left page and on
+ * to the right, at the card's height. A Section longer than a spread runs on
+ * to further columns off to the right; the deck scrolls the viewport one
+ * spread at a time, so a Section always opens on a left page and the next
+ * Section never fills the rest of its last spread.
  */
 const PagedSection: React.FC<{
   section: Section;
@@ -283,11 +289,20 @@ const PagedSection: React.FC<{
 }> = ({ section, index, typeSize, openBlanks, onRevealBlank }) => (
   // A Passage is still set larger than the notes around it, and still follows
   // the student's text size: its block takes --reader-fs from this variable.
+  // The body and its lists are flex columns on the phone; here they are made
+  // blocks, because not every browser splits a flex box across columns, and
+  // a prompt card is kept whole on one page.
   <div
-    className="flex flex-col gap-6 px-14 py-12 max-w-[820px] mx-auto [&_[data-block-kind=passage]]:[--reader-fs:var(--reader-passage-fs)]"
-    style={{ '--reader-passage-fs': `${typeSize + 7}px` } as React.CSSProperties}
+    className="h-full [column-fill:auto] [&_[data-block-kind=passage]]:[--reader-fs:var(--reader-passage-fs)] [&_[data-testid=section-body]]:block [&_[data-testid=section-body]>*+*]:mt-5 [&_ul]:block [&_ol]:block [&_li+li]:mt-1.5 [&_[data-block-kind=prompt]]:break-inside-avoid"
+    style={
+      {
+        columnCount: 2,
+        columnGap: PAGE_GAP,
+        '--reader-passage-fs': `${typeSize + 7}px`,
+      } as React.CSSProperties
+    }
   >
-    <h2 className="font-serif font-bold text-[length:calc(var(--reader-fs)*1.7)] leading-[1.08] tracking-tight text-on-surface">
+    <h2 className="mb-6 break-after-avoid font-serif font-bold text-[length:calc(var(--reader-fs)*1.7)] leading-[1.08] tracking-tight text-on-surface">
       {section.title}
     </h2>
     <SectionBody
@@ -474,12 +489,57 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     panelRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Each new Section on the paged deck opens at its top, not partway down
-  // the card where the last long Section left the scroll.
-  const pagedCardRef = useRef<HTMLDivElement>(null);
+  // The spread on screen within the paged Section, and how many it fills.
+  // The page viewport is re-measured whenever the pages can reflow (a new
+  // Section, a revealed Blank, a text size, a resize). A new Section opens on its first
+  // spread — or on its last when Previous stepped back into it — and the
+  // viewport is scrolled there before paint. jsdom has no layout, so there a
+  // Section is always one spread.
+  const pagesRef = useRef<HTMLDivElement>(null);
+  const [spread, setSpread] = useState(0);
+  const [spreadCount, setSpreadCount] = useState(1);
+  // A resize reflows the pages without a render; this tick re-measures.
+  const [pagesBox, setPagesBox] = useState(0);
+  const landOnLastSpread = useRef(false);
+  const spreadSection = useRef(state.sectionIndex);
   useLayoutEffect(() => {
-    if (pagedCardRef.current) pagedCardRef.current.scrollTop = 0;
-  }, [state.sectionIndex]);
+    const el = pagesRef.current;
+    if (!el) return;
+    const width = el.clientWidth;
+    const pages = width > 0 ? Math.max(1, Math.round((el.scrollWidth + PAGE_GAP) / ((width + PAGE_GAP) / 2))) : 1;
+    const count = Math.ceil(pages / 2);
+    let at = Math.min(spread, count - 1);
+    if (spreadSection.current !== state.sectionIndex) {
+      spreadSection.current = state.sectionIndex;
+      at = landOnLastSpread.current ? count - 1 : 0;
+      landOnLastSpread.current = false;
+    }
+    if (count !== spreadCount) setSpreadCount(count);
+    if (at !== spread) setSpread(at);
+    el.scrollLeft = at * (width + PAGE_GAP);
+  }, [showPaged, sections, state.sectionIndex, state.openBlanks, typeSize, spread, spreadCount, pagesBox]);
+  useEffect(() => {
+    const el = pagesRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => setPagesBox((n) => n + 1));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showPaged]);
+
+  // Next turns the page while the Section has more, then moves on; Previous
+  // turns back, and from a Section's first spread lands on the last spread
+  // of the Section before.
+  const pageForward = () => {
+    if (spread < spreadCount - 1) setSpread(spread + 1);
+    else if (state.sectionIndex < total - 1) handleJump(state.sectionIndex + 1);
+  };
+  const pageBack = () => {
+    if (spread > 0) setSpread(spread - 1);
+    else if (state.sectionIndex > 0) {
+      landOnLastSpread.current = true;
+      handleJump(state.sectionIndex - 1);
+    }
+  };
 
   // Crossing the floor keeps the reader's place (#1590). Into the paged deck
   // needs nothing — the read model already holds the Section on screen. Back
@@ -497,7 +557,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   }, [showPaged]);
 
   // Keyboard paging (#1590), on the paged deck only: Left/Right and Page
-  // Up/Down step a Section. A key aimed at a field, or held with a modifier,
+  // Up/Down turn a page, and past a Section's last spread step a Section. A key aimed at a field, or held with a modifier,
   // is left alone so paging never hijacks typing or a browser shortcut. The
   // handler is an Effect Event so it steps from the CURRENT Section without
   // re-subscribing on every page.
@@ -508,9 +568,8 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     const step = e.key === 'ArrowRight' || e.key === 'PageDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 0;
     if (step === 0) return;
     e.preventDefault();
-    const next = state.sectionIndex + step;
-    if (next < 0 || next >= total) return;
-    handleJump(next);
+    if (step > 0) pageForward();
+    else pageBack();
   });
 
   useEffect(() => {
@@ -700,10 +759,10 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
 
           <div className="flex-1 min-h-0 flex px-8 py-[18px]">
             <div
-              ref={pagedCardRef}
               data-testid="paged-card"
-              className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[24px] bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)]"
+              className="flex-1 min-w-0 flex px-14 py-12 rounded-[24px] bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)]"
             >
+              <div ref={pagesRef} data-testid="paged-pages" className="flex-1 min-w-0 overflow-hidden">
               <PagedSection
                 section={sections[state.sectionIndex] ?? sections[0]}
                 index={state.sectionIndex}
@@ -711,16 +770,19 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
                 openBlanks={state.openBlanks}
                 onRevealBlank={(key) => dispatch({ type: 'revealBlank', key })}
               />
+              </div>
             </div>
           </div>
 
           {/* A page change is announced, not focused: focus stays on the
               control the student used, so pressing Next again keeps paging. */}
           <div data-testid="paged-announcement" aria-live="polite" className="sr-only">
-            {t('reader.section_announce')
-              .replace('{n}', String(state.sectionIndex + 1))
-              .replace('{total}', String(total))
-              .replace('{title}', sections[state.sectionIndex]?.title ?? '')}
+            {spread > 0
+              ? t('reader.page_announce').replace('{n}', String(spread + 1)).replace('{total}', String(spreadCount))
+              : t('reader.section_announce')
+                  .replace('{n}', String(state.sectionIndex + 1))
+                  .replace('{total}', String(total))
+                  .replace('{title}', sections[state.sectionIndex]?.title ?? '')}
           </div>
 
           {/* Previous · progress · Next (#1590). Next names the Section it
@@ -731,9 +793,9 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           >
             <button
               type="button"
-              disabled={state.sectionIndex === 0}
+              disabled={state.sectionIndex === 0 && spread === 0}
               className="h-12 px-5 inline-flex items-center gap-2 rounded-full border border-outline-variant text-[15px] font-medium text-on-surface transition-colors hover:bg-surface-variant/60 disabled:opacity-35 disabled:pointer-events-none"
-              onClick={() => handleJump(state.sectionIndex - 1)}
+              onClick={pageBack}
             >
               <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 18-6-6 6-6" />
@@ -753,14 +815,20 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
               </div>
               <span className="text-sm text-on-surface-variant tabular-nums">{counterText}</span>
             </div>
-            {state.sectionIndex < total - 1 ? (
+            {spread < spreadCount - 1 || state.sectionIndex < total - 1 ? (
               <button
                 type="button"
-                aria-label={`${t('reader.next')}: ${sections[state.sectionIndex + 1].title}`}
+                aria-label={
+                  spread < spreadCount - 1
+                    ? undefined
+                    : `${t('reader.next')}: ${sections[state.sectionIndex + 1].title}`
+                }
                 className="h-12 max-w-[min(360px,45%)] px-5 inline-flex items-center gap-2 rounded-full bg-on-surface text-background text-[15px] font-medium transition-opacity hover:opacity-90"
-                onClick={() => handleJump(state.sectionIndex + 1)}
+                onClick={pageForward}
               >
-                <span className="truncate">{sections[state.sectionIndex + 1].title}</span>
+                <span className="truncate">
+                  {spread < spreadCount - 1 ? t('reader.next_page') : sections[state.sectionIndex + 1].title}
+                </span>
                 <svg aria-hidden="true" className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
