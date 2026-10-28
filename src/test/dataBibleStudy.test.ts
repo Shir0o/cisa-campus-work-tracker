@@ -318,7 +318,10 @@ describe('bibleStudy data service', () => {
   });
 
   it('deleteStudy deletes the study document and its meetings', async () => {
-    const mockMeetingDoc = { ref: { path: 'bible_study_meetings/test-m1' } };
+    const mockMeetingDoc = {
+      ref: { path: 'bible_study_meetings/test-m1' },
+      data: () => ({ published: false }),
+    };
     vi.mocked(getDocs).mockResolvedValueOnce({
       docs: [mockMeetingDoc],
     } as any);
@@ -328,6 +331,26 @@ describe('bibleStudy data service', () => {
     expect(deleteDoc).toHaveBeenCalledWith(mockMeetingDoc.ref);
     expect(deleteDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'bible_study_studies/test-study' }),
+    );
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('deleteStudy unpublishes a published week before deleting it', async () => {
+    // The rules refuse deleting a published Meeting (ADR 0011).
+    const publishedDoc = {
+      ref: { path: 'bible_study_meetings/test-m2' },
+      data: () => ({ published: true }),
+    };
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [publishedDoc] } as any);
+
+    await deleteStudy(fakeDb, 'test-study');
+
+    expect(updateDoc).toHaveBeenCalledWith(
+      publishedDoc.ref,
+      expect.objectContaining({ published: false }),
+    );
+    expect(vi.mocked(updateDoc).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deleteDoc).mock.invocationCallOrder[0],
     );
   });
 });

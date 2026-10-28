@@ -328,6 +328,22 @@ export default function BibleStudyIndex() {
   const [deleteCandidate, setDeleteCandidate] = useState<Meeting | null>(null);
   const [deleteStudyCandidate, setDeleteStudyCandidate] = useState<Study | null>(null);
   const [deleteStudyBusy, setDeleteStudyBusy] = useState(false);
+  // What each code now showing the term to delete should show instead,
+  // keyed by slug; '' leaves the code between terms.
+  const [repointTo, setRepointTo] = useState<Record<string, string>>({});
+  const codesOnCandidate = deleteStudyCandidate
+    ? entryPoints.filter((ep) => ep.activeStudyId === deleteStudyCandidate.id)
+    : [];
+
+  const openDeleteStudy = (s: Study) => {
+    const fallback = studies.find((other) => other.id !== s.id)?.id ?? '';
+    setRepointTo(
+      Object.fromEntries(
+        entryPoints.filter((ep) => ep.activeStudyId === s.id).map((ep) => [ep.slug, fallback]),
+      ),
+    );
+    setDeleteStudyCandidate(s);
+  };
 
   const handleDuplicate = async (m: Meeting) => {
     if (!user) return;
@@ -369,6 +385,10 @@ export default function BibleStudyIndex() {
     if (!deleteStudyCandidate) return;
     setDeleteStudyBusy(true);
     try {
+      // Repoint first, so no code is left serving a term that is gone.
+      for (const ep of codesOnCandidate) {
+        await setActiveStudy(db, ep.slug, repointTo[ep.slug] || null);
+      }
       await deleteStudy(db, deleteStudyCandidate.id);
       const lastStored = readStored(LAST_STUDY_KEY);
       if (lastStored === deleteStudyCandidate.id) {
@@ -416,7 +436,7 @@ export default function BibleStudyIndex() {
           <h1 className="font-serif text-2xl font-bold text-on-surface">{t('nav.bible_study')}</h1>
 
           {/* Term / Study Selector (#1932) */}
-          {studies.length > 1 && (
+          {studies.length > 0 && (
             <div className="relative">
               <button
                 type="button"
@@ -536,7 +556,7 @@ export default function BibleStudyIndex() {
                           type="button"
                           onClick={() => {
                             setTermMenuOpen(false);
-                            setDeleteStudyCandidate(study);
+                            openDeleteStudy(study);
                           }}
                           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-error hover:bg-surface-variant transition-colors"
                         >
@@ -774,15 +794,6 @@ export default function BibleStudyIndex() {
                           </button>
                         </div>
                       )}
-                      <div className="mt-2 pt-2 border-t border-outline-variant/40">
-                        <button
-                          type="button"
-                          onClick={() => setDeleteStudyCandidate(study)}
-                          className="inline-flex items-center text-xs text-error font-medium hover:underline"
-                        >
-                          {t('study.delete_this_term', 'Delete this term...')}
-                        </button>
-                      </div>
                     </>
                   ) : (
                     'No study is active'
@@ -1008,36 +1019,48 @@ export default function BibleStudyIndex() {
                 .replace('{term}', deleteStudyCandidate.term)}
             </h2>
 
-            {entryPoints.some((ep) => ep.activeStudyId === deleteStudyCandidate.id) ? (
-              <div className="p-3 mb-5 rounded-xl bg-error/10 border border-error/20 text-xs text-error text-left">
+            {codesOnCandidate.map((ep) => (
+              <label key={ep.slug} className="block mb-3 text-left">
+                <span className="block text-xs font-semibold text-on-surface mb-1">
+                  {t('study.code_will_show', '/s/{slug} will show').replace('{slug}', ep.slug)}
+                </span>
+                <select
+                  value={repointTo[ep.slug] ?? ''}
+                  onChange={(e) => setRepointTo((prev) => ({ ...prev, [ep.slug]: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface"
+                >
+                  {studies
+                    .filter((s) => s.id !== deleteStudyCandidate.id)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title} · {s.term}
+                      </option>
+                    ))}
+                  <option value="">{t('study.between_terms', 'Nothing — between terms')}</option>
+                </select>
+              </label>
+            ))}
+
+            {meetings.some((m) => m.published) && (
+              <p className="text-xs text-on-surface mb-2 text-left">
                 {t(
-                  'study.cannot_delete_active',
-                  'This term is currently active on an entry point (/s/{slug}). Set another term active before deleting this one.',
-                ).replace(
-                  '{slug}',
-                  entryPoints.find((ep) => ep.activeStudyId === deleteStudyCandidate.id)?.slug ?? '',
-                )}
-              </div>
-            ) : meetings.some((m) => m.published) ? (
-              <div className="p-3 mb-5 rounded-xl bg-error/10 border border-error/20 text-xs text-error text-left">
-                {t(
-                  'study.cannot_delete_published',
-                  'This term has published weeks. Under ministry safety rules, published weeks must be unpublished first before the term can be deleted.',
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-on-surface-variant mb-5">
-                {meetings.length === 0
-                  ? t(
-                      'study.delete_warning_no_weeks',
-                      'This study and its term will be permanently deleted. This cannot be undone.',
-                    )
-                  : t(
-                      'study.delete_warning_with_weeks',
-                      'This study and all {n} draft week(s) will be permanently deleted. This cannot be undone.',
-                    ).replace('{n}', String(meetings.length))}
+                  'study.delete_will_unpublish',
+                  '{n} published week(s) will be unpublished.',
+                ).replace('{n}', String(meetings.filter((m) => m.published).length))}
               </p>
             )}
+
+            <p className="text-xs text-on-surface-variant mb-5 text-left">
+              {meetings.length === 0
+                ? t(
+                    'study.delete_warning_no_weeks',
+                    'This study and its term will be permanently deleted. This cannot be undone.',
+                  )
+                : t(
+                    'study.delete_warning_with_weeks',
+                    'This study and all {n} week(s) will be permanently deleted. This cannot be undone.',
+                  ).replace('{n}', String(meetings.length))}
+            </p>
 
             <div className="flex gap-2 justify-center">
               <button
@@ -1047,19 +1070,16 @@ export default function BibleStudyIndex() {
               >
                 {t('actions.cancel', 'Cancel')}
               </button>
-              {!entryPoints.some((ep) => ep.activeStudyId === deleteStudyCandidate.id) &&
-                !meetings.some((m) => m.published) && (
-                  <button
-                    type="button"
-                    disabled={deleteStudyBusy}
-                    onClick={() => void handleDeleteStudyConfirmed()}
-                    className="px-4 py-2 rounded-full bg-error text-on-error text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
-                  >
-                    {deleteStudyBusy
-                      ? t('study.deleting', 'Deleting...')
-                      : t('study.delete_term_button', 'Delete term')}
-                  </button>
-                )}
+              <button
+                type="button"
+                disabled={deleteStudyBusy}
+                onClick={() => void handleDeleteStudyConfirmed()}
+                className="px-4 py-2 rounded-full bg-error text-on-error text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                {deleteStudyBusy
+                  ? t('study.deleting', 'Deleting...')
+                  : t('study.delete_term_button', 'Delete term')}
+              </button>
             </div>
           </div>
         </div>
