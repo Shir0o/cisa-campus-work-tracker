@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.13.0...v1.13.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **copy:** give each messaging word one meaning ([#1918](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1918)) ([58d114e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/58d114ee11caa14f5e34e935ab18938637f9cae3))
+* **my-notes:** say an unlinked note's replies stay in-app ([#1855](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1855)) ([#1895](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1895)) ([d265a4e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d265a4ebc43843384c679f7721b7c4a44f791a46))
+
 ## [1.13.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.12.0...v1.13.0) (2026-10-25)
 
 
