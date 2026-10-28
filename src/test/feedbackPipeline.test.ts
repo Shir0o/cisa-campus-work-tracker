@@ -265,9 +265,33 @@ describe('FeedbackPipeline', () => {
       expect(mockGitHub.ensureLabel).toHaveBeenCalledWith('reporter:grace-h-2');
     });
 
+    it('carries the browser input trace, fenced, and omits the section when absent', async () => {
+      await pipeline.submitNote({
+        userId: 'user_900',
+        userName: 'Ada Lovelace',
+        message: 'Keyboard closes on autocorrect',
+        inputTrace: '+12ms focusout textarea#note -> null @ at blur (app.js:1)\n```\n+40ms viewport vv=560',
+      });
+
+      const withTrace = (mockGitHub.createIssue as any).mock.calls[0][0].body;
+      expect(withTrace).toContain('### Input trace');
+      expect(withTrace).toContain('+12ms focusout textarea#note -> null');
+      expect(withTrace).toContain('+40ms viewport vv=560');
+      // A trace can never break out of its own fence.
+      expect(withTrace).toContain("'''");
+
+      await pipeline.submitNote({
+        userId: 'user_901',
+        userName: 'Ada Lovelace',
+        message: 'No trace here',
+      });
+
+      const withoutTrace = (mockGitHub.createIssue as any).mock.calls[1][0].body;
+      expect(withoutTrace).not.toContain('### Input trace');
+    });
+
     it('mobile notes carry the screen route and say when no screenshot was captured', async () => {
       await pipeline.submitNote({
-        userId: 'user_321',
         userName: 'Ada Lovelace',
         message: 'Keyboard closes',
         url: 'Mobile App /more',

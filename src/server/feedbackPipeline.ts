@@ -138,6 +138,8 @@ export interface SubmitFeedbackNoteInput {
   url?: string;
   viewport?: string;
   userAgent?: string;
+  /** The browser's focus/composition/viewport trace from `src/lib/inputTrace.ts`. */
+  inputTrace?: string;
   screenshot?: unknown;
 }
 
@@ -643,6 +645,7 @@ export class FeedbackPipeline {
       url,
       viewport,
       userAgent,
+      inputTrace,
       screenshot,
     } = input;
 
@@ -706,6 +709,14 @@ export class FeedbackPipeline {
             ? prefix + cleanMsg
             : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
         const fence = '```';
+        // The reporter's own focus/composition/viewport events (#1735). The
+        // tracer records no typed text; the fence is neutralised so a trace can
+        // never break out of its block.
+        const trace = (inputTrace || '')
+          .replace(/```/g, "'''")
+          .replace(/\u0000/g, '')
+          .slice(0, 4000)
+          .trim();
 
         // NOTE: screenshot is omitted from GitHub body (ADR 0018). URL has IDs redacted.
         const bodyLines = [
@@ -724,6 +735,7 @@ export class FeedbackPipeline {
           `${fence}text`,
           cleanMsg,
           fence,
+          ...(trace ? ['', '### Input trace', `${fence}text`, trace, fence] : []),
           '',
           '---',
           '*Created automatically from CISA Campus Work Tracker user feedback.*',
