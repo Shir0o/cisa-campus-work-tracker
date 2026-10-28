@@ -86,6 +86,38 @@ function stubReaderBox() {
   };
 }
 
+// The paged deck flows a Section into fixed-height pages, two to a spread
+// (#1590), and counts the pages from the page viewport's scroll width. jsdom
+// has no layout, so this reports the viewport's width and, per Section heading
+// on screen, how many pages that Section fills. 64 is the page gap the reader
+// sets between columns.
+function stubPages(pagesByTitle: Record<string, number>, width = 1000) {
+  const gap = 64;
+  const column = (width - gap) / 2;
+  const isPages = (el: HTMLElement) => el.dataset.testid === 'paged-pages';
+  const clientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')!;
+  const scrollWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollWidth')!;
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return isPages(this) ? width : clientWidth.get!.call(this);
+    },
+  });
+  Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      if (!isPages(this)) return scrollWidth.get!.call(this);
+      const title = this.querySelector('h2')?.textContent ?? '';
+      const pages = pagesByTitle[title] ?? 1;
+      return pages * column + (pages - 1) * gap;
+    },
+  });
+  return () => {
+    delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+    delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+  };
+}
+
 function meeting(over: Partial<Meeting>): Meeting {
   return {
     id: 'm-1',
@@ -469,16 +501,17 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(screen.queryByLabelText('Open section index')).toBeNull();
     });
 
-    it('heads a Passage-and-notes Section above both columns, so it opens top-left', () => {
+    it("follows the author's block order rather than setting the Passage aside", () => {
       const box = stubReaderBox();
       const m = meeting({
         sections: [
           {
-            id: 'sec-split',
-            title: 'Split Section',
+            id: 'sec-order',
+            title: 'Ordered Section',
             content: [
+              { kind: 'prose', md: 'A note before it.' },
               { kind: 'passage', passage: { before: 'The passage words' }, ref: 'Romans 5:1' },
-              { kind: 'prose', md: 'A note beside it.' },
+              { kind: 'prompt', prompt: { kind: 'question', text: 'A question after it' } },
             ],
             points: [],
           },
@@ -487,12 +520,13 @@ describe('StudyReaderView (the scrolling deck)', () => {
       render(<StudyReaderView meeting={m} staleDateLabel={null} />);
       box.resize(1280, 800);
 
-      const heading = sectionHeading();
-      const passage = screen.getByTestId('paged-passage');
-      // The heading comes first and sits outside the Passage column's row,
-      // not at the top of the notes column to the Passage's right.
-      expect(heading.compareDocumentPosition(passage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(heading.parentElement?.contains(passage)).toBe(true);
+      const card = screen.getByTestId('paged-card');
+      const order = ['Ordered Section', 'A note before it.', 'The passage words', 'A question after it'].map((text) =>
+        within(card).getByText(text),
+      );
+      for (let i = 1; i < order.length; i++) {
+        expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
     });
 
     it('steps with Previous and Next, naming the next Section and ending the Meeting', () => {
@@ -580,15 +614,66 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(screen.getByText('standing')).toBeInTheDocument();
     });
 
-    it('opens each new Section at its top', () => {
-      const box = stubReaderBox();
-      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
-      box.resize(1280, 800);
+    describe('a Section longer than a spread turns pages before it moves on', () => {
+      let restorePages: () => void = () => {};
+      afterEach(() => restorePages());
 
-      const card = screen.getByTestId('paged-card');
-      card.scrollTop = 240;
-      fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
-      expect(card.scrollTop).toBe(0);
+      it('pages through a three-page Section, then on to the next Section', () => {
+        const box = stubReaderBox();
+        restorePages = stubPages({ 'Where peace starts': 3 });
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(1280, 800);
+
+        // Pages 1–2 on the first spread: Next turns the page, not the Section.
+        fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+        expect(sectionHeading()).toHaveTextContent('Where peace starts');
+        expect(screen.getByTestId('paged-pages').scrollLeft).toBe(1064);
+        expect(screen.getByTestId('paged-announcement')).toHaveTextContent('Page 2 of 2');
+
+        // Page 3 sits alone on the left; the next Section does not fill the
+        // right page — Next now names it and moves to it.
+        fireEvent.click(screen.getByRole('button', { name: 'Next: What suffering is doing' }));
+        expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+        expect(screen.getByTestId('paged-pages').scrollLeft).toBe(0);
+      });
+
+      it('steps back onto the last spread of the previous Section', () => {
+        const box = stubReaderBox();
+        restorePages = stubPages({ 'Where peace starts': 3 });
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(1280, 800);
+        fireEvent.click(within(screen.getByRole('navigation', { name: 'Sections' })).getByRole('button', { name: 'What suffering is doing' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+        expect(sectionHeading()).toHaveTextContent('Where peace starts');
+        expect(screen.getByTestId('paged-pages').scrollLeft).toBe(1064);
+        fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+        expect(screen.getByTestId('paged-pages').scrollLeft).toBe(0);
+      });
+
+      it('turns pages with the arrow keys too', () => {
+        const box = stubReaderBox();
+        restorePages = stubPages({ 'Where peace starts': 4 });
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(1280, 800);
+
+        fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+        expect(sectionHeading()).toHaveTextContent('Where peace starts');
+        fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+        expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      });
+
+      it('opens a Section reached from a tab on its first spread', () => {
+        const box = stubReaderBox();
+        restorePages = stubPages({ 'Where peace starts': 3, 'The end of the week': 3 });
+        render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+        box.resize(1280, 800);
+        fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+
+        fireEvent.click(within(screen.getByRole('navigation', { name: 'Sections' })).getByRole('button', { name: 'The end of the week' }));
+        expect(screen.getByTestId('paged-pages').scrollLeft).toBe(0);
+        expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument();
+      });
     });
 
     it('stays scrolling below either floor — narrow, or a phone held sideways', () => {

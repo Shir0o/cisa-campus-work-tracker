@@ -127,16 +127,9 @@ export type SectionBodyProps = {
   sectionIndex: number;
   openBlanks: Record<string, boolean>;
   onRevealBlank: (key: string) => void;
-  /**
-   * Renders only the Passage blocks, or only everything else — the paged
-   * deck sets the Passage beside the notes (#1590). Skipped blocks keep their
-   * place in the Section, so Blank keys built from a block's position are the
-   * same in either layout and a revealed Blank survives a layout change.
-   */
-  only?: 'passage' | 'notes';
 };
 
-const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBlanks, onRevealBlank, only }) => {
+const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBlanks, onRevealBlank }) => {
   const { t } = useLanguage();
   // Nested sub-points (ADR 0013 §Decision 2) render a nested <ul>/<ol>
   // inside the parent <li>, so the reader and the editor preview — one
@@ -201,7 +194,6 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
   return (
     <div data-testid="section-body" className="flex flex-col gap-5">
       {section.content.map((block, bIdx) => {
-        if (only && (block.kind === 'passage') !== (only === 'passage')) return null;
         switch (block.kind) {
           case 'bullet-list':
           case 'number-list':
