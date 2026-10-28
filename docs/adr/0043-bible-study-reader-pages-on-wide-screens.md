@@ -16,7 +16,7 @@ Four directions were compared on the design canvas (reading column with an outli
 
 3. **On the paged deck the reducer's `sectionIndex` owns the position.** Section tabs, Previous / Next and Left/Right/Page Up/Page Down all dispatch the existing `jump`; no new actions, and `advance`/`back` stay deleted. On the scrolling deck scroll position stays the owner (ADR 0014 §2). Crossing the floor keeps the Section on screen and every revealed Blank.
 
-4. **One Section per screen, landscape.** The Passage is set large on the left; the heading, outline points and Prompts sit on the right, in the author's order. A Section with no Passage, or only a Passage, takes the card's full width. The columns stack, Passage first, when the card is too narrow for both.
+4. **One Section per screen, landscape.** The heading spans the top of the card; below it the Passage is set large on the left and the outline points and Prompts sit on the right, in the author's order. (Amended: the heading first sat atop the right column, which made the headless Passage on the left read as the previous Section running on.) A Section with no Passage, or only a Passage, takes the card's full width. The columns stack, Passage first, when the card is too narrow for both.
 
 5. **The tabs and a Next button that names the next Section replace the phone's edge index and dimmed peek.** The last Section ends the Meeting in place of Next. A page change is announced to screen readers and does not move focus.
 
