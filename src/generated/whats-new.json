@@ -1,6 +1,214 @@
 {
-  "latestReleaseId": "2026-10-25-v1.13.0",
+  "latestReleaseId": "2026-10-27-v1.13.1",
   "releases": [
+    {
+      "id": "2026-10-27-v1.13.1",
+      "version": "1.13.1",
+      "title": "Release 1.13.1",
+      "date": "2026-10-27",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Give each messaging word one meaning.",
+        "Drop activity on a person who no longer exists.",
+        "Open the About sheet from Change creator.",
+        "Make a card's conversation legible at every width."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Give each messaging word one meaning",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Drop activity on a person who no longer exists",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Open the About sheet from Change creator",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make a card's conversation legible at every width",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Take the phone type size from the box's measure",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Open a trainee on their own questions",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Drop the Trainee promise from Coord Notes",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Speak the stale-week chip in the reader's language",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Translate the rest of Settings",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "End the phone record honestly, trim its header",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Speak the diary in the reader's language",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Localize page dates and status chips",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Name the title field, reveal heading anchors",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Say origin and waiting in the reader's language",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Name, announce and bound the signed-in study page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Set a dated reminder from the person page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Identify the public study page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "State the live week once on the phone",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add a sticky section rail on the phone",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Walk-in check-in on the phone sheet",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Say an unlinked note's replies stay in-app",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give the phone reading a per-person row that fits",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make the phone questions a door, not a stack",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Say the phone gap, not missed gatherings",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Count follow-ups and mark a new reply",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Say an outing date one way, day first",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Count the record, not the loaded page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-10-25-v1.13.0",
       "version": "1.13.0",
