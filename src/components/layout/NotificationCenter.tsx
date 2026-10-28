@@ -10,6 +10,7 @@ import { db, auth, handleFirestoreError, OperationType } from '../../lib/firebas
 import { useAuth } from '../AuthProvider';
 import { Notification } from '../../types';
 import { cn, ntfWhen } from '../../lib/utils';
+import { canSeeHistory } from '../../lib/permissions';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -276,8 +277,6 @@ export default function NotificationCenter() {
     } catch (e) { console.error('Error setting aside stack:', e); }
   };
 
-  const isStaff = role === 'admin' || role === 'manager';
-
   const unread = notifications.filter(n => !n.read);
   const read   = notifications.filter(n => n.read);
 
@@ -354,14 +353,15 @@ export default function NotificationCenter() {
     </>
   );
 
-  const openWholeRecord = () => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); };
+  const seesTheRecord = canSeeHistory(role);
+  const openWholeRecord = () => { setIsOpen(false); navigate(seesTheRecord ? '/history' : '/prayer'); };
   const footerAction = notifications.length > 0 && (
     <button
       type="button"
       onClick={openWholeRecord}
       className="w-full flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-accent text-[13px] font-semibold hover:bg-accent-soft transition-colors"
     >
-      {isStaff ? t('notifications.see_whole_record') : t('notifications.open_prayer')}
+      {seesTheRecord ? t('notifications.see_whole_record') : t('notifications.open_prayer')}
       <ArrowRight className="w-[14px] h-[14px]" />
     </button>
   );

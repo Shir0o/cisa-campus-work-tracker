@@ -466,6 +466,16 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(canSeeSettings('manager')).toBe(false);
   });
 
+  // The decision in #1825: Looking back is the whole team's record, pastoral
+  // detail and all, so a Trainee may not read it. Their route access is an
+  // allowlist, so this is a guard against /history being added to it rather
+  // than a consequence of ROUTE_MIN_ROLE.
+  it('a Trainee cannot reach Looking back, and its floor says so', () => {
+    expect(canAccessRoute('manager', '/history')).toBe(false);
+    expect(navItemsForRole('manager').some((i) => i.href === '/history')).toBe(false);
+    expect(canAccessRoute('admin', '/history')).toBe(true);
+  });
+
   it('tests remaining permission helper functions', () => {
     expect(roleLabel(null)).toBe('Guest');
     expect(roleLabel('custom_role')).toBe('Custom_role');

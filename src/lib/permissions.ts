@@ -44,7 +44,11 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'viewer',
   '/board': 'manager',
   '/directory': 'operator',
-  '/history': 'manager',
+  // Looking back is the whole team's record — every visit, note quote and
+  // prayer burden in one stream — so it stays Full-timer-only. A Trainee takes
+  // the allowlist path below and is not on it, so this entry is not what stops
+  // them; it must not claim otherwise (#1825).
+  '/history': 'admin',
   // Gatherings carries the whole contact database — the missed list, the
   // rosters, the walk-in picker, and a door into every person's detail page.
   // Community has no People page, so it may not reach the directory sideways
