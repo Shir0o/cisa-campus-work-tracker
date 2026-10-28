@@ -21,5 +21,8 @@
   "devDependencies": {
     "typescript": "~7.0.2",
     "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6"
   }
 }
