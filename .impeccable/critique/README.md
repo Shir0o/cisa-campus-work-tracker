@@ -12,4 +12,4 @@ If the role you were told to use is bounced, measure the page as the role that o
 
 Trainees are an allowlist, not a rung on the ladder, but several `ROUTE_MIN_ROLE` floors in `src/lib/permissions.ts` were written as if they were one. `/history` reads `manager` and `/coordination` reads `operator`, and a Trainee may open neither. While those two shapes disagree, whoever writes the next brief is guessing. Check the matrix, not the floor.
 
-Decided precedent: a Trainee keeps the personal prayer card and does not read the team's list or its testimonies (`/prayer`, `/answered`), recorded beside the allowlist in `src/lib/permissions.ts`.
+Decided precedents, each recorded beside the allowlist in `src/lib/permissions.ts`: a Trainee keeps the personal prayer card and does not read the team's list or its testimonies (`/prayer`, `/answered`), and a Trainee does not open Coordination Notes (`/coordination`, #1922). A brief for the coordination screen signs in as a Full-timer or a Student, never a Trainee.
