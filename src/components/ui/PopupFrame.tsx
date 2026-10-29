@@ -7,7 +7,7 @@
 // pinned footer (shortcut hint, Cancel, one primary action). Values come from
 // existing Ink tokens so dark mode follows automatically; radii follow the
 // ADR 0009 ladder (dialog 24, nested panels 14, controls 10, pills full).
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, ArrowLeft, Check, Loader2, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -285,9 +285,11 @@ export function PopupFrame({
   };
 
   // When the footer swaps to a rejected save, the button that was clicked has
-  // gone; land on Try again rather than the page behind the dialog.
+  // gone; land on Try again rather than the page behind the dialog. This runs
+  // as a layout effect: a passive effect is flushed after paint, which left a
+  // loaded runner showing Close focused for a frame (and a flaky test, #1929).
   const hasError = !!error;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (hasError) retryRef.current?.focus();
   }, [hasError]);
 
