@@ -308,11 +308,20 @@ export async function setActiveStudy(
 
 /**
  * Deletes a Study and all meetings belonging to it (#1937).
- * Used when cleaning up test terms or terms entered in error.
+ * Used when cleaning up test terms or terms entered in error. The rules refuse
+ * deleting a published Meeting (ADR 0011), so published weeks are unpublished
+ * first. Repoint any Entry point off this Study before calling this.
  */
 export async function deleteStudy(db: Firestore, studyId: string): Promise<void> {
   const q = query(collection(db, 'bible_study_meetings'), where('studyId', '==', studyId));
   const snap = await getDocs(q);
-  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  await Promise.all(
+    snap.docs.map(async (d) => {
+      if (d.data().published === true) {
+        await updateDoc(d.ref, { published: false, updatedAt: serverTimestamp() });
+      }
+      await deleteDoc(d.ref);
+    }),
+  );
   await deleteDoc(doc(db, 'bible_study_studies', studyId));
 }

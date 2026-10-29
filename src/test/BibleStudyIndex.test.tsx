@@ -312,8 +312,8 @@ describe('BibleStudyIndex view', () => {
   it('shows the entry point with its name, slug and active study, linking to present mode', async () => {    renderIndex();
 
     expect(await screen.findByText('Wednesday Bible Study')).toBeInTheDocument();
-    expect(screen.getByText('/s/cisa-wednesday')).toBeInTheDocument();
-    expect(screen.getByText('Romans · Fall 2026')).toBeInTheDocument();
+    const card = screen.getByText('/s/cisa-wednesday').closest('aside') as HTMLElement;
+    expect(within(card).getByText('Romans · Fall 2026')).toBeInTheDocument();
 
     const showQr = screen.getByRole('link', { name: /Show QR/i });
     expect(showQr.getAttribute('href')).toBe('/bible-study/present?ep=cisa-wednesday');
@@ -778,24 +778,62 @@ describe('BibleStudyIndex view', () => {
       expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'test-study');
     });
 
-    it('blocks deletion when the term is active on an entry point', async () => {
+    const openDeleteFromTermMenu = async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /select study term/i }));
+      fireEvent.click(
+        within(screen.getByRole('listbox')).getByRole('button', { name: /delete this term/i }),
+      );
+      return screen.getByRole('dialog', { name: /delete study term/i });
+    };
+
+    it('repoints the code to another term, then deletes the active term', async () => {
       // STUDY is active on ENTRY_POINT (activeStudyId: 'romans-fall26')
+      vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
+        cb([STUDY, TEST_STUDY]);
+        return () => {};
+      });
+      renderIndex();
+
+      const dialog = await openDeleteFromTermMenu();
+      const next = within(dialog).getByLabelText(/\/s\/cisa-wednesday will show/i);
+      expect(next).toHaveValue('test-study');
+
+      fireEvent.click(within(dialog).getByRole('button', { name: /^delete term$/i }));
+      await waitFor(() =>
+        expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'romans-fall26'),
+      );
+      expect(bibleData.setActiveStudy).toHaveBeenCalledWith(
+        expect.anything(),
+        'cisa-wednesday',
+        'test-study',
+      );
+      expect(vi.mocked(bibleData.setActiveStudy).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(bibleData.deleteStudy).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('leaves the code between terms when deleting the only term', async () => {
       vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
         cb([STUDY]);
         return () => {};
       });
       renderIndex();
 
-      // Click delete in aside
-      const asideDeleteBtn = await screen.findByRole('button', { name: /delete this term/i });
-      fireEvent.click(asideDeleteBtn);
+      // The Entry point card no longer carries a delete link.
+      await screen.findByRole('button', { name: /select study term/i });
+      expect(screen.queryByRole('button', { name: /delete this term/i })).not.toBeInTheDocument();
 
-      expect(screen.getByRole('dialog', { name: /delete study term/i })).toBeInTheDocument();
-      expect(screen.getByText(/currently active on an entry point/i)).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^delete term$/i })).not.toBeInTheDocument();
+      const dialog = await openDeleteFromTermMenu();
+      expect(within(dialog).getByLabelText(/\/s\/cisa-wednesday will show/i)).toHaveValue('');
+
+      fireEvent.click(within(dialog).getByRole('button', { name: /^delete term$/i }));
+      await waitFor(() =>
+        expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'romans-fall26'),
+      );
+      expect(bibleData.setActiveStudy).toHaveBeenCalledWith(expect.anything(), 'cisa-wednesday', null);
     });
 
-    it('blocks deletion when the term has published weeks', async () => {
+    it('says published weeks will be unpublished and still allows deleting', async () => {
       vi.mocked(bibleData.subscribeStudies).mockImplementation((_db, cb) => {
         cb([STUDY, TEST_STUDY]);
         return () => {};
@@ -818,12 +856,16 @@ describe('BibleStudyIndex view', () => {
       const testOption = await screen.findByRole('option', { name: /Test Study · Fall 2026/ });
       fireEvent.click(testOption);
 
-      const asideDeleteBtn = await screen.findByRole('button', { name: /delete this term/i });
-      fireEvent.click(asideDeleteBtn);
+      const dialog = await openDeleteFromTermMenu();
+      expect(within(dialog).getByText(/1 published week\(s\) will be unpublished/i)).toBeInTheDocument();
+      // Not active on any code, so there is nothing to repoint.
+      expect(within(dialog).queryByLabelText(/will show/i)).not.toBeInTheDocument();
 
-      expect(screen.getByRole('dialog', { name: /delete study term/i })).toBeInTheDocument();
-      expect(screen.getByText(/published weeks/i)).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^delete term$/i })).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: /^delete term$/i }));
+      await waitFor(() =>
+        expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'test-study'),
+      );
+      expect(bibleData.setActiveStudy).not.toHaveBeenCalled();
     });
   });
 });
