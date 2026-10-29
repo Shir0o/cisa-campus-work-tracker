@@ -476,6 +476,18 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(canAccessRoute('admin', '/history')).toBe(true);
   });
 
+  // The decision in #1922: coordination pages are the team's record and a
+  // Trainee does not read them, while a Student reads them through the ladder.
+  // The floor reads "operator and above", which would suggest otherwise, so
+  // this is a guard against /coordination being added to the allowlist rather
+  // than a consequence of ROUTE_MIN_ROLE.
+  it('a Trainee cannot reach Coordination Notes, and its floor does not say so', () => {
+    expect(canAccessRoute('manager', '/coordination')).toBe(false);
+    expect(navItemsForRole('manager').some((i) => i.href === '/coordination')).toBe(false);
+    expect(canAccessRoute('operator', '/coordination')).toBe(true);
+    expect(canAccessRoute('admin', '/coordination')).toBe(true);
+  });
+
   it('tests remaining permission helper functions', () => {
     expect(roleLabel(null)).toBe('Guest');
     expect(roleLabel('custom_role')).toBe('Custom_role');

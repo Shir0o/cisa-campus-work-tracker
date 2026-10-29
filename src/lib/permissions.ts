@@ -75,6 +75,11 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/ask': 'admin',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
+  // The floor reads "operator and above", which is true for Student and
+  // Full-timer but not for a Trainee: they take the allowlist path below and
+  // are not on it. The deny is the decision (#1922), the same shape as
+  // /history (#1825). This entry is not what stops a Trainee and must not
+  // claim otherwise.
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
   // The Weeks index is the archive, and the archive is Full-timers only
@@ -183,6 +188,9 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
     // out of it, while a Trainee's prayer surface is the home card's personal
     // list ("just between you and God"). Community and Student reach both
     // through the ladder, so the asymmetry is the decision, not a missed entry.
+    // '/coordination' is deliberately missing (#1922): a Trainee does not read
+    // the team's coordination pages. Its floor reads "operator and above", so
+    // this allowlist is the only place the deny is enforced.
     // '/settings' is here because a Trainee sets their own preferences. The
     // team surface stays Full-timer-only: Settings branches on isAdmin, so a
     // Trainee lands on the personal page and never the staff one.

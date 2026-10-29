@@ -208,9 +208,10 @@ export const BOARD_AUDIENCE: Record<Audience, { label: string; sub: string; rank
 };
 
 // Order shown in the audience picker (most open → most private). Trainees are
-// no longer offered: they sit outside the /coordination route allowlist (#1849),
-// so a trainee-tagged page could never be read. The tier still exists above so
-// pages tagged before that change keep their label and stay Admin-readable.
+// no longer offered: they sit outside the /coordination route allowlist
+// (#1922), so a trainee-tagged page could never be read. The tier still exists
+// above so pages tagged before that change keep their label and stay
+// Admin-readable.
 export const AUDIENCE_ORDER: Audience[] = ['everyone', 'team'];
 
 // A page with no audience defaults to the most private tier.
