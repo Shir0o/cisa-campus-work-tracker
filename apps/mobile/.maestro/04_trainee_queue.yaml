@@ -39,6 +39,6 @@ appId: com.cisa.campus
 - assertVisible: "The queue is the app. Everything else lives here."
 - assertVisible: "People"
 - assertVisible: "Messages"
-- assertVisible: "Ask the team"
+- assertVisible: "Ask a Full-timer"
 - assertVisible: "Sign-up form"
 - assertNotVisible: "The Journey"
