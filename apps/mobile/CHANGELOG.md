@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.14.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.13.1...v1.14.0) (2026-10-31)
+
+
+### Features
+
+* **settings:** let a Trainee open their own preferences ([#1819](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1819)) ([#1927](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1927)) ([ed4d595](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ed4d5955bcc34bd7d022a2b163b93b6451b1f88c))
+
+
+### Bug Fixes
+
+* **ci:** unblock the mobile build and settle the popup focus race ([#1942](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1942)) ([8963e0b](https://github.com/Shir0o/cisa-campus-work-tracker/commit/8963e0be1700374c29f2299ebd7b16c8129a2301)), closes [#1929](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1929) [#1924](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1924)
+* **copy:** claim a question was asked of you only if you care ([#1711](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1711)) ([#1925](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1925)) ([050ef90](https://github.com/Shir0o/cisa-campus-work-tracker/commit/050ef9034500977553caf3c1d3676a5b441c41c6))
+* **deps:** bump minimatch in mobile via override (alert [#5](https://github.com/Shir0o/cisa-campus-work-tracker/issues/5)) ([#1949](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1949)) ([9635217](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9635217e58282f278273e851f5d310b7942f7d7c))
+* **deps:** bump tar in mobile via override (alert [#15](https://github.com/Shir0o/cisa-campus-work-tracker/issues/15)) ([#1944](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1944)) ([a9b37c9](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a9b37c954288a5982bc127e3e5683e6354bcc46d))
+* **deps:** remediate security vulnerabilities across packages ([#171](https://github.com/Shir0o/cisa-campus-work-tracker/issues/171)) ([#1930](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1930)) ([deded26](https://github.com/Shir0o/cisa-campus-work-tracker/commit/deded269929204a2ea621fe332524562b91afaf9))
+
 ## [1.13.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.13.0...v1.13.1) (2026-10-28)
 
 
