@@ -34,6 +34,15 @@ jobs:
       - run: npm run check:i18n
       - run: npm run check:colors
       - run: npm run check:version
+      # apps/mobile keeps its own lockfile, which the mobile job installs on
+      # Node 20 (npm 10). npm 11 — the Node this job runs, and the one `.nvmrc`
+      # pins — resolves some override shapes differently, so a mobile lock only
+      # npm 10 accepts stays green there and then breaks every Node 24 consumer
+      # (it took down the daily pipeline in #1950). Validate it on the pinned
+      # Node here instead.
+      - name: Mobile lockfile is installable on the pinned Node
+        run: npm ci --dry-run --ignore-scripts
+        working-directory: apps/mobile
       # Fails if a path or guard in e2e/seams.json matches no file (#1473).
       - run: npm run check:seams
       # Non-blocking: annotates a PR that changes a seam without touching the
