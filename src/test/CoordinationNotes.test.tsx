@@ -18,6 +18,7 @@ vi.mock('../components/AuthProvider', () => ({
 // ── Router seam (the view reads location.state for the My Day deep-link) ──────
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: null }),
+  useNavigate: () => vi.fn(),
   Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
     <a href={to} {...rest}>
       {children}

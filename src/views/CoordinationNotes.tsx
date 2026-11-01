@@ -24,7 +24,7 @@ import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../l
 import { softDeleteBoardDoc, restoreBoardDoc, pinBoardDoc, reorderPinnedBoardDocs } from '../lib/data/board';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -131,6 +131,9 @@ import {
   sessionStatus,
   docByDateDesc,
   docSortOrder,
+  boardDocHref,
+  boardDocRefFromHref,
+  isStricterAudience,
   newDocMarkdown,
   bodyMarkdownForDisplay,
   persistDocEdit,
@@ -1982,6 +1985,7 @@ export default function CoordinationNotes() {
                 <DocEditor
                   key={`${active.id}-${language}`}
                   doc={displayActive || active}
+                  pages={docs}
                   meUid={uid}
                   meName={meName}
                   pagesCollapsed={pagesCollapsed}
@@ -2475,21 +2479,50 @@ function NoteComposer({
   );
 }
 
-// ── Link Composer Popover (insert a link with custom display text) ─────────
+// ── Link Composer Popover (insert a link, or reference another page) ───────
 function LinkComposer({
   anchorRect,
   initialText,
+  pages,
+  currentDocId,
+  pageAudience,
   onClose,
   onInsert,
 }: {
   anchorRect: { top: number; left: number };
   initialText: string;
+  pages: BoardDoc[];
+  currentDocId: string;
+  pageAudience: Audience;
   onClose: () => void;
   onInsert: (text: string, href: string) => void;
 }) {
   const [text, setText] = useState(initialText);
   const [href, setHref] = useState('');
+  const [pageQuery, setPageQuery] = useState('');
+  const [pickedPage, setPickedPage] = useState<BoardDoc | null>(null);
   const { t } = useLanguage();
+
+  // Pages this author may point at: everything they can already see, minus the
+  // page being edited (a self-reference is noise) and anything in Trash.
+  const pageOptions = useMemo(() => {
+    const needle = pageQuery.trim().toLowerCase();
+    return [...pages]
+      .filter((p) => p.id !== currentDocId && !p.deletedAt)
+      .filter((p) => !needle || (p.title || '').toLowerCase().includes(needle) || (p.date || '').includes(needle))
+      .sort(docByDateDesc)
+      .slice(0, 40);
+  }, [pages, currentDocId, pageQuery]);
+
+  const pageTitle = (p: BoardDoc) => p.title?.trim() || t('coordination.untitled_page');
+
+  const pickPage = (p: BoardDoc) => {
+    setPickedPage(p);
+    setHref(boardDocHref(p.id));
+    // The authored display text wins (the selection flow prefills it); only fill
+    // it in when there is nothing to overwrite.
+    if (!text.trim()) setText(pageTitle(p));
+  };
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -2527,6 +2560,53 @@ function LinkComposer({
           </button>
         </div>
 
+        {pages.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-medium text-on-surface-variant">{t('coordination.pick_a_page')}</div>
+            <input
+              value={pageQuery}
+              onChange={(e) => setPageQuery(e.target.value)}
+              placeholder={t('coordination.search_pages')}
+              aria-label={t('coordination.search_pages')}
+              className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+            />
+            {pageOptions.length > 0 ? (
+              <div
+                data-testid="page-reference-options"
+                className="max-h-36 overflow-y-auto rounded-xl border border-outline-variant/60"
+              >
+                {pageOptions.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => pickPage(p)}
+                    aria-pressed={pickedPage?.id === p.id}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-surface-container transition-colors',
+                      pickedPage?.id === p.id && 'bg-surface-container',
+                    )}
+                  >
+                    <span className="flex-1 truncate text-on-surface">{pageTitle(p)}</span>
+                    <span className="shrink-0 text-[10.5px] text-on-surface-variant">{p.date}</span>
+                    <AudienceBadge audience={audienceOf(p)} size="xs" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="px-1 text-[11px] text-on-surface-variant">{t('coordination.no_pages_match')}</p>
+            )}
+          </div>
+        )}
+
+        {pickedPage && isStricterAudience(audienceOf(pickedPage), pageAudience) && (
+          <p className="flex items-start gap-1.5 rounded-xl bg-surface-container px-2.5 py-2 text-[11px] text-on-surface-variant">
+            <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-px" />
+            <span>{t('coordination.private_reference_warning')}</span>
+          </p>
+        )}
+
+        {pages.length > 0 && <div className="h-px bg-outline-variant/60" />}
+
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -2536,7 +2616,12 @@ function LinkComposer({
         />
         <input
           value={href}
-          onChange={(e) => setHref(e.target.value)}
+          onChange={(e) => {
+            setHref(e.target.value);
+            // Typing a different target by hand means the picked page (and its
+            // audience warning) no longer describes this link.
+            setPickedPage(null);
+          }}
           placeholder="https://example.com"
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleInsert();
@@ -2567,6 +2652,7 @@ function LinkComposer({
 // ── The live document editor ──────────────────────────────────────────────────
 export function DocEditor({
   doc: d,
+  pages,
   meUid,
   meName,
   pagesCollapsed,
@@ -2591,6 +2677,8 @@ export function DocEditor({
   onSaveStateChange,
 }: {
   doc: BoardDoc;
+  /** Every page this author can see — the shelf the link picker offers. */
+  pages: BoardDoc[];
   meUid: string;
   meName: string;
   pagesCollapsed: boolean;
@@ -2615,6 +2703,7 @@ export function DocEditor({
   onSaveStateChange?: (state: DocSaveState) => void;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const isSpanish = language === 'es';
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
@@ -2716,7 +2805,7 @@ export function DocEditor({
     if (!editor || !text.trim()) return;
     const trimmedHref = hrefInput.trim();
     if (!trimmedHref) return;
-    const href = /^[a-z][a-z0-9+.-]*:/i.test(trimmedHref) ? trimmedHref : `https://${trimmedHref}`;
+    const href = /^[a-z][a-z0-9+.-]*:/i.test(trimmedHref) || trimmedHref.startsWith('/') ? trimmedHref : `https://${trimmedHref}`;
     const { from, to, empty } = editor.state.selection;
     const selectedText = empty ? '' : editor.state.doc.textBetween(from, to, ' ');
     if (!empty && selectedText === text) {
@@ -2870,6 +2959,15 @@ export function DocEditor({
               onOpenContactModal(true);
               return true;
             }
+          }
+          // A page reference jumps inside the Board rather than reloading the app.
+          const pageRef = boardDocRefFromHref(href);
+          if (pageRef) {
+            event.preventDefault();
+            navigate('/coordination', {
+              state: { focusDocId: pageRef.docId, focusAnchorId: pageRef.anchorId },
+            });
+            return true;
           }
         }
         return false;
@@ -3545,6 +3643,9 @@ export function DocEditor({
         <LinkComposer
           anchorRect={linkComposer.rect}
           initialText={linkComposer.text}
+          pages={pages}
+          currentDocId={d.id}
+          pageAudience={audienceOf(d)}
           onClose={() => setLinkComposer(null)}
           onInsert={insertLink}
         />

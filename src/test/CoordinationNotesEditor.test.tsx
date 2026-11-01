@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot } from 'firebase/firestore';
 import CoordinationNotes from '../views/CoordinationNotes';
@@ -12,7 +12,13 @@ import { useAuth } from '../components/AuthProvider';
 // Captured editor config + the fake editor instance, shared with the mock factory.
 // `tr` holds the last transaction the component built, so the task-sync tests can
 // inspect exactly what it patched.
-const h = vi.hoisted(() => ({ config: null as any, editor: null as any, chain: null as any, tr: null as any }));
+const h = vi.hoisted(() => ({
+  config: null as any,
+  editor: null as any,
+  chain: null as any,
+  tr: null as any,
+  navigate: vi.fn(),
+}));
 
 // The one checklist line the fake document contains, at node position 4.
 const TASK_NODE_POS = 4;
@@ -22,6 +28,7 @@ vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: null }),
+  useNavigate: () => h.navigate,
   Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
     <a href={to} {...rest}>
       {children}
@@ -205,7 +212,7 @@ vi.mock('../lib/firebase', () => ({
 const today = new Date().toISOString().slice(0, 10);
 
 // A single page, dated today so it auto-focuses; its stored md has zero open tasks.
-const docsFixture = [
+const baseDocsFixture = [
   {
     id: `doc-${today}`,
     data: () => ({
@@ -218,6 +225,13 @@ const docsFixture = [
     }),
   },
 ];
+let docsFixture: { id: string; data: () => object }[] = baseDocsFixture;
+
+// Another page on the shelf, as the Pages-sidebar snapshot would deliver it.
+const pageFixture = (id: string, title: string, over: object = {}) => ({
+  id,
+  data: () => ({ title, date: '2026-10-01', md: '', createdBy: 'u-admin', ...over }),
+});
 
 const teamFixture = [
   {
@@ -261,6 +275,8 @@ describe('CoordinationNotes — live editor behavior', () => {
     h.chain = null;
     h.tr = null;
     tasksFixture = [];
+    docsFixture = baseDocsFixture;
+    h.navigate.mockClear();
     awarenessStates.clear();
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
     setupSnapshots();
@@ -517,6 +533,124 @@ describe('CoordinationNotes — live editor behavior', () => {
         text: 'Goodbye',
         marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
       });
+    });
+  });
+
+  // ── #1668 — reference another page from inside a page ──────────────────────
+  describe('page references (#1668)', () => {
+    const openPage = (id: string, title: string, over: object = {}) =>
+      pageFixture(id, title, { audience: 'everyone', ...over });
+
+    it('offers the other pages, not this one and not the ones in Trash', async () => {
+      docsFixture = [
+        ...baseDocsFixture,
+        openPage('doc-retreat', 'Retreat plan'),
+        openPage('doc-binned', 'Binned page', { deletedAt: 'mock-ts' }),
+      ];
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByTitle('Link'));
+
+      const picker = within(screen.getByTestId('page-reference-options'));
+      expect(picker.getByRole('button', { name: /Retreat plan/ })).toBeInTheDocument();
+      expect(picker.queryByRole('button', { name: /Binned page/ })).not.toBeInTheDocument();
+      expect(picker.queryByRole('button', { name: /Today/ })).not.toBeInTheDocument();
+    });
+
+    it('narrows the list as you search', async () => {
+      docsFixture = [
+        ...baseDocsFixture,
+        openPage('doc-retreat', 'Retreat plan'),
+        openPage('doc-budget', 'Budget review'),
+      ];
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.change(screen.getByPlaceholderText('Search pages'), { target: { value: 'retreat' } });
+
+      const picker = within(screen.getByTestId('page-reference-options'));
+      expect(picker.getByRole('button', { name: /Retreat plan/ })).toBeInTheDocument();
+      expect(picker.queryByRole('button', { name: /Budget review/ })).not.toBeInTheDocument();
+    });
+
+    it('fills the display text and the Board deep link from the picked page', async () => {
+      docsFixture = [...baseDocsFixture, openPage('doc-retreat', 'Retreat plan')];
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+      h.editor.state.selection = { from: 0, to: 0, empty: true };
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.click(within(screen.getByTestId('page-reference-options')).getByRole('button', { name: /Retreat plan/ }));
+
+      expect(screen.getByPlaceholderText('Text to display')).toHaveValue('Retreat plan');
+      expect(screen.getByPlaceholderText('https://example.com')).toHaveValue('/coordination?focusDoc=doc-retreat');
+
+      const chainUsed = h.chain;
+      fireEvent.click(screen.getByRole('button', { name: 'Insert link' }));
+
+      // The root-relative href must survive insertion untouched: prefixing
+      // `https://` (as a bare domain gets) would break the in-app jump.
+      expect(chainUsed.insertContent).toHaveBeenCalledWith({
+        type: 'text',
+        text: 'Retreat plan',
+        marks: [{ type: 'link', attrs: { href: '/coordination?focusDoc=doc-retreat' } }],
+      });
+    });
+
+    it('warns when the target is more private than the page being written', async () => {
+      docsFixture = [
+        { ...baseDocsFixture[0], data: () => ({ ...baseDocsFixture[0].data(), audience: 'everyone' }) },
+        pageFixture('doc-team', 'Team standup', { audience: 'team' }),
+      ];
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.click(within(screen.getByTestId('page-reference-options')).getByRole('button', { name: /Team standup/ }));
+
+      expect(screen.getByText(/more private than the page you're writing/)).toBeInTheDocument();
+    });
+
+    it('stays quiet when the target is at least as open as the page', async () => {
+      docsFixture = [...baseDocsFixture, openPage('doc-retreat', 'Retreat plan')];
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.click(within(screen.getByTestId('page-reference-options')).getByRole('button', { name: /Retreat plan/ }));
+
+      expect(screen.queryByText(/more private than the page you're writing/)).not.toBeInTheDocument();
+    });
+
+    it('opens the referenced page in place when the link is clicked', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', '/coordination?focusDoc=doc-retreat&anchor=agenda');
+      const inner = document.createElement('span');
+      anchor.appendChild(inner);
+      const event = { target: inner, preventDefault: vi.fn() } as unknown as MouseEvent;
+
+      expect(h.config.editorProps.handleClick({}, 0, event)).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(h.navigate).toHaveBeenCalledWith('/coordination', {
+        state: { focusDocId: 'doc-retreat', focusAnchorId: 'agenda' },
+      });
+    });
+
+    it('leaves ordinary links to the browser', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'https://example.com');
+      const event = { target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent;
+
+      expect(h.config.editorProps.handleClick({}, 0, event)).toBe(false);
+      expect(h.navigate).not.toHaveBeenCalled();
     });
   });
 

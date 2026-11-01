@@ -254,8 +254,38 @@ export const boardAudiencesForRole = (role: AppRole | string | null): Audience[]
   }
 };
 
+// ── Referencing one page from another (#1668) ────────────────────────────────
+// A page is addressed in the app by its id, and the Board route reads that id
+// back out of the query string. Storing that href in the page's Markdown keeps
+// references portable: they survive export, render on mobile, and a reader who
+// cannot open the target gets the Board's existing "page no longer here"
+// message instead of a dead end.
+export function boardDocHref(docId: string, anchorId?: string): string {
+  const query = `focusDoc=${encodeURIComponent(docId)}`;
+  return `/coordination?${anchorId ? `${query}&anchor=${encodeURIComponent(anchorId)}` : query}`;
+}
+
+/** The page a link points at, when that link is an internal Board reference. */
+export function boardDocRefFromHref(href: string | null | undefined): { docId: string; anchorId?: string } | null {
+  if (!href) return null;
+  // Accept what we write (relative) and an absolute form someone pasted in.
+  const path = href.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]+/i, '');
+  if (!/^\/coordination\/?\?/.test(path)) return null;
+  const params = new URLSearchParams(path.slice(path.indexOf('?') + 1));
+  const docId = params.get('focusDoc');
+  if (!docId) return null;
+  const anchorId = params.get('anchor');
+  return anchorId ? { docId, anchorId } : { docId };
+}
+
+/** True when `target` is open to a narrower group than `page`, so a reference
+ *  written on `page` will be unreadable to some of that page's readers. */
+export const isStricterAudience = (target: Audience, page: Audience): boolean =>
+  BOARD_AUDIENCE[target].rank > BOARD_AUDIENCE[page].rank;
+
 // Who can reach the Board at all (Student and up) vs. who can edit (Full-timers).
 export const canViewBoard = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 0;
+
 // The Notes & learnings archive is shared by Full-timers + Trainees only.
 export const canViewBoardNotes = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 1;
 export const canEditBoard = (isAdmin: boolean): boolean => isAdmin;
