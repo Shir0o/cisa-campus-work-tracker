@@ -101,9 +101,9 @@ export default function Help() {
               ))}
             </nav>
 
-            {/* The vault has no help page of its own: it is a Full-timer surface,
-                not one a Trainee can reach, so one note here rather than a
-                page in the corpus everyone reads (#1969). */}
+            {/* The vault has no help page of its own (#1969): it is a
+                Full-timer surface, not one a Trainee can reach, so one note
+                here rather than a page in the corpus everyone reads. */}
             {role === 'admin' && (
               <section
                 data-testid="help-vault"
