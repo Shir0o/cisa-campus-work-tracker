@@ -138,10 +138,10 @@ export default function MobileNav() {
       <Destination to="/" label={homeLabel} icon={LayoutDashboard} active={section === '/'} />
 
       {/* Messages and Questions are the two places a Trainee has live work in,
-          so they are destinations rather than drawer rows (#1806, ADR 0049).
-          The centred search FAB that used to hold this middle slot was a
-          duplicate: the phone header already renders its own search button, and
-          the bar could not grow past five controls at 375px. */}
+          so they are destinations rather than drawer rows (ADR 0049). The
+          centred search FAB that used to hold this middle slot was a duplicate:
+          the phone header already renders its own search button, and the bar
+          could not grow past five controls at 375px. */}
       <Destination
         to="/messages"
         label={t('nav.messages', 'Messages')}
