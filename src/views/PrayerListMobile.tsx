@@ -599,7 +599,9 @@ function PrayerItemMobile({
   const [archiveReasonDraft, setArchiveReasonDraft] = useState(prayer.archiveReason || '');
 
   const startEdit = () => {
-    setDraft(prayer.burden);
+    // A stand-in burden is not content — clear the draft so "Add prayer" cannot
+    // save "Holding in prayer" back as a real prayer (#1691).
+    setDraft(isPlaceholderPrayerBurden(prayer.burden) ? '' : prayer.burden);
     setEditing(true);
   };
   const save = async () => {

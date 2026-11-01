@@ -1392,6 +1392,65 @@ describe('PrayerList', () => {
     expect(screen.queryByTestId('contact-modal')).toBeNull();
   });
 
+  // ── Desktop parity for the stand-in burden (#1691) ────────────────────────
+  // The phone card stopped printing "Holding in prayer" as prose in #1765; the
+  // desktop item still did, and the report came from a 1152px viewport.
+
+  /** Serve a contacts/prayers snapshot for one desktop-path test. */
+  function seedDesktop(contacts: any[], prayers: any[]) {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: contacts, size: contacts.length });
+      else if (ref?.path === 'prayers') callback({ docs: prayers, size: prayers.length });
+      else if (ref?.path === 'users') {
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'operator' }) }], size: 1 });
+      } else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  }
+
+  const desktopAlice = { id: 'c1', data: () => ({ name: 'Alice Johnson', gender: 'Female' }) };
+  const standInPrayer = () => ({
+    id: 'p1',
+    data: () => ({
+      contactId: 'c1',
+      burden: 'Holding in prayer',
+      date: '2026-10-20T00:00:00.000Z',
+      status: 'pending',
+    }),
+  });
+
+  it('asks what we are praying for instead of printing the placeholder burden on desktop (#1691)', async () => {
+    seedDesktop([desktopAlice], [standInPrayer()]);
+
+    render(<PrayerList />);
+
+    expect(await screen.findByText('What are we praying for Alice this week?')).toBeInTheDocument();
+    expect(screen.queryByText('Holding in prayer')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add prayer' })).toBeInTheDocument();
+  });
+
+  it('opens the placeholder editor empty so the stand-in text cannot be saved back (#1691)', async () => {
+    seedDesktop([desktopAlice], [standInPrayer()]);
+
+    const { container } = render(<PrayerList />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add prayer' }));
+
+    expect(container.querySelector('textarea')).toHaveValue('');
+  });
+
+  it('starts a to-do from a placeholder prayer with an empty draft (#1691)', async () => {
+    seedDesktop([desktopAlice], [standInPrayer()]);
+
+    render(<PrayerList />);
+
+    await screen.findByText('What are we praying for Alice this week?');
+    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
+
+    // The stand-in burden is not content, so it must not pre-fill the composer.
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('');
+  });
+
   it('renders PrayerListMobile on mobile viewport even while loading', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
@@ -1454,6 +1513,19 @@ describe('PrayerList — phone card', () => {
     expect(await screen.findByText('What are we praying for Alice this week?')).toBeInTheDocument();
     expect(screen.queryByText('Holding in prayer')).toBeNull();
     expect(screen.getByRole('button', { name: 'Add prayer' })).toBeInTheDocument();
+  });
+
+  it('opens the placeholder editor empty so "Add prayer" cannot save the stand-in text (#1691)', async () => {
+    seed([alice], [{
+      id: 'p1',
+      data: () => ({ contactId: 'c1', burden: 'Holding in prayer', date: '2026-10-20T00:00:00.000Z', status: 'pending' }),
+    }]);
+
+    const { container } = render(<PrayerList />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add prayer' }));
+
+    expect(container.querySelector('textarea')).toHaveValue('');
   });
 
   it('prints a real burden as prose', async () => {
