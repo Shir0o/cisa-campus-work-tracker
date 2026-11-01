@@ -1,4 +1,4 @@
-# CISA Campus Work Tracker
+# CISA Campus Work Tracker Blueprint
 
 [![CI](https://github.com/Shir0o/cisa-campus-work-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/Shir0o/cisa-campus-work-tracker/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -8,18 +8,16 @@ A web and mobile application for full-time campus ministers, trainees, students,
 
 ---
 
-## Repository Structure
+## System Overview
 
-This repository is structured as a monorepo containing the web client, native mobile app, shared core libraries, and end-to-end testing suites:
+This repository is structured as a monorepo containing the web client, native mobile app, shared core libraries, edge proxies, and background cloud functions:
 
-| Subsystem | Path | Description | Tech Stack |
-| --- | --- | --- | --- |
-| **Web App & Server** | `.` / [`src/`](src/) | Primary web SPA and backend API server (`server.ts`) | React 19, Vite, Tailwind CSS, Express |
-| **Mobile App** | [`apps/mobile/`](apps/mobile/) | Native iOS and Android application | React Native, Expo SDK, Maestro E2E |
-| **Shared Core** | [`packages/core/`](packages/core/) | Pure platform-agnostic business logic, domain types, and permissions | TypeScript |
-| **E2E Tests** | [`e2e/`](e2e/) | Web end-to-end integration test suite driven against local emulators | Playwright, Firebase Local Emulator Suite |
-| **Edge & Cloud Functions** | [`functions/`](functions/), [`firebase-functions/`](firebase-functions/) | Cloudflare Pages proxy routes and Firebase Cloud Functions (push notifications) | TypeScript, Node.js |
-| **Architecture Records** | [`docs/adr/`](docs/adr/) | Architectural Decision Records documenting design tradeoffs | Markdown |
+- **Web SPA & Server**: Primary web client built with React 19, Vite, and Tailwind CSS, backed by an Express API server (`server.ts`).
+- **Native Mobile App**: Cross-platform iOS and Android application built with React Native and Expo SDK (`apps/mobile`).
+- **Shared Core**: Pure platform-agnostic business logic, domain models, and permission rules (`packages/core`).
+- **Edge Functions**: Cloudflare Pages reverse-proxy routes resolving browser third-party storage partitioning (`functions`).
+- **Background Cloud Functions**: Firebase Cloud Functions v2 handling push notification delivery, translation sweeps, and staff reminders (`firebase-functions`).
+- **Repository Automation**: Verification guards, database seeding routines, and autonomous maintenance scripts (`scripts`).
 
 ---
 
@@ -34,91 +32,49 @@ Access and capabilities within CISA Campus Work Tracker are partitioned into fou
 
 ---
 
-## Quickstart
+## Local Interface & Invariants
 
-### Prerequisites
-
-- **Node.js**: `v20+` (or `v24+` recommended, matching CI)
-- **npm**: `v10+`
-- **JDK**: `21+` (required if running the Firebase Local Emulator Suite)
-
-### 1. Install Dependencies
-
-Install repository dependencies for the root web app and shared packages:
-
-```bash
-npm install
-```
-
-*(For mobile setup, see [`apps/mobile/README.md`](apps/mobile/README.md) and [`apps/mobile/SETUP.md`](apps/mobile/SETUP.md).)*
-
-### 2. Environment Configuration
-
-Copy the example environment configuration:
-
-```bash
-cp .env.example .env
-```
-
-Review `.env` to configure your keys. For basic local development without external services, default emulator settings work out-of-the-box. Key environment variables include:
-- `GEMINI_API_KEY`: Server-side secret used for quick-add parsing, translation, and coordination note analysis.
-- `VITE_FIREBASE_FIRESTORE_DB_ID`: Firestore database ID (`prod` or `qa-db`).
-- `VITE_USE_FIREBASE_EMULATOR`: Set to `true` to target local Firebase emulators.
-
-### 3. Start Development Server
-
-```bash
-npm run dev
-```
-
-The web application starts locally with Vite and the Node API server at `http://localhost:3000`.
+- `createApp`: Express backend application factory initializing rate limits, Gemini AI integrations, and Firebase Admin SDK (`server.ts`).
+- Endpoints: REST API routes for quick-add parsing, contact deduplication (`/api/combine-contacts`), tag merging, feedback synchronization, translation, and guest doc access (`server.ts`).
+- Rate Limiting: Standard rate limiter enforces 100 requests per 5-minute window; write endpoints enforce stricter limits (`server.ts`).
+- Payload Limits: Express body parser strictly caps incoming JSON and URL-encoded payloads at 50MB (`server.ts`).
+- Local Side Effects: Reads and writes to Google Cloud Firestore via Firebase Admin SDK, verifies Twilio webhook signatures, proxies GitHub issues, and queries Gemini generative AI endpoints (`server.ts`).
 
 ---
 
-## Testing & Verification
+## Subdirectories & System Boundaries
 
-The project enforces test-driven development (TDD), zero lint errors, and ratcheted test coverage thresholds. Before submitting pull requests, run the verification pipeline:
-
-```bash
-# Typecheck TypeScript across the codebase
-npm run typecheck
-
-# Lint source files
-npm run lint
-
-# Enforce design tokens and i18n rules
-npm run check:colors
-npm run check:i18n
-
-# Run unit tests and enforce coverage ratchets
-npm run test:coverage
-
-# Verify production build
-npm run build
-```
-
-### End-to-End (E2E) Testing
-
-Playwright tests run against the Firebase Local Emulator Suite with zero external secrets:
-
-```bash
-npm run test:e2e:emulator
-```
-
-For full details on E2E testing architecture, role personas, and seeding, consult [`e2e/README.md`](e2e/README.md).
+- [apps](./apps/README.md): Standalone client application targets housing the cross-platform Expo / React Native mobile application (`apps/mobile`).
+- [src](./src/README.md): Primary web Single Page Application, user interface components, views, and browser state management.
+- [packages](./packages/README.md): Platform-agnostic business logic, permissions, domain types, and data adapters (`@cisa/core`).
+- [functions](./functions/README.md): Cloudflare Pages edge functions for `/api/*` reverse proxying and same-origin Firebase authentication.
+- [firebase-functions](./firebase-functions/README.md): Firebase Cloud Functions background triggers, push notification delivery (Expo/WebPush), translation sweeps, and staff reminders.
+- [scripts](./scripts/README.md): Repository automation, database seeding, verification guards, and weekly maintenance runners.
 
 ---
 
-## Documentation
+## Global Invariants
 
-- [`CONTEXT.md`](CONTEXT.md) — Canonical glossary and domain model (rules, terminology, roles).
-- [`SECURITY.md`](SECURITY.md) — Security policy and vulnerability disclosure procedures.
-- [`CLOUDFLARE_DEPLOYMENT.md`](CLOUDFLARE_DEPLOYMENT.md) & [`GCLOUD_DEPLOYMENT.md`](GCLOUD_DEPLOYMENT.md) — Infrastructure and deployment setup.
-- [`docs/adr/`](docs/adr/) — System and architectural decision records.
+- **Four Canonical Roles**: All platform capabilities are partitioned into `admin` (Full-timer), `manager` (Trainee), `operator` (Student), and `viewer` (Community) per [`CONTEXT.md`](CONTEXT.md).
+- **Trainee Contact Isolation**: Trainees are strictly scoped to their tied contacts; list queries require `visibleTo` array constraints matching active staff assignment.
+- **Dual Instantiation Guard**: Native mobile bundles explicitly block `packages/core/node_modules` to preserve Firebase singleton state and prevent broken `instanceof` checks.
+- **Platform-Agnostic Core**: Shared business logic in `@cisa/core` is strictly decoupled from browser DOM and React Native bindings.
 
 ---
 
-## License
+## Global Side Effects
 
-This project is licensed under the [Apache 2.0 License](LICENSE).
+- **Google Cloud Firestore**: Primary persistent data store across `prod` and `qa-db` databases for contacts, interactions, prayers, and tasks.
+- **Firebase Realtime Database**: Low-latency collaborative document synchronization for The Board.
+- **Push Notification Services**: Outbound push dispatch to Expo Push Notification API and Web Push endpoints.
+- **Google Gemini Generative AI**: Server-side multimodal parsing for quick-add audio/images and scheduled bilingual translations.
+- **GitHub API**: Two-way issue tracker synchronization and weekly maintenance pull request generation.
 
+---
+
+## System Verification
+
+- Run: `npm test`
+- Typecheck: `npm run typecheck`
+- Lint: `npm run lint`
+- Full Gate: `npm run typecheck && npm run lint && npm run build`
