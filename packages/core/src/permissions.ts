@@ -37,24 +37,65 @@ export const OWNER_VIEW_ROLES: OwnerViewRoleOption[] = [
   { key: 'viewer', label: 'Community', note: 'Member app (Community)' },
 ];
 
-const ROUTE_MIN_ROLE: Record<string, AppRole> = {
+// Mirrors src/lib/permissions.ts (#1940). The web copy is where every access
+// decision is recorded; this one is what `apps/mobile` actually calls. Keep the
+// entries and the comments identical — route-answer parity is pinned by
+// src/test/permissionsRouteParity.test.ts.
+export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'viewer',
   '/board': 'manager',
   '/directory': 'operator',
-  '/history': 'manager',
-  '/attendance': 'viewer',
-  '/prayer': 'viewer',
-  '/answered': 'viewer',
-  '/settings': 'viewer',
-  '/messages': 'viewer',
-  '/feedback': 'viewer',
-  '/admin/feedback': 'admin',
-  '/coordination': 'operator',
-  '/contact': 'viewer',
+  // Looking back is the whole team's record — every visit, note quote and
+  // prayer burden in one stream — so it stays Full-timer-only. A Trainee takes
+  // the allowlist path below and is not on it, so this entry is not what stops
+  // them; it must not claim otherwise (#1825).
+  '/history': 'admin',
+  // Gatherings carries the whole contact database — the missed list, the
+  // rosters, the walk-in picker, and a door into every person's detail page.
+  // Community has no People page, so it may not reach the directory sideways
+  // through here: this shares People's floor.
+  '/attendance': 'operator',
   // Outreach is admin + community — a deliberately non-ladder access, so
   // `canAccessRoute` special-cases it below (viewer and admin only, never
   // operator or manager). This entry only exists so the route has an entry.
   '/outreach': 'viewer',
+  // Full-timers only, on both sides: what a visit records is pastoral detail,
+  // not team-wide reading.
+  '/visits': 'admin',
+  '/prayer': 'viewer',
+  '/answered': 'viewer',
+  '/settings': 'viewer',
+  '/messages': 'viewer',
+  // Questions for the team is staff-only on both sides: Trainees ask, Full-timers
+  // answer. Students and Community have no ask surface at all (#603).
+  '/questions': 'manager',
+  // Around the team is Full-timer-only (#943): the team's activity is pastoral
+  // detail, and the pointer card on My Day is the only door.
+  '/around': 'admin',
+  // To ask (#1649) — the Full-timer's private notepad. Admin-only.
+  '/ask': 'admin',
+  '/feedback': 'viewer',
+  '/admin/feedback': 'admin',
+  // The floor reads "operator and above", which is true for Student and
+  // Full-timer but not for a Trainee: they take the allowlist path below and
+  // are not on it. The deny is the decision (#1922), the same shape as
+  // /history (#1825). This entry is not what stops a Trainee and must not
+  // claim otherwise.
+  '/coordination': 'operator',
+  '/coordination/trash': 'admin',
+  // The Weeks index is the archive, and the archive is Full-timers only
+  // (ADR 0011 §6).
+  '/bible-study': 'admin',
+  // "This week's study" is every role's (#946): one week, the current one,
+  // resolved by exactly the chain a scan follows. Not an archive — no other
+  // week is reachable from it.
+  '/bible-study/read': 'viewer',
+  // Present mode is any signed-in user's: whoever holds the phone up in the
+  // room is often not a Full-timer. It had no entry here, so it fell through
+  // to the 'admin' default and contradicted both its own route guard and its
+  // comment — a Trainee sent to it was bounced home (#946).
+  '/bible-study/present': 'viewer',
+  'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
 export interface NavItem {
@@ -79,6 +120,14 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 
+/**
+ * The Trainee's allowlist. A Trainee is not a rung on the ladder: a
+ * viewer-level ROUTE_MIN_ROLE does not reach them, so every route they may
+ * open is named here. Mirrors src/lib/permissions.ts (#1940); the reasoning
+ * behind each absence lives there and in the route table above.
+ */
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/read', '/bible-study/present'];
+
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
   // Outreach is full-timer + community — not a ladder: viewer and admin can,
@@ -90,10 +139,7 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
     const level = ROLE_LEVEL[role as AppRole] ?? -1;
     return level >= ROLE_LEVEL.viewer;
   }
-  if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', '/contact'];
-    return allowedTraineeRoutes.includes(path);
-  }
+  if (role === 'manager') return TRAINEE_ROUTES.includes(path);
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
   const min = ROUTE_MIN_ROLE[path] ?? 'admin';
   return level >= ROLE_LEVEL[min];

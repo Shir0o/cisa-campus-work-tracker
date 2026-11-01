@@ -62,7 +62,10 @@
         "packages/core/src/permissions.ts",
         "packages/core/src/shell.ts"
       ],
-      "guards": ["e2e/journeys/student-community.spec.ts"]
+      "guards": [
+        "e2e/journeys/student-community.spec.ts",
+        "src/test/permissionsRouteParity.test.ts"
+      ]
     },
     {
       "name": "around-and-my-day",

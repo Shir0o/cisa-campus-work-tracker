@@ -40,7 +40,7 @@ export const OWNER_VIEW_ROLES: OwnerViewRoleOption[] = [
   { key: 'viewer', label: 'Community', note: 'Member app (Community)' },
 ];
 
-const ROUTE_MIN_ROLE: Record<string, AppRole> = {
+export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'viewer',
   '/board': 'manager',
   '/directory': 'operator',
@@ -164,6 +164,32 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 
+/**
+ * Trainees are an allowlist, not a rung on the ladder, so a viewer-level
+ * ROUTE_MIN_ROLE does not reach them — the two study routes are named here
+ * explicitly (#946).
+ *
+ * '/attendance' is deliberately missing, even though its floor reads
+ * "operator and above" (#1834). Taking attendance is the Student's task:
+ * a Student sees the whole room, while a Trainee only sees the people they
+ * are tied to (`seesAllPeople`), so Gatherings would hand them a partial
+ * roster and a partial missed list — worse in the room than no page at all.
+ * The prayer pair is deliberately missing as well (#1794, #1822): /prayer
+ * and /answered are the team's shared list and the testimonies that came
+ * out of it, while a Trainee's prayer surface is the home card's personal
+ * list ("just between you and God"). Community and Student reach both
+ * through the ladder, so the asymmetry is the decision, not a missed entry.
+ * '/coordination' is deliberately missing (#1922): a Trainee does not read
+ * the team's coordination pages. Its floor reads "operator and above", so
+ * this allowlist is the only place the deny is enforced.
+ * '/settings' is here because a Trainee sets their own preferences. The
+ * team surface stays Full-timer-only: Settings branches on isAdmin, so a
+ * Trainee lands on the personal page and never the staff one.
+ *
+ * Exported so the core mirror can be pinned to it (#1940).
+ */
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/read', '/bible-study/present'];
+
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
   // Outreach is full-timer + community — not a ladder: viewer and admin can,
@@ -174,29 +200,7 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // Every approved role can open a person page; individual contact visibility
   // is still enforced inside ContactDetailsModal.
   if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'viewer');
-  if (role === 'manager') {
-    // Trainees are an allowlist, not a rung on the ladder, so a viewer-level
-    // ROUTE_MIN_ROLE does not reach them — the two study routes are named here
-    // explicitly (#946).
-    // '/attendance' is deliberately missing, even though its floor reads
-    // "operator and above" (#1834). Taking attendance is the Student's task:
-    // a Student sees the whole room, while a Trainee only sees the people they
-    // are tied to (`seesAllPeople`), so Gatherings would hand them a partial
-    // roster and a partial missed list — worse in the room than no page at all.
-    // The prayer pair is deliberately missing as well (#1794, #1822): /prayer
-    // and /answered are the team's shared list and the testimonies that came
-    // out of it, while a Trainee's prayer surface is the home card's personal
-    // list ("just between you and God"). Community and Student reach both
-    // through the ladder, so the asymmetry is the decision, not a missed entry.
-    // '/coordination' is deliberately missing (#1922): a Trainee does not read
-    // the team's coordination pages. Its floor reads "operator and above", so
-    // this allowlist is the only place the deny is enforced.
-    // '/settings' is here because a Trainee sets their own preferences. The
-    // team surface stays Full-timer-only: Settings branches on isAdmin, so a
-    // Trainee lands on the personal page and never the staff one.
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/read', '/bible-study/present'];
-    return allowedTraineeRoutes.includes(path);
-  }
+  if (role === 'manager') return TRAINEE_ROUTES.includes(path);
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
   const min = ROUTE_MIN_ROLE[path] ?? 'admin';
   return level >= ROLE_LEVEL[min];
