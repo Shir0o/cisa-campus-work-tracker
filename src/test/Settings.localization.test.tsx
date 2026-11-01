@@ -72,6 +72,8 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(() => Promise.resolve()),
   updateDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
+  deleteField: vi.fn(() => ({ __deleteField: true })),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'audit-1' })),
   getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
 }));
@@ -225,7 +227,7 @@ function seedSnapshots(overrides: Record<string, any> = {}) {
     if (path === 'users') callback({ docs: USERS });
     else if (path === 'invitations') callback({ docs: INVITES });
     else if (path === 'settings/integrations') {
-      callback({ exists: () => true, data: () => ({ attdSyncToken: 'tok_abcdef' }) });
+      callback({ exists: () => true, data: () => ({ attdSyncTokenHash: 'a'.repeat(64) }) });
     } else callback({ docs: [], size: 0 });
     return vi.fn();
   });
@@ -339,8 +341,8 @@ const UNIT_3_KEYS = [
   'settings.parsing_contact_body',
   'settings.parsing_interaction_body',
   'attendanceSync.attd_loading_token',
-  'attendanceSync.attd_hide_token',
-  'attendanceSync.attd_show_token',
+  'attendanceSync.attd_rotate_token',
+  'attendanceSync.attd_token_active',
   'attendanceSync.attd_copy_token',
 ];
 
@@ -563,13 +565,12 @@ describe('Settings in Spanish (#1818)', () => {
     it('translates the attendance-sync token card', async () => {
       renderSpanish();
 
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Mostrar token' })).toBeInTheDocument());
-      expect(screen.getByRole('button', { name: 'Copiar token' })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Rotar token' })).toBeInTheDocument());
+      expect(screen.getByText(/Ya no se puede mostrar/)).toBeInTheDocument();
+      // A hash cannot be revealed again, so there is no show/hide control.
+      expect(screen.queryByRole('button', { name: /[Mm]ostrar token/ })).not.toBeInTheDocument();
       // Every code block's copy button is Spanish too.
       expect(screen.getAllByText('Copiar').length).toBeGreaterThan(0);
-
-      fireEvent.click(screen.getByRole('button', { name: 'Mostrar token' }));
-      expect(screen.getByRole('button', { name: 'Ocultar token' })).toBeInTheDocument();
     });
 
     it('says it is loading the token while the snapshot is pending', async () => {

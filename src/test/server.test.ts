@@ -2947,6 +2947,8 @@ describe('POST /api/guest-doc/:docId', () => {
 });
 
 describe("POST /api/attendance-sync", () => {
+  const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
+
   const attdPayload = {
     attdEventId: "attd-event-1",
     eventName: "Wednesday Bible Study",
@@ -2969,6 +2971,63 @@ describe("POST /api/attendance-sync", () => {
       .set("x-sync-token", "wrong-secret")
       .send(attdPayload);
     expect(wrong.status).toBe(401);
+  });
+
+  it("accepts the token whose SHA-256 matches the stored hash (#1968)", async () => {
+    seedDoc("settings", "integrations", { attdSyncTokenHash: sha256("team-secret") });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send(attdPayload);
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+  });
+
+  it("rejects a token that does not match the stored hash (#1968)", async () => {
+    seedDoc("settings", "integrations", { attdSyncTokenHash: sha256("team-secret") });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "wrong-secret")
+      .send(attdPayload);
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects when the settings document holds neither a hash nor a legacy token (#1968)", async () => {
+    seedDoc("settings", "integrations", { attdSyncUrl: "https://example.test/api/attendance-sync" });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send(attdPayload);
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects a malformed header or stored hash without throwing (#1968)", async () => {
+    seedDoc("settings", "integrations", { attdSyncTokenHash: sha256("team-secret") });
+    for (const header of ["", "x", "!not-a-token!", "team-secret".repeat(10)]) {
+      const res = await request(app)
+        .post("/api/attendance-sync")
+        .set("x-sync-token", header)
+        .send(attdPayload);
+      expect(res.status).toBe(401);
+    }
+
+    // A stored value that is not a digest must not reach timingSafeEqual with
+    // a different length, which would throw instead of answering 401.
+    seedDoc("settings", "integrations", { attdSyncTokenHash: "not-a-digest" });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send(attdPayload);
+    expect(res.status).toBe(401);
+  });
+
+  it("still accepts the legacy plaintext token while it is present (#1968)", async () => {
+    seedDoc("settings", "integrations", { attdSyncToken: "team-secret" });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send(attdPayload);
+    expect(res.status).toBe(201);
   });
 
   it("validates required payload fields", async () => {

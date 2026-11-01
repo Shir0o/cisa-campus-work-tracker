@@ -5062,7 +5062,10 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(adminDb, 'pending_attendance_imports', 'p1'), { status: 'pending', attdEventId: 'e1' });
         await setDoc(doc(adminDb, 'attendee_aliases', 'a1'), { contactId: 'c1', attdMemberId: 'm1' });
         await setDoc(doc(adminDb, 'integrations_attd_event_mappings', 'e1'), { rhythmId: 'r1' });
-        await setDoc(doc(adminDb, 'settings', 'integrations'), { attdSyncToken: 'secret' });
+        await setDoc(doc(adminDb, 'settings', 'integrations'), {
+          attdSyncToken: 'secret',
+          attdSyncTokenHash: 'a'.repeat(64),
+        });
       });
     };
 
@@ -5106,12 +5109,227 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(traineeDb, 'settings', 'integrations')));
     });
 
+    it('stores the attendance sync credential as a hash and refuses a malformed one (#1966)', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
+      const ref = doc(adminDb, 'settings', 'integrations');
+
+      // The hash branch of ADR 0052: 64 lowercase hex characters, rotated by a
+      // Full-timer, with the legacy plaintext field still present for now.
+      await assertSucceeds(updateDoc(ref, { attdSyncTokenHash: 'b'.repeat(64) }));
+      // Not a digest: too short, mixed case, or not hex at all.
+      await assertFails(updateDoc(ref, { attdSyncTokenHash: 'b'.repeat(63) }));
+      await assertFails(updateDoc(ref, { attdSyncTokenHash: 'B'.repeat(64) }));
+      await assertFails(updateDoc(ref, { attdSyncTokenHash: 'z'.repeat(64) }));
+      // Nor does the hash open the document to an arbitrary credential key.
+      await assertFails(updateDoc(ref, { attdSyncTokenHash: 'b'.repeat(64), evil: true }));
+      // A Trainee cannot rotate the credential either.
+      await assertFails(updateDoc(doc(traineeDb, 'settings', 'integrations'), {
+        attdSyncTokenHash: 'c'.repeat(64),
+      }));
+    });
+
     it('lets a Full-timer resolve an import in a client batch', async () => {
       await seedSyncUsers();
       const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
       await assertSucceeds(updateDoc(doc(adminDb, 'pending_attendance_imports', 'p1'), { status: 'confirmed' }));
       await assertSucceeds(setDoc(doc(adminDb, 'attendee_aliases', 'a2'), { contactId: 'c2', attdMemberId: 'm2' }));
       await assertSucceeds(setDoc(doc(adminDb, 'integrations_attd_event_mappings', 'e2'), { rhythmId: 'r2' }));
+    });
+  });
+
+  // The credential vault (ADR 0051, #1966): ciphertext for Full-timers, the
+  // meta singleton the key is derived from, and an append-only audit log. The
+  // denials are the assertions — they are the whole boundary.
+  describe('Credential vault and audit log (#1966)', () => {
+    const seedVaultUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'vault-ft'), { role: 'admin', approved: true });
+        await setDoc(doc(adminDb, 'users', 'vault-trainee'), { role: 'manager', approved: true });
+        await setDoc(doc(adminDb, 'users', 'vault-student'), { role: 'operator', approved: true });
+        await setDoc(doc(adminDb, 'users', 'vault-community'), { role: 'viewer', approved: true });
+      });
+    };
+
+    const fullTimer = () => getFirestore({ uid: 'vault-ft', email: 'vault-ft@test.com' });
+
+    const outsiderDbs = () => [
+      getFirestore({ uid: 'vault-trainee', email: 'vault-trainee@test.com' }),
+      getFirestore({ uid: 'vault-student', email: 'vault-student@test.com' }),
+      getFirestore({ uid: 'vault-community', email: 'vault-community@test.com' }),
+    ];
+
+    // What the browser writes: a random salt, the PBKDF2 cost, the check value
+    // and a schema version, stamped by the request.
+    const meta = () => ({
+      salt: 'c2FsdA==',
+      iterations: 600000,
+      check: 'Y2hlY2s=',
+      schemaVersion: 1,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // One encrypted JSON blob per entry — never a plaintext field.
+    const credential = (over: Record<string, unknown> = {}) => ({
+      iv: 'aXY=',
+      ciphertext: 'Y2lwaGVydGV4dA==',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...over,
+    });
+
+    const auditEntry = (over: Record<string, unknown> = {}) => ({
+      actorUid: 'vault-ft',
+      credentialId: 'cred-1',
+      action: 'reveal',
+      field: null,
+      createdAt: serverTimestamp(),
+      ...over,
+    });
+
+    it('a Full-timer writes and rekeys the credential metadata singleton', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      const ref = doc(db, 'credentialsMeta', 'current');
+      await assertSucceeds(setDoc(ref, meta()));
+      await assertSucceeds(getDoc(ref));
+      // A rekey: new salt and check, both stamps from the request.
+      await assertSucceeds(updateDoc(ref, {
+        salt: 'bmV3c2FsdA==',
+        check: 'bmV3Y2hlY2s=',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('keeps credential metadata to Full-timers and to the one current document', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      await assertSucceeds(setDoc(doc(db, 'credentialsMeta', 'current'), meta()));
+      for (const other of outsiderDbs()) {
+        await assertFails(getDoc(doc(other, 'credentialsMeta', 'current')));
+        await assertFails(setDoc(doc(other, 'credentialsMeta', 'current'), meta()));
+      }
+      await assertFails(setDoc(doc(db, 'credentialsMeta', 'other'), meta()));
+      // A write that omits the stamps keeps the stored ones and is refused.
+      await assertFails(updateDoc(doc(db, 'credentialsMeta', 'current'), { salt: 'bmV3' }));
+      await assertFails(setDoc(doc(db, 'credentialsMeta', 'current'), {
+        ...meta(),
+        createdAt: new Date('2020-01-01'),
+      }));
+      await assertFails(deleteDoc(doc(db, 'credentialsMeta', 'current')));
+    });
+
+    it('a Full-timer stores and edits a credential entry as ciphertext only', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      const ref = doc(db, 'credentials', 'cred-1');
+      await assertSucceeds(setDoc(ref, credential()));
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(getDocs(collection(db, 'credentials')));
+      await assertSucceeds(updateDoc(ref, {
+        iv: 'bmV3aXY=',
+        ciphertext: 'bmV3',
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses a credential entry that carries a plaintext field', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      for (const plaintext of [
+        { label: 'Ministry account' },
+        { username: 'team@example.com' },
+        { password: 'hunter2' },
+      ]) {
+        await assertFails(setDoc(doc(db, 'credentials', 'cred-plain'), credential(plaintext)));
+      }
+      // Neither can a later edit add one back.
+      const ref = doc(db, 'credentials', 'cred-1');
+      await assertSucceeds(setDoc(ref, credential()));
+      await assertFails(updateDoc(ref, { label: 'Ministry account', updatedAt: serverTimestamp() }));
+    });
+
+    it('refuses a credential edit whose updatedAt does not advance', async () => {
+      await seedVaultUsers();
+      const ref = doc(fullTimer(), 'credentials', 'cred-1');
+      await assertSucceeds(setDoc(ref, credential()));
+      // Dirty Dozen #12: the edit lands without its stamp.
+      await assertFails(updateDoc(ref, { ciphertext: 'bmV3' }));
+      await assertFails(updateDoc(ref, { ciphertext: 'bmV3', updatedAt: new Date('2020-01-01') }));
+      // createdAt is frozen at creation.
+      await assertFails(updateDoc(ref, {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses an oversized credential iv or ciphertext', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      await assertFails(setDoc(doc(db, 'credentials', 'cred-big-iv'), credential({ iv: 'a'.repeat(65) })));
+      await assertFails(setDoc(doc(db, 'credentials', 'cred-big-ct'), credential({ ciphertext: 'a'.repeat(700001) })));
+    });
+
+    it('denies a Trainee, Student and Community the credential entries', async () => {
+      await seedVaultUsers();
+      await assertSucceeds(setDoc(doc(fullTimer(), 'credentials', 'cred-1'), credential()));
+      for (const db of outsiderDbs()) {
+        await assertFails(getDoc(doc(db, 'credentials', 'cred-1')));
+        await assertFails(getDocs(collection(db, 'credentials')));
+        await assertFails(setDoc(doc(db, 'credentials', 'cred-2'), credential()));
+      }
+    });
+
+    it('a Full-timer appends to the credential audit log and reads it back', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry()));
+      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-2'), auditEntry({
+        credentialId: 'attd-sync-token',
+        action: 'rotate',
+        field: 'attdSyncTokenHash',
+      })));
+      await assertSucceeds(getDoc(doc(db, 'credentialAudit', 'aud-1')));
+      const all = await assertSucceeds(getDocs(collection(db, 'credentialAudit')));
+      expect(all.size).toBe(2);
+    });
+
+    it('keeps the credential audit log append-only, even for a Full-timer', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry()));
+      await assertFails(updateDoc(doc(db, 'credentialAudit', 'aud-1'), { action: 'copy' }));
+      await assertFails(deleteDoc(doc(db, 'credentialAudit', 'aud-1')));
+      // A setDoc onto an existing id is an update, so it is refused too.
+      await assertFails(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry({ action: 'copy' })));
+    });
+
+    it('refuses a credential audit entry that spoofs the actor, the action or the time', async () => {
+      await seedVaultUsers();
+      const db = fullTimer();
+      const write = (id: string, over: Record<string, unknown>) =>
+        setDoc(doc(db, 'credentialAudit', id), auditEntry(over));
+      await assertFails(write('aud-uid', { actorUid: 'vault-trainee' }));
+      await assertFails(write('aud-action', { action: 'read' }));
+      await assertFails(write('aud-time', { createdAt: new Date('2020-01-01') }));
+      await assertFails(write('aud-field', { field: 42 }));
+      await assertFails(write('aud-ghost', { userId: 'vault-ft' }));
+      // The allowed shape still lands, including the optional field.
+      await assertSucceeds(write('aud-ok', { action: 'copy', field: 'password' }));
+    });
+
+    it('denies a Trainee, Student and Community the credential audit log', async () => {
+      await seedVaultUsers();
+      await assertSucceeds(setDoc(doc(fullTimer(), 'credentialAudit', 'aud-1'), auditEntry()));
+      for (const db of outsiderDbs()) {
+        await assertFails(getDoc(doc(db, 'credentialAudit', 'aud-1')));
+        await assertFails(getDocs(collection(db, 'credentialAudit')));
+        await assertFails(setDoc(doc(db, 'credentialAudit', 'aud-2'), auditEntry()));
+      }
     });
   });
 

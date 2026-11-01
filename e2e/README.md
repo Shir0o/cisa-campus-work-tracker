@@ -15,6 +15,7 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `journeys/notification.spec.ts` | Notification journey: a reply raises a bell entry that opens its Thread (row 15, #1303), a contact notification opens the contact, plus the retired bell deep-linking (#682) and push-transport checks (#1479) |
 | `journeys/student-community.spec.ts` | Student and Community journey: the landing + sidebar nav + route-guard matrix for every role, the Student's People/Gatherings/contact-thread/Quick-Capture flows, and the Community member's missing door to the contact directory — People or sideways through Gatherings (#950; #1480; folds in the retired `permissions`, `gatherings-attendance`, `cross-role-journey`, `quick-capture` and `walking-together-threads` specs) |
 | `journeys/messages-keyboard.spec.ts` | Messages on a phone at 375×812: with a stubbed `visualViewport` standing in for the soft keyboard, the composer's bottom edge stays inside the visual viewport and the message stream shrinks by the keyboard's height (#1790). |
+| `credential-vault.spec.ts` | Credential vault journey (#1967, ADR 0051): a Full-timer reaches the vault from its one door in Settings → Security, unlocks the seeded fixture, reveals and adds an entry, and a reload locks it again; a Trainee is bounced from `/vault` and has no door. |
 
 ## Running
 

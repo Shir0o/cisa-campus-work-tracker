@@ -83,22 +83,44 @@ export default function Help() {
         </div>
 
         <div className="grid gap-8 md:grid-cols-[16rem_1fr]">
-          <nav data-testid="help-nav" aria-label={t('help.pages_label', 'Help pages')} className="space-y-1">
-            {pages.map((page) => (
-              <Link
-                key={page.slug}
-                to={`/help/${page.slug}`}
-                className={cn(
-                  'block rounded-xl border px-4 py-2.5 text-sm transition-colors',
-                  page.slug === slug
-                    ? 'border-primary/40 bg-primary/5 text-on-surface'
-                    : 'border-transparent text-on-surface-variant hover:bg-surface-container',
-                )}
+          <div className="space-y-4">
+            <nav data-testid="help-nav" aria-label={t('help.pages_label', 'Help pages')} className="space-y-1">
+              {pages.map((page) => (
+                <Link
+                  key={page.slug}
+                  to={`/help/${page.slug}`}
+                  className={cn(
+                    'block rounded-xl border px-4 py-2.5 text-sm transition-colors',
+                    page.slug === slug
+                      ? 'border-primary/40 bg-primary/5 text-on-surface'
+                      : 'border-transparent text-on-surface-variant hover:bg-surface-container',
+                  )}
+                >
+                  {helpContentForLocale(page, language).title}
+                </Link>
+              ))}
+            </nav>
+
+            {/* The vault has no help page of its own (#1969): it is a
+                Full-timer surface, not one a Trainee can reach, so one note
+                here rather than a page in the corpus everyone reads. */}
+            {role === 'admin' && (
+              <section
+                data-testid="help-vault"
+                className="rounded-2xl border border-outline-variant bg-surface-container p-4"
               >
-                {helpContentForLocale(page, language).title}
-              </Link>
-            ))}
-          </nav>
+                <h2 className="mb-1 text-sm font-semibold text-on-surface">
+                  {t('help.vault_title', 'Credential vault')}
+                </h2>
+                <p className="text-sm leading-relaxed text-on-surface-variant">
+                  {t(
+                    'help.vault_body',
+                    "Full-timers keep the team's shared logins under Settings → Security → Credential vault, or at /vault, and unlock them with one passphrase that every Full-timer shares. That passphrase is stored nowhere and cannot be recovered, so keep it in the team password manager; changing it re-seals every entry under the new one and needs the current passphrase. If it is lost, there is no reset in the app: the vault stays closed and each login has to be recovered from the service itself.",
+                  )}
+                </p>
+              </section>
+            )}
+          </div>
 
           {slug && !activePage ? (
             <div

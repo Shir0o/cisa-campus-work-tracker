@@ -2260,24 +2260,46 @@ ${JSON.stringify(contactsList)}`;
     return { payload };
   }
 
-  function syncTokenFromSettings(settings: Record<string, unknown> | null): string {
-    if (settings === null) return '';
+  // ADR 0052: the credential is stored as the SHA-256 of the token, so the
+  // server can verify a header without holding the token itself. The legacy
+  // plaintext field is read too while a half-migrated environment still has one.
+  function syncTokenFromSettings(settings: Record<string, unknown> | null): { hash: string; legacy: string } {
+    const stored = { hash: '', legacy: '' };
+    if (settings === null) return stored;
+    if (typeof settings.attdSyncTokenHash === 'string') {
+      stored.hash = settings.attdSyncTokenHash.trim();
+    }
+    // remove when attdSyncToken is gone everywhere
     const candidates = [settings.attdSyncToken, settings.syncToken, settings.cisaSyncToken, settings.token];
     for (const candidate of candidates) {
       if (typeof candidate === 'string') {
         const trimmed = candidate.trim();
-        if (trimmed !== '') return trimmed;
+        if (trimmed !== '') {
+          stored.legacy = trimmed;
+          break;
+        }
       }
     }
-    return '';
+    return stored;
   }
 
-  function syncTokensMatch(stored: string, provided: string): boolean {
-    if (stored === '' || provided === '') return false;
-    const left = Buffer.from(stored);
+  function syncTokensMatch(stored: { hash: string; legacy: string }, provided: string): boolean {
+    if (provided === '') return false;
+    if (stored.hash !== '') {
+      const providedDigest = crypto.createHash('sha256').update(provided, 'utf8').digest();
+      const storedDigest = Buffer.from(stored.hash, 'hex');
+      // Kept so a malformed stored hash or header cannot throw out of
+      // timingSafeEqual; the digests are normally the same length by construction.
+      if (storedDigest.length === providedDigest.length && crypto.timingSafeEqual(storedDigest, providedDigest)) {
+        return true;
+      }
+    }
+    // remove when attdSyncToken is gone everywhere
+    if (stored.legacy === '') return false;
+    const left = Buffer.from(stored.legacy);
     const right = Buffer.from(provided);
-    if (left.length === right.length) return crypto.timingSafeEqual(left, right);
-    return false;
+    if (left.length !== right.length) return false;
+    return crypto.timingSafeEqual(left, right);
   }
 
   const handleAttendanceSyncIntake = async (req: express.Request, res: express.Response) => {

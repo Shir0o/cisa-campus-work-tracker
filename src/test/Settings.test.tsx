@@ -70,6 +70,8 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(() => Promise.resolve()),
   updateDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
+  deleteField: vi.fn(() => ({ __deleteField: true })),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'audit-1' })),
   getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
 }));
@@ -1959,7 +1961,7 @@ describe('Settings', () => {
       setupManagerAuth();
       vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
         if (ref?.path === 'settings/integrations') {
-          callback({ exists: () => true, data: () => ({ attdSyncToken: 'old-token' }) });
+          callback({ exists: () => true, data: () => ({ attdSyncTokenHash: 'a'.repeat(64) }) });
         } else {
           callback({ docs: [], size: 0 });
         }
@@ -1968,24 +1970,24 @@ describe('Settings', () => {
 
       render(<Settings />);
 
-      const generate = await screen.findByRole('button', { name: 'Generate new token' });
-      fireEvent.click(generate);
+      const rotate = await screen.findByRole('button', { name: 'Rotate token' });
+      fireEvent.click(rotate);
 
       // Armed, not fired: the credential pasted into ~/attd is still valid.
       expect(setDoc).not.toHaveBeenCalled();
-      expect(screen.queryByRole('button', { name: 'Generate new token' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Rotate token' })).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(setDoc).not.toHaveBeenCalled();
-      expect(screen.getByRole('button', { name: 'Generate new token' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Rotate token' })).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Generate new token' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Rotate token' }));
       fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
       await waitFor(() => {
         expect(setDoc).toHaveBeenCalledWith(
           expect.objectContaining({ path: 'settings/integrations' }),
-          expect.objectContaining({ attdSyncToken: expect.any(String) }),
+          expect.objectContaining({ attdSyncTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/) }),
           { merge: true },
         );
       });
