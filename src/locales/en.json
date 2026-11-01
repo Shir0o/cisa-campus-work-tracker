@@ -2858,7 +2858,7 @@
     "sig_no_reply_mine_one": "You texted 1 day ago · no reply",
     "sig_no_reply_theirs": "{reacher} texted {days} days ago · no reply",
     "sig_no_reply_theirs_one": "{reacher} texted 1 day ago · no reply",
-    "cleared_named": "Cleared · {name} {verb} them",
+    "cleared_named": "Cleared · {name} reached them",
     "cleared_reached": "Cleared · reached",
     "cleared_ask": "Cleared · the ask closed",
     "cleared_answered": "Cleared · answered in the Thread",

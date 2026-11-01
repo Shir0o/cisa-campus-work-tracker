@@ -12,9 +12,20 @@ import { applyRoster } from '../lib/walking';
 import { applyTeams } from '../lib/teams';
 import type { Contact, Interaction } from '../types';
 import type { ThreadMessageWithContact } from '../lib/threads';
+import en from '../locales/en.json';
+import es from '../locales/es.json';
 
 // A tiny i18n stand-in: returns the fallback with placeholders filled.
 const t = (_key: string, fallback?: string) => fallback ?? _key;
+
+// The same lookup the app uses, so a shipped string is asserted as shipped —
+// a fallback would hide a placeholder the code never fills.
+const dictionaryT = (dict: unknown) => (key: string, fallback?: string) => {
+  const found = key
+    .split('.')
+    .reduce<any>((node, seg) => (node && typeof node === 'object' ? node[seg] : undefined), dict);
+  return typeof found === 'string' ? found : (fallback ?? key);
+};
 
 describe('toAskView — assembling the derivation input', () => {
   it('reads the fields grouping needs from a contact', () => {
@@ -163,5 +174,15 @@ describe('toAskView — the words', () => {
     expect(clearedText({ reason: 'reached', at: 'now' }, t)).toBe('Cleared · reached');
     expect(clearedText({ reason: 'askClosed', at: 'now' }, t)).toBe('Cleared · the ask closed');
     expect(clearedText({ reason: 'answered', at: 'now' }, t)).toBe('Cleared · answered in the Thread');
+  });
+
+  it('fills every placeholder the shipped dictionaries carry', () => {
+    // #1962: `cleared_named` shipped with a {verb} the renderer never fills.
+    const cleared = { reason: 'reached' as const, at: 'now', name: 'Jae' };
+    const english = clearedText(cleared, dictionaryT(en));
+    const spanish = clearedText(cleared, dictionaryT(es));
+    expect(english).toBe('Cleared · Jae reached them');
+    expect(spanish).toBe('Resuelta · Jae se puso en contacto');
+    expect([english, spanish].join(' ')).not.toContain('{');
   });
 });
