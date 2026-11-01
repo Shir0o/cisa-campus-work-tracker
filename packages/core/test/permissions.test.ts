@@ -54,7 +54,12 @@ describe('permissions', () => {
     expect(canAccessRoute('manager', '/attendance')).toBe(false);
     expect(canAccessRoute('manager', '/coordination')).toBe(false);
     expect(canAccessRoute('admin', '/attendance')).toBe(true);
-    expect(canAccessRoute('viewer', '/attendance')).toBe(true);
+    // Community does NOT pass this gate either (#1940). Gatherings shares
+    // People's floor (#1834): a Community member has no People page, so the
+    // room is not a sideways door into the directory. The contact read rule does
+    // admit them, which is why the phone must refuse the route rather than
+    // letting the screen load and the attendance write fail.
+    expect(canAccessRoute('viewer', '/attendance')).toBe(false);
     expect(canSeePrefs('manager')).toBe(true);
     expect(canSeePrefs('viewer')).toBe(false);
   });
