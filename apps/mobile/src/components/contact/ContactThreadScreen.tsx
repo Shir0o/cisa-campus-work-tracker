@@ -4,7 +4,7 @@
 // Full-timers message, or an Interaction quoted from the Story — then "N
 // replies", the replies, and a reply box pinned at the foot.
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -17,6 +17,7 @@ import { conversationMessages, fullTimersMessages, interactionThread } from '../
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { SafeAreaView } from '../ui/SafeArea';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
+import { KeyboardScrollView } from '../ui/KeyboardField';
 import { Snackbar } from '../ui';
 import { Kicker } from '../queue/atoms';
 import { Room, V2Empty } from '../v2/Widget';
@@ -120,7 +121,7 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
         </View>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: 12 }} keyboardShouldPersistTaps="handled">
+          <KeyboardScrollView contentContainerStyle={{ padding: 12 }} keyboardShouldPersistTaps="handled">
             <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 10 }}>
               {interaction ? (
                 <View style={{ borderLeftWidth: 3, borderLeftColor: c.card.quoteLine, paddingLeft: 12, paddingVertical: 4 }}>
@@ -174,7 +175,7 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
                 />
               ))}
             </View>
-          </ScrollView>
+          </KeyboardScrollView>
 
           {canWrite && (
             <StreamComposer

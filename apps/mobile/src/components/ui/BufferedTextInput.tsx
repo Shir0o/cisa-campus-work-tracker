@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
+import { useFieldReveal, type Revealable } from './KeyboardField';
 
 /**
  * A drop-in controlled `TextInput` for fields whose owner re-renders late.
@@ -17,9 +18,13 @@ import { TextInput, type TextInputProps } from 'react-native';
  * wins. An owner that rewrites the text it receives (a digits-only filter) is
  * not supported: the rewritten value may never change the prop.
  */
-export function BufferedTextInput({ value, onChangeText, ...rest }: TextInputProps) {
+export function BufferedTextInput({ value, onChangeText, onFocus, ...rest }: TextInputProps) {
   const [local, setLocal] = useState(value);
   const sent = useRef<string[]>([]);
+  const field = useRef<TextInput>(null);
+  // Moving between fields with the keyboard already up fires no keyboard event,
+  // so the field asks for its own place back on screen (#1943).
+  const reveal = useFieldReveal();
 
   useEffect(() => {
     const echo = value === undefined ? -1 : sent.current.indexOf(value);
@@ -37,5 +42,16 @@ export function BufferedTextInput({ value, onChangeText, ...rest }: TextInputPro
     onChangeText?.(next);
   };
 
-  return <TextInput {...rest} value={local} onChangeText={change} />;
+  return (
+    <TextInput
+      {...rest}
+      ref={field}
+      value={local}
+      onChangeText={change}
+      onFocus={(event) => {
+        reveal?.(field.current as unknown as Revealable | null);
+        onFocus?.(event);
+      }}
+    />
+  );
 }

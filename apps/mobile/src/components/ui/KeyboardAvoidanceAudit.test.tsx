@@ -1,11 +1,13 @@
 import React from 'react';
-import { TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { Sheet } from './Sheet';
 import { Screen } from './index';
 import { MemberScreen, MemberRoom } from '../member/MemberScreen';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
+import { V2TextArea } from '../v2/Widget';
+import { MULTILINE_FIELD_MAX_HEIGHT, useFieldReveal } from './KeyboardField';
 
 jest.mock('./KeyboardAvoidingView', () => {
   const React = jest.requireActual('react');
@@ -95,5 +97,50 @@ describe('General Mobile Keyboard Avoidance (#1704)', () => {
     );
 
     expect(queryByTestId('keyboard-avoiding-view')).toBeTruthy();
+  });
+});
+
+/** Reads the reveal its shell handed down — the half a wrapper alone can't do. */
+function RevealProbe() {
+  return useFieldReveal() ? <TextInput testID="has-reveal" /> : <TextInput testID="no-reveal" />;
+}
+
+describe('Keyboard reveal, not just padding (#1943)', () => {
+  it('Sheet hands the fields inside it a reveal', async () => {
+    const { queryByTestId } = await render(
+      <ThemeProvider>
+        <Sheet visible onClose={jest.fn()}>
+          <RevealProbe />
+        </Sheet>
+      </ThemeProvider>,
+    );
+
+    expect(queryByTestId('has-reveal')).toBeTruthy();
+  });
+
+  it('MemberScreen hands the fields inside it a reveal', async () => {
+    const { queryByTestId } = await render(
+      <ThemeProvider>
+        <MemberRoom>
+          <MemberScreen>
+            <RevealProbe />
+          </MemberScreen>
+        </MemberRoom>
+      </ThemeProvider>,
+    );
+
+    expect(queryByTestId('has-reveal')).toBeTruthy();
+  });
+
+  it('a growing field stops at the shared ceiling', async () => {
+    const { getByPlaceholderText } = await render(
+      <ThemeProvider>
+        <V2TextArea value="" onChangeText={jest.fn()} placeholder="What you'll want to remember" />
+      </ThemeProvider>,
+    );
+
+    expect(StyleSheet.flatten(getByPlaceholderText("What you'll want to remember").props.style).maxHeight).toBe(
+      MULTILINE_FIELD_MAX_HEIGHT,
+    );
   });
 });

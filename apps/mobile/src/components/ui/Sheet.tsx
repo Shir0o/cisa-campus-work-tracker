@@ -13,9 +13,11 @@ import {
   useBottomSheetTimingConfigs,
   type BottomSheetBackdropProps,
   type BottomSheetFooterProps,
+  type BottomSheetScrollViewMethods,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '../../theme/ThemeProvider';
 import { KeyboardAvoidingView } from './KeyboardAvoidingView';
+import { FieldRevealProvider, useFieldRevealScroll } from './KeyboardField';
 
 // The library's own BottomSheetBackdrop only flips pointer-events to 'none' once its
 // Reanimated-driven close animation crosses a threshold index — on web that animation is
@@ -106,6 +108,11 @@ export function Sheet({
   const timingConfigs = useBottomSheetTimingConfigs({});
   const animationConfigs = Platform.OS === 'web' ? timingConfigs : undefined;
   const ref = useRef<ElementRef<typeof BottomSheetModal>>(null);
+  // The sheet's own scroll view, so a focused field low in the sheet can be
+  // brought above the keyboard (#1943). The library hands out the inner
+  // scrollable through its imperative ref.
+  const scrollRef = useRef<BottomSheetScrollViewMethods | null>(null);
+  const { reveal, onScroll } = useFieldRevealScroll(scrollRef);
   const everPresented = useRef(false);
   // Set when the library itself has already dismissed the modal and called
   // onDismiss. Its internal status is INITIAL by then, and dismissing again
@@ -207,10 +214,12 @@ export function Sheet({
       */}
       <KeyboardAvoidingView style={{ flex: 1 }}>
         <BottomSheetScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
           contentContainerStyle={footer ? { paddingBottom: footerHeight + 24 } : undefined}
         >
-          {children}
+          <FieldRevealProvider value={reveal}>{children}</FieldRevealProvider>
         </BottomSheetScrollView>
       </KeyboardAvoidingView>
     </BottomSheetModal>

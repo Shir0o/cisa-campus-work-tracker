@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
+import { KeyboardScrollView } from '../ui/KeyboardField';
 import {
   canManageCollaborators,
   canRemoveContactMember,
@@ -313,7 +314,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <KeyboardScrollView
         ref={scroller}
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: tab === 'conversation' ? 12 : 30 }}
         showsVerticalScrollIndicator={false}
@@ -523,7 +524,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
             )}
           </View>
         )}
-      </ScrollView>
+      </KeyboardScrollView>
 
       {tab === 'conversation' && canWrite && (
         <StreamComposer

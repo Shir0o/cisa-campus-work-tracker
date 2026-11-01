@@ -6,6 +6,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { BufferedTextInput } from './BufferedTextInput';
+import { FieldRevealProvider } from './KeyboardField';
 
 const field = (utils: Awaited<ReturnType<typeof render>>) => utils.getByPlaceholderText('note');
 
@@ -60,5 +61,22 @@ describe('BufferedTextInput', () => {
 
     expect(field(utils).props.multiline).toBe(true);
     expect(field(utils).props.autoCapitalize).toBe('none');
+  });
+
+  // #1943: moving between fields with the keyboard already up fires no keyboard
+  // event, so the field asks its shell for its place back on screen itself.
+  it('asks its shell to reveal it on focus, and still calls the caller', async () => {
+    const reveal = jest.fn();
+    const onFocus = jest.fn();
+    const utils = await render(
+      <FieldRevealProvider value={reveal}>
+        <BufferedTextInput value="" onChangeText={jest.fn()} placeholder="note" onFocus={onFocus} />
+      </FieldRevealProvider>,
+    );
+
+    await fireEvent(field(utils), 'focus');
+
+    expect(reveal).toHaveBeenCalledTimes(1);
+    expect(onFocus).toHaveBeenCalledTimes(1);
   });
 });

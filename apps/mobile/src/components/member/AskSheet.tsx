@@ -4,6 +4,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { Sheet } from '../ui';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -52,6 +53,7 @@ function Body({
           paddingHorizontal: 14,
           paddingVertical: 12,
           minHeight: multiline ? 110 : 52,
+          maxHeight: multiline ? MULTILINE_FIELD_MAX_HEIGHT : undefined,
           textAlignVertical: multiline ? 'top' : 'center',
           fontFamily: font.medium,
           fontSize: fs(15),

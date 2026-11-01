@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { firstName, type ThreadKind } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -129,6 +130,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             style={{
               marginTop: 14,
               minHeight: 96,
+              maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
               backgroundColor: c.card.field,
               borderWidth: 1.5,
               borderColor: c.card.line,

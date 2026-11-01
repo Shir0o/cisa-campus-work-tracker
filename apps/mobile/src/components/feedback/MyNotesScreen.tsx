@@ -14,6 +14,7 @@ import { useMyNotesData } from '../../lib/useMyNotesData';
 import { subscribeNoteReplies, postReply, editReply } from '../../lib/data/feedback';
 import { useV2Theme } from '../../theme/v2';
 import { MemberScreen, MemberBack, MemberHead } from '../member/MemberScreen';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 
 export function MyNotesScreen() {
   const { t } = useLanguage();
@@ -260,6 +261,7 @@ function FollowUpThread({ noteId, linked }: { noteId: string; linked: boolean })
                     color: c.widget.ink,
                     backgroundColor: c.widget.bg,
                     minHeight: 60,
+                    maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
                     textAlignVertical: 'top',
                   }}
                 />
@@ -316,6 +318,7 @@ function FollowUpThread({ noteId, linked }: { noteId: string; linked: boolean })
             color: c.widget.ink,
             backgroundColor: c.widget.bg,
             minHeight: 70,
+            maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
             textAlignVertical: 'top',
           }}
         />

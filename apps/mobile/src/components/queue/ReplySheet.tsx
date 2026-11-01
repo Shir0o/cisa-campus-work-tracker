@@ -3,6 +3,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { firstName, replyDestinationLine, type ThreadMessageWithContact } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -52,6 +53,7 @@ export function ReplySheet({
           style={{
             marginTop: 16,
             minHeight: 104,
+            maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
             backgroundColor: c.card.field,
             borderWidth: 1.5,
             borderColor: c.card.line,

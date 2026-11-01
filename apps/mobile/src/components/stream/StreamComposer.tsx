@@ -9,11 +9,12 @@
 // hand-typed "@Firstname" still only highlights in the body (display only).
 // There is no keyboard shortcut hint: "⌘↵ to post" means nothing on a touch
 // screen (see DRIFT.md row 44).
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
+import { MULTILINE_FIELD_MAX_HEIGHT, useFieldReveal, type Revealable } from '../ui/KeyboardField';
 import {
   extractMentionCandidate,
   filterMentionCandidates,
@@ -72,6 +73,8 @@ export function StreamComposer({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
+  const reveal = useFieldReveal();
+  const field = useRef<TextInput>(null);
   const [kind, setKind] = useState<StreamComposeKind>('comment');
   const [body, setBody] = useState('');
   const [sel, setSel] = useState(0);
@@ -238,9 +241,11 @@ export function StreamComposer({
             <ToolButton icon="at" label={t('mobile.stream.mention')} onPress={startMention} />
           )}
           <TextInput
+            ref={field}
             value={body}
             onChangeText={change}
             onSelectionChange={(e) => setSel(e.nativeEvent.selection.start)}
+            onFocus={() => reveal?.(field.current as unknown as Revealable | null)}
             placeholder={hint}
             placeholderTextColor={c.card.ink3}
             accessibilityLabel={label}
@@ -252,7 +257,7 @@ export function StreamComposer({
             style={{
               flex: 1,
               minHeight: 44,
-              maxHeight: 140,
+              maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
               paddingVertical: 10,
               paddingHorizontal: 4,
               fontFamily: font.medium,
