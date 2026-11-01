@@ -790,6 +790,140 @@ describe('Messages View Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/admin/feedback');
   });
 
+  // #1921 — a card must not be a door the reader cannot open. Each role gets
+  // one render; the destinations it may reach are listed, anything else must
+  // render as a non-button that names where the card lives.
+  const ATTACHMENT_ROLE_MATRIX: Array<{
+    role: 'admin' | 'manager' | 'operator' | 'viewer';
+    open: Record<string, string>;
+  }> = [
+    { role: 'admin', open: { interaction: '/history', event: '/attendance', prayer: '/prayer', note: '/coordination', feedback: '/admin/feedback' } },
+    { role: 'manager', open: {} },
+    { role: 'operator', open: { event: '/attendance', prayer: '/prayer', note: '/coordination' } },
+    { role: 'viewer', open: { prayer: '/prayer' } },
+  ];
+
+  const ATTACHMENT_CARDS = [
+    { type: 'interaction', name: 'Interaction Attachment', destination: 'Looking back' },
+    { type: 'event', name: 'Event Attachment', destination: 'Gatherings' },
+    { type: 'prayer', name: 'Prayer Attachment', destination: 'On our hearts' },
+    { type: 'note', name: 'Note Attachment', destination: 'Coordination Notes' },
+    { type: 'feedback', name: 'Feedback Attachment', destination: 'Feedback' },
+  ];
+
+  it.each(ATTACHMENT_ROLE_MATRIX)('attachment cards respect $role access (#1921)', async ({ role, open }) => {
+    (useAuth as any).mockReturnValue({ user: stableUser, role });
+
+    const withAttachments = [
+      {
+        id: 'm-attachments',
+        roomId: 'room1',
+        text: 'Rich data cards',
+        senderId: 'u2',
+        senderName: 'Alice',
+        timestamp: { seconds: 100005 },
+        type: 'text' as const,
+        attachments: ATTACHMENT_CARDS.map((card) => ({
+          type: card.type,
+          id: `${card.type}-1`,
+          name: card.name,
+          subtitle: 'Detail',
+        })),
+      },
+    ];
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      const isMessages = q && q.path && q.path.includes('messages');
+      const dataList = isMessages ? withAttachments : mockRooms;
+      successCallback({
+        forEach: (fn: any) => {
+          dataList.forEach((item) => {
+            fn({ id: item.id, data: () => { const { id, ...rest } = item; return rest; } });
+          });
+        },
+      });
+      return vi.fn();
+    });
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+    expect(await screen.findByText('Interaction Attachment')).toBeInTheDocument();
+
+    for (const card of ATTACHMENT_CARDS) {
+      mockNavigate.mockClear();
+      const el = screen.getByText(card.name).closest('.strm-file') as HTMLElement;
+      fireEvent.click(el);
+
+      if (open[card.type]) {
+        expect(mockNavigate).toHaveBeenCalledWith(open[card.type]);
+        expect(el.tagName).toBe('BUTTON');
+      } else {
+        expect(mockNavigate, `${role} must not be routed from ${card.type}`).not.toHaveBeenCalled();
+        expect(el.tagName).not.toBe('BUTTON');
+        expect(el).not.toHaveAttribute('tabindex');
+        expect(el.textContent).toContain(card.destination);
+        expect(el.textContent).toContain('not available to you');
+      }
+    }
+  });
+
+  it('never routes a card with no destination (#1921)', async () => {
+    (useAuth as any).mockReturnValue({ user: stableUser, role: 'admin' });
+
+    const withDeadCards = [
+      {
+        id: 'm-dead',
+        roomId: 'room1',
+        text: 'Legacy cards',
+        senderId: 'u2',
+        senderName: 'Alice',
+        timestamp: { seconds: 100005 },
+        type: 'text' as const,
+        attachments: [
+          // 'phone' is still in the attachment union; nothing writes it today.
+          { type: 'phone', id: 'ph-1', name: 'Phone Attachment', subtitle: '555-0100' },
+          { type: 'mystery', id: 'x-1', name: 'Mystery Attachment', subtitle: 'Unknown' },
+        ],
+      },
+    ];
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      const isMessages = q && q.path && q.path.includes('messages');
+      const dataList = isMessages ? withDeadCards : mockRooms;
+      successCallback({
+        forEach: (fn: any) => {
+          dataList.forEach((item) => {
+            fn({ id: item.id, data: () => { const { id, ...rest } = item; return rest; } });
+          });
+        },
+      });
+      return vi.fn();
+    });
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+    expect(await screen.findByText('Phone Attachment')).toBeInTheDocument();
+
+    for (const name of ['Phone Attachment', 'Mystery Attachment']) {
+      mockNavigate.mockClear();
+      const el = screen.getByText(name).closest('.strm-file') as HTMLElement;
+      fireEvent.click(el);
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(el.tagName).not.toBe('BUTTON');
+      expect(el).not.toHaveAttribute('tabindex');
+    }
+  });
+
   it('handles checking/toggling a todo attachment', async () => {
     const mockMessagesWithTodo = [
       {

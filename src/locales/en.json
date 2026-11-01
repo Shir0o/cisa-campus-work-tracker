@@ -2397,6 +2397,7 @@
     "placeholder": "Write a message…",
     "placeholder_announcement": "Write an announcement…",
     "no_match": "Nothing matches “{q}”.",
+    "attachment_locked": "Opens {destination} — not available to you",
     "take_back": "Take back for everyone",
     "remove_for_everyone": "Remove for everyone",
     "take_back_prompt": "Take this back for everyone? They'll see that a message was removed — not what it said.",
