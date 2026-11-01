@@ -30,6 +30,7 @@ import {
   Bell
 } from 'lucide-react';
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
+import { canAccessRoute } from '../lib/permissions';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
@@ -111,6 +112,19 @@ function useKeyboardOverlap(enabled: boolean): number {
   }, [enabled]);
   return overlap;
 }
+
+/** Where an attachment card opens. Types with no page of their own are absent:
+ *  `contact` is a pill that opens the person, `todo` is a checkbox, and a
+ *  legacy `phone` (nothing writes one) has nowhere to go (#1921). */
+const ATTACHMENT_DESTINATIONS: Partial<
+  Record<ChatAttachment['type'], { path: string; labelKey: string }>
+> = {
+  interaction: { path: '/history', labelKey: 'nav.looking_back' },
+  event: { path: '/attendance', labelKey: 'nav.gatherings' },
+  prayer: { path: '/prayer', labelKey: 'nav.prayers' },
+  note: { path: '/coordination', labelKey: 'nav.coordination' },
+  feedback: { path: '/admin/feedback', labelKey: 'modals.feedback' },
+};
 
 export default function Messages() {
   const { roomId } = useParams<{ roomId?: string }>();
@@ -633,10 +647,18 @@ export default function Messages() {
             );
           }
           const AttachIcon = getAttachmentIcon(attach.type);
+          const destination = ATTACHMENT_DESTINATIONS[attach.type];
+          // A card is only a door when the reader may walk through it: the
+          // router would otherwise silently bounce them home (#1921).
+          const canOpen = !!destination && canAccessRoute(userRole, destination.path);
+          const lockedLabel = destination && !canOpen
+            ? t('chat.attachment_locked').replace('{destination}', t(destination.labelKey))
+            : null;
           const body = (
             <span className="min-w-0">
               <span className={cn(attach.type === 'todo' && attach.status === 'completed' && "line-through opacity-70")}>{attach.name}</span>
               {attach.subtitle && <span className="strm-file-sub">{attach.subtitle}</span>}
+              {lockedLabel && <span className="strm-file-sub">{lockedLabel}</span>}
             </span>
           );
           if (attach.type === 'todo') {
@@ -650,6 +672,14 @@ export default function Messages() {
                 />
                 {body}
               </label>
+            );
+          }
+          if (!canOpen) {
+            return (
+              <div key={idx} className="strm-file strm-file-locked">
+                <AttachIcon className="w-4 h-4 shrink-0 text-on-surface-variant" aria-hidden />
+                {body}
+              </div>
             );
           }
           return (

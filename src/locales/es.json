@@ -2397,6 +2397,7 @@
     "placeholder": "Escribe un mensaje…",
     "placeholder_announcement": "Escribe un anuncio…",
     "no_match": "Nada coincide con “{q}”.",
+    "attachment_locked": "Abre {destination} — no disponible para ti",
     "take_back": "Retirar para todos",
     "remove_for_everyone": "Quitar para todos",
     "take_back_prompt": "¿Retirar esto para todos? Verán que se quitó un mensaje, no lo que decía.",
