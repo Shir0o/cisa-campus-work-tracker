@@ -13,6 +13,7 @@ import type { AskAction, StreamMessage, StreamRow as StreamRowModel, ThreadSumma
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { askLine, repliesLabel, timeOf, whenOf } from './format';
 
 export const AVATAR = 36;
@@ -239,6 +240,7 @@ function EditBody({
           color: c.card.ink,
           backgroundColor: c.card.bg,
           minHeight: 64,
+          maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
           textAlignVertical: 'top',
         }}
       />

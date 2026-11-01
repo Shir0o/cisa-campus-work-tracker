@@ -36,6 +36,7 @@ import { FtTodoSheet } from '../ft/FtTodoSheet';
 import { PersonMark } from '../queue/atoms';
 import { Snackbar, Sheet } from '../ui';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
+import { KeyboardScrollView } from '../ui/KeyboardField';
 import { useTranslate } from '../Translate';
 import { StreamList, Divider } from '../stream/StreamList';
 import { StreamRowView, ThreadChip, type StreamRowProps } from '../stream/StreamRow';
@@ -224,7 +225,7 @@ export function ChatStreamPane({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
-        <ScrollView
+        <KeyboardScrollView
           ref={scroller}
           testID="chat-stream"
           contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12, gap: 10, flexGrow: 1 }}
@@ -319,7 +320,7 @@ export function ChatStreamPane({
               )}
             </View>
           )}
-        </ScrollView>
+        </KeyboardScrollView>
 
         {inThread ? (
           canReply && !!thread && (

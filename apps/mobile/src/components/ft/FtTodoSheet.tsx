@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { duePresetToISO, firstName, type AppUser, type Contact } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -136,6 +137,7 @@ function TodoSheetBody({ visible, contact, initialTitle, me, assignees, onClose,
             style={{
               marginTop: 16,
               minHeight: 84,
+              maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
               backgroundColor: c.card.field,
               borderWidth: 1.5,
               borderColor: c.card.line,

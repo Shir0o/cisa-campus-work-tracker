@@ -10,6 +10,7 @@ import { useV2Theme } from '../../theme/v2';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { PersonMark } from '../queue/atoms';
 import { Widget, WidgetAction, WidgetRow } from '../v2/Widget';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { useInboxReads } from '../../lib/data/inboxReads';
 
 export function AskStack({
@@ -108,6 +109,7 @@ export function AskStack({
                     multiline
                     style={{
                       minHeight: 44,
+                      maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
                       marginTop: 8,
                       paddingHorizontal: 12,
                       paddingVertical: 9,

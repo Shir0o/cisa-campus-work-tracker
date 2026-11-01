@@ -13,6 +13,7 @@ import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 import { MemberHomeSkeleton } from '../skeleton/MemberHomeSkeleton';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
+import { KeyboardScrollView } from '../ui/KeyboardField';
 
 /** Every member screen is two components — the provider has to sit ABOVE
  * anything calling useV2Theme(). See Room's own note. */
@@ -51,7 +52,7 @@ export function MemberScreen({
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }}>
-        <ScrollView
+        <KeyboardScrollView
           contentContainerStyle={{
             paddingHorizontal: 18,
             paddingTop: 10,
@@ -66,7 +67,7 @@ export function MemberScreen({
             </Text>
           )}
           {children}
-        </ScrollView>
+        </KeyboardScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

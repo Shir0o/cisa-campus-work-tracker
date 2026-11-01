@@ -12,6 +12,7 @@ import {
   type HospitalityOffer,
 } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { Sech } from '../v2/Widget';
 
 export function OpenYourHome({
@@ -181,7 +182,7 @@ export function OpenYourHome({
               placeholder="Anything to know? Parking, a good evening to aim for…"
               placeholderTextColor={c.card.ink3}
               multiline
-              style={[field, { minHeight: 88, textAlignVertical: 'top' }]}
+              style={[field, { minHeight: 88, maxHeight: MULTILINE_FIELD_MAX_HEIGHT, textAlignVertical: 'top' }]}
             />
             <Pressable
               onPress={() => {

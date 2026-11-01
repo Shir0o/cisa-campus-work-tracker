@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { captureRef } from 'react-native-view-shot';
 import { useRouter, usePathname } from 'expo-router';
 import { Sheet } from '../ui/Sheet';
@@ -293,6 +294,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                   color: c.card.ink,
                   backgroundColor: c.card.bg,
                   minHeight: 100,
+                  maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
                   textAlignVertical: 'top',
                 }}
               />

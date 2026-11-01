@@ -16,6 +16,7 @@ import {
   type SignUpFormState,
 } from '@cisa/core';
 import { Screen, AppText, Button } from '../src/components/ui';
+import { KeyboardScrollView, MULTILINE_FIELD_MAX_HEIGHT } from '../src/components/ui/KeyboardField';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useV2Theme } from '../src/theme/v2';
 import { useActiveSeason, type ActiveSeason } from '../src/lib/useActiveSeason';
@@ -144,7 +145,7 @@ export default function SignUp() {
 
   return (
     <Screen style={{ backgroundColor: paper }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
         <AppText variant="title">Tell us about you.</AppText>
         <AppText variant="body" color={colors.onSurfaceVariant}>
           Just the basics. Fields marked with * are required.
@@ -236,7 +237,7 @@ export default function SignUp() {
         </Field>
         <Field label="Anything we can pray for? (optional)">
           <TextInput
-            style={[inputStyle, { minHeight: 72, textAlignVertical: 'top' }]}
+            style={[inputStyle, { minHeight: 72, maxHeight: MULTILINE_FIELD_MAX_HEIGHT, textAlignVertical: 'top' }]}
             value={form.prayerRequest}
             onChangeText={(v) => set('prayerRequest', v)}
             placeholder="Totally optional. We hold these confidentially."
@@ -246,7 +247,7 @@ export default function SignUp() {
         </Field>
         <Field label="Anything else? (optional)">
           <TextInput
-            style={[inputStyle, { minHeight: 56, textAlignVertical: 'top' }]}
+            style={[inputStyle, { minHeight: 56, maxHeight: MULTILINE_FIELD_MAX_HEIGHT, textAlignVertical: 'top' }]}
             value={form.notes}
             onChangeText={(v) => set('notes', v)}
             placeholder="Allergies, schedule conflicts, questions…"
@@ -272,7 +273,7 @@ export default function SignUp() {
             disabled={loading || !isFormValid}
           />
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </Screen>
   );
 }

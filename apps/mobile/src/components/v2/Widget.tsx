@@ -9,6 +9,7 @@
 import React, { createContext, useContext } from 'react';
 import { Pressable, ScrollView, Text, View, type TextInputProps } from 'react-native';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
 
@@ -406,6 +407,10 @@ export function V2TextArea({
       textAlignVertical="top"
       style={{
         minHeight,
+        // The ceiling (#1943): past a readable height the field scrolls its own
+        // text, so a long account of a conversation never pushes the caret, or
+        // the sheet's Save row, under the keyboard.
+        maxHeight: MULTILINE_FIELD_MAX_HEIGHT,
         paddingHorizontal: 15,
         paddingVertical: 14,
         borderRadius: radius.note,
