@@ -341,6 +341,7 @@ export function V2Input({
   keyboardType,
   autoCapitalize,
   onSubmitEditing,
+  clear,
 }: {
   value: string;
   onChangeText: (next: string) => void;
@@ -349,9 +350,15 @@ export function V2Input({
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
   onSubmitEditing?: TextInputProps['onSubmitEditing'];
+  /** The × a SEARCH field carries (#1707), shown only while there is text to
+   * clear — a search is somewhere you wander into and need a way back out of,
+   * so the owner of the field supplies the label. The sheet fields leave this
+   * off: an × beside a name someone is halfway through typing loses their work. */
+  clear?: { label: string; onPress: () => void };
 }) {
   const { c, font, radius, fs } = useV2Theme();
-  return (
+  const showClear = !!clear && value !== '';
+  const field = (
     <BufferedTextInput
       value={value}
       onChangeText={onChangeText}
@@ -363,7 +370,9 @@ export function V2Input({
       autoCorrect={false}
       style={{
         minHeight: 48,
-        paddingHorizontal: 16,
+        paddingLeft: 16,
+        // Room for the ×, so a long name runs up to it rather than under it.
+        paddingRight: showClear ? 44 : 16,
         borderRadius: radius.note,
         backgroundColor: c.card.field,
         borderWidth: 1.5,
@@ -373,6 +382,31 @@ export function V2Input({
         color: c.card.ink,
       }}
     />
+  );
+
+  if (!clear || !showClear) return field;
+
+  return (
+    <View>
+      {field}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={clear.label}
+        onPress={clear.onPress}
+        style={({ pressed }) => ({
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <Text style={{ fontFamily: font.bold, fontSize: fs(18), color: c.card.ink3 }}>×</Text>
+      </Pressable>
+    </View>
   );
 }
 

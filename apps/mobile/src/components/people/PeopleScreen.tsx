@@ -135,6 +135,7 @@ function People() {
           value={data.search}
           onChangeText={data.setSearch}
           placeholder="Find someone by name, major, hall…"
+          clear={{ label: t('search.clear_search'), onPress: () => data.setSearch('') }}
         />
 
         {byStep && !data.loading && !data.error && (
