@@ -62,7 +62,7 @@ export async function seal(key: CryptoKey, payload: unknown): Promise<CipherBlob
   return { iv: toBase64(iv), ciphertext: toBase64(new Uint8Array(ciphertext)) };
 }
 
-export async function open<T>(key: CryptoKey, blob: CipherBlob): Promise<T> {
+export async function open(key: CryptoKey, blob: CipherBlob): Promise<unknown> {
   // The GCM tag is the wrong-passphrase and tamper check, so a failure is
   // allowed to throw rather than hand back anything that looks like plaintext.
   const plaintext = await crypto.subtle.decrypt(
@@ -70,15 +70,15 @@ export async function open<T>(key: CryptoKey, blob: CipherBlob): Promise<T> {
     key,
     fromBase64(blob.ciphertext),
   );
-  return JSON.parse(new TextDecoder().decode(plaintext)) as T;
+  return JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
 }
 
 export function sealEntry(key: CryptoKey, entry: VaultEntry): Promise<CipherBlob> {
   return seal(key, entry);
 }
 
-export function openEntry(key: CryptoKey, blob: CipherBlob): Promise<VaultEntry> {
-  return open<VaultEntry>(key, blob);
+export async function openEntry(key: CryptoKey, blob: CipherBlob): Promise<VaultEntry> {
+  return (await open(key, blob)) as VaultEntry;
 }
 
 /** A fixed plaintext under the vault key, so a wrong passphrase is told apart
@@ -89,7 +89,7 @@ export function makeCheck(key: CryptoKey): Promise<CipherBlob> {
 
 export async function verifyCheck(key: CryptoKey, blob: CipherBlob): Promise<boolean> {
   try {
-    return (await open<string>(key, blob)) === CHECK_PLAINTEXT;
+    return ((await open(key, blob)) as string) === CHECK_PLAINTEXT;
   } catch {
     return false;
   }
@@ -98,7 +98,7 @@ export async function verifyCheck(key: CryptoKey, blob: CipherBlob): Promise<boo
 /** One pass over every entry for passphrase rotation; results are written only
  *  after all of them succeeded, so a half-rotated vault is never saved. */
 export function rekey(entries: CipherBlob[], oldKey: CryptoKey, newKey: CryptoKey): Promise<CipherBlob[]> {
-  return Promise.all(entries.map(async (blob) => seal(newKey, await open<VaultEntry>(oldKey, blob))));
+  return Promise.all(entries.map(async (blob) => seal(newKey, await openEntry(oldKey, blob))));
 }
 
 function toBase64(bytes: Uint8Array): string {
