@@ -413,9 +413,9 @@ export default function AroundTheTeam({
 
   const handleUnreview = (stack: AttentionStack) => {
     // The snackbar's five seconds are too short to catch a review clicked on
-    // the wrong person and noticed later (#1628). This clears the stamp and
-    // nothing else: a follow-up ask the review closed stays closed, because
-    // reopening it would put work back on the rest of the team.
+    // the wrong person and noticed later (issue 1628). This clears the stamp
+    // and nothing else: a follow-up ask the review closed stays closed,
+    // because reopening it would put work back on the rest of the team.
     InboxState.undoCompleted(uid, stack.id);
     setCompletedHere((prev) => {
       const next = new Set(prev);

@@ -270,8 +270,9 @@ export function WorklistCard({
   onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
   onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
   /** Given only by "Around the team": a reviewed card keeps one quiet way
-   *  back (#1628). It clears the stamp and nothing else — no follow-up ask is
-   *  reopened, and there is no undo of its own. "On you" never passes it. */
+   *  back (issue 1628). It clears the stamp and nothing else — no follow-up
+   *  ask is reopened, and there is no undo of its own. "On you" never passes
+   *  it. */
   onUnreview?: (stack: AttentionStack) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
@@ -445,7 +446,7 @@ export function WorklistCard({
               {/* A reviewed card has stopped asking anything of you, so this
                   is not another action on the row: it is one quiet sentence on
                   the right, and the only way back once the snackbar has gone
-                  (#1628). */}
+                  (issue 1628). */}
               {onUnreview && (
                 <button
                   type="button"
