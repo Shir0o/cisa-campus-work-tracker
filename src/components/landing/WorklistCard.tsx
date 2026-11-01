@@ -251,6 +251,7 @@ export function WorklistCard({
   completed,
   onOpenContact,
   onComplete,
+  onUnreview,
   onToast,
   mobile,
   showReach,
@@ -268,6 +269,10 @@ export function WorklistCard({
   completed: boolean;
   onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
   onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
+  /** Given only by "Around the team": a reviewed card keeps one quiet way
+   *  back (#1628). It clears the stamp and nothing else — no follow-up ask is
+   *  reopened, and there is no undo of its own. "On you" never passes it. */
+  onUnreview?: (stack: AttentionStack) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
   showReach?: boolean;
@@ -437,6 +442,22 @@ export function WorklistCard({
             <div className="flex items-center gap-1.5 mt-2.5 text-xs font-medium text-success">
               <Check className="w-3.5 h-3.5" />
               {verb ? t(VERB_LABEL[verb]) : t("whatsNew.verb_got_it")}
+              {/* A reviewed card has stopped asking anything of you, so this
+                  is not another action on the row: it is one quiet sentence on
+                  the right, and the only way back once the snackbar has gone
+                  (#1628). */}
+              {onUnreview && (
+                <button
+                  type="button"
+                  onClick={() => onUnreview(stack)}
+                  className={cn(
+                    "ml-auto inline-flex items-center rounded-full font-medium text-on-surface-variant/80 hover:text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
+                    mobile ? "min-h-11 px-2.5 text-xs" : "px-2 py-1 text-[11px]",
+                  )}
+                >
+                  {t("whatsNew.unreview")}
+                </button>
+              )}
             </div>
           ) : (
             <div

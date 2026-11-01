@@ -185,6 +185,14 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(screen.getByText("1 to work through")).toBeInTheDocument();
   });
 
+  it("offers no Un-review on a completed card — that way back is Around's (#1628)", () => {
+    card();
+    fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
+
+    expect(screen.getByText("Answered")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Un-review" })).toBeNull();
+  });
+
   it("clears completed work on the next visit", () => {
     const { unmount } = card();
     fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
