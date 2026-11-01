@@ -129,6 +129,18 @@ test.describe('Full-timer journey (#1477)', () => {
     };
     await expect(async () => expect(await pillNumber()).toBe(String(remaining))).toPass({ timeout: 10_000 });
 
+    // Row 24, in reverse (#1628): a review is not permanent. Un-review puts
+    // the card back and the number with it — the way back runs through the
+    // same count as the way forward. Review again, so the rest of this
+    // journey reads the count it expects.
+    await page.getByRole('button', { name: 'Un-review' }).first().click();
+    await expect(async () => expect(await pillNumber()).toBe(String(count))).toPass({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'Reviewed', exact: true }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole('button', { name: 'Reviewed', exact: true }).first().click();
+    await expect(async () => expect(await pillNumber()).toBe(String(remaining))).toPass({ timeout: 10_000 });
+
     // Row 12: the teammate select offers the seeded team roster — Caleb is on a
     // team but has done nothing, so only the live roster can account for him.
     const whoSelect = page.getByLabel('Filter the news by teammate');

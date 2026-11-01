@@ -411,6 +411,19 @@ export default function AroundTheTeam({
     );
   };
 
+  const handleUnreview = (stack: AttentionStack) => {
+    // The snackbar's five seconds are too short to catch a review clicked on
+    // the wrong person and noticed later (issue 1628). This clears the stamp
+    // and nothing else: a follow-up ask the review closed stays closed,
+    // because reopening it would put work back on the rest of the team.
+    InboxState.undoCompleted(uid, stack.id);
+    setCompletedHere((prev) => {
+      const next = new Set(prev);
+      next.delete(stack.id);
+      return next;
+    });
+  };
+
   const handleComplete = (stack: AttentionStack, verb: WorklistVerb) => {
     // A follow-up ask is closed once, for everyone tied to the contact: the
     // thing tracked is the errand, not five people's reading of it.
@@ -627,6 +640,7 @@ export default function AroundTheTeam({
                       completed={isCompleted(stack)}
                       onOpenContact={handleOpenContact}
                       onComplete={handleComplete}
+                      onUnreview={handleUnreview}
                       onToast={showToast}
                       showReach
                       mobile={compactWidth}

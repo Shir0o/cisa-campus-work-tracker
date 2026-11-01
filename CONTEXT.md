@@ -327,11 +327,11 @@ The two independent things a person records about an item in **On you**. **Seen*
 _Avoid_: Read/done, scanned, dismissed, cleared, archived
 
 **Reviewed**:
-The one state an **Around the team** card carries: you have worked this person through. Only the card's own button sets it, and "Mark all reviewed", which acts on the cards the current filter is showing and nothing else. Opening the person does not set it, and neither does writing in their **Conversation** from the card — a glance is not the same as having dealt with someone, and a page that quietly marked things done as you read them would make the count a lie. There is no passive half here: the unread dot belongs to **On you**, where **Seen** means something distinct.
+The one state an **Around the team** card carries: you have worked this person through. Only the card's own button sets it, and "Mark all reviewed", which acts on the cards the current filter is showing and nothing else. Opening the person does not set it, and neither does writing in their **Conversation** from the card — a glance is not the same as having dealt with someone, and a page that quietly marked things done as you read them would make the count a lie. There is no passive half here: the unread dot belongs to **On you**, where **Seen** means something distinct. A reviewed card keeps one way back: **Un-review** on the card itself clears that card's stamp once the snackbar has gone. It reverses nothing else — a follow-up ask the review closed stays closed for the rest of the team — and there is no bulk reverse.
 _Avoid_: Seen, read, dismissed, cleared, done, acknowledged
 
 **To work through**:
-The number of **Around the team** cards not yet **Reviewed**. It is what the page's own pill counts and what My Day's pointer card counts — the same number by construction, so the two can never disagree. It falls only when someone reviews something, which makes it a measure of work remaining rather than of pages read.
+The number of **Around the team** cards not yet **Reviewed**. It is what the page's own pill counts and what My Day's pointer card counts — the same number by construction, so the two can never disagree. It falls only when someone reviews something, and rises again when a review is taken back, which makes it a measure of work remaining rather than of pages read.
 _Avoid_: Unseen, unread, new, backlog, inbox count
 
 **What's New Announcement**:

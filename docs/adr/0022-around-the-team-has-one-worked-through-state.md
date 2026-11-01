@@ -22,6 +22,8 @@ Underneath both sits a third thing. `Seen` and `Completed` are defined as indepe
 
 2. **Only a deliberate act sets it.** The Reviewed button, and "Mark all reviewed" — which acts on the cards the current filter is showing and nothing else, so working inside `?team=yp` can never silently clear `campus`. Opening the person does not set it. Writing in the person's Conversation from the card does not set it. The rule the code already stated for itself — "seen is set here and only here" — was violated by the composer; the answer is not to restore the old invariant but to stop recording a passive state that nothing on the page reads.
 
+   **One deliberate act also clears it (#1628).** A reviewed card carries a single quiet Un-review control on its own label line, because the snackbar's five seconds are too short to catch a review clicked on the wrong person and noticed later. It clears that card's stamp and nothing else: it does not reopen a follow-up ask the review closed, which would put work back on the rest of the team, and it has no undo of its own — the action row returning is the evidence. There is no bulk reverse; "Mark all reviewed" keeps only its snackbar undo.
+
 3. **The accent dot goes.** Under one state, every card in the New segment is un-reviewed, so a dot on every card marks nothing. The pill carries the count and the dimmed treatment marks the reviewed ones.
 
 4. **The pointer card counts what the page counts.** My Day's pointer switches from unseen stacks to *to work through*, and its label changes with it. This ships in the same change, not after: the moment `seen` stops being written, a count derived from it does not degrade, it freezes.
@@ -38,7 +40,7 @@ Underneath both sits a third thing. `Seen` and `Completed` are defined as indepe
 
 ## Trade-off, recorded plainly
 
-The count gets bigger and stickier. Today it falls when you read; now it falls only when you review, so a Full-timer who skims without acting will watch it climb. That is the point — it is a measure of work remaining, and the old number's habit of shrinking as you scrolled was flattering rather than useful. The risk is real, though: if the number is allowed to sit permanently high it stops being a prompt and becomes wallpaper, and the fix at that point is to narrow what reaches Around, not to make the count decay on its own again.
+The count gets bigger and stickier. Today it falls when you read; now it falls only when you review, so a Full-timer who skims without acting will watch it climb. That is the point — it is a measure of work remaining, and the old number's habit of shrinking as you scrolled was flattering rather than useful. The risk is real, though: if the number is allowed to sit permanently high it stops being a prompt and becomes wallpaper, and the fix at that point is to narrow what reaches Around, not to make the count decay on its own again. Un-review softens this only slightly, and deliberately so: it takes back one card at a time, by an explicit act, and cannot be reached in bulk.
 
 A future reader will find `Seen` still defined, still populated for On you, and inert data under `seen` in old `inboxState` documents. That is deliberate. Seen was not a mistake; it stopped being load-bearing on one page and was removed only there.
 

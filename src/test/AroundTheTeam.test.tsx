@@ -16,7 +16,7 @@ import { __resetUserEntityStateCache } from '../lib/userEntityState';
 import { InboxState, __resetInboxState } from '../lib/inboxState';
 import { applyTeams } from '../lib/teams';
 import type { Contact, Interaction } from '../types';
-import { closeFollowUpAsk, type ThreadMessageWithContact } from '../lib/threads';
+import { closeFollowUpAsk, reopenFollowUpAsk, type ThreadMessageWithContact } from '../lib/threads';
 
 const h = vi.hoisted(() => ({
   layout: undefined as { setSelectedContact: (c: any) => void } | undefined,
@@ -1173,6 +1173,57 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     // A dimmed card reads as a result: it says so, and stops asking anything.
     expect(screen.getByText('Reviewed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Conversation · 1/ })).not.toBeInTheDocument();
+  });
+
+  // ── One quiet way back (#1628) ───────────────────────────────────────────
+  // A review is not permanent. Once the snackbar has gone, a card reviewed on
+  // the wrong person keeps one control: Un-review clears the stamp, nothing
+  // else, and the count comes back.
+  it('un-reviews from the card itself, and the count comes back', () => {
+    renderOne([msg({})]);
+    // Nothing to take back on an un-reviewed card.
+    expect(screen.queryByRole('button', { name: 'Un-review' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Reviewed/ }));
+    expect(screen.queryByText('1 to work through')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Un-review' }));
+
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(false);
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+    // The action row is back: the card is asking something of the reader again.
+    expect(screen.getByRole('button', { name: /Reviewed/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+  });
+
+  it('un-reviewing leaves a follow-up ask closed — it is not the team\'s undo', () => {
+    renderOne([
+      msg({
+        id: 'ask1',
+        from: 'mei',
+        fromName: 'Mei Tanaka',
+        kind: 'nudge',
+        body: 'Can someone text Kofi before Thursday?',
+        at: new Date(Date.now() - 86_400_000).toISOString(),
+      }),
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Reviewed/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Un-review' }));
+
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(false);
+    // Reversing your own reading must not put work back on everyone else.
+    expect(reopenFollowUpAsk).not.toHaveBeenCalled();
+  });
+
+  it('un-reviews one card of a batch Mark all reviewed cleared', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all reviewed' }));
+    expect(screen.queryByText(/to work through/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Un-review' })[0]);
+
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
   });
 
   // ── Mark all reviewed ────────────────────────────────────────────────────
