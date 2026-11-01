@@ -67,6 +67,8 @@ jobs:
         run: |
           npx @lhci/cli@0.14.x collect
           npx @lhci/cli@0.14.x assert || true
+          # Writes .lighthouseci/manifest.json, which generate-scorecard.ts reads.
+          npx @lhci/cli@0.14.x upload
 
       - name: Generate Scorecard & Update Rolling Issue
         env:
@@ -79,6 +81,9 @@ jobs:
         if: always()
         with:
           name: performance-and-quality-artifacts-${{ github.run_id }}
+          # .lighthouseci is a hidden directory; @actions/glob prunes hidden
+          # directories from the walk, so the LHCI reports never got uploaded.
+          include-hidden-files: true
           path: |
             dist/bundle-scorecard.json
             .cache/mobile-bundle-metrics.json
