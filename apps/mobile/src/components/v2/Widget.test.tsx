@@ -198,6 +198,35 @@ describe('V2Input / V2TextArea', () => {
     expect(getByPlaceholderText('single').props.value).toBe('hexllo');
     expect(getByPlaceholderText('multi').props.value).toBe('hexllo');
   });
+
+  // #1707: on the phone there was no way back out of a search once you had
+  // typed in it — you cleared it a letter at a time. A field asked for a clear
+  // control grows one; the sheet fields did not ask, and keep their old shape.
+  it('grows no clear control unless the owner asks for one', async () => {
+    const { queryByLabelText } = await renderV2(
+      <V2Input value="Alex" onChangeText={jest.fn()} placeholder="Your name" />,
+    );
+
+    expect(queryByLabelText('Clear search')).toBeNull();
+  });
+
+  it('shows the clear control only while there is text, and fires it', async () => {
+    const onPress = jest.fn();
+    const { getByLabelText, queryByLabelText, rerender } = await renderV2(
+      <V2Input value="" onChangeText={jest.fn()} placeholder="Search" clear={{ label: 'Clear search', onPress }} />,
+    );
+
+    expect(queryByLabelText('Clear search')).toBeNull();
+
+    await rerender(
+      <ThemeProvider>
+        <V2Input value="ana" onChangeText={jest.fn()} placeholder="Search" clear={{ label: 'Clear search', onPress }} />
+      </ThemeProvider>,
+    );
+
+    await fireEvent.press(getByLabelText('Clear search'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('V2Seg', () => {

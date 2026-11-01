@@ -168,6 +168,24 @@ describe('PeopleScreen Step pills (#1800)', () => {
     expect(getByText('Nobody by that name. Try less of it.')).toBeTruthy();
   });
 
+  // #1707: "give me a clear search on mobile" — the feedback's own reading: a
+  // × on the search that is already there, so a half-typed name is one tap
+  // from gone rather than a letter at a time.
+  it('clears the search from the ×, and only shows it while there is text', async () => {
+    const { getByLabelText, getByPlaceholderText, getByText, queryByLabelText } = await renderPeople();
+
+    expect(queryByLabelText('Clear search')).toBeNull();
+
+    await fireEvent.changeText(getByPlaceholderText('Find someone by name, major, hall…'), 'ana');
+    expect(getByText('Ana Lee')).toBeTruthy();
+
+    await fireEvent.press(getByLabelText('Clear search'));
+
+    expect(getByPlaceholderText('Find someone by name, major, hall…').props.value).toBe('');
+    for (const name of ['Ana Lee', 'Ben Cho', 'Cal Diaz', 'Dee Fox']) expect(getByText(name)).toBeTruthy();
+    expect(queryByLabelText('Clear search')).toBeNull();
+  });
+
   it('opens the move sheet from a row and moves that person to the chosen step', async () => {
     const { getByLabelText, getAllByText, getByText, queryByTestId } = await renderPeople();
 
