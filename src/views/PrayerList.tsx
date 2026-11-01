@@ -25,6 +25,7 @@ import {
   addTeamPrayer,
   removeFromTeamPrayerList,
   restoreToTeamPrayerList,
+  isPlaceholderPrayerBurden,
 } from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
@@ -316,7 +317,13 @@ export default function PrayerList() {
 
   const openTodoFor = (prayer: PrayerRecord) => {
     const contact = contacts.find((c) => c.id === prayer.contactId);
-    if (contact) setTodoFor({ prayer, contact });
+    if (!contact) return;
+    // The stand-in burden is not content, so it must not pre-fill the composer
+    // as if a teammate had written "Holding in prayer" (#1691).
+    setTodoFor({
+      prayer: isPlaceholderPrayerBurden(prayer.burden) ? { ...prayer, burden: '' } : prayer,
+      contact,
+    });
   };
 
   const handleUpdateBurden = async (prayer: PrayerRecord, burden: string): Promise<boolean> => {
@@ -932,6 +939,7 @@ function PrayerThread({
           <PrayerItem
             prayer={weekItem}
             variant="week"
+            firstName={firstName}
             label={t('prayers.this_week')}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
@@ -962,6 +970,7 @@ function PrayerThread({
           <PrayerItem
             prayer={lastItem}
             variant="last"
+            firstName={firstName}
             label={lastItemIsLastWeek ? t('prayers.last_week') : t('prayers.earlier')}
             nudge={needsMark ? t('prayers.needs_update') : undefined}
             needsMark={needsMark}
@@ -1001,6 +1010,7 @@ function PrayerThread({
                   <EarlierRow
                     key={p.id}
                     prayer={p}
+                    firstName={firstName}
                     onUpdateStatus={onUpdateStatus}
                     onUpdateBurden={onUpdateBurden}
                     isOperator={isOperator}
@@ -1068,6 +1078,7 @@ function SectionEyebrow({ label, current }: { label: string; current?: boolean }
 // (when, how it landed, the burden); the controls arrive when you open it.
 function EarlierRow({
   prayer,
+  firstName,
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
@@ -1076,6 +1087,7 @@ function EarlierRow({
   onClearPrayer,
 }: {
   prayer: PrayerRecord;
+  firstName: string;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
@@ -1085,6 +1097,7 @@ function EarlierRow({
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
+  const isPlaceholder = isPlaceholderPrayerBurden(prayer.burden);
 
   return (
     <TimelineRow
@@ -1106,10 +1119,13 @@ function EarlierRow({
         <span
           className={cn(
             'text-[13px] text-on-surface-variant flex-1 min-w-0 truncate',
+            isPlaceholder && 'italic',
             open && 'sr-only',
           )}
         >
-          {prayer.burden}
+          {isPlaceholder
+            ? t('prayers.what_praying_for').replace('{name}', firstName)
+            : prayer.burden}
         </span>
         {open && <span className="flex-1" />}
         <ChevronRight
@@ -1124,6 +1140,7 @@ function EarlierRow({
         <PrayerItem
           prayer={prayer}
           variant="earlier"
+          firstName={firstName}
           inFold
           onUpdateStatus={onUpdateStatus}
           onUpdateBurden={onUpdateBurden}
@@ -1140,6 +1157,7 @@ function EarlierRow({
 function PrayerItem({
   prayer,
   variant,
+  firstName,
   label,
   nudge,
   inFold,
@@ -1153,6 +1171,8 @@ function PrayerItem({
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
+  /** Names the person in the placeholder prompt (#1691). */
+  firstName: string;
   /** Inline eyebrow — "This week" / "Last week". Absent inside a fold. */
   label?: string;
   nudge?: string;
@@ -1170,6 +1190,9 @@ function PrayerItem({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
+  // A stand-in burden ("Holding in prayer") is not content: the card asks the
+  // question instead of printing it as prose, matching the phone card (#1691).
+  const isPlaceholder = isPlaceholderPrayerBurden(prayer.burden);
   const [answering, setAnswering] = useState(false);
   const [howDraft, setHowDraft] = useState(prayer.answer || '');
   const [answerPhotos, setAnswerPhotos] = useState<VisitPhoto[]>(prayer.answeredPhotos || []);
@@ -1182,7 +1205,9 @@ function PrayerItem({
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const startEdit = () => {
-    setDraft(prayer.burden);
+    // A stand-in burden is not content — clear the draft so saving cannot write
+    // "Holding in prayer" back as a real prayer (#1691).
+    setDraft(isPlaceholder ? '' : prayer.burden);
     setEditing(true);
   };
   const save = async () => {
@@ -1268,7 +1293,7 @@ function PrayerItem({
             {t('prayers.status_pending')}
           </span>
         ) : null}
-        {!editing && isOperator && (
+        {!editing && isOperator && !isPlaceholder && (
           <button onClick={startEdit} className={cn('text-[13px] text-on-surface-variant hover:text-accent transition-colors', !inFold && 'ml-auto')}>
             {t('actions.edit')}
           </button>
@@ -1321,6 +1346,20 @@ function PrayerItem({
               {t('actions.cancel')}
             </button>
           </div>
+        </div>
+      ) : isPlaceholder ? (
+        <div className="mt-1">
+          <p className="text-sm italic text-on-surface-variant/80">
+            {t('prayers.what_praying_for').replace('{name}', firstName)}
+          </p>
+          {isOperator && (
+            <button
+              onClick={startEdit}
+              className="mt-0.5 inline-flex items-center text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
+            >
+              {t('prayers.add_prayer')}
+            </button>
+          )}
         </div>
       ) : (
         <p className={cn('text-sm leading-relaxed mt-1.5 whitespace-pre-wrap', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
