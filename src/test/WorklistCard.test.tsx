@@ -277,7 +277,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge");
   });
 
-  it("an encouragement is summarised, never a card", () => {
+  it("an encouragement is summarised on the person's card, never a card of its own", () => {
     render(
       <OnYouCard
         contacts={[contact({ carers: ["u1"] })]}
@@ -290,6 +290,26 @@ describe("the worklist card, through On you (#813, #943)", () => {
     );
     expect(screen.getByText("Zion encouraged you.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Got it/ })).toBeNull();
+  });
+
+  it("hangs praise on the person it is about, not on the page (#1624)", () => {
+    render(
+      <OnYouCard
+        contacts={[contact(), contact({ id: "c2", name: "Bo Chen", carers: ["u1"] })]}
+        interactions={[]}
+        threads={[
+          { ...question, id: "t1" },
+          { ...question, id: "t2", contactId: "c2" },
+          { ...question, id: "e1", contactId: "c1", kind: "encouragement", fromName: "Zion Park" },
+          { ...question, id: "e2", contactId: "c2", kind: "encouragement", fromName: "Zion Park" },
+          { ...question, id: "e3", contactId: "c2", kind: "encouragement", fromName: "Zion Park" },
+        ]}
+        staffNameMap={{ u3: "Zion Park" }}
+      />,
+    );
+    // One card says one, the other says two: each reads its own person's thread.
+    expect(screen.getByText("Zion encouraged you.")).toBeInTheDocument();
+    expect(screen.getByText("Zion encouraged you · 2 in all.")).toBeInTheDocument();
   });
 
   it("writes back from inside the card, without leaving the list", async () => {

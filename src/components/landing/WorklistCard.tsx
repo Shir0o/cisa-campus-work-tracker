@@ -22,6 +22,7 @@ import {
   worklistVerbFor,
   openAsksIn,
   wantsAReply,
+  encouragementFor,
   type AttentionStack,
   type AttentionItem,
   type WorklistVerb,
@@ -257,6 +258,7 @@ export function WorklistCard({
   reviewedOnly,
   threads,
   teamMembers,
+  personalContactIds,
   conversationOpen,
   onToggleConversation,
 }: {
@@ -281,6 +283,9 @@ export function WorklistCard({
    *  becomes `Conversation · N` and toggles the strip (#1012). */
   threads?: ThreadMessage[];
   teamMembers?: TeamMemberLike[];
+  /** The reader's kept set (#1051). Praise counts only on a person you carry,
+   *  because that is who a teammate was encouraging you about (#1624). */
+  personalContactIds?: Set<string> | null;
   /** The page owns which card is expanded, so opening a second closes the
    *  first — a top-aligned three-up grid strands its neighbours otherwise. */
   conversationOpen?: boolean;
@@ -300,6 +305,15 @@ export function WorklistCard({
   // the messages in the strip are one fact rather than two.
   const { messages, justPosted, notePosted } = useCardThread(threads ?? EMPTY_MESSAGES);
   const conversationCount = countFor(messages, null, null);
+  // Praise belongs to the person (#1624): this card carries the encouragements
+  // this person's thread holds for the reader, rather than one line on My Day
+  // that spoke about everybody at once.
+  const encouraged = encouragementFor(
+    threads ?? EMPTY_MESSAGES,
+    uid,
+    contact,
+    personalContactIds,
+  );
   // Under one state every un-reviewed card would carry a dot, so a dot would
   // mark nothing. The pill carries the count; the dimmed treatment marks the
   // reviewed ones.
@@ -404,6 +418,16 @@ export function WorklistCard({
             {phrases.join(" · ")}
             {moreCount > 0 && ` · ${t("whatsNew.n_more").replace("{n}", String(moreCount))}`}
           </div>
+
+          {encouraged.count > 0 && (
+            <p className="text-xs text-on-surface-variant m-0 mt-1 flex items-center gap-1.5">
+              <Heart className="w-3.5 h-3.5 text-stage-accent shrink-0" aria-hidden="true" />
+              {(encouraged.count > encouraged.names.length
+                ? t("whatsNew.encouraged_you_many").replace("{n}", String(encouraged.count))
+                : t("whatsNew.encouraged_you")
+              ).replace("{names}", encouraged.names.join(", "))}
+            </p>
+          )}
 
           {hasOpenAsk && !completed && (
             <div className="text-[11px] font-medium text-warning mt-1">
