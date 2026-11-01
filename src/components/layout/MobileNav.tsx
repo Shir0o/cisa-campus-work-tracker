@@ -4,15 +4,17 @@ import {
   LayoutDashboard,
   Contact,
   HeartHandshake,
-  Search,
+  MessageSquare,
+  MessageCircleQuestion,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
-import { useLayout } from '../../App';
-import { hasMinRole, AppRole } from '../../lib/permissions';
+import { hasMinRole, canAccessRoute, AppRole } from '../../lib/permissions';
 import { sectionHrefFor } from '../../lib/navTrail';
 import { useI18n } from '../LanguageProvider';
+import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
+import { useMyAskRepliesCount } from '../../hooks/useMyAskRepliesCount';
 
 /**
  * Re-tapping the lit destination returns the list under it to the top, the way
@@ -34,17 +36,25 @@ function scrollCurrentListToTop() {
  * invisible outdoors and to low-vision users (#1775). `Link`, not `NavLink`:
  * the shell selects on `sectionHrefFor`, which also lights a destination for
  * the routes underneath it (/people/:id still belongs to People).
+ *
+ * `waiting` is the count of things owed to the reader here (#1806). It rides
+ * the disc as a pill and is repeated for screen readers after the label, so a
+ * tab bar announces "Questions, 3 waiting" the way a native one does.
  */
 function Destination({
   to,
   label,
   icon: Icon,
   active,
+  waiting = 0,
+  waitingLabel,
 }: {
   to: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
+  waiting?: number;
+  waitingLabel?: string;
 }) {
   return (
     <Link
@@ -60,13 +70,21 @@ function Destination({
         data-testid="mobile-nav-indicator"
         aria-hidden="true"
         className={cn(
-          'grid h-8 w-12 place-items-center rounded-full transition-colors',
+          'relative grid h-8 w-12 place-items-center rounded-full transition-colors',
           active
             ? 'bg-primary text-on-primary'
             : 'text-on-surface-variant group-hover:bg-surface-container-high',
         )}
       >
         <Icon className="h-5 w-5" />
+        {waiting > 0 && (
+          <span
+            data-testid="mobile-nav-waiting"
+            className="absolute -top-1 right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-semibold leading-4 tabular-nums text-on-primary ring-2 ring-surface-container-low"
+          >
+            {waiting}
+          </span>
+        )}
       </span>
       <span
         className={cn(
@@ -76,22 +94,39 @@ function Destination({
       >
         {label}
       </span>
+      {waiting > 0 && waitingLabel && <span className="sr-only">, {waitingLabel}</span>}
     </Link>
   );
 }
 
 export default function MobileNav() {
-  const { role } = useAuth();
-  const { setSearchOpen } = useLayout();
+  const { user, role, effectiveUserId } = useAuth();
   const { t } = useI18n();
   const { pathname } = useLocation();
   const section = sectionHrefFor(pathname);
   const isOperator = hasMinRole(role as AppRole, 'operator');
+  const isAdmin = role === 'admin';
+  // The route allowlist, not a role rung: Questions opens to a trainee manager
+  // and above, and a Student never sees it (#1806).
+  const canSeeQuestions = canAccessRoute(role, '/questions');
+  const uid = effectiveUserId || user?.uid || null;
+
+  // Two counts, one slot. A full-timer carries the team's unanswered backlog,
+  // which the rail and the top bar already show; a trainee carries the replies
+  // owed on their own questions, the number the Messages header uses (#563).
+  // Neither is a new query — both read the asks feed the shells already read.
+  const waitingAsks = useWaitingAsksCount(uid, isAdmin);
+  const myReplies = useMyAskRepliesCount(isAdmin || !canSeeQuestions ? null : uid);
+  const questionsWaiting = isAdmin ? waitingAsks : myReplies;
 
   // Same names the drawer, rail and top bar use — the bar used to say
   // "Contacts" and "Prayer" for destinations called "People" and "On our
   // hearts" everywhere else (#1775).
   const homeLabel = role === 'admin' ? t('nav.my_day', 'My Day') : t('nav.home', 'Home');
+  const waitingLabel =
+    questionsWaiting > 0
+      ? t('nav.questions_waiting', '{n} waiting').replace('{n}', String(questionsWaiting))
+      : undefined;
 
   return (
     <nav
@@ -100,18 +135,27 @@ export default function MobileNav() {
     >
       <Destination to="/" label={homeLabel} icon={LayoutDashboard} active={section === '/'} />
 
-      {/* Center button — Global Search (#19), staff only. Replaces the old
-          Quick-Actions FAB; quick-add now lives in the search overlay's empty
-          state. */}
-      {isOperator && (
-        <button
-          type="button"
-          onClick={() => setSearchOpen(true)}
-          className="relative -top-5 w-14 h-14 bg-primary text-on-primary rounded-2xl flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-          aria-label={t('nav.search', 'Search')}
-        >
-          <Search className="w-6 h-6" />
-        </button>
+      {/* Messages and Questions are the two places a Trainee has live work in,
+          so they are destinations rather than drawer rows (#1806, ADR 0049).
+          The centred search FAB that used to hold this middle slot was a
+          duplicate: the phone header already renders its own search button, and
+          the bar could not grow past five controls at 375px. */}
+      <Destination
+        to="/messages"
+        label={t('nav.messages', 'Messages')}
+        icon={MessageSquare}
+        active={section === '/messages'}
+      />
+
+      {canSeeQuestions && (
+        <Destination
+          to="/questions"
+          label={t('nav.questions', 'Questions')}
+          icon={MessageCircleQuestion}
+          active={section === '/questions'}
+          waiting={questionsWaiting}
+          waitingLabel={waitingLabel}
+        />
       )}
 
       {isOperator ? (

@@ -4,7 +4,7 @@
  * Uses TEST_USERS fixtures to verify, for each role:
  *   - canAccessRoute() returns the correct boolean for every route
  *   - Sidebar renders exactly the expected nav items
- *   - MobileNav renders the correct bottom links and hides/shows the FAB
+ *   - MobileNav renders the correct bottom destinations per role (#1806)
  *   - RoleGuard redirects to the correct fallback route when access is denied
  */
 
@@ -323,44 +323,65 @@ describe('TopNav primary tabs per role', () => {
 });
 
 // ─── 5. MobileNav per role ───────────────────────────────────────────────────
+//
+// #1806 / ADR 0049: Messages and Questions are destinations, so the bar reads
+// four for a trainee and three for a Student or a Community member. The centred
+// search FAB gave up its slot — the phone header already carries a search
+// button, so nothing left the shell's reach.
 
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows Home and On our hearts, no search FAB', () => {
+  it('viewer: shows Home, Messages and On our hearts, and no Questions', () => {
     currentUser = TEST_USERS.viewer;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Messages')).toBeInTheDocument();
     // The destination is "On our hearts" everywhere else in the shell (#1775).
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
+    // A Community member cannot ask, so the destination would be a dead end.
+    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
     expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('People')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
   });
 
-  it('operator: shows Home and People with search FAB', () => {
+  it('operator: shows Home, Messages and People, and no Questions', () => {
     currentUser = TEST_USERS.operator;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Messages')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    // Questions opens to a trainee manager and above, never a Student.
+    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
   });
 
-  it('manager: shows Home and People with search FAB', () => {
+  it('manager (trainee): shows all four destinations', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Messages')).toBeInTheDocument();
+    expect(screen.getByText('Questions')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('admin: shows My Day and People with search FAB', () => {
+  it('admin: shows My Day and the same three others', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
     expect(screen.getByText('My Day')).toBeInTheDocument();
+    expect(screen.getByText('Messages')).toBeInTheDocument();
+    expect(screen.getByText('Questions')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+  });
+
+  it('spends no slot on search under any role', () => {
+    for (const user of Object.values(TEST_USERS)) {
+      currentUser = user;
+      const { unmount } = renderMobileNav();
+      expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
+      unmount();
+    }
+    currentUser = TEST_USERS.admin;
   });
 });
 
