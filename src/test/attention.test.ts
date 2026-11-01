@@ -8,12 +8,13 @@ import {
   isTiedTo,
   openAsksIn,
   worklistVerbFor,
+  encouragementFor,
   type AttentionItem,
   type AttentionStack,
 } from "../lib/attention";
 import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
 import type { Contact, Interaction } from "../types";
-import type { ThreadMessageWithContact } from "../lib/threads";
+import type { ThreadMessage, ThreadMessageWithContact } from "../lib/threads";
 
 describe("partitionAttentionStacks (#595)", () => {
   const uid = "u1";
@@ -576,5 +577,67 @@ describe("buildAttentionItems — In the Conversation (#1604)", () => {
       msg("ask", "anna", 1, { contactId: "luke", kind: "nudge" }),
     ]);
     expect(worklistVerbFor(onYou.find((s) => s.contactId === "luke")!)).toBe("followedUp");
+  });
+});
+
+// ── #1624: praise belongs to the person, not to the page ────────────────────
+
+describe("encouragementFor", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+  });
+
+  const me = "u1";
+  const elena = { id: "c_elena", name: "Elena Vargas", createdBy: me } as Contact;
+  const stranger = { id: "c_stranger", name: "Maya Osei", createdBy: "u2" } as Contact;
+
+  const heartfelt = (over: Partial<ThreadMessage> = {}): ThreadMessage =>
+    ({
+      id: "m",
+      interactionId: null,
+      from: "u2",
+      fromName: "Zion Park",
+      kind: "encouragement",
+      body: "Praying for you both!",
+      at: new Date().toISOString(),
+      ...over,
+    }) as ThreadMessage;
+
+  it("counts that person's encouragements and names each sender once", () => {
+    const { count, names } = encouragementFor(
+      [
+        heartfelt({ id: "a" }),
+        heartfelt({ id: "b", fromName: "Zion Park" }),
+        heartfelt({ id: "c", from: "u3", fromName: "David Oduya" }),
+      ],
+      me,
+      elena,
+    );
+    expect(count).toBe(3);
+    expect(names).toEqual(["Zion", "David"]);
+  });
+
+  it("ignores everything that is not praise", () => {
+    const { count } = encouragementFor(
+      [heartfelt({ kind: "note" }), heartfelt({ kind: "question" })],
+      me,
+      elena,
+    );
+    expect(count).toBe(0);
+  });
+
+  it("does not count the praise you wrote yourself", () => {
+    const { count } = encouragementFor([heartfelt({ from: me })], me, elena);
+    expect(count).toBe(0);
+  });
+
+  it("is silent on someone you are not tied to", () => {
+    expect(encouragementFor([heartfelt()], me, stranger)).toEqual({ count: 0, names: [] });
+  });
+
+  it("still counts a person you keep privately (#1051)", () => {
+    const { count } = encouragementFor([heartfelt()], me, stranger, new Set(["c_stranger"]));
+    expect(count).toBe(1);
   });
 });

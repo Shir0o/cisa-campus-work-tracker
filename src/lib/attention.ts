@@ -1,7 +1,7 @@
 import type { Contact, Interaction, Notification } from "../types";
 import { isFullTimer, isTrainee } from "./walking";
 import { teamOf } from "./teams";
-import { inTheConversation, type ThreadMessageWithContact } from "./threads";
+import { inTheConversation, type ThreadMessage, type ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { InboxState } from "./inboxState";
 import { parseMs } from "../components/landing/helpers";
@@ -519,26 +519,32 @@ export function worklistGroupsFor(stacks: AttentionStack[]): WorklistGroup[] {
 }
 
 /**
- * The encouragements sent to you, as a count and the people who sent them.
- * They are summarised on My Day rather than being cards: nothing is asked of
- * you by praise, so nothing should ask you to clear it.
+ * The encouragements one person's thread carries for you, as a count and the
+ * people who sent them.
+ *
+ * Praise belongs to the person (#1624): it is summarised on *their* card, not
+ * aggregated into one line about everybody, so the reader can tell whose
+ * encouragement it was. Hand it that contact's messages, not the whole feed —
+ * a card is one person — and it says nothing at all about someone you are not
+ * tied to, because the praise was not addressed to you.
+ *
+ * It stays a sentence rather than becoming a card or a row in the thread:
+ * nothing is asked of you by praise, so nothing should ask you to clear it.
  */
-export function encouragementSummary(
-  threads: ThreadMessageWithContact[],
+export function encouragementFor(
+  threads: ThreadMessage[],
   uid: string,
-  contacts: Contact[],
+  contact: Contact | undefined,
   personalContactIds?: Set<string> | null,
 ): { count: number; names: string[] } {
-  const contactById = new Map<string, Contact>();
-  for (const c of contacts) contactById.set(c.id, c);
+  if (!isTiedTo(contact, uid, personalContactIds, contact?.id)) {
+    return { count: 0, names: [] };
+  }
 
   const names: string[] = [];
   let count = 0;
   for (const m of threads) {
     if (m.kind !== "encouragement" || !m.from || m.from === uid) continue;
-    if (!isTiedTo(contactById.get(m.contactId), uid, personalContactIds, m.contactId)) {
-      continue;
-    }
     count += 1;
     const first = (m.fromName || "Someone").trim().split(/\s+/)[0];
     if (!names.includes(first)) names.push(first);

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collectionGroup, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
-import { Heart } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
 import type { Contact, Interaction, Notification } from "../../types";
@@ -12,7 +11,6 @@ import {
   partitionAttentionStacks,
   feedVisibleThreads,
   openAsksIn,
-  encouragementSummary,
   type AttentionStack,
   type WorklistVerb,
 } from "../../lib/attention";
@@ -177,12 +175,17 @@ export default function OnYouCard({
     return attentionStacksFor(rawItems, uid);
   }, [rawItems, uid, inboxTick]);
 
-  // Praise is summarised, never a card: needing to dismiss an encouragement is
-  // worse than the encouragement is worth.
-  const encouraged = useMemo(
-    () => encouragementSummary(threads, uid, contacts, personalContactIds),
-    [threads, uid, contacts, personalContactIds],
-  );
+  // Each card gets its own person's messages, because the encouragement line
+  // is now a fact about that card rather than about the page (#1624).
+  const threadsByContact = useMemo(() => {
+    const map = new Map<string, ThreadMessageWithContact[]>();
+    for (const m of threads) {
+      const list = map.get(m.contactId);
+      if (list) list.push(m);
+      else map.set(m.contactId, [m]);
+    }
+    return map;
+  }, [threads]);
 
   // Partition ONCE on the unfiltered feed, then narrow the "On you" side. The
   // partition is untouched by this change (#943) — what lands here versus at
@@ -202,7 +205,7 @@ export default function OnYouCard({
     [allSides.onYou, uid, completedHere, inboxTick],
   );
 
-  if (allStacks.length === 0 && encouraged.count === 0) {
+  if (allStacks.length === 0) {
     return null;
   }
 
@@ -294,6 +297,8 @@ export default function OnYouCard({
                     onToast={onToast}
                     mobile={mobile}
                     showReach={false}
+                    threads={stack.contactId ? threadsByContact.get(stack.contactId) : undefined}
+                    personalContactIds={personalContactIds}
                   />
                 ))}
               </div>
@@ -322,16 +327,6 @@ export default function OnYouCard({
         >
           {t("whatsNew.show_less")}
         </button>
-      )}
-
-      {encouraged.count > 0 && (
-        <p className="text-xs text-on-surface-variant m-0 flex items-center gap-1.5">
-          <Heart className="w-3.5 h-3.5 text-stage-accent shrink-0" />
-          {(encouraged.count > encouraged.names.length
-            ? t("whatsNew.encouraged_you_many").replace("{n}", String(encouraged.count))
-            : t("whatsNew.encouraged_you")
-          ).replace("{names}", encouraged.names.join(", "))}
-        </p>
       )}
 
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
