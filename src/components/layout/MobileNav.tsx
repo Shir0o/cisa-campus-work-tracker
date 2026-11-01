@@ -94,7 +94,9 @@ function Destination({
       >
         {label}
       </span>
-      {waiting > 0 && waitingLabel && <span className="sr-only">, {waitingLabel}</span>}
+      {waiting > 0 && waitingLabel && (
+        <span className="sr-only">, {waitingLabel}</span>
+      )}
     </Link>
   );
 }
