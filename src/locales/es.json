@@ -2712,7 +2712,7 @@
     "not_found_body": "Esta página de ayuda no existe o no está disponible para tu rol.",
     "back_to_help": "Volver a la ayuda",
     "vault_title": "Bóveda de credenciales",
-    "vault_body": "Los Full-timers guardan los accesos compartidos del equipo en Ajustes → Seguridad → Bóveda de credenciales, o en /vault, y los abren con una sola frase de paso que comparten todos los Full-timers. Esa frase de paso no se guarda en ningún lado y no se puede recuperar, así que tenela en el gestor de contraseñas del equipo; cambiarla vuelve a sellar cada entrada con la nueva y necesita la frase actual. Si se pierde, no hay forma de reiniciar la bóveda desde la app: queda cerrada y cada acceso hay que recuperarlo desde el servicio mismo."
+    "vault_body": "Los Full-timers guardan los accesos compartidos del equipo en Ajustes → Seguridad → Bóveda de credenciales, o en /vault, y los abren con una sola frase de paso que comparten todos los Full-timers. Esa frase de paso no se guarda en ningún lado y no se puede recuperar, así que tenela en el gestor de contraseñas del equipo; cambiarla vuelve a sellar cada entrada con la nueva y necesita la frase actual. Si se pierde, abrí \"¿Olvidaste la frase de paso?\" en la bóveda cerrada para empezar de nuevo: se borran todas las entradas y cada acceso hay que recuperarlo desde el servicio mismo."
   },
   "bnpb": {
     "settings_title": "BNPB",
@@ -2939,6 +2939,14 @@
     "action_rotate": "Cambió la frase de paso",
     "door_label": "Bóveda de credenciales",
     "door_note": "Los accesos compartidos del equipo, sellados con una frase de paso que solo tienen los Full-timers.",
-    "door_open": "Abrir la bóveda"
+    "door_open": "Abrir la bóveda",
+    "forgot": "¿Olvidaste la frase de paso?",
+    "reset_warning": "Empezar de nuevo borra todos los accesos guardados. Sin la frase de paso anterior no se puede descifrar ninguno, así que después no hay forma de recuperarlos.",
+    "reset_count": "Se van a borrar {n} entradas.",
+    "reset_new_passphrase": "Frase de paso nueva",
+    "reset_start": "Empezar de nuevo",
+    "reset_confirm": "Borrar todo",
+    "reset_done": "Bóveda reiniciada. Compartí la frase de paso nueva con los demás Full-timers.",
+    "reset_failed": "No se pudo reiniciar la bóveda. Probá de nuevo."
   }
 }

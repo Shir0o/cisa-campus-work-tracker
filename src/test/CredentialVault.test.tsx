@@ -25,7 +25,7 @@ const h = vi.hoisted(() => ({
   entriesCb: null as null | ((snap: unknown) => void),
   auditWrites: [] as Record<string, unknown>[],
   addedDocs: [] as { path: string; data: Record<string, unknown> }[],
-  batches: [] as { set: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[],
+  batches: [] as { set: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[],
   derive: vi.fn(),
   verify: vi.fn(),
   openEntry: vi.fn(),
@@ -96,7 +96,7 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: (ref: { path: string }) => h.deleteDoc(ref),
   serverTimestamp: () => 'SERVER_TS',
   writeBatch: () => {
-    const batch = { set: vi.fn(), commit: vi.fn(async () => undefined) };
+    const batch = { set: vi.fn(), delete: vi.fn(), commit: vi.fn(async () => undefined) };
     h.batches.push(batch);
     return batch;
   },
@@ -214,6 +214,47 @@ describe('Credential vault page (#1967)', () => {
     expect(typeof written.check).toBe('string');
     expect(JSON.parse(written.check as string)).toEqual({ iv: 'check-iv', ciphertext: 'check-ct' });
     expect(await screen.findByText(ENTRY.label)).toBeTruthy();
+  });
+
+  it('starts over after a lost passphrase: new meta, entries destroyed, each deletion audited', async () => {
+    renderVault();
+    await screen.findByLabelText('Passphrase');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot the passphrase?' }));
+    fireEvent.change(screen.getByLabelText('New passphrase'), { target: { value: 'new shared phrase' } });
+    expect(screen.getByText('2 entries will be deleted.')).toBeTruthy();
+
+    // One tap arms it; nothing is written until the second, because there is no undo.
+    fireEvent.click(screen.getByRole('button', { name: 'Start over' }));
+    expect(h.batches).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete everything' }));
+
+    await waitFor(() => expect(h.batches).toHaveLength(1));
+    const batch = h.batches[0];
+    expect(batch.commit).toHaveBeenCalledTimes(1);
+    expect(h.derive).toHaveBeenCalledWith('new shared phrase', expect.anything(), 600_000);
+    // The meta is overwritten in place: the rules forbid deleting it, so a new
+    // salt under a new key is the only way back in.
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'credentialsMeta/current' },
+      expect.objectContaining({ iterations: 600_000, schemaVersion: 1, check: expect.any(String) }),
+    );
+    // Every entry goes, and each one leaves a row in the append-only log.
+    expect(batch.delete).toHaveBeenCalledWith({ path: 'credentials/cred-1' });
+    expect(batch.delete).toHaveBeenCalledWith({ path: 'credentials/cred-2' });
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'credentialAudit' },
+      expect.objectContaining({ action: 'delete', credentialId: 'cred-1', actorUid: 'admin1' }),
+    );
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'credentialAudit' },
+      expect.objectContaining({ action: 'delete', credentialId: 'cred-2', actorUid: 'admin1' }),
+    );
+
+    // Resetting unlocks the vault rather than leaving it locked under a key nobody has.
+    expect(await screen.findByText('Vault reset. Share the new passphrase with the other Full-timers.')).toBeTruthy();
+    expect(screen.queryByDisplayValue('new shared phrase')).toBeNull();
   });
 
   it('seals a new entry before writing it, and audits the create against the real uid', async () => {

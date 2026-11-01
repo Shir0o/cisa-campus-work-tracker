@@ -21,6 +21,7 @@ import {
   createEntry,
   createVault,
   deleteEntry,
+  resetVault,
   rotatePassphrase,
   subscribeCredentialAudit,
   subscribeVaultEntries,
@@ -81,6 +82,11 @@ export default function CredentialVault() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
   const [nextPassphrase, setNextPassphrase] = useState("");
+  // Starting over after a lost passphrase: a separate passphrase box and a
+  // two-tap confirm, because it destroys every entry and there is no undo.
+  const [resetting, setResetting] = useState(false);
+  const [resetPassphrase, setResetPassphrase] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     const unsubMeta = subscribeVaultMeta((next) => {
@@ -128,6 +134,9 @@ export default function CredentialVault() {
     setConfirmDelete(null);
     setRotating(false);
     setNextPassphrase("");
+    setResetting(false);
+    setResetPassphrase("");
+    setConfirmReset(false);
     setError(null);
     setNotice(null);
   };
@@ -256,6 +265,27 @@ export default function CredentialVault() {
     }
   };
 
+  const reset = async () => {
+    if (!meta || !resetPassphrase || busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const nextKey = await resetVault(uid, resetPassphrase, entries);
+      setKey(nextKey);
+      setPlain({});
+      setRevealed(new Set());
+      setResetPassphrase("");
+      setResetting(false);
+      setConfirmReset(false);
+      setNotice(t("vault.reset_done", "Vault reset. Share the new passphrase with the other Full-timers."));
+    } catch {
+      setError(t("vault.reset_failed", "The vault could not be reset. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const entryName = (credentialId: string) =>
     credentialId === VAULT_AUDIT_ID
       ? t("vault.activity_vault", "The vault")
@@ -314,6 +344,79 @@ export default function CredentialVault() {
             <p className="text-xs text-on-surface-variant mt-3 m-0">
               {t("vault.not_recoverable", "This passphrase is stored nowhere and cannot be recovered. Keep it in the team password manager.")}
             </p>
+            {meta && (
+              <div className="mt-4 border-t border-outline-variant/50 pt-3">
+                {!resetting ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetting(true);
+                      setError(null);
+                    }}
+                    className="text-xs font-medium text-on-surface-variant underline decoration-outline hover:text-on-surface transition-colors pointer-coarse:min-h-11"
+                  >
+                    {t("vault.forgot", "Forgot the passphrase?")}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-on-surface-variant m-0">
+                      {t(
+                        "vault.reset_warning",
+                        "Starting over deletes every stored login. Nothing can decrypt them without the old passphrase, so they cannot be recovered afterwards.",
+                      )}
+                    </p>
+                    {entries.length > 0 && (
+                      <p className="text-xs text-error m-0">
+                        {t("vault.reset_count", "{n} entries will be deleted.").replace("{n}", String(entries.length))}
+                      </p>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        value={resetPassphrase}
+                        onChange={(e) => setResetPassphrase(e.target.value)}
+                        aria-label={t("vault.reset_new_passphrase", "New passphrase")}
+                        placeholder={t("vault.reset_new_passphrase", "New passphrase")}
+                        className="flex-1 px-4 py-2.5 rounded-[14px] bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+                      />
+                      {confirmReset ? (
+                        <button
+                          type="button"
+                          onClick={reset}
+                          disabled={busy || !resetPassphrase}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[14px] bg-error text-on-error font-medium text-sm hover:bg-error/90 transition-colors disabled:opacity-60 min-h-[44px]"
+                        >
+                          {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          {t("vault.reset_confirm", "Delete everything")}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmReset(true)}
+                          disabled={busy || !resetPassphrase}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[14px] border border-error text-error font-medium text-sm hover:bg-error/10 transition-colors disabled:opacity-60 min-h-[44px]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {t("vault.reset_start", "Start over")}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetting(false);
+                        setConfirmReset(false);
+                        setResetPassphrase("");
+                      }}
+                      className="text-xs text-on-surface-variant hover:text-on-surface transition-colors pointer-coarse:min-h-11"
+                    >
+                      {t("actions.cancel", "Cancel")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {error && (
               <p role="alert" className="text-sm text-error mt-3 m-0">
                 {error}

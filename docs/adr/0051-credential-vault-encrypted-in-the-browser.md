@@ -6,7 +6,7 @@ Firestore rules are the product's only boundary today, and they gate *reads*, no
 
 Each entry is one encrypted JSON blob rather than one ciphertext per field, so there is no plaintext field left on the document to leak, index, or sort by. The salt, the iteration count and a check value live in one `credentialsMeta/current` document rather than on every entry: the passphrase is derived **once** per unlock (`credentialsMeta` → key → entries) instead of once per entry, which at 600,000 iterations is the difference between one pause and ten. The check value — a fixed string encrypted under the same key — distinguishes a wrong passphrase from an empty vault; the GCM tag on any entry would do it too, but the check value still works when the vault holds none. A rekey writes a new salt and rewrites every entry in one pass, so the meta and the entries are only ever consistent within a single write batch.
 
-Losing the passphrase loses the entries. That is accepted, and it is the reason the ADR says out loud where it should also be written down: the passphrase belongs in the team's password manager, not only in this app.
+- **Losing the passphrase loses the entries.** That is accepted, and it is the reason the ADR says out loud where it should also be written down: the passphrase belongs in the team's password manager, not only in this app. Because `credentialsMeta/current` cannot be deleted, the locked form offers **Start over** — a new passphrase written over the old meta, destroying every entry — so a lost passphrase is a dead end for the data but not for the vault.
 
 ## Considered Options
 

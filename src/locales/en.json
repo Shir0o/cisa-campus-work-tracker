@@ -2712,7 +2712,7 @@
     "not_found_body": "This help page does not exist, or it is not available for your role.",
     "back_to_help": "Back to Help",
     "vault_title": "Credential vault",
-    "vault_body": "Full-timers keep the team's shared logins under Settings → Security → Credential vault, or at /vault, and unlock them with one passphrase that every Full-timer shares. That passphrase is stored nowhere and cannot be recovered, so keep it in the team password manager; changing it re-seals every entry under the new one and needs the current passphrase. If it is lost, there is no reset in the app: the vault stays closed and each login has to be recovered from the service itself."
+    "vault_body": "Full-timers keep the team's shared logins under Settings → Security → Credential vault, or at /vault, and unlock them with one passphrase that every Full-timer shares. That passphrase is stored nowhere and cannot be recovered, so keep it in the team password manager; changing it re-seals every entry under the new one and needs the current passphrase. If it is lost, open \"Forgot the passphrase?\" on the locked vault to start over: every entry is deleted, and each login has to be recovered from the service itself."
   },
   "bnpb": {
     "settings_title": "BNPB",
@@ -2939,6 +2939,14 @@
     "action_rotate": "Changed the passphrase",
     "door_label": "Credential vault",
     "door_note": "The team's shared logins, sealed with a passphrase only Full-timers hold.",
-    "door_open": "Open the vault"
+    "door_open": "Open the vault",
+    "forgot": "Forgot the passphrase?",
+    "reset_warning": "Starting over deletes every stored login. Nothing can decrypt them without the old passphrase, so they cannot be recovered afterwards.",
+    "reset_count": "{n} entries will be deleted.",
+    "reset_new_passphrase": "New passphrase",
+    "reset_start": "Start over",
+    "reset_confirm": "Delete everything",
+    "reset_done": "Vault reset. Share the new passphrase with the other Full-timers.",
+    "reset_failed": "The vault could not be reset. Please try again."
   }
 }

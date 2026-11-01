@@ -260,6 +260,46 @@ export async function rotatePassphrase(
   return nextKey;
 }
 
+/** The way out of a lost passphrase. There is nothing to decrypt with, so the
+ *  entries are destroyed and the meta is rewritten under a new key — the rules
+ *  deny deleting the meta document, so overwriting it is the only exit that
+ *  leaves the vault usable again (ADR 0051). */
+export async function resetVault(
+  uid: string,
+  newPassphrase: string,
+  entries: VaultEntryDoc[],
+): Promise<CryptoKey> {
+  const salt = newSalt();
+  const key = await deriveKey(newPassphrase, salt, DEFAULT_ITERATIONS);
+  const check = await makeCheck(key);
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, "credentialsMeta", "current"), {
+    salt: bytesToSalt(salt),
+    iterations: DEFAULT_ITERATIONS,
+    check: encodeCheck(check),
+    schemaVersion: VAULT_SCHEMA_VERSION,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  entries.forEach((entry) => {
+    batch.delete(doc(db, "credentials", entry.id));
+    batch.set(doc(collection(db, "credentialAudit")), {
+      actorUid: uid,
+      credentialId: entry.id,
+      action: "delete",
+      field: null,
+      createdAt: serverTimestamp(),
+    });
+  });
+  try {
+    await batch.commit();
+  } catch (e) {
+    handleFirestoreError(e, OperationType.WRITE, "credentials (reset)");
+  }
+  return key;
+}
+
 // ── Entries ─────────────────────────────────────────────────────────────────
 
 export async function createEntry(key: CryptoKey, entry: VaultEntry): Promise<string> {
