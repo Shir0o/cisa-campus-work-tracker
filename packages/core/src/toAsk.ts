@@ -3,11 +3,12 @@
 // the team (`aroundTeam.ts`) and reminder (`reminders.ts`) rules, and the
 // behaviour oracle both surfaces render: no Firestore here.
 //
-// Three existing signals draft lines on their own — **Not reached yet** (from
+// Four existing signals draft lines on their own — **Not reached yet** (from
 // the existing whole-team unreached-contacts rule), a **Follow-up ask** still
-// open after three campus calendar days, and a **question** with no reply
-// after the same three days (both from the reminder rule's constants and
-// clock). A drafted line stays tied to its signal instance for its whole life,
+// open after three campus calendar days, a **question** with no reply after the
+// same three days (both from the reminder rule's constants and clock), and a
+// text with nothing logged back for seven days (#1670). A drafted line stays
+// tied to its signal instance for its whole life,
 // even once reworded (ADR 0046): the line is keyed by contact + signal kind +
 // the ask or message id, so when Jae logs an Interaction the line clears
 // itself rather than being asked about again.
@@ -25,6 +26,18 @@ export type ToAskTeamFilter = "all" | "campus" | "yp";
 
 /** Ticked or cleared lines stay struck through this long, then drop. */
 export const STRUCK_VISIBLE_DAYS = 7;
+
+/** The Interaction types that count as writing to a person — the composer's
+ *  `chat`/`email` and Quick Capture's older `text`. A logged meeting or call is
+ *  a conversation had, not a message waiting on an answer, so neither starts a
+ *  signal (#1670). */
+export const OUTREACH_INTERACTION_TYPES: readonly string[] = ["chat", "text", "email"];
+
+/** How long a text waits for anything to be logged back before To ask drafts a
+ *  line about it (#1670). Seven campus calendar days — longer than the
+ *  three-day ask and question rules, because a person answering is slower than
+ *  a teammate answering. */
+export const NO_REPLY_AFTER_CALENDAR_DAYS = 7;
 
 const DAY_MS = 86_400_000;
 
@@ -59,6 +72,9 @@ export interface ToAskThreadMessage {
 
 /** An Interaction, reduced to what names whoever cleared a Not-reached line. */
 export interface ToAskInteraction {
+  /** The interaction's own id — it names the "text with no reply" instance
+   *  (#1670). Absent on a row read before the id was carried. */
+  id?: string | null;
   contactId: string;
   ms: number;
   userId?: string | null;
@@ -111,7 +127,7 @@ export interface ToAskInput {
   notepad?: ToAskNotepad | null;
 }
 
-export type ToAskSignalKind = "notReached" | "ask" | "question";
+export type ToAskSignalKind = "notReached" | "ask" | "question" | "noReply";
 export type ToAskLineKind = "handwritten" | ToAskSignalKind;
 export type ToAskLineState = "open" | "asked" | "cleared";
 
@@ -121,6 +137,8 @@ export interface ToAskSignalMeta {
   contactName: string;
   /** The asker's first name, for "Kate's follow-up ask" / "your question". */
   askerName?: string | null;
+  /** Who sent the text, for a "no reply" line (#1670). */
+  reacherName?: string | null;
   /** True when the reader asked it. */
   mine?: boolean;
   /** Whole campus calendar days since the signal started. */
@@ -196,13 +214,17 @@ const signalKey = (kind: ToAskSignalKind, contactId: string, messageId?: string)
 
 function parseKey(key: string): { kind: ToAskSignalKind; contactId: string; messageId?: string } | null {
   const [kind, contactId, messageId] = key.split("|");
-  if (kind !== "notReached" && kind !== "ask" && kind !== "question") return null;
+  if (kind !== "notReached" && kind !== "ask" && kind !== "question" && kind !== "noReply") return null;
   if (!contactId) return null;
   return { kind, contactId, messageId };
 }
 
 const firstName = (name?: string | null): string =>
   (name || "").trim().split(/\s+/)[0] || "Someone";
+
+/** The same, or null when nobody is named — a text whose sender is unknown. */
+const firstOf = (name?: string | null): string | null =>
+  (name || "").trim().split(/\s+/)[0] || null;
 
 interface OpenSignal {
   key: string;
@@ -211,6 +233,7 @@ interface OpenSignal {
   contactId: string;
   contactName: string;
   askerName?: string | null;
+  reacherName?: string | null;
   mine?: boolean;
 }
 
@@ -279,6 +302,44 @@ function openSignals(input: ToAskInput, nowMs: number): OpenSignal[] {
     }
   }
 
+  // 4. A text with nothing logged back (#1670). The instance is the newest
+  //    outreach Interaction — a later text replaces an earlier one, because
+  //    asking about the older message would be asking about something already
+  //    superseded. Reach already folds in every Interaction and every
+  //    Gathering, so a later anything (a call, a meeting, a Friday night)
+  //    clears it, while the text's own date is only the floor. Anyone written
+  //    to is drafted whatever their kind: a follow-up is exactly as useful for
+  //    a student met last week as for a brand-new Contact.
+  const newestOutreach = new Map<string, ToAskInteraction>();
+  const newestInteractionMS = new Map<string, number>();
+  for (const i of input.interactions ?? []) {
+    if (!i.contactId || !Number.isFinite(i.ms)) continue;
+    const seen = newestInteractionMS.get(i.contactId);
+    if (seen == null || i.ms > seen) newestInteractionMS.set(i.contactId, i.ms);
+    if (!i.type) continue;
+    if (!OUTREACH_INTERACTION_TYPES.includes(i.type)) continue;
+    const current = newestOutreach.get(i.contactId);
+    if (!current || i.ms > current.ms) newestOutreach.set(i.contactId, i);
+  }
+  for (const [contactId, i] of newestOutreach) {
+    if (!personById.has(contactId)) continue;
+    const lastSeen = Math.max(
+      reach.get(contactId)?.ms ?? -Infinity,
+      newestInteractionMS.get(contactId) ?? -Infinity,
+    );
+    if (lastSeen > i.ms) continue;
+    if (campusCalendarDaysSince(iso(i.ms), nowMs) < NO_REPLY_AFTER_CALENDAR_DAYS) continue;
+    signals.push({
+      key: signalKey("noReply", contactId, i.id ?? iso(i.ms)),
+      kind: "noReply",
+      at: iso(i.ms),
+      contactId,
+      contactName: nameOf(contactId),
+      reacherName: firstOf(i.userName || nameByUid.get(i.userId ?? "")),
+      mine: !!i.userId && i.userId === uid,
+    });
+  }
+
   return signals;
 }
 
@@ -296,12 +357,30 @@ function clearedInfo(
   if (!parsed) return null;
   const { kind, contactId, messageId } = parsed;
 
-  if (kind === "notReached") {
+  if (kind === "notReached" || kind === "noReply") {
     const reading = ctx.reach.get(contactId);
-    if (!reading?.reached) return null;
     const newest = ctx.interactions
       .filter((i) => i.contactId === contactId)
       .sort((a, b) => b.ms - a.ms)[0];
+    if (kind === "noReply") {
+      // The text's own reach is the signal, not a clearing: something after it
+      // has to have been logged, by an Interaction of any kind or a Gathering.
+      // The first thing after the text is what ended that instance.
+      const floor = outreachFloor(ctx.interactions, messageId);
+      if (floor == null) return null;
+      const after = ctx.interactions
+        .filter((i) => i.contactId === contactId && i.ms > floor)
+        .sort((a, b) => a.ms - b.ms)[0];
+      const lastSeen = Math.max(reading?.ms ?? -Infinity, newest?.ms ?? -Infinity);
+      if (!(lastSeen > floor)) return null;
+      return {
+        reason: "reached",
+        at: iso(after?.ms ?? lastSeen),
+        name: after?.userName ?? null,
+        verb: after?.type ?? null,
+      };
+    }
+    if (!reading?.reached) return null;
     return {
       reason: "reached",
       at: iso(readingsMs(reading, newest?.ms)) || iso(newest?.ms ?? null),
@@ -332,8 +411,36 @@ function readingsMs(reading: ReachReading, fallbackMs?: number): number | null {
   return reading.ms ?? fallbackMs ?? null;
 }
 
+/** The Interaction a "no reply" key names: found by id, or by its ISO date on
+ *  a row that carried no id. */
+function outreachInstance(
+  interactions: readonly ToAskInteraction[],
+  instance: string | undefined,
+): ToAskInteraction | null {
+  if (!instance) return null;
+  const byId = interactions.find((i) => i.id === instance);
+  if (byId) return byId;
+  const ms = parseMs(instance);
+  if (!Number.isFinite(ms)) return null;
+  return interactions.find((i) => i.ms === ms) ?? null;
+}
+
+/** When the texted instance started. */
+function outreachFloor(
+  interactions: readonly ToAskInteraction[],
+  instance: string | undefined,
+): number | null {
+  const hit = outreachInstance(interactions, instance);
+  const ms = hit ? hit.ms : instance ? parseMs(instance) : null;
+  return ms != null && Number.isFinite(ms) ? ms : null;
+}
+
 function defaultDraftText(signal: ToAskSignalMeta): string {
   if (signal.kind === "notReached") return `${signal.contactName} — not reached yet`;
+  if (signal.kind === "noReply") {
+    const who = signal.mine ? "you" : signal.reacherName || "Someone";
+    return `${signal.contactName} — ${who} texted them and heard nothing back`;
+  }
   const owner = signal.mine ? "your" : `${signal.askerName}'s`;
   return signal.kind === "ask"
     ? `${signal.contactName} — ${owner} follow-up ask is still open`
@@ -413,6 +520,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       kind: s.kind,
       contactName: s.contactName,
       askerName: s.askerName ?? null,
+      reacherName: s.reacherName ?? null,
       mine: s.mine ?? false,
       days: campusCalendarDaysSince(s.at, nowMs),
     };
@@ -464,6 +572,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       kind: parsed.kind,
       contactName: person.name || "Someone",
       askerName: null,
+      reacherName: firstOf(outreachInstance(interactions, parsed.messageId)?.userName),
       mine: false,
       days: campusCalendarDaysSince(at, nowMs),
     };

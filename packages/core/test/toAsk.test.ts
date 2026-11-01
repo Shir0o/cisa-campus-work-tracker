@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   buildToAsk,
   GENERAL_GROUP,
+  NO_REPLY_AFTER_CALENDAR_DAYS,
   NO_TRAINEE_GROUP,
   STRUCK_VISIBLE_DAYS,
   type ToAskInput,
+  type ToAskInteraction,
   type ToAskNotepad,
   type ToAskPerson,
   type ToAskThreadMessage,
@@ -47,6 +49,17 @@ const message = (over: Partial<ToAskThreadMessage> = {}): ToAskThreadMessage => 
   kind: "nudge",
   body: "b",
   at: ago(4),
+  ...over,
+});
+
+/** A logged Interaction, defaulting to Jae texting c1 eight days ago. */
+const interaction = (over: Partial<ToAskInteraction> = {}): ToAskInteraction => ({
+  id: "i1",
+  contactId: "c1",
+  ms: NOW.getTime() - 8 * DAY,
+  userId: "jae",
+  userName: "Jae",
+  type: "text",
   ...over,
 });
 
@@ -375,5 +388,171 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
   it("returns the drafted keys to persist back", () => {
     const view = buildToAsk(base({ people: [fresh("c1", { createdBy: "jae" })] }));
     expect(Object.keys(view.drafted)).toEqual(["notReached|c1"]);
+  });
+});
+
+describe("buildToAsk — a text with no reply (#1670)", () => {
+  it("drafts a line seven campus days after a logged text", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { name: "Mei Lin", carers: ["jae"] })],
+        interactions: [interaction()],
+      }),
+    );
+    const jae = view.groups.find((g) => g.id === "jae");
+    expect(jae?.lines.map((l) => l.kind)).toEqual(["noReply"]);
+    expect(jae?.lines[0].key).toBe("noReply|c1|i1");
+    expect(jae?.lines[0].state).toBe("open");
+    expect(jae?.lines[0].signal).toMatchObject({
+      contactName: "Mei Lin",
+      reacherName: "Jae",
+      mine: false,
+      days: 8,
+    });
+    expect(NO_REPLY_AFTER_CALENDAR_DAYS).toBe(7);
+  });
+
+  it("draws the line at exactly seven campus days, not at six", () => {
+    const openAt = (days: number) =>
+      buildToAsk(
+        base({
+          people: [person("c1", { carers: ["jae"] })],
+          interactions: [interaction({ ms: NOW.getTime() - days * DAY })],
+        }),
+      ).openCount;
+    expect(openAt(7)).toBe(1);
+    expect(openAt(6)).toBe(0);
+  });
+
+  it("counts chat and email as writing to someone, not a meeting or a visit", () => {
+    const openFor = (type: string) =>
+      buildToAsk(
+        base({
+          people: [person("c1", { carers: ["jae"] })],
+          interactions: [interaction({ type })],
+        }),
+      ).openCount;
+    expect(openFor("chat")).toBe(1);
+    expect(openFor("email")).toBe(1);
+    expect(openFor("meeting")).toBe(0);
+    expect(openFor("gathering")).toBe(0);
+  });
+
+  it("clears once anything else is logged with them", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        interactions: [
+          interaction({ id: "i1", ms: NOW.getTime() - 10 * DAY, type: "text" }),
+          interaction({
+            id: "i2",
+            ms: NOW.getTime() - 8 * DAY,
+            type: "meeting",
+            userId: "ana",
+            userName: "Ana",
+          }),
+        ],
+      }),
+    );
+    expect(view.openCount).toBe(0);
+  });
+
+  it("clears once they come to a Gathering", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        interactions: [interaction({ ms: NOW.getTime() - 10 * DAY })],
+        reach: new Map([["c1", { reached: true, ms: NOW.getTime() - 3 * DAY }]]),
+      }),
+    );
+    expect(view.openCount).toBe(0);
+  });
+
+  it("drafts one line per person, tied to their newest text", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        interactions: [
+          interaction({ id: "old", ms: NOW.getTime() - 12 * DAY }),
+          interaction({ id: "new", ms: NOW.getTime() - 8 * DAY, userId: "ana", userName: "Ana" }),
+        ],
+      }),
+    );
+    const lines = view.groups.find((g) => g.id === "jae")!.lines;
+    expect(lines).toHaveLength(1);
+    expect(lines[0].key).toBe("noReply|c1|new");
+    expect(lines[0].signal?.reacherName).toBe("Ana");
+  });
+
+  it("marks the line as mine when the reader sent the text", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        interactions: [interaction({ userId: "ft", userName: "Full Timer" })],
+      }),
+    );
+    expect(view.groups[0].lines[0].signal).toMatchObject({
+      mine: true,
+      reacherName: "Full",
+    });
+  });
+
+  it("drafts for anyone texted, not only a Contact", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { kind: "our-own", carers: ["jae"] })],
+        interactions: [interaction()],
+      }),
+    );
+    expect(view.openCount).toBe(1);
+  });
+
+  it("clears with what ended it, and keeps the old line struck", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { name: "Mei", carers: ["jae"] })],
+        interactions: [
+          interaction({ id: "i1", ms: NOW.getTime() - 12 * DAY }),
+          interaction({
+            id: "i2",
+            ms: NOW.getTime() - 3 * DAY,
+            type: "meeting",
+            userId: "ana",
+            userName: "Ana",
+          }),
+        ],
+        notepad: { drafted: { "noReply|c1|i1": { at: ago(12) } } },
+      }),
+    );
+    const old = view.groups.find((g) => g.id === "jae")!.lines[0];
+    expect(old.key).toBe("noReply|c1|i1");
+    expect(old.state).toBe("cleared");
+    expect(old.clearedBy).toMatchObject({ reason: "reached", name: "Ana" });
+    expect(view.openCount).toBe(0);
+  });
+
+  it("drafts a fresh line after a reply instead of reopening the old one", () => {
+    const oldAsked = { at: ago(20) };
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { name: "Mei", carers: ["jae"] })],
+        interactions: [
+          interaction({ id: "i1", ms: NOW.getTime() - 20 * DAY }),
+          interaction({
+            id: "i2",
+            ms: NOW.getTime() - 15 * DAY,
+            type: "meeting",
+            userId: "ana",
+            userName: "Ana",
+          }),
+          interaction({ id: "i3", ms: NOW.getTime() - 8 * DAY }),
+        ],
+        notepad: { drafted: { "noReply|c1|i1": oldAsked } },
+      }),
+    );
+    const lines = view.groups.find((g) => g.id === "jae")!.lines;
+    expect(lines.find((l) => l.key === "noReply|c1|i3")?.state).toBe("open");
+    expect(lines.find((l) => l.key === "noReply|c1|i1")?.state).not.toBe("open");
+    expect(view.openCount).toBe(1);
   });
 });

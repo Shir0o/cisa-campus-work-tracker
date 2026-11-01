@@ -37,6 +37,7 @@ export function toAskPeopleOf(contacts: Contact[]): ToAskPerson[] {
 
 export function toAskInteractionsOf(interactions: Interaction[]): ToAskInteraction[] {
   return interactions.map((i) => ({
+    id: i.id,
     contactId: i.contactId ?? "",
     ms: parseMs(i.dateTime || i.createdAt) ?? Number.NaN,
     userId: i.reachedById ?? i.userId ?? null,
@@ -87,6 +88,15 @@ export function draftText(signal: ToAskSignalMeta, t: Translate): string {
       .replace("{name}", name)
       .replace("{asker}", asker);
   }
+  if (signal.kind === "noReply") {
+    return (
+      signal.mine
+        ? t("toAsk.draft_no_reply_mine", "{name} — you texted them and heard nothing back")
+        : t("toAsk.draft_no_reply_theirs", "{name} — {reacher} texted them and heard nothing back")
+    )
+      .replace("{name}", name)
+      .replace("{reacher}", signal.reacherName || "Someone");
+  }
   return (
     signal.mine
       ? t("toAsk.draft_question_mine", "{name} — your question has no reply")
@@ -116,6 +126,25 @@ export function signalChip(signal: ToAskSignalMeta, t: Translate): string {
     )
       .replace("{asker}", asker)
       .replace("{days}", String(days));
+  }
+  if (signal.kind === "noReply") {
+    const reacher = signal.reacherName || "Someone";
+    if (signal.mine) {
+      return days === 1
+        ? t("toAsk.sig_no_reply_mine_one", "You texted 1 day ago · no reply")
+        : t("toAsk.sig_no_reply_mine", "You texted {days} days ago · no reply").replace(
+            "{days}",
+            String(days),
+          );
+    }
+    return days === 1
+      ? t("toAsk.sig_no_reply_theirs_one", "{reacher} texted 1 day ago · no reply").replace(
+          "{reacher}",
+          reacher,
+        )
+      : t("toAsk.sig_no_reply_theirs", "{reacher} texted {days} days ago · no reply")
+          .replace("{reacher}", reacher)
+          .replace("{days}", String(days));
   }
   return (
     signal.mine

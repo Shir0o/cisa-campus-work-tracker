@@ -55,6 +55,7 @@ describe('toAskView — assembling the derivation input', () => {
       } as Interaction,
     ]);
     expect(rows[0]).toMatchObject({ contactId: 'c1', userId: 'jae', userName: 'Jae', type: 'text' });
+    expect(rows[0].id).toBe('i1');
   });
 
   it('flattens thread messages with their closed stamp', () => {
@@ -116,6 +117,15 @@ describe('toAskView — the words', () => {
     expect(
       draftText({ kind: 'question', contactName: 'Leo', mine: false, askerName: 'Kate', days: 4 }, t),
     ).toBe('Leo — Kate\'s question has no reply');
+    expect(
+      draftText({ kind: 'noReply', contactName: 'Mei', mine: true, days: 8 }, t),
+    ).toBe('Mei — you texted them and heard nothing back');
+    expect(
+      draftText({ kind: 'noReply', contactName: 'Mei', mine: false, reacherName: 'Jae', days: 8 }, t),
+    ).toBe('Mei — Jae texted them and heard nothing back');
+    expect(
+      draftText({ kind: 'noReply', contactName: 'Mei', mine: false, days: 8 }, t),
+    ).toBe('Mei — Someone texted them and heard nothing back');
   });
 
   it('words each signal chip', () => {
@@ -130,6 +140,21 @@ describe('toAskView — the words', () => {
     );
     expect(signalChip({ kind: 'question', contactName: 'x', mine: false, askerName: 'Kate', days: 3 }, t)).toBe(
       'Kate\'s question unanswered 3 days',
+    );
+    expect(signalChip({ kind: 'noReply', contactName: 'x', mine: true, days: 8 }, t)).toBe(
+      'You texted 8 days ago · no reply',
+    );
+    expect(signalChip({ kind: 'noReply', contactName: 'x', mine: true, days: 1 }, t)).toBe(
+      'You texted 1 day ago · no reply',
+    );
+    expect(signalChip({ kind: 'noReply', contactName: 'x', mine: false, reacherName: 'Jae', days: 8 }, t)).toBe(
+      'Jae texted 8 days ago · no reply',
+    );
+    expect(signalChip({ kind: 'noReply', contactName: 'x', mine: false, reacherName: 'Jae', days: 1 }, t)).toBe(
+      'Jae texted 1 day ago · no reply',
+    );
+    expect(signalChip({ kind: 'noReply', contactName: 'x', mine: false, days: 8 }, t)).toBe(
+      'Someone texted 8 days ago · no reply',
     );
   });
 
