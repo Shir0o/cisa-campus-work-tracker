@@ -371,15 +371,17 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
   });
 
-  it('mobile bottom-nav search button opens the overlay', () => {
+  it('the phone bar carries destinations, not a search button (#1806)', () => {
+    // ADR 0049: the centred FAB was a duplicate of the header's own search
+    // button, and the bar needed the slot for Messages and Questions.
     h.mockAuth.value = TEST_USERS.operator;
     render(
       <MemoryRouter>
         <MobileNav />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole('button', { name: /search/i }));
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Messages/ })).toBeInTheDocument();
   });
 
   it('the trigger opens the palette, and the palette owns the query and its clear \u00d7', () => {
