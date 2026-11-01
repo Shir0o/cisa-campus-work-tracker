@@ -248,6 +248,10 @@ _Avoid_: Demo login, test user, guest account
 The extra proof, beyond the password or Google sign-in, that protects a staff account — a time-based code from an authenticator app (Google Authenticator or similar). It is **mandatory for Full-timers and the owner**, optional for everyone else, and enforced on the server for Full-timers' admin endpoints, not only in the UI. Users set it up or remove it under Settings > Security. A user must have a **verified email** and a recent sign-in to change it (ADR 0029).
 _Avoid_: 2FA, MFA (bare), security key, passcode
 
+**Credential vault (`/vault`)**:
+The Full-timers' one place for the team's shared logins — the ministry and service accounts that used to live in a single shared document. An entry carries a label, username, password, web address and notes; only a Full-timer may add, read, change or remove one, and there is no cap on how many exist. Each entry is stored as ciphertext, so the database never holds a readable password, and the key comes from one passphrase the Full-timers share out of band: stored nowhere, recoverable by no one, and therefore kept in the team's password manager. Changing it re-seals every entry inside whichever browser holds the current passphrase, and there is no server-side path — so a forgotten passphrase leaves every entry unreadable, with no reset, and every login to be recovered from the service itself. The door is Settings > Security > Credential vault; impersonation deliberately does not apply, because a Full-timer previewing another role cannot see it and the audit log names the real uid, never `effectiveUserId`.
+_Avoid_: Password manager, secrets manager, shared password doc
+
 
 
 

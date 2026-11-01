@@ -74,6 +74,10 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/around': 'admin',
   // To ask (#1649) — the Full-timer's private notepad. Admin-only.
   '/ask': 'admin',
+  // The credential vault (#1967, ADR 0051) — the team's shared logins, sealed
+  // with a passphrase the app never stores. Full-timers only, and the door is
+  // one row in Settings → Security rather than a nav item.
+  '/vault': 'admin',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
   // The floor reads "operator and above", which is true for Student and

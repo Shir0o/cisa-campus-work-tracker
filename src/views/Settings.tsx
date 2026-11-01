@@ -11,9 +11,11 @@ import {
   orderBy,
   setDoc,
   deleteDoc,
+  deleteField,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../lib/firebase';
+import { writeCredentialAudit } from '../lib/credentialVault';
 import { AppUser, Invitation } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
@@ -401,7 +403,7 @@ function AccountSection() {
 const REQUIRES_RECENT_LOGIN = 'auth/requires-recent-login';
 
 function SecuritySection() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { t } = useLanguage();
   const factors = user ? listEnrolledFactors(user) : [];
   const [status, setStatus] = useState<'idle' | 'reauth' | 'enrolling'>('idle');
@@ -762,6 +764,29 @@ function SecuritySection() {
 
         {message && <p className="text-sm text-success px-1">{message}</p>}
         {error && <p className="text-sm text-error px-1">{error}</p>}
+
+        {/* The vault's only door (#1967): a rare, deliberate visit, so it is
+            one row here rather than a nav item. `role` is the effective role,
+            so a Full-timer previewing a Trainee loses the row (ADR 0022/0051). */}
+        {role === 'admin' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/40 pt-4">
+            <div>
+              <p className="font-medium text-on-surface">
+                {t('vault.door_label', 'Credential vault')}
+              </p>
+              <p className="text-sm text-on-surface-variant">
+                {t('vault.door_note', "The team's shared logins, sealed with a passphrase only Full-timers hold.")}
+              </p>
+            </div>
+            <Link
+              to="/vault"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[14px] border border-outline text-on-surface font-medium text-sm hover:bg-surface-variant transition-colors min-h-[44px]"
+            >
+              <KeyRound className="w-4 h-4" />
+              {t('vault.door_open', 'Open the vault')}
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1960,10 +1985,15 @@ function AttdIntegrationCard({
   currentUser: User | null;
 }) {
   const { t } = useLanguage();
-  const [syncToken, setSyncToken] = useState<string>('');
+  // ADR 0052: only the hash is stored, so the card has two states to render —
+  // a configured hash, and a legacy plaintext token still waiting to be
+  // migrated. The raw token lives in `revealedToken` for the one render after
+  // it is generated or migrated, and nowhere else.
+  const [hasHash, setHasHash] = useState(false);
+  const [legacyToken, setLegacyToken] = useState<string>('');
+  const [revealedToken, setRevealedToken] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showToken, setShowToken] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   // Replacing the token revokes the one already pasted into ~/attd, so the
   // control arms on the first tap and only writes on the second. Same
@@ -1984,9 +2014,12 @@ function AttdIntegrationCard({
         const exists = typeof snapshot?.exists === 'function' ? snapshot.exists() : false;
         if (exists && typeof snapshot?.data === 'function') {
           const data = snapshot.data();
-          setSyncToken((data?.attdSyncToken as string) || '');
+          const hash = data?.attdSyncTokenHash;
+          setHasHash(typeof hash === 'string' && hash !== '');
+          setLegacyToken((data?.attdSyncToken as string) || '');
         } else {
-          setSyncToken('');
+          setHasHash(false);
+          setLegacyToken('');
         }
         setLoading(false);
       },
@@ -1998,25 +2031,35 @@ function AttdIntegrationCard({
     return () => unsub();
   }, []);
 
-  const handleGenerateToken = async () => {
+  const sha256Hex = async (value: string): Promise<string> => {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
+  const writeToken = async (token: string, audit: boolean) => {
     setIsGenerating(true);
     setSaveStatus(null);
     try {
-      const generated = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
       await setDoc(
         doc(db, 'settings', 'integrations'),
         {
-          attdSyncToken: generated,
+          attdSyncTokenHash: await sha256Hex(token),
+          // The plaintext field is removed rather than left behind: a stale
+          // copy would keep the previous token alive through the legacy
+          // server branch.
+          attdSyncToken: deleteField(),
           attdSyncUrl: intakeUrl,
           updatedAt: serverTimestamp(),
           updatedBy: currentUser?.email || 'admin',
         },
         { merge: true },
       );
-      setSyncToken(generated);
-      setShowToken(true);
+      if (audit && currentUser?.uid) {
+        await writeCredentialAudit(currentUser.uid, 'rotate', 'attd-sync-token');
+      }
+      setRevealedToken(token);
       setSaveStatus(t('attendanceSync.attd_token_saved', 'Sync token updated successfully'));
     } catch (e: any) {
       console.error('Error saving sync token:', e);
@@ -2027,11 +2070,28 @@ function AttdIntegrationCard({
     }
   };
 
+  const handleRotateToken = async () => {
+    const generated = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    await writeToken(generated, true);
+  };
+
+  // Explicit, never on load: while `attdSyncToken` is plaintext it is the last
+  // readable copy of the secret, and the one pasted into ~/attd may have drifted.
+  const handleActivateHashedToken = async () => {
+    if (!legacyToken) return;
+    await writeToken(legacyToken, false);
+  };
+
   return (
     <ChannelCard
       Icon={Zap}
       title={t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)')}
-      blurb={t('attendanceSync.attd_integration_blurb', "Configure your team's secret sync token and intake endpoint for the attendance app.")}
+      blurb={t(
+        'attendanceSync.attd_integration_blurb',
+        'Rotate the sync token (stored as a hash) and copy the intake endpoint for the attendance app.',
+      )}
       defaultOpen
     >
       <p className="text-[13px] text-on-surface-variant leading-relaxed">
@@ -2048,12 +2108,12 @@ function AttdIntegrationCard({
           <span id="attd-token-label" className="text-[11px] text-on-surface-variant font-medium">
             {t('attendanceSync.attd_token_label', 'Sync Token (x-sync-token)')}
           </span>
-          {confirmingToken ? (
+          {loading || revealedToken ? null : confirmingToken ? (
             <span className="inline-flex items-center gap-1.5">
               <button
                 ref={confirmTokenRef}
                 type="button"
-                onClick={handleGenerateToken}
+                onClick={handleRotateToken}
                 disabled={isGenerating}
                 aria-describedby="attd-token-label"
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium bg-error text-on-error hover:bg-error/90 transition-colors disabled:opacity-50"
@@ -2077,7 +2137,11 @@ function AttdIntegrationCard({
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              <span>{t('attendanceSync.attd_generate_token', 'Generate new token')}</span>
+              <span>
+                {hasHash
+                  ? t('attendanceSync.attd_rotate_token', 'Rotate token')
+                  : t('attendanceSync.attd_generate_token', 'Generate new token')}
+              </span>
             </button>
           )}
         </div>
@@ -2087,33 +2151,22 @@ function AttdIntegrationCard({
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span>{t('attendanceSync.attd_loading_token', 'Loading token…')}</span>
           </div>
-        ) : syncToken ? (
-          <div className="relative">
-            <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2 pr-20 bg-surface border border-outline-variant/40 rounded-md select-all">
-              {showToken ? syncToken : '•'.repeat(Math.min(syncToken.length, 32))}
+        ) : revealedToken ? (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-2.5 space-y-2">
+            <p className="text-xs font-medium text-on-surface">
+              {t(
+                'attendanceSync.attd_token_shown_once',
+                'Copy this token now — it will not be shown again.',
+              )}
+            </p>
+            <pre className="font-code text-[11.5px] leading-relaxed text-on-surface whitespace-pre-wrap break-words px-3 py-2 bg-surface border border-outline-variant/40 rounded-md select-all">
+              {revealedToken}
             </pre>
-            <div className="absolute top-1.5 right-2 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setShowToken((prev) => !prev)}
-                className="relative p-1 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3 pointer-coarse:after:content-['']"
-                title={
-                  showToken
-                    ? t('attendanceSync.attd_hide_token', 'Hide token')
-                    : t('attendanceSync.attd_show_token', 'Show token')
-                }
-                aria-label={
-                  showToken
-                    ? t('attendanceSync.attd_hide_token', 'Hide token')
-                    : t('attendanceSync.attd_show_token', 'Show token')
-                }
-              >
-                {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(syncToken);
+                  navigator.clipboard.writeText(revealedToken);
                   setSaveStatus(t('attendanceSync.attd_token_copied', 'Sync token copied to clipboard'));
                   setTimeout(() => setSaveStatus(null), 2500);
                 }}
@@ -2124,12 +2177,50 @@ function AttdIntegrationCard({
                 <Copy className="w-3.5 h-3.5" />
                 <span>{t('actions.copy', 'Copy')}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setRevealedToken('')}
+                className="inline-flex items-center px-2.5 py-1 rounded-[14px] pointer-coarse:min-h-11 text-xs font-medium text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                {t('attendanceSync.attd_token_copied_done', "I've copied it")}
+              </button>
             </div>
           </div>
         ) : (
-          <p className="text-xs text-on-surface bg-warning/10 border border-warning/30 p-2.5 rounded-md">
-            {t('attendanceSync.attd_no_token', 'No sync token configured yet. Generate one to enable sync from ~/attd.')}
-          </p>
+          <>
+            {hasHash && (
+              <p className="text-xs text-on-surface bg-success/10 border border-success/30 p-2.5 rounded-md">
+                {t(
+                  'attendanceSync.attd_token_active',
+                  'Active · stored as a hash. It cannot be shown again — rotate it if you lose your copy.',
+                )}
+              </p>
+            )}
+            {legacyToken && (
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-2.5 space-y-2">
+                <p className="text-xs text-on-surface">
+                  {t(
+                    'attendanceSync.attd_token_legacy',
+                    'This token is still stored in the clear. Activate the hashed token to keep syncing without keeping the secret on the server.',
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleActivateHashedToken}
+                  disabled={isGenerating}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-xs font-medium bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                  <span>{t('attendanceSync.attd_activate_hashed_token', 'Activate hashed token')}</span>
+                </button>
+              </div>
+            )}
+            {!hasHash && !legacyToken && (
+              <p className="text-xs text-on-surface bg-warning/10 border border-warning/30 p-2.5 rounded-md">
+                {t('attendanceSync.attd_no_token', 'No sync token configured yet. Generate one to enable sync from ~/attd.')}
+              </p>
+            )}
+          </>
         )}
 
         {saveStatus && (

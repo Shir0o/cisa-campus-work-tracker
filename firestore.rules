@@ -838,9 +838,15 @@ service cloud.firestore {
       }
 
       function isValidIntegrationsSettings(data) {
-        return data.keys().hasOnly(['attdSyncToken', 'attdSyncUrl', 'updatedAt', 'updatedBy']) &&
+        return data.keys().hasOnly(['attdSyncToken', 'attdSyncTokenHash', 'attdSyncUrl', 'updatedAt', 'updatedBy']) &&
                (!('attdSyncToken' in data) || data.attdSyncToken == null ||
                  (data.attdSyncToken is string && data.attdSyncToken.size() <= 256)) &&
+               // The token is stored as its SHA-256 digest (ADR 0052): exactly 64
+               // lowercase hex characters, never the plaintext. `attdSyncToken`
+               // above stays only until the migration has run everywhere.
+               (!('attdSyncTokenHash' in data) || data.attdSyncTokenHash == null ||
+                 (data.attdSyncTokenHash is string &&
+                  data.attdSyncTokenHash.matches('^[a-f0-9]{64}$'))) &&
                (!('attdSyncUrl' in data) || data.attdSyncUrl == null ||
                  (data.attdSyncUrl is string && data.attdSyncUrl.size() <= 512));
       }
@@ -876,6 +882,76 @@ service cloud.firestore {
       allow create, update: if docId == 'partners' && isAdmin() && isValidPartnerSettings(incoming());
       allow create, update: if docId == 'goal' && isAdmin() && isValidGoalSettings(incoming());
       allow delete: if false;
+    }
+
+    // 6c-ii. Credential vault (ADR 0051, #1605/#1966) — the team's shared
+    // logins, encrypted in the browser. Only Full-timers read or write any of
+    // it, and Firestore only ever holds ciphertext: a write carrying a
+    // plaintext field (label, username, password) is refused by `hasOnly`, so
+    // the boundary does not depend on the client choosing to encrypt.
+    match /credentialsMeta/{docId} {
+      // One singleton: the salt, KDF cost, check value and schema version the
+      // whole vault is derived from. Both stamps are pinned to the request so a
+      // rekey cannot backdate the meta its entries were written against.
+      function isValidCredentialsMeta(data) {
+        return data.keys().hasAll(['salt', 'iterations', 'check', 'schemaVersion', 'createdAt', 'updatedAt']) &&
+               data.keys().hasOnly(['salt', 'iterations', 'check', 'schemaVersion', 'createdAt', 'updatedAt']) &&
+               data.salt is string && data.salt.size() > 0 && data.salt.size() <= 128 &&
+               data.iterations is int && data.iterations > 0 &&
+               data.check is string && data.check.size() > 0 && data.check.size() <= 512 &&
+               data.schemaVersion is int && data.schemaVersion > 0 &&
+               data.createdAt == request.time && data.updatedAt == request.time;
+      }
+
+      allow read: if isAdmin();
+      allow create, update: if docId == 'current' && isAdmin() && isValidCredentialsMeta(incoming());
+      allow delete: if false;
+    }
+
+    match /credentials/{credentialId} {
+      // One entry, one encrypted JSON blob: no per-field ciphertext and no
+      // plaintext key at all. `updatedAt` must be the request time, so an edit
+      // that omits it falls back to the stored stamp and is refused (the Dirty
+      // Dozen #12 shape); a create must also stamp `createdAt` from the request,
+      // and an update may not rewrite it.
+      function isValidCredential(data) {
+        return data.keys().hasAll(['iv', 'ciphertext', 'createdAt', 'updatedAt']) &&
+               data.keys().hasOnly(['iv', 'ciphertext', 'createdAt', 'updatedAt']) &&
+               data.iv is string && data.iv.size() > 0 && data.iv.size() <= 64 &&
+               data.ciphertext is string &&
+               data.ciphertext.size() > 0 && data.ciphertext.size() <= 700000 &&
+               data.updatedAt == request.time;
+      }
+
+      allow read: if isAdmin();
+      allow create: if isValidId(credentialId) && isAdmin() && isValidCredential(incoming()) &&
+                       incoming().createdAt == request.time;
+      allow update: if isValidId(credentialId) && isAdmin() && isValidCredential(incoming()) &&
+                       incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(credentialId) && isAdmin();
+    }
+
+    match /credentialAudit/{auditId} {
+      // Append-only from the client's side: a Full-timer creates entries, and
+      // nobody — Full-timer included — edits or removes one, so the log cannot
+      // be made to forget a reveal. `actorUid` is the real auth uid, never an
+      // impersonated one (ADR 0051), and `createdAt` is the request time.
+      function isValidCredentialAuditEntry(data) {
+        return data.keys().hasAll(['actorUid', 'credentialId', 'action', 'createdAt']) &&
+               data.keys().hasOnly(['actorUid', 'credentialId', 'action', 'field', 'createdAt']) &&
+               data.actorUid == request.auth.uid &&
+               data.credentialId is string &&
+               data.credentialId.size() > 0 && data.credentialId.size() <= 128 &&
+               data.action in ['unlock', 'unlock-failed', 'reveal', 'copy',
+                               'create', 'update', 'delete', 'rotate'] &&
+               (!('field' in data) || data.field == null ||
+                (data.field is string && data.field.size() <= 64)) &&
+               data.createdAt == request.time;
+      }
+
+      allow read: if isAdmin();
+      allow create: if isValidId(auditId) && isAdmin() && isValidCredentialAuditEntry(incoming());
+      allow update, delete: if false;
     }
 
     // 6d. Attendance Sync Intake - staged attd pushes, alias memory, and

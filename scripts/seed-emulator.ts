@@ -13,6 +13,13 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
 import { LEGACY_CONTACT_FIXTURES, type LegacyCreatedAt } from '../src/test/fixtures/contacts';
+import {
+  VAULT_ENTRY,
+  VAULT_ITERATIONS,
+  VAULT_PASSPHRASE,
+  VAULT_SALT_BASE64,
+} from '../e2e/helpers/vault-fixture';
+import { deriveKey, makeCheck, sealEntry } from '../src/lib/vaultCrypto';
 
 // Route firebase-admin to local emulators
 process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
@@ -386,6 +393,26 @@ export async function seedEmulator() {
       { merge: true },
     );
   }
+
+  // The credential vault (#1967, ADR 0051): one meta document and one entry,
+  // sealed with the crypto module the app itself uses. The salt and iteration
+  // count are fixed and low so the journey's unlock is fast; the passphrase
+  // lives beside them in e2e/helpers/vault-fixture.
+  const vaultSalt = new Uint8Array(Buffer.from(VAULT_SALT_BASE64, 'base64'));
+  const vaultKey = await deriveKey(VAULT_PASSPHRASE, vaultSalt, VAULT_ITERATIONS);
+  await db.collection('credentialsMeta').doc('current').set({
+    salt: VAULT_SALT_BASE64,
+    iterations: VAULT_ITERATIONS,
+    check: JSON.stringify(await makeCheck(vaultKey)),
+    schemaVersion: 1,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await db.collection('credentials').doc('e2e-vault-entry').set({
+    ...(await sealEntry(vaultKey, VAULT_ENTRY)),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 
   console.log('Emulator seeding complete.');
 }
