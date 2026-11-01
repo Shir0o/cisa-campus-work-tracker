@@ -20,5 +20,9 @@
     "@types/web-push": "^3.6.4",
     "typescript": "~5.8.2",
     "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1",
+    "glob": "^14.0.2"
   }
 }
