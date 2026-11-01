@@ -236,6 +236,7 @@ export default function EmbedCoordinationDoc() {
       <DocEditor
         key={`${displayDoc.id}-${language}`}
         doc={displayDoc}
+        pages={[]}
         meUid={user.uid}
         meName={meName}
         pagesCollapsed

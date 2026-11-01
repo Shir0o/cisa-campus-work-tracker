@@ -12,6 +12,7 @@ vi.mock('../components/AuthProvider', () => ({
 let mockLocation = { state: null as any, search: '' };
 vi.mock('react-router-dom', () => ({
   useLocation: () => mockLocation,
+  useNavigate: () => vi.fn(),
   Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
     <a href={to} {...rest}>
       {children}
