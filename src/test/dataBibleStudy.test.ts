@@ -13,6 +13,7 @@ import {
   createEntryPoint,
   deleteStudy,
   setActiveStudy,
+  deleteEntryPoint,
 } from '../lib/data/bibleStudy';
 import { setDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import type { Section, Meeting } from '../lib/bibleStudy';
@@ -351,6 +352,13 @@ describe('bibleStudy data service', () => {
     );
     expect(vi.mocked(updateDoc).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(deleteDoc).mock.invocationCallOrder[0],
+    );
+  });
+
+  it('deleteEntryPoint deletes the entry point document from firestore', async () => {
+    await deleteEntryPoint(fakeDb, 'cisa-wednesday');
+    expect(deleteDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'bible_study_entry_points/cisa-wednesday' }),
     );
   });
 });
