@@ -1153,17 +1153,21 @@ export default function BibleStudyIndex() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Delete room code"
+          aria-label={t('study.delete_entry_point_dialog_title', 'Delete room code')}
         >
           <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
             <h2 className="font-serif text-xl font-bold text-on-surface mb-2">
-              Delete room code &ldquo;{deleteEntryPointCandidate.name}&rdquo;?
+              {t('study.delete_entry_point_confirm_title', 'Delete room code "{name}"?')
+                .replace('{name}', deleteEntryPointCandidate.name)}
             </h2>
             <div className="text-[11px] font-mono text-on-surface-variant mb-4">
               /s/{deleteEntryPointCandidate.slug}
             </div>
             <p className="text-xs text-on-surface-variant mb-5 text-left leading-relaxed">
-              Any printed QR codes or bookmarks using this URL will stop working. This cannot be undone.
+              {t(
+                'study.delete_entry_point_warning',
+                'Any printed QR codes or bookmarks using this URL will stop working. This cannot be undone.',
+              )}
             </p>
             <div className="flex gap-2 justify-center">
               <button
@@ -1171,7 +1175,7 @@ export default function BibleStudyIndex() {
                 onClick={() => setDeleteEntryPointCandidate(null)}
                 className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
               >
-                Cancel
+                {t('actions.cancel', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -1179,7 +1183,9 @@ export default function BibleStudyIndex() {
                 onClick={() => void handleDeleteEntryPointConfirmed()}
                 className="px-4 py-2 rounded-full bg-error text-on-error text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
               >
-                {deleteEntryPointBusy ? 'Deleting...' : 'Delete room code'}
+                {deleteEntryPointBusy
+                  ? t('study.deleting', 'Deleting...')
+                  : t('study.delete_entry_point_button', 'Delete room code')}
               </button>
             </div>
           </div>
