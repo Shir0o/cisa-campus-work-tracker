@@ -892,7 +892,7 @@ describe('BibleStudyIndex view', () => {
 
       const dialog = await screen.findByRole('dialog', { name: 'Delete room code' });
       expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByText(/Delete room code “Wednesday Bible Study”\?/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Delete room code ["“]Wednesday Bible Study["”]\?/)).toBeInTheDocument();
 
       fireEvent.click(within(dialog).getByRole('button', { name: 'Delete room code' }));
 
