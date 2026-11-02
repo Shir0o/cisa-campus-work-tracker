@@ -19,6 +19,7 @@ vi.mock('../lib/data/bibleStudy', () => ({
   createEntryPoint: vi.fn().mockResolvedValue('cisa-wednesday'),
   setActiveStudy: vi.fn().mockResolvedValue(undefined),
   deleteStudy: vi.fn().mockResolvedValue(undefined),
+  deleteEntryPoint: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -270,7 +271,7 @@ describe('BibleStudyIndex view', () => {
       await screen.findByText('Nothing between us');
 
       const weeks = weeksSection();
-      const aside = screen.getByText('Entry point').closest('aside') as HTMLElement;
+      const aside = screen.getByText('Room QR Code').closest('aside') as HTMLElement;
       // DOM order is the painted order: no `order-*` utility may re-sort them.
       expect(weeks.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(weeks.className).not.toContain('order-');
@@ -393,7 +394,7 @@ describe('BibleStudyIndex view', () => {
       const menu = screen.getByRole('menu', { name: 'Actions for Alive to God' });
       expect(menu).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: 'Duplicate into a new week' })).toBeInTheDocument();
-      expect(screen.getByRole('menuitem', { name: 'Copy staff link' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Copy permanent link' })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: 'Unpublish' })).toBeInTheDocument();
       // Refused for a published week, with the reason written where it can
       // be read — not an unexplained disabled control.
@@ -479,7 +480,7 @@ describe('BibleStudyIndex view', () => {
 
       await screen.findByText('Nothing between us');
       fireEvent.click(screen.getByRole('button', { name: 'Week actions for Alive to God' }));
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy staff link' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy permanent link' }));
 
       await waitFor(() => {
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -866,6 +867,38 @@ describe('BibleStudyIndex view', () => {
         expect(bibleData.deleteStudy).toHaveBeenCalledWith(expect.anything(), 'test-study'),
       );
       expect(bibleData.setActiveStudy).not.toHaveBeenCalled();
+    });
+
+    it('copies the standing room link from the Room QR Code card', async () => {
+      renderIndex();
+
+      await screen.findByText('Room QR Code');
+      const copyBtn = screen.getByRole('button', { name: 'Copy link' });
+      fireEvent.click(copyBtn);
+
+      await waitFor(() => {
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          'https://cisa-campus-work-tracker.pages.dev/s/cisa-wednesday',
+        );
+      });
+      expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+    });
+
+    it('allows an admin to delete an entry point with confirmation', async () => {
+      renderIndex();
+
+      await screen.findByText('Room QR Code');
+      fireEvent.click(screen.getByRole('button', { name: 'Delete room code...' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'Delete room code' });
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText(/Delete room code “Wednesday Bible Study”\?/)).toBeInTheDocument();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete room code' }));
+
+      await waitFor(() => {
+        expect(bibleData.deleteEntryPoint).toHaveBeenCalledWith(expect.anything(), 'cisa-wednesday');
+      });
     });
   });
 });

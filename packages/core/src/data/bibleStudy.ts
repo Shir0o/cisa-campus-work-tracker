@@ -303,3 +303,11 @@ export async function deleteStudy(db: Firestore, studyId: string): Promise<void>
   );
   await deleteDoc(doc(db, 'bible_study_studies', studyId));
 }
+
+/**
+ * Deletes an Entry point (room code) document.
+ * Used when cleaning up duplicate, test, or leftover codes.
+ */
+export async function deleteEntryPoint(db: Firestore, slug: string): Promise<void> {
+  await deleteDoc(doc(db, 'bible_study_entry_points', slug));
+}

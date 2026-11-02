@@ -4927,6 +4927,23 @@ describeRules('Firestore Security Rules', () => {
         slug: 'different', name: 'Mismatched', activeStudyId: null,
       }));
     });
+
+    it('EP5: a Full-timer can delete an Entry point; trainees and unauth are denied', async () => {
+      await seedMeetingUsers();
+      const unauthDb = getFirestore(null);
+      const traineeDb = getFirestore({ uid: 'trainee1' });
+      const adminDb = getFirestore({ uid: 'admin1' });
+
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'bible_study_entry_points', 'to-delete'), {
+          slug: 'to-delete', name: 'To Delete', activeStudyId: null,
+        });
+      });
+
+      await assertFails(deleteDoc(doc(unauthDb, 'bible_study_entry_points', 'to-delete')));
+      await assertFails(deleteDoc(doc(traineeDb, 'bible_study_entry_points', 'to-delete')));
+      await assertSucceeds(deleteDoc(doc(adminDb, 'bible_study_entry_points', 'to-delete')));
+    });
   });
 
   describe('Feedback Notes — the submitter reads their own (ADR 0019)', () => {
