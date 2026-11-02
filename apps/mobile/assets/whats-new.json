@@ -1,6 +1,219 @@
 {
-  "latestReleaseId": "2026-10-27-v1.13.1",
+  "latestReleaseId": "2026-11-01-v1.14.0",
   "releases": [
+    {
+      "id": "2026-11-01-v1.14.0",
+      "version": "1.14.0",
+      "title": "Release 1.14.0",
+      "date": "2026-11-01",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "An encrypted credential vault for Full-timers.",
+        "Hang encouragement on the person's card.",
+        "Keep one quiet way back from Reviewed.",
+        "Link one page from another."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "An encrypted credential vault for Full-timers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Hang encouragement on the person's card",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep one quiet way back from Reviewed",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Link one page from another",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Stop printing a {verb} placeholder on cleared lines",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep every field above the keyboard with one rule",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Ask instead of printing the stand-in burden",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Draft a line when a text gets no reply",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give the People search a clear button",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Write the LHCI manifest the daily scorecard reads",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bump minimatch, glob, node-forge",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Carry Messages and Questions in a Trainee's phone bar",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Align the mobile route table with the web copy",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Don't route attachment cards unopenable to reader",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make the mobile lockfile installable on npm 11",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bump minimatch in mobile via override",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bump tar in mobile via override",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Unblock the mobile build and settle the popup focus race",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve term-delete blockers inside the dialog",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow deleting a study term",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Set a paged Section as two-page book spreads, in the author's order",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow selecting term in weeks index",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Head a paged Section across both columns",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remediate security vulnerabilities across packages",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Attach the browser input trace to a note",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Let a Trainee open their own preferences",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Claim a question was asked of you only if you care",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep Looking back Full-timer-only",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-10-27-v1.13.1",
       "version": "1.13.1",
