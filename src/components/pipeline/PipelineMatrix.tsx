@@ -37,8 +37,10 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
     ? contacts.filter((c) => {
         const pairing = metrics.find((m) => m.pairingId === selectedCell.pairingId);
         if (!pairing) return false;
-        const matchesPair = pairing.memberNames.length > 0; // attribution check
-        return (c.stage === selectedCell.stageId || c.stage === selectedCell.stageLabel) && (c.founders || []).length > 0;
+        const matchesPair = pairing.memberIds
+          ? pairing.memberIds.some((m) => (c.founders || []).includes(m))
+          : true;
+        return (c.stage === selectedCell.stageId || c.stage === selectedCell.stageLabel) && matchesPair;
       })
     : [];
 

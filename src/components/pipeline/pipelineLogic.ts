@@ -57,6 +57,7 @@ export function computePipelineMetrics(
 
     return {
       pairingId: pairing.id,
+      memberIds: pairing.members,
       memberNames,
       totalFoundedContacts: pairContacts.length,
       stageCounts,
