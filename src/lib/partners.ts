@@ -18,6 +18,7 @@
 // migrates it in memory into dated records using each term's known boundaries
 // (migrateByTermToPairings), so history is readable before the first write of
 // the new shape and nothing is lost.
+import { useEffect, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { cleanPairings, cleanPartnerGroups, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./partnersModel";
@@ -90,6 +91,13 @@ export function subscribePartners(
     },
     (e) => (onError ? onError(e) : console.error("partners subscription error", e)),
   );
+}
+
+/** React hook for live gospel-partners pairings. */
+export function usePartners(): PartnerPairing[] {
+  const [pairings, setPairings] = useState<PartnerPairing[]>([]);
+  useEffect(() => subscribePartners(setPairings), []);
+  return pairings;
 }
 
 /** Replace the whole dated arrangement in settings/partners. Legacy `byTerm` is

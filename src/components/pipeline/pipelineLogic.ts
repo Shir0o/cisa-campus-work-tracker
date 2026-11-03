@@ -30,8 +30,10 @@ export function computePipelineMetrics(
     }
 
     for (const c of pairContacts) {
-      if (c.stage && stageCounts[c.stage] !== undefined) {
-        stageCounts[c.stage] += 1;
+      // Check both s.id and s.label for stage matching
+      const matchingStage = stages.find((s) => s.id === c.stage || s.label === c.stage);
+      if (matchingStage) {
+        stageCounts[matchingStage.id] += 1;
       }
     }
 

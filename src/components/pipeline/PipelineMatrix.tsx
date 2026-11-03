@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { Stage, Contact } from '../../types';
 import type { PipelinePairMetrics } from './types';
-import { ChevronRight, X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
+import { useLanguage } from '../LanguageProvider';
 
 interface PipelineMatrixProps {
   metrics: PipelinePairMetrics[];
@@ -16,6 +17,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
   contacts,
   onOpenContact,
 }) => {
+  const { t } = useLanguage();
   const [selectedCell, setSelectedCell] = useState<{
     pairingId: string;
     pairLabel: string;
@@ -36,16 +38,18 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
         const pairing = metrics.find((m) => m.pairingId === selectedCell.pairingId);
         if (!pairing) return false;
         const matchesPair = pairing.memberNames.length > 0; // attribution check
-        return c.stage === selectedCell.stageId && (c.founders || []).length > 0;
+        return (c.stage === selectedCell.stageId || c.stage === selectedCell.stageLabel) && (c.founders || []).length > 0;
       })
     : [];
+
+  const needsNextStepCount = metrics.filter((m) => m.status.startsWith('needs-')).length;
 
   return (
     <div className="bg-surface rounded-xl border border-outline-variant shadow-xs overflow-hidden">
       {/* Table Top Controls */}
       <div className="bg-surface-container-low px-6 py-3.5 border-b border-outline-variant flex flex-wrap justify-between items-center gap-3 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-on-surface">Filter:</span>
+          <span className="font-semibold text-on-surface">{t('outreachBoard.pipeline_filter', 'Filter:')}</span>
           <button
             type="button"
             onClick={() => setFilterGapsOnly(!filterGapsOnly)}
@@ -56,11 +60,13 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
             }`}
           >
             <span className={`w-2 h-2 rounded-full ${filterGapsOnly ? 'bg-amber-600' : 'bg-outline'}`} />
-            Needs Next Step Only ({metrics.filter((m) => m.status.startsWith('needs-')).length})
+            {t('outreachBoard.pipeline_needs_next_step', 'Needs Next Step Only ({n})').replace('{n}', String(needsNextStepCount))}
           </button>
         </div>
         <div className="text-on-surface-variant">
-          Showing {displayedMetrics.length} of {metrics.length} Gospel Partner pairs
+          {t('outreachBoard.pipeline_showing_pairs', 'Showing {shown} of {total} Gospel Partner pairs')
+            .replace('{shown}', String(displayedMetrics.length))
+            .replace('{total}', String(metrics.length))}
         </div>
       </div>
 
@@ -69,20 +75,20 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="bg-surface-container-low/70 text-[11px] font-bold tracking-wider text-on-surface-variant uppercase border-b border-outline-variant">
-              <th className="py-3 px-6">Gospel Partner Pair</th>
+              <th className="py-3 px-6">{t('outreachBoard.pipeline_pair_col', 'Gospel Partner Pair')}</th>
               {sortedStages.map((s) => (
                 <th key={s.id} className="py-3 px-4 text-center">
                   {s.label}
                 </th>
               ))}
-              <th className="py-3 px-6 text-center">Pipeline Guidance</th>
+              <th className="py-3 px-6 text-center">{t('outreachBoard.pipeline_guidance_col', 'Pipeline Guidance')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/30">
             {displayedMetrics.length === 0 ? (
               <tr>
                 <td colSpan={sortedStages.length + 2} className="py-8 text-center text-on-surface-variant italic text-sm">
-                  No gospel partner pairs found.
+                  {t('outreachBoard.pipeline_no_pairs', 'No gospel partner pairs found.')}
                 </td>
               </tr>
             ) : (
@@ -90,7 +96,9 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
                 <tr key={row.pairingId} className="hover:bg-surface-container-lowest/60 transition-colors">
                   <td className="py-3.5 px-6">
                     <div className="font-semibold text-on-surface">{row.memberNames.join(' & ')}</div>
-                    <div className="text-xs text-on-surface-variant">{row.totalFoundedContacts} total contacts</div>
+                    <div className="text-xs text-on-surface-variant">
+                      {t('outreachBoard.pipeline_total_contacts', '{n} total contacts').replace('{n}', String(row.totalFoundedContacts))}
+                    </div>
                   </td>
 
                   {sortedStages.map((s, idx) => {
@@ -155,13 +163,15 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
             <div className="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
               <div>
                 <h3 className="font-bold text-on-surface text-base">{selectedCell.pairLabel}</h3>
-                <p className="text-xs text-on-surface-variant">Step: {selectedCell.stageLabel}</p>
+                <p className="text-xs text-on-surface-variant">
+                  {t('outreachBoard.pipeline_step_label', 'Step: {stage}').replace('{stage}', selectedCell.stageLabel)}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedCell(null)}
                 className="p-1.5 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                aria-label="Close"
+                aria-label={t('common.close', 'Close')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -170,7 +180,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
             <div className="p-4 flex-1 overflow-y-auto space-y-2.5">
               {selectedContacts.length === 0 ? (
                 <div className="py-12 text-center text-on-surface-variant italic text-sm">
-                  No contacts found in this step for this pair.
+                  {t('outreachBoard.pipeline_no_contacts_in_step', 'No contacts found in this step for this pair.')}
                 </div>
               ) : (
                 selectedContacts.map((contact) => (
@@ -189,7 +199,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
                         type="button"
                         onClick={() => onOpenContact(contact)}
                         className="p-1 text-primary hover:bg-primary/10 rounded"
-                        title="View contact"
+                        title={t('outreachBoard.pipeline_view_contact', 'View contact')}
                       >
                         <ExternalLink className="w-4 h-4" />
                       </button>
