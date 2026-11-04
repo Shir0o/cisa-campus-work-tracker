@@ -57,11 +57,11 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
             onClick={() => setFilterGapsOnly(!filterGapsOnly)}
             className={`px-3 py-1.5 rounded-full font-semibold border transition-colors flex items-center gap-1.5 ${
               filterGapsOnly
-                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                ? 'bg-secondary-container text-on-secondary-container border-secondary/40'
                 : 'bg-surface border-outline-variant text-on-surface-variant hover:bg-surface-variant'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${filterGapsOnly ? 'bg-amber-600' : 'bg-outline'}`} />
+            <span className={`w-2 h-2 rounded-full ${filterGapsOnly ? 'bg-secondary' : 'bg-outline'}`} />
             {t('outreachBoard.pipeline_needs_next_step', 'Needs Next Step Only ({n})').replace('{n}', String(needsNextStepCount))}
           </button>
         </div>
@@ -121,7 +121,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
                           }
                           className={`inline-flex items-center justify-center min-w-8 h-7 px-2.5 rounded-md text-xs font-bold transition-transform active:scale-95 ${
                             isZeroInGapStage
-                              ? 'bg-amber-50 text-amber-900 border border-amber-300'
+                              ? 'bg-error-container text-on-error-container border border-error/40'
                               : count > 0
                               ? 'bg-surface-container-highest text-on-surface hover:bg-surface-variant'
                               : 'text-on-surface-variant/40 hover:text-on-surface-variant'
@@ -135,17 +135,17 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
 
                   <td className="py-3.5 px-6 text-center">
                     {row.status === 'needs-first-appt' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-xs font-semibold">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-error-container text-on-error-container border border-error/30 rounded-full text-xs font-semibold">
                         Needs 1st Appt
                       </span>
                     )}
                     {row.status === 'needs-regular-appt' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-900 border border-orange-200 rounded-full text-xs font-semibold">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-tertiary-container text-on-tertiary-container border border-tertiary/30 rounded-full text-xs font-semibold">
                         Needs Regular Appt
                       </span>
                     )}
                     {row.status === 'flowing' && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-semibold">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-secondary-container text-on-secondary-container border border-secondary/30 rounded-full text-xs font-semibold">
                         ✓ Active Flow
                       </span>
                     )}
