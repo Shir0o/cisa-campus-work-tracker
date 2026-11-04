@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -199,28 +200,56 @@ export type NewMeeting = {
 };
 
 /**
- * Creates the next week. Unlike `saveMeeting`, this never merges: a week at
- * the computed date may already exist that the caller's list does not know
- * about (a cold cache, a stale tab, a week prepared on another device), and
- * merging the skeleton into it would blank someone's study. The date is
- * claimed in a transaction and, if it is taken, the week moves to the next
- * free one.
+ * The date the study's newest week occupies, read from the store at the
+ * moment a week is created. The caller's list is a snapshot from when the
+ * screen mounted and can be badly stale: a previous week corrected from
+ * today's date in another tab still sat at today, which pushed New week to
+ * next week instead of today. Only a failed read falls back to that list.
  */
-export async function createMeeting(
+async function newestStoredMeetingDate(
+  db: Firestore,
+  studyId: string,
+  fallback: Meeting[],
+): Promise<string[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'bible_study_meetings'),
+        where('studyId', '==', studyId),
+        orderBy('date', 'desc'),
+        limit(1),
+      ),
+    );
+    return snap.docs.map((d) => String(d.data().date ?? '')).filter(Boolean);
+  } catch {
+    return fallback.map((m) => m.date);
+  }
+}
+
+/**
+ * Claims one date for a new week and returns its document id, or `null` when
+ * a week already sits on that date. The id is the date, as every week's has
+ * been — but only while it is free: editing a week's date leaves its old id
+ * behind (the previous week was created for 4 Nov and later moved to 28 Oct),
+ * so a new week for that date takes a suffixed id instead of being pushed a
+ * week later.
+ */
+async function claimWeek(
   db: Firestore,
   draft: NewMeeting,
-  meetings: Meeting[],
-  today: string,
+  date: string,
   userId?: string,
-): Promise<Meeting> {
-  let knownDates = meetings.map((m) => m.date);
-  for (let attempt = 0; attempt < 52; attempt++) {
-    const date = nextMeetingDateAfter(knownDates, today);
-    const id = `${draft.studyId}-${date}`;
+): Promise<string | null> {
+  for (let n = 1; n <= 52; n++) {
+    const id = n === 1 ? `${draft.studyId}-${date}` : `${draft.studyId}-${date}-${n}`;
     const ref = doc(db, 'bible_study_meetings', id);
-    const claimed = await runTransaction(db, async (tx) => {
+    const outcome = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
-      if (snap.exists()) return false;
+      if (snap.exists()) {
+        // A week on this date means the date is taken. An id held by a week
+        // whose date was edited away is only a used label.
+        return snap.data()?.date === date ? 'taken' : 'label-used';
+      }
       tx.set(ref, {
         ...stripUndefined({
           id,
@@ -235,9 +264,34 @@ export async function createMeeting(
         updatedAt: serverTimestamp(),
         createdBy: userId || null,
       });
-      return true;
+      return 'claimed';
     });
-    if (claimed) return { id, ...draft, date, published: false };
+    if (outcome === 'claimed') return id;
+    if (outcome === 'taken') return null;
+  }
+  return null;
+}
+
+/**
+ * Creates the next week. Unlike `saveMeeting`, this never merges: a week at
+ * the computed date may already exist that the caller's list does not know
+ * about (a cold cache, a stale tab, a week prepared on another device), and
+ * merging the skeleton into it would blank someone's study. The date is
+ * claimed in a transaction and, if it is taken, the week moves to the next
+ * free one.
+ */
+export async function createMeeting(
+  db: Firestore,
+  draft: NewMeeting,
+  meetings: Meeting[],
+  today: string,
+  userId?: string,
+): Promise<Meeting> {
+  let knownDates = await newestStoredMeetingDate(db, draft.studyId, meetings);
+  for (let attempt = 0; attempt < 52; attempt++) {
+    const date = nextMeetingDateAfter(knownDates, today);
+    const id = await claimWeek(db, draft, date, userId);
+    if (id) return { id, ...draft, date, published: false };
     // Someone got there first — ask for the week after it.
     knownDates = [...knownDates, date];
   }

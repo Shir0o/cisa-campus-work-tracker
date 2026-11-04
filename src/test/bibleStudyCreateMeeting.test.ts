@@ -24,7 +24,14 @@ vi.mock('firebase/firestore', () => ({
   }),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
-  getDocs: vi.fn(),
+  getDocs: vi.fn(async () => ({
+    docs: [...store.entries()]
+      .filter(([path]) => path.startsWith(`${MEETING_PATH}/`))
+      .map(([path, data]) => ({ id: path.split('/').pop(), data: () => data }))
+      .sort((a, b) => String(b.data().date).localeCompare(String(a.data().date)))
+      .slice(0, 1),
+  })),
+  limit: vi.fn(() => ({})),
   serverTimestamp: vi.fn(() => 'server-timestamp'),
   runTransaction: vi.fn(async (_db, fn) =>
     fn({
@@ -105,6 +112,36 @@ describe('createMeeting', () => {
     expect(store.get(`${MEETING_PATH}/romans-2026-11-11`)).toMatchObject({
       studyId: 'romans',
       date: '2026-11-11',
+      md: '## This week',
+    });
+  });
+
+  it('dates the week from what the store holds, not a stale list', async () => {
+    // The reported bug: the previous week had been corrected from 4 Nov to
+    // 28 Oct in another tab, so this tab still listed 4 Nov as its newest
+    // week. New week then jumped to 11 Nov instead of today, 4 Nov.
+    store.set(
+      `${MEETING_PATH}/romans-2026-11-04`,
+      stubMeeting({ date: '2026-10-28', id: 'romans-2026-11-04' }),
+    );
+
+    const week = await createMeeting(
+      db,
+      { studyId: 'romans', title: '', sections: [], md: '## This week' },
+      [stubMeeting({ date: '2026-11-04', id: 'romans-2026-11-04' })],
+      '2026-11-04', // Wednesday — today's study day
+      'u-admin-1',
+    );
+
+    expect(week.date).toBe('2026-11-04');
+    // The plain id is still held by the week that moved to 28 Oct, so today's
+    // week takes a suffixed one rather than being pushed to next week.
+    expect(week.id).toBe('romans-2026-11-04-2');
+    expect(store.get(`${MEETING_PATH}/romans-2026-11-04`)).toMatchObject({
+      date: '2026-10-28',
+    });
+    expect(store.get(`${MEETING_PATH}/romans-2026-11-04-2`)).toMatchObject({
+      date: '2026-11-04',
       md: '## This week',
     });
   });
