@@ -475,8 +475,17 @@ export function resolveScan(
  * skipped, so a rapid second click never lands on an existing week.
  */
 export function nextMeetingDate(meetings: Meeting[], today: string): string {
-  const dates = new Set(meetings.map((m) => m.date));
-  const newest = meetings.map((m) => m.date).sort((a, b) => b.localeCompare(a))[0];
+  return nextMeetingDateAfter(meetings.map((m) => m.date), today);
+}
+
+/**
+ * `nextMeetingDate` over plain dates. The data layer uses this to keep
+ * asking after a date it computed turns out to be taken in the store but
+ * missing from the list the screen holds.
+ */
+export function nextMeetingDateAfter(knownDates: string[], today: string): string {
+  const dates = new Set(knownDates);
+  const newest = [...knownDates].sort((a, b) => b.localeCompare(a))[0];
   const base = new Date(`${(newest ?? today)}T00:00:00Z`);
   let shift = newest ? 7 : (3 - base.getUTCDay() + 7) % 7 || 7; // 3 = Wednesday
   let candidate: string;
