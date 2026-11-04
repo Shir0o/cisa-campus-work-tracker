@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -20,6 +20,10 @@ const h = vi.hoisted(() => ({
   dropOverride: vi.fn(),
   reword: vi.fn(),
   replaceDrafted: vi.fn(),
+  dismiss: vi.fn(),
+  postUpdate: vi.fn(),
+  logInteraction: vi.fn(async (..._a: any[]) => undefined),
+  threadReply: vi.fn(async (..._a: any[]) => 'r1'),
   notepadCb: null as null | ((n: any) => void),
   deferNotepad: false,
   prefs: {} as any,
@@ -65,8 +69,13 @@ vi.mock('../lib/threads', async (importOriginal) => {
       cb(h.threads);
       return vi.fn();
     },
+    addThreadMessage: (...a: any[]) => h.threadReply(...a),
   };
 });
+
+vi.mock('../hooks/useContactStory', () => ({
+  addContactInteraction: (...a: any[]) => h.logInteraction(...a),
+}));
 
 vi.mock('../lib/toAsk', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -82,6 +91,8 @@ vi.mock('../lib/toAsk', async (importOriginal) => {
     deleteToAskOverride: (...a: any[]) => h.dropOverride(...a),
     setToAskRewording: (...a: any[]) => h.reword(...a),
     replaceToAskDrafted: (...a: any[]) => h.replaceDrafted(...a),
+    dismissToAskLine: (...a: any[]) => h.dismiss(...a),
+    postToAskLineUpdate: (...a: any[]) => h.postUpdate(...a),
   };
 });
 
@@ -102,7 +113,7 @@ const renderAsk = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseAuth.mockReturnValue({ user: { uid: 'ft' }, effectiveUserId: 'ft', role: 'admin' });
+  mockUseAuth.mockReturnValue({ user: { uid: 'ft', displayName: 'Kate Full' }, effectiveUserId: 'ft', role: 'admin' });
   applyRoster([
     { uid: 'ft', role: 'admin' },
     { uid: 'jae', role: 'manager' },
@@ -226,6 +237,161 @@ describe('To ask page (#1649)', () => {
     mockUseAuth.mockReturnValue({ user: { uid: 'jae' }, effectiveUserId: 'jae', role: 'manager' });
     const { container } = renderAsk();
     expect(container.textContent).not.toContain('To ask');
+  });
+});
+
+describe('To ask — Dismiss', () => {
+  it('dismisses a line, hides it at once, and offers Undo', async () => {
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Dismiss'));
+    expect(h.dismiss).toHaveBeenCalledWith('ft', expect.any(Object), 'notReached|c1', expect.any(String));
+    expect(h.askedAt).not.toHaveBeenCalled();
+    const snack = await screen.findByText('Dismissed “Priya Nair”. It comes back if anything new happens.');
+    expect(snack).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(h.dismiss).toHaveBeenLastCalledWith('ft', expect.any(Object), 'notReached|c1', null);
+  });
+
+  it('keeps a dismissed line out of the groups and lists it in the Dismissed tray', async () => {
+    h.notepad = { overrides: { 'notReached|c1': { dismissedAt: ago(0) } } };
+    renderAsk();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'To ask' })).toBeTruthy());
+    expect(screen.queryByText('Priya Nair — not reached yet')).toBeNull();
+    expect(screen.getByText('0 open')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismissed · 1' }));
+    const tray = screen.getByRole('region', { name: 'Dismissed' });
+    expect(within(tray).getByText('Priya Nair — not reached yet')).toBeTruthy();
+    expect(within(tray).getByText(/A drafted line comes back/)).toBeTruthy();
+    fireEvent.click(within(tray).getByRole('button', { name: 'Bring back' }));
+    expect(h.dismiss).toHaveBeenCalledWith('ft', expect.any(Object), 'notReached|c1', null);
+  });
+
+  it('shows no Dismissed pill when nothing is dismissed', async () => {
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /Dismissed ·/ })).toBeNull();
+  });
+});
+
+describe('To ask — Post an update', () => {
+  const openComposer = async () => {
+    renderAsk();
+    await waitFor(() => expect(screen.getByText(/Priya Nair —/)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Post an update' }));
+    return screen.getByRole('textbox', { name: 'Post an update' });
+  };
+
+  it('no longer offers Log on behalf', async () => {
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+    expect(screen.queryByText('Log on behalf')).toBeNull();
+  });
+
+  it('keeps an update on the line only, ticking it asked by default', async () => {
+    const box = await openComposer();
+    expect(box.getAttribute('placeholder')).toBe('What did Jae Kim say about Priya Nair?');
+    const post = screen.getByRole('button', { name: 'Post update' }) as HTMLButtonElement;
+    expect(post.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Only this line' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByRole('button', { name: 'Reply in the Thread' })).toBeNull();
+    expect((screen.getByLabelText('Also tick it asked') as HTMLInputElement).checked).toBe(true);
+    fireEvent.change(box, { target: { value: '  She is coming Friday ' } });
+    fireEvent.click(post);
+    expect(h.postUpdate).toHaveBeenCalledWith(
+      'ft',
+      expect.any(Object),
+      'notReached|c1',
+      expect.objectContaining({ text: 'She is coming Friday', dest: 'line' }),
+      { askedAt: expect.any(String) },
+    );
+    expect(h.logInteraction).not.toHaveBeenCalled();
+    expect(h.threadReply).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: 'Post an update' })).toBeNull();
+  });
+
+  it('logs it on the contact’s page for the tied Trainee, leaving the line open when unticked', async () => {
+    const box = await openComposer();
+    fireEvent.change(box, { target: { value: 'Jae saw her at lunch' } });
+    fireEvent.click(screen.getByRole('button', { name: "Priya Nair's page · log for Jae Kim" }));
+    expect(screen.getByText(/as Jae Kim reaching them/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Also tick it asked'));
+    fireEvent.click(screen.getByRole('button', { name: 'Post update' }));
+    expect(h.postUpdate).toHaveBeenCalledWith(
+      'ft',
+      expect.any(Object),
+      'notReached|c1',
+      expect.objectContaining({ dest: 'contact' }),
+      { askedAt: null },
+    );
+    expect(h.logInteraction).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Priya Nair' }),
+      expect.objectContaining({
+        content: 'Jae saw her at lunch',
+        type: 'interaction',
+        userId: 'ft',
+        userName: 'Kate Full',
+        reacher: { id: 'jae', name: 'Jae Kim' },
+      }),
+    );
+  });
+
+  it('replies in the Thread for a question line', async () => {
+    h.contacts = [{ id: 'c1', data: { name: 'Priya Nair', carers: ['jae'], createdAt: ago(60) } }];
+    h.threads = [
+      { id: 'q1', contactId: 'c1', from: 'jae', fromName: 'Jae Kim', kind: 'question', body: 'Is she coming?', at: ago(5), interactionId: null, scope: null },
+    ];
+    const box = await openComposer();
+    fireEvent.change(box, { target: { value: 'Yes, Friday' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in the Thread' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Post update' }));
+    expect(h.postUpdate).toHaveBeenCalledWith(
+      'ft',
+      expect.any(Object),
+      'question|c1|q1',
+      expect.objectContaining({ dest: 'thread' }),
+      { askedAt: expect.any(String) },
+    );
+    expect(h.threadReply).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ parentId: 'q1', scope: null, from: 'ft', kind: 'comment', body: 'Yes, Friday' }),
+      expect.objectContaining({ contactName: 'Priya Nair' }),
+    );
+  });
+
+  it('cancels on Escape without writing', async () => {
+    const box = await openComposer();
+    fireEvent.change(box, { target: { value: 'never mind' } });
+    fireEvent.keyDown(box, { key: 'Escape' });
+    expect(screen.queryByRole('textbox', { name: 'Post an update' })).toBeNull();
+    expect(h.postUpdate).not.toHaveBeenCalled();
+  });
+
+  it('shows posted updates under the line', async () => {
+    h.notepad = {
+      overrides: {
+        'notReached|c1': { updates: [{ id: 'u1', text: 'Saw her at lunch', at: ago(0), dest: 'contact' }] },
+      },
+    };
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Saw her at lunch')).toBeTruthy());
+    expect(screen.getByText('Your update · just now · logged on their page')).toBeTruthy();
+  });
+
+  it('offers every action from the phone menu', async () => {
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    const menu = screen.getByRole('menu');
+    expect(within(menu).getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+      'Post an update',
+      'Reword',
+      'Open Priya Nair',
+      'DismissHides it until something new happens',
+    ]);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /Dismiss/ }));
+    expect(h.dismiss).toHaveBeenCalledWith('ft', expect.any(Object), 'notReached|c1', expect.any(String));
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 });
 

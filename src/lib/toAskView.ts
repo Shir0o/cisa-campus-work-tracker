@@ -6,6 +6,7 @@ import { traineeIds } from "./walking";
 import { teamOf } from "./teams";
 import type {
   ToAskClearedBy,
+  ToAskUpdateDest,
   ToAskInteraction,
   ToAskPerson,
   ToAskSignalMeta,
@@ -59,6 +60,7 @@ export function toAskMessagesOf(threads: ThreadMessageWithContact[]): ToAskThrea
     closedAt: m.closedAt ?? null,
     closedByName: m.closedByName ?? null,
     parentId: m.parentId ?? null,
+    scope: m.scope === "team" ? "team" : null,
   }));
 }
 
@@ -164,4 +166,65 @@ export function clearedText(cleared: ToAskClearedBy, t: Translate): string {
   return cleared.name
     ? t("toAsk.cleared_named", "Cleared · {name} reached them").replace("{name}", cleared.name)
     : t("toAsk.cleared_reached", "Cleared · reached");
+}
+
+/** Where an update went, for "Your update · 2h ago · {where}". */
+export function updateWhere(dest: ToAskUpdateDest, t: Translate): string {
+  if (dest === "contact") return t("toAsk.update_where_contact", "logged on their page");
+  if (dest === "thread") return t("toAsk.update_where_thread", "replied in the Thread");
+  return t("toAsk.update_where_line", "only on this line");
+}
+
+/** A short "how long ago" for an update: just now, minutes, hours, then days. */
+export function updateAgo(at: string, nowMs: number, t: Translate): string {
+  const ms = parseMs(at);
+  if (ms == null) return "";
+  const minutes = Math.max(0, Math.floor((nowMs - ms) / 60_000));
+  if (minutes < 1) return t("toAsk.ago_now", "just now");
+  if (minutes < 60) return t("toAsk.ago_minutes", "{n}m ago").replace("{n}", String(minutes));
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("toAsk.ago_hours", "{n}h ago").replace("{n}", String(hours));
+  const days = Math.floor(hours / 24);
+  return days === 1
+    ? t("toAsk.ago_day", "1 day ago")
+    : t("toAsk.ago_days", "{n} days ago").replace("{n}", String(days));
+}
+
+/** The composer's destination pill, e.g. "Priya's page · log for Jae". */
+export function destLabel(
+  dest: ToAskUpdateDest,
+  names: { contact?: string | null; trainee?: string | null },
+  t: Translate,
+): string {
+  if (dest === "line") return t("toAsk.dest_line", "Only this line");
+  if (dest === "thread") return t("toAsk.dest_thread", "Reply in the Thread");
+  const contact = names.contact || t("toAsk.this_person", "This person");
+  return names.trainee
+    ? t("toAsk.dest_contact_for", "{contact}'s page · log for {trainee}")
+        .replace("{contact}", contact)
+        .replace("{trainee}", names.trainee)
+    : t("toAsk.dest_contact", "{contact}'s page").replace("{contact}", contact);
+}
+
+/** The one-line hint under the composer: what the chosen destination does. */
+export function destHint(
+  dest: ToAskUpdateDest,
+  names: { contact?: string | null; trainee?: string | null },
+  t: Translate,
+): string {
+  const contact = names.contact || t("toAsk.this_person", "This person");
+  if (dest === "thread") {
+    return t("toAsk.hint_thread", "Posts it as your reply in {contact}'s Thread, where the team sees it.").replace(
+      "{contact}",
+      contact,
+    );
+  }
+  if (dest === "contact") {
+    return names.trainee
+      ? t("toAsk.hint_contact_for", "Logs it on {contact}'s page as {trainee} reaching them, so it counts as reached.")
+          .replace("{contact}", contact)
+          .replace("{trainee}", names.trainee)
+      : t("toAsk.hint_contact", "Logs it on {contact}'s page, so it counts as reached.").replace("{contact}", contact);
+  }
+  return t("toAsk.hint_line", "Kept on this line. Only you see it.");
 }

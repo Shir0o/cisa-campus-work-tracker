@@ -12,6 +12,12 @@
 // even once reworded (ADR 0046): the line is keyed by contact + signal kind +
 // the ask or message id, so when Jae logs an Interaction the line clears
 // itself rather than being asked about again.
+//
+// Two private actions sit beside the Asked tick. **Dismiss** hides a line from
+// its group without ticking it (`dismissedAt`); a drafted line comes back on
+// its own once its signal starts after the dismissal. **Post an update** keeps
+// a short note on the line (`updates`), and may also be written to the
+// contact's page or the Thread by the surface — see `ToAskUpdateDest`.
 import { parseMs } from "./myday";
 import {
   isTiedTo,
@@ -68,6 +74,8 @@ export interface ToAskThreadMessage {
   closedByName?: string | null;
   /** The message this one replies to; absent on a top-level message. */
   parentId?: string | null;
+  /** `"team"` for the Full-timers stream, so a reply lands beside it. */
+  scope?: "team" | null;
 }
 
 /** An Interaction, reduced to what names whoever cleared a Not-reached line. */
@@ -82,6 +90,24 @@ export interface ToAskInteraction {
   type?: string | null;
 }
 
+/** Where a posted update goes. Every update is kept on its line (private to
+ *  the Full-timer); the other two say where else the surface also wrote it:
+ *  - `"line"`: only the line.
+ *  - `"contact"`: also logged as an Interaction on the contact's page, on the
+ *    tied Trainee's behalf (`reachedById`), so it reaches them like any log.
+ *  - `"thread"`: also posted as a reply to the Thread message an `ask` or
+ *    `question` line is about (see `toAskThreadTarget`). */
+export type ToAskUpdateDest = "line" | "contact" | "thread";
+
+/** A short note the Full-timer posted about a line. */
+export interface ToAskUpdate {
+  id: string;
+  text: string;
+  /** ISO the update was posted. */
+  at: string;
+  dest: ToAskUpdateDest;
+}
+
 /** A hand-written line the Full-timer owns. */
 export interface AskNoteLine {
   id: string;
@@ -91,6 +117,11 @@ export interface AskNoteLine {
   contactId?: string | null;
   createdAt: string;
   askedAt?: string | null;
+  /** ISO the line was dismissed. A hand-written line stays dismissed until it
+   *  is brought back. */
+  dismissedAt?: string | null;
+  /** Posted updates, oldest first. */
+  updates?: ToAskUpdate[];
 }
 
 /** What the Full-timer did to a drafted signal instance. */
@@ -99,6 +130,11 @@ export interface AskNoteOverride {
   text?: string;
   /** The private Asked tick — the signal stays open. */
   askedAt?: string;
+  /** ISO the line was dismissed. Applies only while the signal started at or
+   *  before it: something new (a later start) brings the line back. */
+  dismissedAt?: string;
+  /** Posted updates, oldest first. */
+  updates?: ToAskUpdate[];
 }
 
 /** The private notepad, one document per Full-timer. */
@@ -170,6 +206,8 @@ export interface ToAskLine {
   askedAt?: string | null;
   clearedBy?: ToAskClearedBy | null;
   signal?: ToAskSignalMeta | null;
+  /** Updates the Full-timer posted about this line, oldest first. */
+  updates: ToAskUpdate[];
 }
 
 export interface ToAskGroup {
@@ -190,6 +228,20 @@ export interface ToAskTopTrainee {
   open: number;
 }
 
+/** A line Dismiss hid from its group, for the "Dismissed" tray. */
+export interface ToAskDismissed {
+  key: string;
+  /** The line as its group would show it: text, kind, signal meta, updates. */
+  line: ToAskLine;
+  /** The group it was hidden from — for a person tied to two Trainees, the
+   *  first one the team filter shows. */
+  groupId: string;
+  groupKind: ToAskGroup["kind"];
+  /** The same display name as `ToAskGroup.name`. */
+  groupName: string;
+  dismissedAt: string;
+}
+
 export interface ToAskView {
   groups: ToAskGroup[];
   /** The page pill and the My Day pointer card, by construction: open lines,
@@ -201,6 +253,9 @@ export interface ToAskView {
   topTrainees: ToAskTopTrainee[];
   /** The drafted keys to persist back, so a later clear can say what cleared it. */
   drafted: Record<string, { at: string }>;
+  /** Dismissed lines, newest dismissal first, once per key. Never counted in
+   *  `openCount`, a group's `open`, `clearedCount` or `topTrainees`. */
+  dismissed: ToAskDismissed[];
 }
 
 export const GENERAL_GROUP = "general";
@@ -212,7 +267,12 @@ const iso = (ms: number | null | undefined): string =>
 const signalKey = (kind: ToAskSignalKind, contactId: string, messageId?: string): string =>
   messageId ? `${kind}|${contactId}|${messageId}` : `${kind}|${contactId}`;
 
-function parseKey(key: string): { kind: ToAskSignalKind; contactId: string; messageId?: string } | null {
+/** A drafted line's key, read back: the signal kind, the contact, and the
+ *  instance (a Thread message id for `ask`/`question`, an Interaction id or ISO
+ *  for `noReply`). Null for a hand-written key (`note:<id>`). */
+export function parseToAskKey(
+  key: string,
+): { kind: ToAskSignalKind; contactId: string; messageId?: string } | null {
   const [kind, contactId, messageId] = key.split("|");
   if (kind !== "notReached" && kind !== "ask" && kind !== "question" && kind !== "noReply") return null;
   if (!contactId) return null;
@@ -353,7 +413,7 @@ function clearedInfo(
     interactions: readonly ToAskInteraction[];
   },
 ): ToAskClearedBy | null {
-  const parsed = parseKey(key);
+  const parsed = parseToAskKey(key);
   if (!parsed) return null;
   const { kind, contactId, messageId } = parsed;
 
@@ -447,6 +507,68 @@ function defaultDraftText(signal: ToAskSignalMeta): string {
     : `${signal.contactName} — ${owner} question has no reply`;
 }
 
+/** The id of a hand-written line from its key (`note:<id>`), or null for a
+ *  drafted key. */
+export function toAskNoteId(key: string): string | null {
+  return key.startsWith("note:") ? key.slice("note:".length) : null;
+}
+
+/** Where an update about this line may go, in the order the composer offers
+ *  them: always the line; the contact's page when the line names a contact;
+ *  the Thread for an `ask` or `question` line. */
+export function toAskUpdateDestinations(
+  line: Pick<ToAskLine, "kind" | "contactId">,
+): ToAskUpdateDest[] {
+  const dests: ToAskUpdateDest[] = ["line"];
+  if (line.contactId) dests.push("contact");
+  if (line.kind === "ask" || line.kind === "question") dests.push("thread");
+  return dests;
+}
+
+/** A new update, ready to store. The text is trimmed; the id is unique enough
+ *  for one Full-timer's notepad. */
+export function newToAskUpdate(
+  text: string,
+  dest: ToAskUpdateDest,
+  now: number | Date = Date.now(),
+): ToAskUpdate {
+  const ms = typeof now === "number" ? now : now.getTime();
+  return {
+    id: `u-${ms}-${Math.random().toString(36).slice(2, 7)}`,
+    text: text.trim(),
+    at: new Date(ms).toISOString(),
+    dest,
+  };
+}
+
+/** Where a `"thread"` update is posted: a reply to the message the line's
+ *  signal is about, in that message's own stream (`scope`) and interaction.
+ *  Null for any other kind of line, or when the message is not in hand. */
+export function toAskThreadTarget(
+  key: string,
+  messages: readonly ToAskThreadMessage[],
+): { contactId: string; parentId: string; interactionId: string | null; scope: "team" | null } | null {
+  const parsed = parseToAskKey(key);
+  if (!parsed || (parsed.kind !== "ask" && parsed.kind !== "question") || !parsed.messageId) return null;
+  const message = messages.find((m) => m.id === parsed.messageId);
+  if (!message) return null;
+  return {
+    contactId: message.contactId,
+    parentId: message.id,
+    interactionId: message.interactionId ?? null,
+    scope: message.scope === "team" ? "team" : null,
+  };
+}
+
+/** Whether a drafted line's dismissal still holds: it was dismissed, and the
+ *  signal did not start after that. */
+function dismissalHolds(dismissedAt: string | null | undefined, signalAt: string): boolean {
+  const dismissedMs = parseMs(dismissedAt);
+  if (dismissedMs == null) return false;
+  const atMs = parseMs(signalAt);
+  return !(atMs != null && atMs > dismissedMs);
+}
+
 /** The notepad, derived. Pure: the clock, the roster, the messages and the
  *  stored notepad in; the grouped list, the count and what to persist out. */
 export function buildToAsk(input: ToAskInput): ToAskView {
@@ -486,6 +608,41 @@ export function buildToAsk(input: ToAskInput): ToAskView {
     return nowMs - at < struckWindowMs;
   };
 
+  /** Where a group id would show, or null when the team filter hides it. */
+  const groupMeta = (
+    groupId: string,
+  ): { kind: ToAskGroup["kind"]; name: string } | null => {
+    if (groupId === GENERAL_GROUP) return { kind: "general", name: "General" };
+    if (groupId === NO_TRAINEE_GROUP) return { kind: "none", name: "No Trainee tied" };
+    const trainee = traineeByUid.get(groupId);
+    if (filter && trainee?.team !== filter) return null;
+    return { kind: "trainee", name: trainee?.name || groupId };
+  };
+
+  const dismissedByKey = new Map<string, ToAskDismissed>();
+  /** Hide a line from its groups and list it once in the tray instead. */
+  const pushDismissed = (groupIds: string[], line: ToAskLine, dismissedAt: string) => {
+    if (dismissedByKey.has(line.key)) return;
+    for (const groupId of groupIds) {
+      const meta = groupMeta(groupId);
+      if (!meta) continue;
+      dismissedByKey.set(line.key, {
+        key: line.key,
+        line,
+        groupId,
+        groupKind: meta.kind,
+        groupName: meta.name,
+        dismissedAt,
+      });
+      return;
+    }
+  };
+
+  const groupIdsFor = (person: ToAskPerson | undefined): string[] => {
+    const tied = input.trainees.filter((t) => isTiedTo(person, t.uid));
+    return tied.length === 0 ? [NO_TRAINEE_GROUP] : tied.map((t) => t.uid);
+  };
+
   // ── Hand-written lines ─────────────────────────────────────────────────────
   const seenNoteKeys = new Set<string>();
   let clearedCount = 0;
@@ -507,7 +664,12 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       askedAt,
       clearedBy: null,
       signal: null,
+      updates: note.updates ?? [],
     };
+    if (note.dismissedAt) {
+      pushDismissed([note.group || GENERAL_GROUP], line, note.dismissedAt);
+      continue;
+    }
     if (askedAt) clearedCount += 1;
     pushLine(note.group || GENERAL_GROUP, line);
   }
@@ -539,6 +701,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       askedAt,
       clearedBy: null,
       signal: meta,
+      updates: override?.updates ?? [],
     };
     if (askedAt && !struck(askedAt)) {
       // Ticked and a week has passed — but the signal is still open, so it
@@ -547,12 +710,13 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       // until a *new* signal instance appears.
       continue;
     }
-    if (askedAt) clearedCount += 1;
     drafted[s.key] = storedDrafted[s.key] ?? { at: s.at };
-
-    const tied = input.trainees.filter((t) => isTiedTo(person, t.uid));
-    if (tied.length === 0) pushLine(NO_TRAINEE_GROUP, line);
-    else for (const t of tied) pushLine(t.uid, line);
+    if (dismissalHolds(override?.dismissedAt, s.at)) {
+      pushDismissed(groupIdsFor(person), line, override!.dismissedAt!);
+      continue;
+    }
+    if (askedAt) clearedCount += 1;
+    for (const groupId of groupIdsFor(person)) pushLine(groupId, line);
   }
 
   // ── Cleared drafted lines (signal gone, still inside the struck window) ────
@@ -562,7 +726,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
     const cleared = clearedInfo(key, { reach: input.reach, messages: input.messages, interactions });
     if (!cleared) continue;
     if (!struck(cleared.at)) continue;
-    const parsed = parseKey(key);
+    const parsed = parseToAskKey(key);
     if (!parsed) continue;
     const person = personById.get(parsed.contactId);
     if (!person) continue;
@@ -590,12 +754,15 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       askedAt: override.askedAt ?? null,
       clearedBy: cleared,
       signal: meta,
+      updates: override.updates ?? [],
     };
-    clearedCount += 1;
     drafted[key] = storedDrafted[key] ?? { at };
-    const tied = input.trainees.filter((t) => isTiedTo(person, t.uid));
-    if (tied.length === 0) pushLine(NO_TRAINEE_GROUP, line);
-    else for (const t of tied) pushLine(t.uid, line);
+    if (dismissalHolds(override.dismissedAt, at)) {
+      pushDismissed(groupIdsFor(person), line, override.dismissedAt!);
+      continue;
+    }
+    clearedCount += 1;
+    for (const groupId of groupIdsFor(person)) pushLine(groupId, line);
   }
 
   // ── Assemble groups ────────────────────────────────────────────────────────
@@ -678,5 +845,9 @@ export function buildToAsk(input: ToAskInput): ToAskView {
     .filter((g) => g.open > 0)
     .map((g) => ({ uid: g.id, name: g.name, open: g.open }));
 
-  return { groups, openCount, clearedCount, topTrainees, drafted };
+  const dismissed = [...dismissedByKey.values()].sort(
+    (a, b) => (parseMs(b.dismissedAt) ?? 0) - (parseMs(a.dismissedAt) ?? 0),
+  );
+
+  return { groups, openCount, clearedCount, topTrainees, drafted, dismissed };
 }

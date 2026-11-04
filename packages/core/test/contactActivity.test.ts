@@ -34,6 +34,21 @@ describe('packages/core contactActivity (#329)', () => {
       const patch = buildContactActivityPatch({ date: '2026-08-19', by: { uid: 'u1', name: 'Tony' }, type: 'attendance' });
       expect(patch.reachedAt).toBe('2026-08-19');
     });
+
+    it('names the reacher on a log made on their behalf, the logger as updater (#1288)', () => {
+      const patch = buildContactActivityPatch({
+        date: '2026-08-19',
+        by: { uid: 'ft', name: 'Kate' },
+        reacher: { uid: 'jae', name: 'Jae' },
+        type: 'interaction',
+      });
+      expect(patch).toMatchObject({
+        lastContactedBy: 'Jae',
+        lastContactedById: 'jae',
+        updatedBy: 'ft',
+        updatedByName: 'Kate',
+      });
+    });
   });
 
   describe('shouldTouchActivityForAttendance', () => {

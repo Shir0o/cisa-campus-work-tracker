@@ -118,6 +118,75 @@ export interface UseContactStoryResult {
   activitiesLoading: boolean;
 }
 
+export interface NewContactInteraction {
+  content: string;
+  dateTime?: string;
+  type?: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  reacher?: { id: string; name: string } | null;
+  t?: (key: string, fallback?: string) => string;
+}
+
+/** Log an interaction on a contact: the record, the contact's activity stamp,
+ *  the "logged on your behalf" bell for a named reacher (#1288) and the
+ *  History entry. The story composer's write, shared with To ask's
+ *  "Post an update" to a contact's page. */
+export async function addContactInteraction(
+  c: { id: string; name: string },
+  data: NewContactInteraction,
+): Promise<void> {
+  const interactionsRef = collection(db, "contacts", c.id, "interactions");
+  await addDoc(interactionsRef, {
+    userId: data.userId,
+    userName: data.userName,
+    userPhoto: data.userPhoto || "",
+    ...(data.reacher ? { reachedById: data.reacher.id, reachedByName: data.reacher.name } : {}),
+    content: data.content,
+    dateTime: data.dateTime || new Date().toISOString(),
+    type: data.type || "interaction",
+    createdAt: serverTimestamp(),
+  });
+
+  const activityPatch = buildContactActivityPatch({
+    date: data.dateTime || new Date().toISOString(),
+    by: { uid: data.userId, name: data.userName },
+    ...(data.reacher ? { reacher: { uid: data.reacher.id, name: data.reacher.name } } : {}),
+    type: "interaction",
+  });
+  await updateDoc(doc(db, "contacts", c.id), activityPatch as Record<string, unknown>);
+
+  if (data.reacher) {
+    sendNotification({
+      userId: data.reacher.id,
+      title: data.t ? data.t("modals.contactDetails.on_behalf_title") : "Logged on your behalf",
+      message: data.t
+        ? data.t("modals.contactDetails.on_behalf_message")
+            .replace("{logger}", data.userName)
+            .replace("{name}", c.name)
+        : `${data.userName} logged an interaction with ${c.name} on your behalf.`,
+      type: "info",
+      targetId: c.id,
+      link: `/people/${c.id}`,
+    });
+  }
+
+  await logActivity({
+    action: "logged an interaction for",
+    targetId: c.id,
+    targetName: c.name,
+    targetType: "contact",
+    type:
+      data.type === "meeting"
+        ? "event"
+        : data.type === "chat"
+          ? "comment"
+          : ((data.type || "interaction") as SystemActivity["type"]),
+    description: data.content,
+  });
+}
+
 export function useContactStory(
   contactOrId: string | Contact | null | undefined,
   options: UseContactStoryOptions = {}
@@ -475,66 +544,10 @@ export function useContactStory(
   );
 
   const addInteraction = useCallback(
-    async (data: {
-      content: string;
-      dateTime?: string;
-      type?: string;
-      userId: string;
-      userName: string;
-      userPhoto?: string;
-      reacher?: { id: string; name: string } | null;
-      t?: (key: string, fallback?: string) => string;
-    }) => {
+    async (data: NewContactInteraction) => {
       const c = currentContactRef.current;
       if (!c?.id) return;
-      const interactionsRef = collection(db, "contacts", c.id, "interactions");
-      await addDoc(interactionsRef, {
-        userId: data.userId,
-        userName: data.userName,
-        userPhoto: data.userPhoto || "",
-        ...(data.reacher ? { reachedById: data.reacher.id, reachedByName: data.reacher.name } : {}),
-        content: data.content,
-        dateTime: data.dateTime || new Date().toISOString(),
-        type: data.type || "interaction",
-        createdAt: serverTimestamp(),
-      });
-
-      const activityPatch = buildContactActivityPatch({
-        date: data.dateTime || new Date().toISOString(),
-        by: { uid: data.userId, name: data.userName },
-        ...(data.reacher ? { reacher: { uid: data.reacher.id, name: data.reacher.name } } : {}),
-        type: "interaction",
-      });
-      await updateDoc(doc(db, "contacts", c.id), activityPatch as Record<string, unknown>);
-
-      if (data.reacher) {
-        sendNotification({
-          userId: data.reacher.id,
-          title: data.t ? data.t("modals.contactDetails.on_behalf_title") : "Logged on your behalf",
-          message: data.t
-            ? data.t("modals.contactDetails.on_behalf_message")
-                .replace("{logger}", data.userName)
-                .replace("{name}", c.name)
-            : `${data.userName} logged an interaction with ${c.name} on your behalf.`,
-          type: "info",
-          targetId: c.id,
-          link: `/people/${c.id}`,
-        });
-      }
-
-      await logActivity({
-        action: "logged an interaction for",
-        targetId: c.id,
-        targetName: c.name,
-        targetType: "contact",
-        type:
-          data.type === "meeting"
-            ? "event"
-            : data.type === "chat"
-              ? "comment"
-              : ((data.type || "interaction") as SystemActivity["type"]),
-        description: data.content,
-      });
+      await addContactInteraction(c, data);
     },
     []
   );

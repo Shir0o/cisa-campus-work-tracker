@@ -45,17 +45,22 @@ export function subscribeInteractions(
 }
 
 /** Log a new interaction. `createdAt` must be a server timestamp — the
- * `interactions` create rule requires `incoming().createdAt == request.time`. */
+ * `interactions` create rule requires `incoming().createdAt == request.time`.
+ * `reacher` names the teammate who actually reached the person when a
+ * Full-timer logs it on their behalf (#1288); only a Full-timer may name
+ * someone else. */
 export async function addInteraction(
   db: Firestore,
   contactId: string,
   input: { content: string; dateTime: string; type: string },
   by: { uid: string; name: string; photoURL?: string | null },
+  reacher?: { uid: string; name: string } | null,
 ): Promise<void> {
   await addDoc(col(db, contactId), {
     userId: by.uid,
     userName: by.name,
     userPhoto: by.photoURL || "",
+    ...(reacher ? { reachedById: reacher.uid, reachedByName: reacher.name } : {}),
     content: input.content.trim(),
     dateTime: input.dateTime,
     type: input.type,
@@ -65,6 +70,7 @@ export async function addInteraction(
   const activityPatch = buildContactActivityPatch({
     date: input.dateTime,
     by,
+    ...(reacher ? { reacher } : {}),
     type: "interaction",
   });
   await updateDoc(doc(db, "contacts", contactId), activityPatch as Record<string, unknown>).catch(() => {

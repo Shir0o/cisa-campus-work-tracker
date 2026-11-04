@@ -1,7 +1,7 @@
 import { arrayUnion, doc, onSnapshot, setDoc } from "firebase/firestore";
 import * as core from "../../packages/core/src/data/toAsk";
 import { db, handleFirestoreError, OperationType } from "./firebase";
-import type { AskNoteLine, ToAskNotepad } from "../../packages/core/src/toAsk";
+import type { AskNoteLine, ToAskNotepad, ToAskUpdate } from "../../packages/core/src/toAsk";
 
 // Per-user To ask notepad (#1649), stored at toAskNotes/{uid}. A Full-timer's
 // private prep — never shared with a Trainee or another Full-timer.
@@ -66,3 +66,17 @@ export const deleteToAskOverride = (uid: string, key: string) =>
 
 export const replaceToAskDrafted = (uid: string, drafted: Record<string, { at: string }>) =>
   guarded(uid, () => core.replaceToAskDrafted(db, uid, drafted));
+
+/** Dismiss any line (ISO), or bring it back (null). */
+export const dismissToAskLine = (uid: string, notepad: ToAskNotepad, key: string, at: string | null) =>
+  guarded(uid, () => core.dismissToAskLine(db, uid, notepad, key, at));
+
+/** Keep an update on any line, ticking it Asked too when `askedAt` is given.
+ *  The notepad half only — the page also writes a `contact` or `thread` one. */
+export const postToAskLineUpdate = (
+  uid: string,
+  notepad: ToAskNotepad,
+  key: string,
+  update: ToAskUpdate,
+  opts?: { askedAt?: string | null },
+) => guarded(uid, () => core.postToAskLineUpdate(db, uid, notepad, key, update, opts));
