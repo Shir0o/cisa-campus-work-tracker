@@ -15,7 +15,7 @@ export function subscribeToAskNotepad(
   return core.subscribeToAskNotepad(db, uid, cb, onError);
 }
 
-async function guarded(uid: string, write: () => Promise<void>): Promise<void> {
+async function guarded(uid: string, write: () => unknown) {
   try {
     await write();
   } catch (e) {
