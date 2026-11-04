@@ -58,6 +58,9 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
+import { PipelineMatrix } from '../components/pipeline/PipelineMatrix';
+import { computePipelineMetrics } from '../components/pipeline/pipelineLogic';
+import { usePartners } from '../lib/partners';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { PopupFrame } from '../components/ui/PopupFrame';
@@ -188,6 +191,38 @@ export default function OutreachBoard() {
   const { setSelectedContact, openNewContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role, effectiveUserId } = useAuth();
+  const [boardView, setBoardView] = useState<'journey' | 'pipeline'>('journey');
+  const [followupThresholdDays, setFollowupThresholdDays] = useState<number>(() => {
+    const saved = localStorage.getItem('pipeline_followup_threshold');
+    return saved ? Number(saved) : 7;
+  });
+  const pairings = usePartners();
+  const [userNameMap, setUserNameMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+      const map: Record<string, string> = {};
+      const docs = snap.docs || (typeof snap.forEach === 'function' ? snap : []);
+      if (Array.isArray(docs)) {
+        docs.forEach((d) => {
+          const u = (typeof d.data === 'function' ? d.data() : {}) as { displayName?: string; email?: string };
+          map[d.id] = u.displayName || u.email?.split('@')[0] || 'Unknown';
+        });
+      } else if (typeof snap.forEach === 'function') {
+        snap.forEach((d) => {
+          const u = (typeof d.data === 'function' ? d.data() : {}) as { displayName?: string; email?: string };
+          map[d.id] = u.displayName || u.email?.split('@')[0] || 'Unknown';
+        });
+      }
+      setUserNameMap(map);
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  const handleThresholdChange = (val: number) => {
+    setFollowupThresholdDays(val);
+    localStorage.setItem('pipeline_followup_threshold', String(val));
+  };
   const [stages, setStages] = useState<Stage[]>(cachedStages ?? []);
   useEffect(() => { stagesRef.current = stages; }, [stages]);
   // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
@@ -900,6 +935,34 @@ export default function OutreachBoard() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {isAdmin && (
+              <div className="inline-flex items-center rounded-full border border-outline-variant/60 bg-surface-container-low p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setBoardView('journey')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-semibold transition-colors",
+                    boardView === 'journey'
+                      ? "bg-primary text-on-primary shadow-xs"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  )}
+                >
+                  {t('outreachBoard.journey_board')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBoardView('pipeline')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-semibold transition-colors",
+                    boardView === 'pipeline'
+                      ? "bg-primary text-on-primary shadow-xs"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  )}
+                >
+                  {t('outreachBoard.partner_pipeline')}
+                </button>
+              </div>
+            )}
+            {isAdmin && boardView === 'journey' && (
               <button
                 onClick={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors shrink-0"
@@ -908,72 +971,106 @@ export default function OutreachBoard() {
                 {t('outreachBoard.shape_the_journey')}
               </button>
             )}
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
-              <input
-                type="text"
-                aria-label={t('outreachBoard.find_someone')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
-                placeholder={t('outreachBoard.find_someone')}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* The board */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
-          <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
-            {stages.length > 0 ? (
-              <>
-                {unmappedContacts.length > 0 && (
-                  <KanbanColumn
-                    key="uncategorized"
-                    stageInfo={{
-                      id: 'uncategorized',
-                      label: t('outreachBoard.unassigned'),
-                      color: 'bg-surface-variant',
-                      order: -1
-                    }}
-                    isAdmin={isAdmin}
-                    contacts={unmappedContacts}
-                    lastTouchByContact={lastTouchByContact}
-                    onDeleteStage={handleDeleteStage}
-                    onEditStage={handleEditStage}
-                    onEditContact={setSelectedContact}
-                    onDeleteContact={handleDeleteContact}
-                    onAddContact={openNewContact}
-                  />
-                )}
-                {stages.map((stageInfo, i) => (
-                  <KanbanColumn
-                    key={stageInfo.id}
-                    stageInfo={stageInfo}
-                    tone={toneFor(stageInfo.color, i)}
-                    isFirst={i === 0}
-                    isAdmin={isAdmin}
-                    contacts={getStageContactsArr(stageInfo.label)}
-                    lastTouchByContact={lastTouchByContact}
-                    onDeleteStage={handleDeleteStage}
-                    onEditStage={handleEditStage}
-                    onEditContact={setSelectedContact}
-                    onDeleteContact={handleDeleteContact}
-                    onAddContact={openNewContact}
-                  />
-                ))}
-              </>
-            ) : !loading && (
-              <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-                <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
-                <h3 className="font-serif text-xl text-on-surface">{t('outreachBoard.not_mapped_title')}</h3>
-                <p className="text-sm text-on-surface-variant mt-1 max-w-sm">
-                  {isAdmin ? t('outreachBoard.not_mapped_admin_body') : t('outreachBoard.not_mapped_viewer_body')}
-                </p>
+            {isAdmin && boardView === 'pipeline' && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest text-xs text-on-surface">
+                <span className="text-on-surface-variant font-medium">{t('outreachBoard.pipeline_threshold_days')}:</span>
+                <select
+                  value={followupThresholdDays}
+                  onChange={(e) => handleThresholdChange(Number(e.target.value))}
+                  className="bg-transparent font-semibold text-on-surface outline-none cursor-pointer"
+                  aria-label={t('outreachBoard.pipeline_threshold_days')}
+                >
+                  <option value={7}>{t('outreachBoard.pipeline_threshold_7_days')}</option>
+                  <option value={14}>{t('outreachBoard.pipeline_threshold_14_days')}</option>
+                  <option value={30}>{t('outreachBoard.pipeline_threshold_30_days')}</option>
+                </select>
+              </div>
+            )}
+            {boardView === 'journey' && (
+              <div className="relative flex-1 sm:flex-initial">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
+                <input
+                  type="text"
+                  aria-label={t('outreachBoard.find_someone')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
+                  placeholder={t('outreachBoard.find_someone')}
+                />
               </div>
             )}
           </div>
         </div>
+
+        {/* The board or pipeline */}
+        {isAdmin && boardView === 'pipeline' ? (
+          <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+            <PipelineMatrix
+              metrics={computePipelineMetrics(
+                pairings.filter((p) => !p.endDate),
+                stages,
+                visibleJourneyContacts,
+                userNameMap,
+                followupThresholdDays
+              )}
+              stages={stages}
+              contacts={visibleJourneyContacts}
+              onOpenContact={setSelectedContact}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
+            <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
+              {stages.length > 0 ? (
+                <>
+                  {unmappedContacts.length > 0 && (
+                    <KanbanColumn
+                      key="uncategorized"
+                      stageInfo={{
+                        id: 'uncategorized',
+                        label: t('outreachBoard.unassigned'),
+                        color: 'bg-surface-variant',
+                        order: -1
+                      }}
+                      isAdmin={isAdmin}
+                      contacts={unmappedContacts}
+                      lastTouchByContact={lastTouchByContact}
+                      onDeleteStage={handleDeleteStage}
+                      onEditStage={handleEditStage}
+                      onEditContact={setSelectedContact}
+                      onDeleteContact={handleDeleteContact}
+                      onAddContact={openNewContact}
+                    />
+                  )}
+                  {stages.map((stageInfo, i) => (
+                    <KanbanColumn
+                      key={stageInfo.id}
+                      stageInfo={stageInfo}
+                      tone={toneFor(stageInfo.color, i)}
+                      isFirst={i === 0}
+                      isAdmin={isAdmin}
+                      contacts={getStageContactsArr(stageInfo.label)}
+                      lastTouchByContact={lastTouchByContact}
+                      onDeleteStage={handleDeleteStage}
+                      onEditStage={handleEditStage}
+                      onEditContact={setSelectedContact}
+                      onDeleteContact={handleDeleteContact}
+                      onAddContact={openNewContact}
+                    />
+                  ))}
+                </>
+              ) : !loading && (
+                <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+                  <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
+                  <h3 className="font-serif text-xl text-on-surface">{t('outreachBoard.not_mapped_title')}</h3>
+                  <p className="text-sm text-on-surface-variant mt-1 max-w-sm">
+                    {isAdmin ? t('outreachBoard.not_mapped_admin_body') : t('outreachBoard.not_mapped_viewer_body')}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {stageDialogs}
 
