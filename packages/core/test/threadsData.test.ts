@@ -22,6 +22,7 @@ import {
   closeFollowUpAsk,
   deleteThreadMessage,
   editThreadMessage,
+  subscribeAllThreads,
   subscribeThreads,
 } from '../src/data/threads';
 import { applyRoster } from '../src/walking';
@@ -240,6 +241,55 @@ describe('subscribeThreads', () => {
     expect(last.map((m: { id: string; scope: string | null }) => [m.id, m.scope])).toEqual([
       ['o1', null],
       ['t1', 'team'],
+    ]);
+  });
+});
+
+describe('subscribeAllThreads', () => {
+  const docOf = (id: string, contactId: string, data: Record<string, unknown>) => ({
+    id,
+    ref: { parent: { parent: { id: contactId } } },
+    data: () => data,
+  });
+
+  it('tags each message with its contact and keeps its parent and ask state', () => {
+    const cb = vi.fn();
+    firestoreMock.onSnapshot.mockImplementation((_q, next) => {
+      next({
+        docs: [
+          docOf('m1', 'c1', {
+            from: 'u1', fromName: 'G', kind: 'nudge', body: 'x', at: '2026-09-01T00:00:00.000Z',
+            parentId: 'p1', closedAt: '2026-09-02T00:00:00.000Z', closedByName: 'M',
+          }),
+        ],
+      });
+      return () => {};
+    });
+
+    subscribeAllThreads(db, cb);
+
+    expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'm1', contactId: 'c1', parentId: 'p1', scope: null, closedAt: '2026-09-02T00:00:00.000Z', closedByName: 'M' }),
+    ]);
+  });
+
+  it('adds the Full-timers stream, marked team and newest first, only when asked to', () => {
+    const cb = vi.fn();
+    firestoreMock.collectionGroup.mockImplementation((_db, name: string) => ({ group: name }));
+    firestoreMock.onSnapshot.mockImplementation((q, next) => {
+      const team = q.group === 'teamThreads';
+      next({ docs: [docOf(team ? 't1' : 'o1', 'c1', { from: 'u', kind: 'question', body: 'b', at: team ? '2026-09-02T00:00:00.000Z' : '2026-09-01T00:00:00.000Z' })] });
+      return () => {};
+    });
+
+    subscribeAllThreads(db, cb, undefined, { includeTeam: true });
+
+    expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(2);
+    const last = cb.mock.calls[cb.mock.calls.length - 1][0];
+    expect(last.map((m: { id: string; scope: string | null }) => [m.id, m.scope])).toEqual([
+      ['t1', 'team'],
+      ['o1', null],
     ]);
   });
 });

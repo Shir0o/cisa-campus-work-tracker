@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   clearedText,
+  destHint,
+  destLabel,
   draftText,
   signalChip,
+  updateAgo,
+  updateWhere,
   toAskInteractionsOf,
   toAskMessagesOf,
   toAskPeopleOf,
@@ -96,6 +100,14 @@ describe('toAskView — assembling the derivation input', () => {
     expect(rows[1].parentId).toBeNull();
   });
 
+  it('carries the stream a message is in, so a reply lands beside it', () => {
+    const rows = toAskMessagesOf([
+      { id: 'q1', contactId: 'c1', from: 'ft', kind: 'question', body: 'b', at: '2026-10-09T00:00:00.000Z', scope: 'team' } as ThreadMessageWithContact,
+      { id: 'q2', contactId: 'c1', from: 'ft', kind: 'question', body: 'b', at: '2026-10-09T00:00:00.000Z' } as ThreadMessageWithContact,
+    ]);
+    expect(rows.map((r) => r.scope)).toEqual(['team', null]);
+  });
+
   describe('toAskTraineesOf', () => {
     beforeEach(() => {
       applyTeams([
@@ -184,5 +196,63 @@ describe('toAskView — the words', () => {
     expect(english).toBe('Cleared · Jae reached them');
     expect(spanish).toBe('Resuelta · Jae se puso en contacto');
     expect([english, spanish].join(' ')).not.toContain('{');
+  });
+});
+
+describe('toAskView — Post an update words', () => {
+  const NOW = Date.parse('2026-10-16T18:00:00.000Z');
+  const minus = (ms: number) => new Date(NOW - ms).toISOString();
+
+  it('says where an update went', () => {
+    expect(updateWhere('line', t)).toBe('only on this line');
+    expect(updateWhere('contact', t)).toBe('logged on their page');
+    expect(updateWhere('thread', t)).toBe('replied in the Thread');
+  });
+
+  it('says how long ago an update was posted', () => {
+    expect(updateAgo(minus(10_000), NOW, t)).toBe('just now');
+    expect(updateAgo(minus(5 * 60_000), NOW, t)).toBe('5m ago');
+    expect(updateAgo(minus(3 * 3_600_000), NOW, t)).toBe('3h ago');
+    expect(updateAgo(minus(30 * 3_600_000), NOW, t)).toBe('1 day ago');
+    expect(updateAgo(minus(4 * 86_400_000), NOW, t)).toBe('4 days ago');
+    expect(updateAgo('not a date', NOW, t)).toBe('');
+  });
+
+  it('labels each destination pill', () => {
+    const names = { contact: 'Priya', trainee: 'Jae' };
+    expect(destLabel('line', names, t)).toBe('Only this line');
+    expect(destLabel('contact', names, t)).toBe("Priya's page · log for Jae");
+    expect(destLabel('contact', { contact: 'Priya' }, t)).toBe("Priya's page");
+    expect(destLabel('thread', names, t)).toBe('Reply in the Thread');
+  });
+
+  it('explains what each destination does', () => {
+    const names = { contact: 'Priya', trainee: 'Jae' };
+    expect(destHint('line', names, t)).toBe('Kept on this line. Only you see it.');
+    expect(destHint('contact', names, t)).toBe(
+      "Logs it on Priya's page as Jae reaching them, so it counts as reached.",
+    );
+    expect(destHint('contact', { contact: 'Priya' }, t)).toBe("Logs it on Priya's page, so it counts as reached.");
+    expect(destHint('thread', names, t)).toBe("Posts it as your reply in Priya's Thread, where the team sees it.");
+  });
+
+  it('fills every placeholder in the shipped dictionaries', () => {
+    const names = { contact: 'Priya', trainee: 'Jae' };
+    for (const dict of [en, es]) {
+      const tt = dictionaryT(dict);
+      const words = [
+        ...(['line', 'contact', 'thread'] as const).flatMap((d) => [
+          destLabel(d, names, tt),
+          destLabel(d, { contact: 'Priya' }, tt),
+          destHint(d, names, tt),
+          destHint(d, { contact: 'Priya' }, tt),
+          updateWhere(d, tt),
+        ]),
+        updateAgo(minus(5 * 60_000), NOW, tt),
+        updateAgo(minus(3 * 3_600_000), NOW, tt),
+        updateAgo(minus(4 * 86_400_000), NOW, tt),
+      ];
+      expect(words.join(' ')).not.toContain('{');
+    }
   });
 });

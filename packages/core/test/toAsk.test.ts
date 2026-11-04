@@ -2,15 +2,21 @@ import { describe, it, expect } from "vitest";
 import {
   buildToAsk,
   GENERAL_GROUP,
+  newToAskUpdate,
   NO_REPLY_AFTER_CALENDAR_DAYS,
   NO_TRAINEE_GROUP,
+  parseToAskKey,
   STRUCK_VISIBLE_DAYS,
+  toAskNoteId,
+  toAskThreadTarget,
+  toAskUpdateDestinations,
   type ToAskInput,
   type ToAskInteraction,
   type ToAskNotepad,
   type ToAskPerson,
   type ToAskThreadMessage,
   type ToAskTrainee,
+  type ToAskUpdate,
 } from "../src/toAsk";
 import type { ReachReading } from "../src/reach";
 
@@ -554,5 +560,239 @@ describe("buildToAsk — a text with no reply (#1670)", () => {
     expect(lines.find((l) => l.key === "noReply|c1|i3")?.state).toBe("open");
     expect(lines.find((l) => l.key === "noReply|c1|i1")?.state).not.toBe("open");
     expect(view.openCount).toBe(1);
+  });
+});
+
+describe("buildToAsk — Dismiss", () => {
+  it("hides a dismissed drafted line from every count and lists it in the tray", () => {
+    const view = buildToAsk(
+      base({
+        people: [fresh("c1", { name: "Priya", carers: ["jae"] })],
+        notepad: { overrides: { "notReached|c1": { dismissedAt: ago(1) } } },
+      }),
+    );
+    expect(view.groups.find((g) => g.id === "jae")).toBeUndefined();
+    expect(view.openCount).toBe(0);
+    expect(view.clearedCount).toBe(0);
+    expect(view.topTrainees).toEqual([]);
+    expect(view.dismissed).toHaveLength(1);
+    expect(view.dismissed[0]).toMatchObject({
+      key: "notReached|c1",
+      groupId: "jae",
+      groupKind: "trainee",
+      groupName: "Jae",
+      dismissedAt: ago(1),
+    });
+    expect(view.dismissed[0].line).toMatchObject({ kind: "notReached", state: "open", contactId: "c1" });
+    expect(view.dismissed[0].line.signal?.contactName).toBe("Priya");
+    // Still drafted, so a later clear can say what cleared it.
+    expect(Object.keys(view.drafted)).toEqual(["notReached|c1"]);
+  });
+
+  it("brings a drafted line back once its signal starts after the dismissal", () => {
+    const people = [person("c1", { carers: ["jae"] })];
+    const messages = [message({ id: "q1", kind: "question", at: ago(4) })];
+    const hidden = buildToAsk(
+      base({ people, messages, notepad: { overrides: { "question|c1|q1": { dismissedAt: ago(3) } } } }),
+    );
+    expect(hidden.openCount).toBe(0);
+    expect(hidden.dismissed.map((d) => d.key)).toEqual(["question|c1|q1"]);
+
+    const back = buildToAsk(
+      base({ people, messages, notepad: { overrides: { "question|c1|q1": { dismissedAt: ago(5) } } } }),
+    );
+    expect(back.openCount).toBe(1);
+    expect(back.dismissed).toEqual([]);
+  });
+
+  it("drafts a new signal instance for a person whose old line was dismissed", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        messages: [message({ id: "a2", kind: "nudge", at: ago(3) })],
+        notepad: { overrides: { "ask|c1|a1": { dismissedAt: ago(10) } } },
+      }),
+    );
+    expect(view.openCount).toBe(1);
+    expect(view.groups.find((g) => g.id === "jae")!.lines[0].key).toBe("ask|c1|a2");
+  });
+
+  it("hides a dismissed hand-written line until it is brought back", () => {
+    const note = { id: "n1", text: "Who drives Friday?", group: "jae", createdAt: ago(2) };
+    const view = buildToAsk(base({ notepad: { lines: [{ ...note, dismissedAt: ago(1) }] } }));
+    expect(view.groups).toEqual([]);
+    expect(view.openCount).toBe(0);
+    expect(view.dismissed[0]).toMatchObject({ key: "note:n1", groupId: "jae", groupName: "Jae" });
+    expect(view.dismissed[0].line.text).toBe("Who drives Friday?");
+
+    const back = buildToAsk(base({ notepad: { lines: [note] } }));
+    expect(back.openCount).toBe(1);
+    expect(back.dismissed).toEqual([]);
+  });
+
+  it("does not count a dismissed Asked line as done", () => {
+    const view = buildToAsk(
+      base({
+        notepad: {
+          lines: [{ id: "n1", text: "x", group: "jae", createdAt: ago(3), askedAt: ago(1), dismissedAt: ago(1) }],
+        },
+      }),
+    );
+    expect(view.clearedCount).toBe(0);
+    expect(view.dismissed).toHaveLength(1);
+  });
+
+  it("hides a dismissed line whose signal has since cleared", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        reach: new Map([["c1", { reached: true, ms: NOW.getTime() - DAY }]]),
+        interactions: [{ contactId: "c1", ms: NOW.getTime() - DAY, userName: "Jae", type: "call" }],
+        notepad: {
+          overrides: { "notReached|c1": { dismissedAt: ago(2) } },
+          drafted: { "notReached|c1": { at: ago(12) } },
+        },
+      }),
+    );
+    expect(view.groups).toEqual([]);
+    expect(view.clearedCount).toBe(0);
+    expect(view.dismissed[0].line.state).toBe("cleared");
+  });
+
+  it("lists a line tied to two Trainees once, newest dismissal first, General and No Trainee by name", () => {
+    const view = buildToAsk(
+      base({
+        people: [fresh("c1", { carers: ["jae", "ana"] }), fresh("c2")],
+        notepad: {
+          lines: [{ id: "n1", text: "x", group: GENERAL_GROUP, createdAt: ago(3), dismissedAt: ago(3) }],
+          overrides: {
+            "notReached|c1": { dismissedAt: ago(2) },
+            "notReached|c2": { dismissedAt: ago(1) },
+          },
+        },
+      }),
+    );
+    expect(view.dismissed.map((d) => [d.key, d.groupId, d.groupName])).toEqual([
+      ["notReached|c2", NO_TRAINEE_GROUP, "No Trainee tied"],
+      ["notReached|c1", "jae", "Jae"],
+      ["note:n1", GENERAL_GROUP, "General"],
+    ]);
+  });
+
+  it("keeps the team filter on the tray", () => {
+    const view = buildToAsk(
+      base({
+        filter: "yp",
+        people: [fresh("c1", { carers: ["jae", "hana"] }), fresh("c2", { carers: ["ana"] })],
+        notepad: {
+          overrides: {
+            "notReached|c1": { dismissedAt: ago(1) },
+            "notReached|c2": { dismissedAt: ago(1) },
+          },
+        },
+      }),
+    );
+    expect(view.dismissed.map((d) => [d.key, d.groupId])).toEqual([["notReached|c1", "hana"]]);
+  });
+});
+
+describe("buildToAsk — Post an update", () => {
+  const update = (over: Partial<ToAskUpdate> = {}): ToAskUpdate => ({
+    id: "u1",
+    text: "Jae saw her at lunch",
+    at: ago(1),
+    dest: "line",
+    ...over,
+  });
+
+  it("exposes a drafted line's updates, oldest first, and leaves it open", () => {
+    const updates = [update(), update({ id: "u2", at: ago(0), dest: "contact" })];
+    const view = buildToAsk(
+      base({
+        people: [fresh("c1", { carers: ["jae"] })],
+        notepad: { overrides: { "notReached|c1": { updates } } },
+      }),
+    );
+    const line = view.groups.find((g) => g.id === "jae")!.lines[0];
+    expect(line.updates).toEqual(updates);
+    expect(line.state).toBe("open");
+    expect(line.reworded).toBe(false);
+    expect(view.openCount).toBe(1);
+  });
+
+  it("exposes a hand-written line's updates, and an empty list when there are none", () => {
+    const view = buildToAsk(
+      base({
+        notepad: {
+          lines: [
+            { id: "n1", text: "a", group: "jae", createdAt: ago(2), updates: [update()] },
+            { id: "n2", text: "b", group: "jae", createdAt: ago(3) },
+          ],
+        },
+      }),
+    );
+    const lines = view.groups.find((g) => g.id === "jae")!.lines;
+    expect(lines.find((l) => l.key === "note:n1")!.updates).toEqual([update()]);
+    expect(lines.find((l) => l.key === "note:n2")!.updates).toEqual([]);
+  });
+
+  it("keeps the updates on a cleared line", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        reach: new Map([["c1", { reached: true, ms: NOW.getTime() - DAY }]]),
+        interactions: [{ contactId: "c1", ms: NOW.getTime() - DAY, userName: "Kate", type: "interaction" }],
+        notepad: {
+          overrides: { "notReached|c1": { updates: [update({ dest: "contact" })] } },
+          drafted: { "notReached|c1": { at: ago(12) } },
+        },
+      }),
+    );
+    const line = view.groups.find((g) => g.id === "jae")!.lines[0];
+    expect(line.state).toBe("cleared");
+    expect(line.updates).toHaveLength(1);
+  });
+});
+
+describe("To ask line helpers", () => {
+  it("reads a key back", () => {
+    expect(parseToAskKey("question|c1|q1")).toEqual({ kind: "question", contactId: "c1", messageId: "q1" });
+    expect(parseToAskKey("notReached|c1")).toEqual({ kind: "notReached", contactId: "c1", messageId: undefined });
+    expect(parseToAskKey("note:n1")).toBeNull();
+    expect(toAskNoteId("note:n1")).toBe("n1");
+    expect(toAskNoteId("notReached|c1")).toBeNull();
+  });
+
+  it("offers the contact's page only with a contact, the Thread only for asks and questions", () => {
+    expect(toAskUpdateDestinations({ kind: "handwritten", contactId: null })).toEqual(["line"]);
+    expect(toAskUpdateDestinations({ kind: "handwritten", contactId: "c1" })).toEqual(["line", "contact"]);
+    expect(toAskUpdateDestinations({ kind: "notReached", contactId: "c1" })).toEqual(["line", "contact"]);
+    expect(toAskUpdateDestinations({ kind: "noReply", contactId: "c1" })).toEqual(["line", "contact"]);
+    expect(toAskUpdateDestinations({ kind: "ask", contactId: "c1" })).toEqual(["line", "contact", "thread"]);
+    expect(toAskUpdateDestinations({ kind: "question", contactId: "c1" })).toEqual(["line", "contact", "thread"]);
+  });
+
+  it("builds an update with trimmed text and the clock's time", () => {
+    const u = newToAskUpdate("  Saw her Friday ", "contact", NOW);
+    expect(u).toMatchObject({ text: "Saw her Friday", at: NOW.toISOString(), dest: "contact" });
+    expect(u.id).toMatch(/^u-/);
+    expect(newToAskUpdate("x", "line", NOW).id).not.toBe(u.id);
+  });
+
+  it("targets the Thread reply at the signal's own message and stream", () => {
+    const messages = [
+      message({ id: "q1", kind: "question", interactionId: "i9" }),
+      message({ id: "a1", kind: "nudge", scope: "team" }),
+    ];
+    expect(toAskThreadTarget("question|c1|q1", messages)).toEqual({
+      contactId: "c1",
+      parentId: "q1",
+      interactionId: "i9",
+      scope: null,
+    });
+    expect(toAskThreadTarget("ask|c1|a1", messages)).toMatchObject({ parentId: "a1", scope: "team" });
+    expect(toAskThreadTarget("ask|c1|gone", messages)).toBeNull();
+    expect(toAskThreadTarget("notReached|c1", messages)).toBeNull();
+    expect(toAskThreadTarget("note:n1", messages)).toBeNull();
   });
 });

@@ -2585,6 +2585,27 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(ref));
     });
 
+    it('TA1b: the owner can store dismissals and posted updates on their notepad', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'u1' });
+      const update = { id: 'u1', text: 'Coming Friday', at: '2026-10-16T00:00:00.000Z', dest: 'contact' };
+      await assertSucceeds(
+        setDoc(doc(db, 'toAskNotes', 'u1'), {
+          lines: [
+            {
+              id: 'n1',
+              text: 'Ask Jae about Sam',
+              group: 'jae',
+              createdAt: '2026-10-16T00:00:00.000Z',
+              dismissedAt: '2026-10-16T00:00:00.000Z',
+              updates: [update],
+            },
+          ],
+          overrides: { 'question|c1|q1': { dismissedAt: '2026-10-16T00:00:00.000Z', updates: [update] } },
+        }),
+      );
+    });
+
     it('TA2: another Full-timer and a Trainee are denied', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {

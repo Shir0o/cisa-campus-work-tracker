@@ -60,6 +60,18 @@ describe('FtMoreScreen', () => {
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });
 
+  it('opens To ask, the Full-timer\'s private notepad', async () => {
+    const { getByText } = await render(
+      <ThemeProvider>
+        <FtMoreScreen />
+      </ThemeProvider>,
+    );
+
+    await fireEvent.press(getByText('To ask'));
+
+    expect(mockPush).toHaveBeenCalledWith('/to-ask');
+  });
+
   it('opens FeedbackSheet when Tell us how it\'s going is pressed', async () => {
     const { getByText, getByTestId, queryByTestId } = await render(
       <ThemeProvider>

@@ -63,6 +63,8 @@ import {
   deleteToAskOverride,
   setToAskRewording,
   replaceToAskDrafted,
+  dismissToAskLine,
+  postToAskLineUpdate,
 } from '../../packages/core/src/data/toAsk';
 import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
@@ -629,6 +631,39 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await expect(deleteToAskOverride(db, ADMIN, 'notReached|c-mine')).rejects.toBeTruthy();
       await expect(setToAskRewording(db, ADMIN, 'notReached|c-mine', 'x')).rejects.toBeTruthy();
       await expect(replaceToAskDrafted(db, ADMIN, {})).rejects.toBeTruthy();
+    }
+  });
+
+  // Dismiss and Post an update: a drafted line's stamps are field-path writes
+  // (Bring back must remove one), a hand-written line's live in `lines`.
+  it('row 22 — the owner can dismiss, bring back and post updates on either kind of line', async () => {
+    const db = dbFor(ADMIN_FRESH);
+    const key = 'question|c-mine|q1';
+    const ref = doc(db, 'toAskNotes', ADMIN_FRESH);
+    const update = { id: 'u1', text: 'Coming Friday', at: ISO, dest: 'thread' as const };
+
+    await dismissToAskLine(db, ADMIN_FRESH, {}, key, ISO);
+    await postToAskLineUpdate(db, ADMIN_FRESH, {}, key, update, { askedAt: ISO });
+    expect((await getDoc(ref)).data()?.overrides?.[key]).toEqual({ dismissedAt: ISO, askedAt: ISO, updates: [update] });
+    await dismissToAskLine(db, ADMIN_FRESH, {}, key, null);
+    expect((await getDoc(ref)).data()?.overrides?.[key]).toEqual({ askedAt: ISO, updates: [update] });
+
+    const notepad: ToAskNotepad = { lines: [{ id: 'n1', text: 'Who drives?', group: 'jae', createdAt: ISO }] };
+    await saveToAskNotepad(db, ADMIN_FRESH, notepad);
+    await postToAskLineUpdate(db, ADMIN_FRESH, notepad, 'note:n1', { ...update, dest: 'line' });
+    const withUpdate = (await getDoc(ref)).data() as ToAskNotepad;
+    await dismissToAskLine(db, ADMIN_FRESH, withUpdate, 'note:n1', ISO);
+    expect((await getDoc(ref)).data()?.lines).toEqual([
+      { ...notepad.lines![0], updates: [{ ...update, dest: 'line' }], dismissedAt: ISO },
+    ]);
+  });
+
+  it('row 22 — a Trainee and another Full-timer cannot dismiss or post updates (negative)', async () => {
+    for (const uid of [TRAINEE, ADMIN_FRESH]) {
+      const db = dbFor(uid);
+      const update = { id: 'u1', text: 'x', at: ISO, dest: 'line' as const };
+      await expect(dismissToAskLine(db, ADMIN, {}, 'notReached|c-mine', ISO)).rejects.toBeTruthy();
+      await expect(postToAskLineUpdate(db, ADMIN, {}, 'notReached|c-mine', update)).rejects.toBeTruthy();
     }
   });
 
