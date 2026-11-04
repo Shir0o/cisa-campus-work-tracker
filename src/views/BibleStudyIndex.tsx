@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
   MEETING_SKELETON_MD,
-  nextMeetingDate,
   resolveScan,
   slugFor,
   studyIdFor,
@@ -17,11 +16,11 @@ import {
 } from '../lib/bibleStudy';
 import {
   createEntryPoint,
+  createMeeting,
   createStudy,
   deleteEntryPoint,
   deleteMeeting,
   deleteStudy,
-  saveMeeting,
   setActiveStudy,
   setMeetingPublished,
   subscribeEntryPoints,
@@ -205,23 +204,30 @@ export default function BibleStudyIndex() {
   const newestDraftHidesLive = !!newest && !newest.published && newest.id !== liveMeetingId;
   const loaded = entryPointsLoaded && (!!studyId ? meetingsLoaded : true);
 
+  // One guard for both ways a week is created, so a double click cannot
+  // create two weeks: the second click awaits the first claim.
+  const [creatingWeek, setCreatingWeek] = useState(false);
+
   const handleNewWeek = async () => {
-    if (!study || !user) return;
-    const date = nextMeetingDate(meetings, today);
-    const draft: Meeting = {
-      id: `${study.id}-${date}`,
-      studyId: study.id,
-      date,
-      title: '',
-      sections: [],
-      published: false,
-      md: MEETING_SKELETON_MD,
-    };
-    const id = await saveMeeting(db, draft, user.uid);
-    // Optimistic: closes the stale-subscription window a rapid second click
-    // would otherwise collide through.
-    setMeetings((cur) => (cur.some((m) => m.id === draft.id) ? cur : [draft, ...cur]));
-    navigate(`/bible-study/${id}`);
+    if (!study || !user || creatingWeek) return;
+    setCreatingWeek(true);
+    try {
+      const week = await createMeeting(
+        db,
+        { studyId: study.id, title: '', sections: [], md: MEETING_SKELETON_MD },
+        meetings,
+        today,
+        user.uid,
+      );
+      // Optimistic: closes the stale-subscription window a rapid second click
+      // would otherwise collide through.
+      setMeetings((cur) => (cur.some((m) => m.id === week.id) ? cur : [week, ...cur]));
+      navigate(`/bible-study/${week.id}`);
+    } catch (err) {
+      console.error('Failed to create week', err);
+    } finally {
+      setCreatingWeek(false);
+    }
   };
 
   // ── Starting a study or a term (issue #822) ───────────────────────────
@@ -350,20 +356,23 @@ export default function BibleStudyIndex() {
   };
 
   const handleDuplicate = async (m: Meeting) => {
-    if (!user) return;
-    const date = nextMeetingDate(meetings, today);
-    const copy: Meeting = {
-      id: `${m.studyId}-${date}`,
-      studyId: m.studyId,
-      date,
-      title: m.title,
-      sections: m.sections,
-      published: false,
-      md: m.md ?? '',
-    };
-    await saveMeeting(db, copy, user.uid);
-    setMeetings((cur) => (cur.some((x) => x.id === copy.id) ? cur : [copy, ...cur]));
-    setMenuFor(null);
+    if (!user || creatingWeek) return;
+    setCreatingWeek(true);
+    try {
+      const copy = await createMeeting(
+        db,
+        { studyId: m.studyId, title: m.title, sections: m.sections, md: m.md ?? '' },
+        meetings,
+        today,
+        user.uid,
+      );
+      setMeetings((cur) => (cur.some((x) => x.id === copy.id) ? cur : [copy, ...cur]));
+      setMenuFor(null);
+    } catch (err) {
+      console.error('Failed to duplicate week', err);
+    } finally {
+      setCreatingWeek(false);
+    }
   };
 
   const handleCopyStaffLink = (m: Meeting) => {
@@ -630,7 +639,7 @@ export default function BibleStudyIndex() {
             </h2>
             <button
               onClick={handleNewWeek}
-              disabled={!study}
+              disabled={!study || !loaded || creatingWeek}
               className="px-4 py-2 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none"
             >
               New week
@@ -714,8 +723,9 @@ export default function BibleStudyIndex() {
                       >
                         <button
                           role="menuitem"
+                          disabled={creatingWeek}
                           onClick={() => void handleDuplicate(m)}
-                          className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors disabled:opacity-40"
                         >
                           Duplicate into a new week
                         </button>

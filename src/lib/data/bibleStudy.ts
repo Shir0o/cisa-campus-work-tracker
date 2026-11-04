@@ -8,6 +8,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -15,7 +16,13 @@ import {
   where,
   type Firestore,
 } from 'firebase/firestore';
-import type { Meeting, Study, EntryPoint } from '../bibleStudy';
+import {
+  nextMeetingDateAfter,
+  type Meeting,
+  type Section,
+  type Study,
+  type EntryPoint,
+} from '../bibleStudy';
 
 function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting {
   const data = d.data();
@@ -175,6 +182,60 @@ export async function saveMeeting(
   );
 
   return meetingId;
+}
+
+/** The fields a brand-new week starts with; the date and id are derived. */
+export type NewMeeting = {
+  studyId: string;
+  title: string;
+  sections: Section[];
+  md: string;
+};
+
+/**
+ * Creates the next week. Unlike `saveMeeting`, this never merges: a week at
+ * the computed date may already exist that the caller's list does not know
+ * about (a cold cache, a stale tab, a week prepared on another device), and
+ * merging the skeleton into it would blank someone's study. The date is
+ * claimed in a transaction and, if it is taken, the week moves to the next
+ * free one.
+ */
+export async function createMeeting(
+  db: Firestore,
+  draft: NewMeeting,
+  meetings: Meeting[],
+  today: string,
+  userId?: string,
+): Promise<Meeting> {
+  let knownDates = meetings.map((m) => m.date);
+  for (let attempt = 0; attempt < 52; attempt++) {
+    const date = nextMeetingDateAfter(knownDates, today);
+    const id = `${draft.studyId}-${date}`;
+    const ref = doc(db, 'bible_study_meetings', id);
+    const claimed = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists()) return false;
+      tx.set(ref, {
+        ...stripUndefined({
+          id,
+          studyId: draft.studyId,
+          date,
+          title: draft.title,
+          sections: draft.sections,
+          published: false,
+          md: draft.md,
+        }),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: userId || null,
+      });
+      return true;
+    });
+    if (claimed) return { id, ...draft, date, published: false };
+    // Someone got there first — ask for the week after it.
+    knownDates = [...knownDates, date];
+  }
+  throw new Error('No free week to create');
 }
 
 export async function setMeetingPublished(

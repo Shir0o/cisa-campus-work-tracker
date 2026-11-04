@@ -12,6 +12,15 @@ vi.mock('../lib/data/bibleStudy', () => ({
   subscribeStudy: vi.fn(),
   subscribeStudies: vi.fn(),
   subscribeStudyMeetings: vi.fn(),
+  createMeeting: vi.fn().mockResolvedValue({
+    id: 'romans-fall26-2026-10-28',
+    studyId: 'romans-fall26',
+    date: '2026-10-28',
+    title: '',
+    sections: [],
+    published: false,
+    md: '## This week',
+  }),
   saveMeeting: vi.fn().mockResolvedValue('romans-fall26-2026-10-28'),
   setMeetingPublished: vi.fn().mockResolvedValue(undefined),
   deleteMeeting: vi.fn().mockResolvedValue(undefined),
@@ -321,7 +330,15 @@ describe('BibleStudyIndex view', () => {
   });
 
   it('starts a new week from the list and opens its editor', async () => {
-    vi.mocked(bibleData.saveMeeting).mockResolvedValue('romans-fall26-2026-10-28');
+    vi.mocked(bibleData.createMeeting).mockResolvedValue({
+      id: 'romans-fall26-2026-10-28',
+      studyId: 'romans-fall26',
+      date: '2026-10-28',
+      title: '',
+      sections: [],
+      published: false,
+      md: '## This week',
+    });
     renderIndex();
 
     await screen.findByText('Nothing between us');
@@ -330,27 +347,42 @@ describe('BibleStudyIndex view', () => {
 
     await waitFor(
       () => {
-        expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+        // The list reaches the data layer intact: it is what the next date is
+        // reasoned from, and the store — not this list — decides a free one.
+        expect(bibleData.createMeeting).toHaveBeenCalledWith(
           expect.anything(),
-          expect.objectContaining({
+          {
             studyId: 'romans-fall26',
-            date: '2026-10-28',
-            published: false,
+            title: '',
+            sections: [],
             // A new week starts from the skeleton, never a copy of the
             // previous week's text.
             md: expect.stringContaining('## '),
-          }),
+          },
+          MEETINGS,
+          expect.any(String),
           mockUser.uid,
         );
       },
       { timeout: 5000 },
     );
-    const savedMd = vi.mocked(bibleData.saveMeeting).mock.calls[0][1].md as string;
+    const savedMd = vi.mocked(bibleData.createMeeting).mock.calls[0][1].md as string;
     expect(savedMd).toMatch(/^(Question|Discuss|Activity): /m);
     expect(savedMd).not.toContain('Nothing between us');
 
     // Coverage-instrumented runs are slow; give the async navigation room.
     expect(await screen.findByText('Editor opened', {}, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('does not offer New week until it has read the weeks it starts from', async () => {
+    // A cold cache hands the page an empty list before the server answers.
+    // Creating in that window used to compute a date the store already had a
+    // week for.
+    vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation(() => () => {});
+    renderIndex();
+
+    await screen.findByText('Wednesday Bible Study');
+    expect(screen.getByRole('button', { name: /New week/i })).toBeDisabled();
   });
 
   it('says no study is active when nothing is running (#1860)', async () => {
@@ -448,7 +480,15 @@ describe('BibleStudyIndex view', () => {
     });
 
     it('duplicates a week with its structure, leaving the source untouched', async () => {
-      vi.mocked(bibleData.saveMeeting).mockResolvedValue('romans-fall26-2026-10-28');
+      vi.mocked(bibleData.createMeeting).mockResolvedValue({
+        id: 'romans-fall26-2026-10-28',
+        studyId: 'romans-fall26',
+        date: '2026-10-28',
+        title: 'Peace that holds',
+        sections: MEETINGS[2].sections,
+        published: false,
+        md: '## Peace',
+      });
       renderIndex();
 
       await screen.findByText('Nothing between us');
@@ -456,20 +496,21 @@ describe('BibleStudyIndex view', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate into a new week' }));
 
       await waitFor(() => {
-        expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+        expect(bibleData.createMeeting).toHaveBeenCalledWith(
           expect.anything(),
-          expect.objectContaining({
+          {
             studyId: 'romans-fall26',
-            date: '2026-10-28',
             title: 'Peace that holds',
             sections: MEETINGS[2].sections,
-            published: false,
-          }),
+            md: MEETINGS[2].md ?? '',
+          },
+          MEETINGS,
+          expect.any(String),
           mockUser.uid,
         );
       });
-      // The source was not written to — no unpublish, no delete, one save.
-      expect(bibleData.saveMeeting).toHaveBeenCalledTimes(1);
+      // The source was not written to — no unpublish, no delete, one create.
+      expect(bibleData.createMeeting).toHaveBeenCalledTimes(1);
       expect(bibleData.setMeetingPublished).not.toHaveBeenCalled();
       expect(bibleData.deleteMeeting).not.toHaveBeenCalled();
       expect(rowFor('Peace that holds')).toBeInTheDocument();
