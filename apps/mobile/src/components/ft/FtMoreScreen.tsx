@@ -100,10 +100,36 @@ function FtMore() {
         </View>
 
         <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
+          {/* To ask (#1649) sits above FT_MORE too: it is the Full-timer's own
+              private notepad, not one of the shared in-app routes in that list. */}
+          <Pressable
+            onPress={() => router.push('/to-ask')}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              minHeight: 58,
+              paddingHorizontal: 18,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
+              {t('mobile.toAsk.title')}
+            </Text>
+            <View
+              style={{
+                width: 9,
+                height: 9,
+                borderRightWidth: 2,
+                borderTopWidth: 2,
+                borderColor: c.widget.ink3,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </Pressable>
           {/* This week's study (#946) sits above FT_MORE rather than inside it:
               FT_MORE is a list of in-app routes and this one opens a URL in a
               browser, with its own Copy and QR actions on the row. */}
-          <ThisWeeksStudyRow isFirst />
+          <ThisWeeksStudyRow />
           {FT_MORE.map((item, i) => (
             <Pressable
               key={item.key}

@@ -148,17 +148,31 @@ const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContac
 
 /** Live subscription to every thread message across all contacts, tagged with
  * contactId. The rules allow this only for roles that see every person; a
- * Trainee reads through `subscribeTiedThreads`. */
+ * Trainee reads through `subscribeTiedThreads`. `includeTeam` adds the
+ * Full-timers stream (`teamThreads`, marked `scope: "team"`), newest first —
+ * a Full-timer only. Each message keeps its parent, scope and ask state. */
 export function subscribeAllThreads(
   db: Firestore,
   cb: (messages: ThreadMessageWithContact[]) => void,
   onError?: (e: unknown) => void,
+  { includeTeam = false }: ThreadSubscribeOptions = {},
 ): () => void {
-  return onSnapshot(
-    query(collectionGroup(db, "threads")),
-    (snap) => cb(snap.docs.map(toMessageWithContact)),
-    (e) => (onError ? onError(e) : console.error("all-threads subscription error", e)),
+  const scopes: Scope[] = includeTeam ? [null, "team"] : [null];
+  const latest: ThreadMessageWithContact[][] = scopes.map(() => []);
+  const unsubs = scopes.map((scope, i) =>
+    onSnapshot(
+      query(collectionGroup(db, sub(scope))),
+      (snap) => {
+        latest[i] = snap.docs.map((d) => ({
+          ...toMessage(d.id, d.data() as Partial<ThreadMessage>, scope === "team"),
+          contactId: d.ref.parent.parent?.id ?? "",
+        }));
+        cb(latest.length === 1 ? latest[0] : latest.flat().sort((a, b) => b.at.localeCompare(a.at)));
+      },
+      (e) => (onError ? onError(e) : console.error("all-threads subscription error", e)),
+    ),
   );
+  return () => unsubs.forEach((u) => u());
 }
 
 /** A Trainee's thread messages: each visible person's newest, tagged with

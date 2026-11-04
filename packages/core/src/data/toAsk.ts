@@ -136,7 +136,7 @@ export async function dismissToAskLine(
   const noteId = toAskNoteId(key);
   if (noteId == null) return setToAskDismissedAt(db, uid, key, at);
   const lines = editLine(notepad, noteId, (l) => {
-    const next = { ...l, dismissedAt: at };
+    const next: AskNoteLine = { ...l, dismissedAt: at };
     // Firestore stores no undefined, and a brought-back line carries no stamp.
     if (!at) delete next.dismissedAt;
     return next;

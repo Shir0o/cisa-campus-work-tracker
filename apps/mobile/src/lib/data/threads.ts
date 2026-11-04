@@ -5,12 +5,14 @@ import * as core from '@cisa/core';
 import type { ThreadKind, ThreadMessage, ThreadMessageWithContact } from '@cisa/core';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
 
-/** Live subscription to every thread message across all contacts, tagged with contactId. */
+/** Live subscription to every thread message across all contacts, tagged with
+ * contactId. `includeTeam` adds the Full-timers stream (a Full-timer only). */
 export function subscribeAllThreads(
   cb: (messages: ThreadMessageWithContact[]) => void,
   onError?: (e: unknown) => void,
+  options?: core.ThreadSubscribeOptions,
 ): () => void {
-  return core.subscribeAllThreads(db, cb, onError);
+  return core.subscribeAllThreads(db, cb, onError, options);
 }
 
 /** A Trainee's thread messages across the people they can see (the rules deny
