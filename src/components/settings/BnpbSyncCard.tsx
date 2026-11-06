@@ -18,8 +18,9 @@ function formatWhen(iso: string | null): string | null {
 }
 
 /**
- * Settings card for connecting BNPB (ADR 0037, #1420). Rendered only for the
- * app owner; everyone else never sees it.
+ * Settings card for connecting Tempo (ADR 0037, #1420). Rendered only for the
+ * app owner; everyone else never sees it. The Firestore and API identifiers
+ * stay `bnpb`; only the user-facing name changed.
  */
 export default function BnpbSyncCard() {
   const { user } = useAuth();
@@ -115,7 +116,7 @@ export default function BnpbSyncCard() {
   return (
     <section className="mt-10">
       <div className="mb-4">
-        <h2 className="font-serif text-2xl text-on-surface">{t('bnpb.settings_title', 'BNPB')}</h2>
+        <h2 className="font-serif text-2xl text-on-surface">{t('bnpb.settings_title', 'Tempo')}</h2>
         <p className="text-sm text-on-surface-variant mt-1 max-w-2xl leading-relaxed">
           {t('bnpb.settings_sub')}
         </p>

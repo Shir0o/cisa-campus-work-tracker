@@ -3956,7 +3956,7 @@ export default function Settings() {
     },
     {
       id: 'settings-phone-sync',
-      label: t('bnpb.settings_title', 'BNPB'),
+      label: t('bnpb.settings_title', 'Tempo'),
       visible: isOwner && devUnlocked,
       node: <BnpbSyncCard />,
     },
