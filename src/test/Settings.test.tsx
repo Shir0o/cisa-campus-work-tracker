@@ -207,6 +207,12 @@ describe('Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    // Most of this file exercises the integration and diagnostic sections, so
+    // the developer unlock starts open here. The developer-unlock suite below
+    // clears the flag itself to test the locked default.
+    window.localStorage.clear();
+    window.localStorage.setItem('cisa.settings.devUnlocked', '1');
+    window.history.replaceState({}, '', '/settings');
     // Default: non-manager view
     setupNonManagerAuth();
     // Default: onSnapshot fires immediately with empty docs so manager
@@ -2128,6 +2134,156 @@ describe('Settings', () => {
       setupNonManagerAuth();
       render(<Settings />);
       expect(screen.queryByRole('navigation', { name: 'Section index' })).toBeNull();
+    });
+  });
+
+  // ── Developer unlock (#1992) ──
+
+  describe('developer unlock', () => {
+    const section = (name: string) => screen.queryByRole('heading', { level: 2, name });
+
+    const ownerAuth = () =>
+      setupManagerAuth({
+        user: {
+          uid: 'u-owner',
+          displayName: 'Owner',
+          email: 'yilongwang05@gmail.com',
+          photoURL: null,
+          getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
+        },
+      });
+
+    beforeEach(() => {
+      window.localStorage.clear();
+      window.history.replaceState({}, '', '/settings');
+    });
+
+    it('keeps the integration sections locked until the version line is tapped seven times', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      expect(screen.getByTestId('settings-version')).toHaveTextContent(/^CISA Campus Work Tracker · v/);
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('API & webhook console')).not.toBeInTheDocument();
+
+      const version = screen.getByTestId('settings-version');
+      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(version);
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+
+      fireEvent.click(version);
+      expect(section('Quick add by text')).toBeInTheDocument();
+      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Developer options unlocked');
+    });
+
+    it('shows how many taps are left from the fourth tap', () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const version = screen.getByTestId('settings-version');
+      for (let tap = 0; tap < 3; tap += 1) fireEvent.click(version);
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+      fireEvent.click(version);
+      expect(screen.getByRole('status')).toHaveTextContent('3 more…');
+    });
+
+    it('starts a fresh run when a tap arrives after the idle gap', () => {
+      const now = vi.spyOn(Date, 'now');
+      setupManagerAuth();
+      render(<Settings />);
+      const version = screen.getByTestId('settings-version');
+
+      now.mockReturnValue(1_000);
+      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(version);
+      expect(screen.getByRole('status')).toHaveTextContent('1 more…');
+
+      // Beyond the gap the count restarts, so this is tap one, not tap seven.
+      now.mockReturnValue(1_000 + 60_000);
+      fireEvent.click(version);
+
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      now.mockRestore();
+    });
+
+    it('is remembered on this browser until it is locked again', () => {
+      setupManagerAuth();
+      const first = render(<Settings />);
+
+      const version = screen.getByTestId('settings-version');
+      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(version);
+      expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBe('1');
+      first.unmount();
+
+      render(<Settings />);
+      expect(section('Quick add by text')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Lock developer options' }));
+      expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBeNull();
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Developer options hidden');
+    });
+
+    it('opens and closes through ?dev=1 and ?dev=0', async () => {
+      setupManagerAuth();
+      window.history.replaceState({}, '', '/settings?dev=1');
+      const first = render(<Settings />);
+
+      expect(
+        await screen.findByRole('heading', { level: 2, name: 'Quick add by text' }),
+      ).toBeInTheDocument();
+      first.unmount();
+
+      window.history.replaceState({}, '', '/settings?dev=0');
+      render(<Settings />);
+
+      await waitFor(() => expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBeNull());
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+    });
+
+    it('still respects roles once unlocked', () => {
+      window.localStorage.setItem('cisa.settings.devUnlocked', '1');
+
+      ownerAuth();
+      const owner = render(<Settings />);
+      expect(section('Quick add by text')).toBeInTheDocument();
+      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(screen.getAllByText('What the app is costing').length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'BNPB' })).toBeInTheDocument();
+      owner.unmount();
+
+      // A Full-timer who unlocks is not the owner: no BNPB token card, no cost.
+      setupManagerAuth();
+      render(<Settings />);
+      expect(section('Quick add by text')).toBeInTheDocument();
+      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(screen.queryAllByText('What the app is costing')).toHaveLength(0);
+      expect(screen.queryByRole('button', { name: 'BNPB' })).not.toBeInTheDocument();
+    });
+
+    it('gives a Trainee no version line and no developer sections, even with the flag set', () => {
+      window.localStorage.setItem('cisa.settings.devUnlocked', '1');
+      setupNonManagerAuth({ role: 'manager', isManager: true, isAdmin: false });
+
+      render(<Settings />);
+
+      expect(screen.queryByTestId('settings-version')).not.toBeInTheDocument();
+      expect(section('Quick add by text')).not.toBeInTheDocument();
+    });
+
+    it('takes keyboard activation as a tap', () => {
+      // A native <button> turns Enter and Space into the same click the pointer
+      // produces, so the keyboard path is the gesture without a pointer.
+      setupManagerAuth();
+      render(<Settings />);
+
+      const version = screen.getByTestId('settings-version');
+      version.focus();
+      expect(version).toHaveFocus();
+
+      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(version);
+      expect(section('Quick add by text')).toBeInTheDocument();
     });
   });
 });

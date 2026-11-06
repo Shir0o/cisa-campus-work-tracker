@@ -130,6 +130,54 @@ type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
 const OWNER_EMAIL = 'yilongwang05@gmail.com';
 
+// Android's developer options, in miniature: the integration and diagnostic
+// sections stay out of Settings until the version line at the foot is tapped
+// seven times on this browser. Visibility only — Firestore rules and API auth
+// remain the boundary. `?dev=1` / `?dev=0` are the keyboard- and test-friendly
+// door, since a gesture alone would exclude anyone who cannot tap.
+const DEV_UNLOCK_KEY = 'cisa.settings.devUnlocked';
+const DEV_UNLOCK_TAPS = 7;
+const DEV_UNLOCK_TAP_GAP_MS = 1500;
+
+function readDevUnlock(): boolean {
+  try {
+    return window.localStorage.getItem(DEV_UNLOCK_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeDevUnlock(unlocked: boolean): void {
+  try {
+    if (unlocked) window.localStorage.setItem(DEV_UNLOCK_KEY, '1');
+    else window.localStorage.removeItem(DEV_UNLOCK_KEY);
+  } catch {
+    // Private mode or a blocked storage partition: fall back to this session.
+  }
+}
+
+function DeveloperOptionsFooter({ onLock }: { onLock: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.developer_options', 'Developer options')}
+        sub={t(
+          'settings.developer_options_sub',
+          'Integrations and diagnostics, unlocked on this browser. Lock them again when you are done.',
+        )}
+      />
+      <button
+        type="button"
+        onClick={onLock}
+        className="min-h-11 rounded-[14px] border border-outline-variant/50 bg-surface px-4 py-2 text-[13px] font-medium text-on-surface hover:bg-surface-container-high transition-colors"
+      >
+        {t('settings.lock_developer_options', 'Lock developer options')}
+      </button>
+    </section>
+  );
+}
+
 // Role names are the one piece of vocabulary the whole page repeats (the
 // account badge, the roster rows, the role cards), so they resolve through one
 // map instead of four English literals.
@@ -3553,6 +3601,61 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { t } = useLanguage();
 
+  const [devUnlocked, setDevUnlocked] = useState<boolean>(() => {
+    // `?dev=1` / `?dev=0` write the same flag as the gesture, so a keyboard or
+    // screen-reader user never has to tap seven times to reach the sections.
+    const dev = new URLSearchParams(window.location.search).get('dev');
+    if (dev === '1') {
+      writeDevUnlock(true);
+      return true;
+    }
+    if (dev === '0') {
+      writeDevUnlock(false);
+      return false;
+    }
+    return readDevUnlock();
+  });
+  const [devNotice, setDevNotice] = useState<string | null>(null);
+  const lastDevTapRef = useRef(0);
+  const devTapCountRef = useRef(0);
+
+  const applyDevUnlock = (unlocked: boolean) => {
+    writeDevUnlock(unlocked);
+    setDevUnlocked(unlocked);
+    devTapCountRef.current = 0;
+    lastDevTapRef.current = 0;
+  };
+
+  useEffect(() => {
+    if (!devNotice) return;
+    const timer = window.setTimeout(() => setDevNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [devNotice]);
+
+  const handleVersionTap = () => {
+    if (devUnlocked) return;
+    const now = Date.now();
+    const continuing = now - lastDevTapRef.current <= DEV_UNLOCK_TAP_GAP_MS;
+    const next = continuing ? devTapCountRef.current + 1 : 1;
+    devTapCountRef.current = next;
+    lastDevTapRef.current = now;
+    if (next >= DEV_UNLOCK_TAPS) {
+      applyDevUnlock(true);
+      setDevNotice(t('settings.dev_unlocked', 'Developer options unlocked'));
+      return;
+    }
+    setDevNotice(
+      next >= 4
+        ? t('settings.dev_tap_hint', '{n} more…').replace('{n}', String(DEV_UNLOCK_TAPS - next))
+        : null,
+    );
+  };
+
+  const lockDevOptions = () => {
+    applyDevUnlock(false);
+    setDevNotice(t('settings.dev_locked', 'Developer options hidden'));
+  };
+
   const [users, setUsers] = useState<AppUser[]>([]);
   const myWeeklyOff = !!users.find((u) => u.uid === currentUser?.uid)?.weeklyRemindersOff;
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -3854,7 +3957,7 @@ export default function Settings() {
     {
       id: 'settings-phone-sync',
       label: t('bnpb.settings_title', 'BNPB'),
-      visible: isOwner,
+      visible: isOwner && devUnlocked,
       node: <BnpbSyncCard />,
     },
     {
@@ -3970,20 +4073,26 @@ export default function Settings() {
     {
       id: 'settings-quick-add',
       label: t('settings.quick_add_title', 'Quick add by text'),
-      visible: isDev,
+      visible: isDev && devUnlocked,
       node: <IntegrationsSection currentUser={currentUser} />,
     },
     {
       id: 'settings-webhooks',
       label: t('settings.webhook_title', 'API & webhook console'),
-      visible: isDev,
+      visible: isDev && devUnlocked,
       node: <WebhookConsoleSection />,
     },
     {
       id: 'settings-cost',
       label: 'What the app is costing',
-      visible: isOwner,
+      visible: isOwner && devUnlocked,
       node: <UsageStatsPanel uid={currentUser?.uid || ''} />,
+    },
+    {
+      id: 'settings-developer',
+      label: t('settings.developer_options', 'Developer options'),
+      visible: isDev && devUnlocked,
+      node: <DeveloperOptionsFooter onLock={lockDevOptions} />,
     },
     {
       id: 'settings-feedback',
@@ -4085,6 +4194,29 @@ export default function Settings() {
             {t('settings.note_on_access_body', 'Approving or removing access takes effect right away. You can’t remove your own access or change your own role — that’s by design, so no one locks themselves out.')}
           </p>
         </div>
+      </div>
+
+      {/* Developer unlock. A quiet line, not a control: tapping it seven times
+          reveals the integration sections above; `?dev=1` does the same for
+          anyone who cannot tap. The version comes from the same built manifest
+          the What's New row reads, so it tracks releases. */}
+      <div className="mt-10 text-center">
+        <button
+          type="button"
+          data-testid="settings-version"
+          onClick={handleVersionTap}
+          className="text-[11px] text-on-surface-variant/60 hover:text-on-surface-variant transition-colors"
+        >
+          {t('settings.version_footer', 'CISA Campus Work Tracker · v{version}').replace(
+            '{version}',
+            (whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? '',
+          )}
+        </button>
+        {devNotice && (
+          <p role="status" aria-live="polite" className="mt-2 text-[11px] text-on-surface-variant">
+            {devNotice}
+          </p>
+        )}
       </div>
 
       <AnimatePresence>
