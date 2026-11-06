@@ -389,6 +389,9 @@ describe('Settings in Spanish (#1818)', () => {
     // LanguageProvider reads this before `defaultLanguage`, so a leftover from
     // another spec would silently turn the Spanish render English.
     window.localStorage.clear();
+    // These units cover the integration copy, which is behind the developer
+    // unlock (#1992); open it so the sections render.
+    window.localStorage.setItem('cisa.settings.devUnlocked', '1');
     setupManagerAuth();
     seedSnapshots();
     vi.spyOn(global, 'fetch').mockImplementation((url: unknown) =>
