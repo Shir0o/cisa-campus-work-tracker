@@ -2758,7 +2758,7 @@
     "token_help": "Pégalo en Tempo para conectar. Generar uno nuevo revoca el anterior.",
     "error_generic": "Algo salió mal. Inténtalo de nuevo.",
     "queue_title": "Cola de sugerencias",
-    "queue_sub": "Revisa lo que envió BNPB y confirma lo que pertenece al registro.",
+    "queue_sub": "Revisa lo que envió Tempo y confirma lo que pertenece al registro.",
     "queue_empty": "No hay nada pendiente.",
     "queue_ready_title": "Listas para confirmar",
     "queue_who_title": "¿Quién es?",
@@ -2792,7 +2792,7 @@
     "queue_error_undo": "No se pudo deshacer. Inténtalo de nuevo.",
     "home_review_count": "{n} interacción por revisar",
     "home_review_count_plural": "{n} interacciones por revisar",
-    "home_review_need_name": "De BNPB · {n} necesitan un nombre",
+    "home_review_need_name": "De Tempo · {n} necesitan un nombre",
     "home_review_cta": "Revisar",
     "loading": "Cargando…"
   },

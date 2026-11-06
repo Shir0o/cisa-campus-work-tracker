@@ -2758,7 +2758,7 @@
     "token_help": "Paste it into Tempo to connect. Generating a new one revokes the old.",
     "error_generic": "Something went wrong. Please try again.",
     "queue_title": "Suggestion queue",
-    "queue_sub": "Review what BNPB sent and confirm what belongs in the tracker.",
+    "queue_sub": "Review what Tempo sent and confirm what belongs in the tracker.",
     "queue_empty": "Nothing waiting.",
     "queue_ready_title": "Ready to confirm",
     "queue_who_title": "Who is this?",
@@ -2792,7 +2792,7 @@
     "queue_error_undo": "Couldn't undo that. Try again.",
     "home_review_count": "{n} interaction to review",
     "home_review_count_plural": "{n} interactions to review",
-    "home_review_need_name": "From BNPB · {n} need a name",
+    "home_review_need_name": "From Tempo · {n} need a name",
     "home_review_cta": "Review",
     "loading": "Loading…"
   },
