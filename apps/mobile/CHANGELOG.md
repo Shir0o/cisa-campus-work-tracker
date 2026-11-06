@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.15.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.14.0...v1.15.0) (2026-11-06)
+
+
+### Features
+
+* **to-ask:** dismiss and post an update on each line, plus a native To ask screen ([#1986](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1986)) ([0dbee18](https://github.com/Shir0o/cisa-campus-work-tracker/commit/0dbee18849798fb3bd3e05b70427f9b38c4faf02))
+
+
+### Bug Fixes
+
+* **deps:** bump glob to resolve post-timeout traversal (alert [#185](https://github.com/Shir0o/cisa-campus-work-tracker/issues/185)) ([#1988](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1988)) ([a85dcfc](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a85dcfc538b6b5a0f4894c64486970dd303473f5))
+* **mobile:** override minimatch to &gt;=11.0.1 (alert [#192](https://github.com/Shir0o/cisa-campus-work-tracker/issues/192)) ([#1989](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1989)) ([fdaba31](https://github.com/Shir0o/cisa-campus-work-tracker/commit/fdaba31e0be8638bc6b2285bdda18bb957b57fc4))
+
 ## [1.14.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.13.1...v1.14.0) (2026-11-01)
 
 
