@@ -4207,7 +4207,9 @@ export default function Settings() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant/70">
           {t('settings.about', 'About')}
         </p>
-        <p className="mt-2 text-[13px] text-on-surface">CISA Campus Work Tracker</p>
+        <p className="mt-2 text-[13px] text-on-surface">
+          {t('settings.about_product', 'CISA Campus Work Tracker')}
+        </p>
         <div className="mt-1.5 flex flex-col items-start gap-0.5 text-[12px] text-on-surface-variant">
           <span>
             {t('settings.about_version', 'Version')}{' '}

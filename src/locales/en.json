@@ -317,6 +317,7 @@
     "navigation_help": "On narrower windows the top bar is used instead, and on phones the bottom bar — neither changes this choice. A narrow window may also collapse the rail temporarily.",
     "navigation_phone": "On a phone the bottom bar is always the navigation. The rail and the top bar are chosen on a computer.",
     "getting_started": "Getting started",
+    "about_product": "CISA Campus Work Tracker",
     "about": "About",
     "about_version": "Version",
     "about_build": "Build",
