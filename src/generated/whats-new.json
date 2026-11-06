@@ -1,6 +1,94 @@
 {
-  "latestReleaseId": "2026-11-01-v1.14.0",
+  "latestReleaseId": "2026-11-05-v1.15.0",
   "releases": [
+    {
+      "id": "2026-11-05-v1.15.0",
+      "version": "1.15.0",
+      "title": "Release 1.15.0",
+      "date": "2026-11-05",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Finish the Tempo rename in copy.",
+        "Gate integrations behind a 7-tap unlock.",
+        "Override minimatch to >=11.0.1.",
+        "Bump glob to resolve post-timeout traversal."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Finish the Tempo rename in copy",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Gate integrations behind a 7-tap unlock",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Override minimatch to >=11.0.1",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bump glob to resolve post-timeout traversal",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Dismiss and post an update on each line, plus a native To ask screen",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Date a new week from the store, not a stale list",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Never overwrite a week when starting a new one",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Prevent polynomial ReDoS in slugNamePart",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Gospel partner pipeline stage oversight matrix",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enhance room code UI and delete entry points",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-11-01-v1.14.0",
       "version": "1.14.0",
