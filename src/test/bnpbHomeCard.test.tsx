@@ -17,7 +17,7 @@ vi.mock('../components/LanguageProvider', () => ({
       const templates: Record<string, string> = {
         'bnpb.home_review_count': '{n} interaction to review',
         'bnpb.home_review_count_plural': '{n} interactions to review',
-        'bnpb.home_review_need_name': 'From BNPB · {n} need a name',
+        'bnpb.home_review_need_name': 'From Tempo · {n} need a name',
         'bnpb.home_review_cta': 'Review',
       };
       return templates[key] ?? key;
@@ -102,7 +102,7 @@ describe('BnpbReviewCard', () => {
     render(<BnpbReviewCard />);
 
     expect(await screen.findByText('2 interactions to review')).toBeInTheDocument();
-    expect(screen.getByText('From BNPB · 1 need a name')).toBeInTheDocument();
+    expect(screen.getByText('From Tempo · 1 need a name')).toBeInTheDocument();
   });
 
   it('omits the need-a-name line when every suggestion has a Contact', async () => {
