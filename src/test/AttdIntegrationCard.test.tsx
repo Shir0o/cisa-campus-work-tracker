@@ -101,6 +101,10 @@ describe('AttdIntegrationCard in Settings', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The Attendance Tracker card lives in the developer-unlocked Quick add
+    // section (#1992).
+    window.localStorage.clear();
+    window.localStorage.setItem('cisa.settings.devUnlocked', '1');
     mockIntegrationsData = {};
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
