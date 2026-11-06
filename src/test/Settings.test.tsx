@@ -2158,19 +2158,20 @@ describe('Settings', () => {
       window.history.replaceState({}, '', '/settings');
     });
 
-    it('keeps the integration sections locked until the version line is tapped seven times', () => {
+    it('keeps the integration sections locked until the build number is tapped seven times', () => {
       setupManagerAuth();
       render(<Settings />);
 
-      expect(screen.getByTestId('settings-version')).toHaveTextContent(/^CISA Campus Work Tracker · v/);
+      expect(screen.getByTestId('settings-about')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-build')).toHaveTextContent(/^Build 2026-/);
       expect(section('Quick add by text')).not.toBeInTheDocument();
       expect(section('API & webhook console')).not.toBeInTheDocument();
 
-      const version = screen.getByTestId('settings-version');
-      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(version);
+      const build = screen.getByTestId('settings-build');
+      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(build);
       expect(section('Quick add by text')).not.toBeInTheDocument();
 
-      fireEvent.click(version);
+      fireEvent.click(build);
       expect(section('Quick add by text')).toBeInTheDocument();
       expect(section('API & webhook console')).toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveTextContent('Developer options unlocked');
@@ -2180,11 +2181,11 @@ describe('Settings', () => {
       setupManagerAuth();
       render(<Settings />);
 
-      const version = screen.getByTestId('settings-version');
-      for (let tap = 0; tap < 3; tap += 1) fireEvent.click(version);
+      const build = screen.getByTestId('settings-build');
+      for (let tap = 0; tap < 3; tap += 1) fireEvent.click(build);
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-      fireEvent.click(version);
+      fireEvent.click(build);
       expect(screen.getByRole('status')).toHaveTextContent('3 more…');
     });
 
@@ -2192,15 +2193,15 @@ describe('Settings', () => {
       const now = vi.spyOn(Date, 'now');
       setupManagerAuth();
       render(<Settings />);
-      const version = screen.getByTestId('settings-version');
+      const build = screen.getByTestId('settings-build');
 
       now.mockReturnValue(1_000);
-      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(version);
+      for (let tap = 0; tap < 6; tap += 1) fireEvent.click(build);
       expect(screen.getByRole('status')).toHaveTextContent('1 more…');
 
       // Beyond the gap the count restarts, so this is tap one, not tap seven.
       now.mockReturnValue(1_000 + 60_000);
-      fireEvent.click(version);
+      fireEvent.click(build);
 
       expect(section('Quick add by text')).not.toBeInTheDocument();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -2211,8 +2212,8 @@ describe('Settings', () => {
       setupManagerAuth();
       const first = render(<Settings />);
 
-      const version = screen.getByTestId('settings-version');
-      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(version);
+      const build = screen.getByTestId('settings-build');
+      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(build);
       expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBe('1');
       first.unmount();
 
@@ -2268,21 +2269,21 @@ describe('Settings', () => {
 
       render(<Settings />);
 
-      expect(screen.queryByTestId('settings-version')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('settings-build')).not.toBeInTheDocument();
       expect(section('Quick add by text')).not.toBeInTheDocument();
     });
 
-    it('takes keyboard activation as a tap', () => {
+    it('takes keyboard activation of the build number as a tap', () => {
       // A native <button> turns Enter and Space into the same click the pointer
       // produces, so the keyboard path is the gesture without a pointer.
       setupManagerAuth();
       render(<Settings />);
 
-      const version = screen.getByTestId('settings-version');
-      version.focus();
-      expect(version).toHaveFocus();
+      const build = screen.getByTestId('settings-build');
+      build.focus();
+      expect(build).toHaveFocus();
 
-      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(version);
+      for (let tap = 0; tap < 7; tap += 1) fireEvent.click(build);
       expect(section('Quick add by text')).toBeInTheDocument();
     });
   });

@@ -131,7 +131,7 @@ type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 const OWNER_EMAIL = 'yilongwang05@gmail.com';
 
 // Android's developer options, in miniature: the integration and diagnostic
-// sections stay out of Settings until the version line at the foot is tapped
+// sections stay out of Settings until the build number in About is tapped
 // seven times on this browser. Visibility only — Firestore rules and API auth
 // remain the boundary. `?dev=1` / `?dev=0` are the keyboard- and test-friendly
 // door, since a gesture alone would exclude anyone who cannot tap.
@@ -3632,7 +3632,7 @@ export default function Settings() {
     return () => window.clearTimeout(timer);
   }, [devNotice]);
 
-  const handleVersionTap = () => {
+  const handleBuildTap = () => {
     if (devUnlocked) return;
     const now = Date.now();
     const continuing = now - lastDevTapRef.current <= DEV_UNLOCK_TAP_GAP_MS;
@@ -4196,28 +4196,38 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Developer unlock. A quiet line, not a control: tapping it seven times
-          reveals the integration sections above; `?dev=1` does the same for
-          anyone who cannot tap. The version comes from the same built manifest
-          the What's New row reads, so it tracks releases. */}
-      <div className="mt-10 text-center">
-        <button
-          type="button"
-          data-testid="settings-version"
-          onClick={handleVersionTap}
-          className="text-[11px] text-on-surface-variant/60 hover:text-on-surface-variant transition-colors"
-        >
-          {t('settings.version_footer', 'CISA Campus Work Tracker · v{version}').replace(
-            '{version}',
-            (whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? '',
-          )}
-        </button>
+      {/* About, Android-style: the build row is the developer unlock target.
+          Seven taps reveal the integration sections above; `?dev=1` does the
+          same for anyone who cannot tap. Version and build come from the same
+          built manifest the What's New row reads, so they track releases. */}
+      <section
+        className="mt-12 border-t border-outline-variant/30 pt-6"
+        data-testid="settings-about"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant/70">
+          {t('settings.about', 'About')}
+        </p>
+        <p className="mt-2 text-[13px] text-on-surface">CISA Campus Work Tracker</p>
+        <div className="mt-1.5 flex flex-col items-start gap-0.5 text-[12px] text-on-surface-variant">
+          <span>
+            {t('settings.about_version', 'Version')}{' '}
+            {(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? ''}
+          </span>
+          <button
+            type="button"
+            data-testid="settings-build"
+            onClick={handleBuildTap}
+            className="text-left text-[12px] text-on-surface-variant/80 hover:text-on-surface transition-colors"
+          >
+            {t('settings.about_build', 'Build')} {whatsNewManifest.latestReleaseId}
+          </button>
+        </div>
         {devNotice && (
           <p role="status" aria-live="polite" className="mt-2 text-[11px] text-on-surface-variant">
             {devNotice}
           </p>
         )}
-      </div>
+      </section>
 
       <AnimatePresence>
         {showInviteDialog && (
