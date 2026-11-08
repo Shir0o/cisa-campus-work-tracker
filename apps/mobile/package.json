@@ -82,6 +82,7 @@
     "@grpc/grpc-js": "^1.13.6",
     "@xmldom/xmldom": "^0.9.10",
     "decode-uri-component": "^0.5.1",
+    "deepmerge": "4.1.2",
     "fast-xml-parser": "^5.7.0",
     "image-size": "^2.0.3",
     "joi": "^17.13.8",
