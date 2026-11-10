@@ -228,6 +228,23 @@ export function compileWhatsNewManifest(markdownDocs: string[]): WhatsNewManifes
   };
 }
 
+export const EXCLUDED_SCOPES = new Set([
+  'deps',
+  'chore',
+  'ci',
+  'test',
+  'build',
+  'refactor',
+  'style',
+  'internal',
+  'security',
+]);
+
+export const JARGON_REGEX =
+  /\b(minimatch|redos|slugnamepart|regex|vitest|vite|eslint|playwright|emulator|ruleset|nullish|firestore\s*rules|typedef|polyfill|linter|lockfile)\b/i;
+
+const MAX_PRIMARY_ITEMS = 4;
+
 /**
  * Converts conventional git commits into a clean starter markdown draft.
  */
@@ -238,8 +255,14 @@ export function parseGitCommitsToDraft(
   const id = meta.id || `${meta.date}-v${meta.version}`;
   const title = meta.title || `Release ${meta.version}`;
 
-  const bullets: string[] = [];
-  const nudgeLines: string[] = [];
+  interface ParsedCandidate {
+    bullet: string;
+    sentence: string;
+  }
+
+  const eligibleFeats: ParsedCandidate[] = [];
+  const eligibleFixes: ParsedCandidate[] = [];
+
   for (const line of commitLines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -248,25 +271,63 @@ export function parseGitCommitsToDraft(
     const featMatch = trimmed.match(/^feat(?:\(([^)]+)\))?:\s*(.+)$/i);
     const fixMatch = trimmed.match(/^fix(?:\(([^)]+)\))?:\s*(.+)$/i);
 
-    if (featMatch) {
-      const scope = featMatch[1]?.toLowerCase();
-      let desc = featMatch[2].replace(/\s*\([^)]*#\d+[^)]*\)/g, '').trim();
-      desc = desc.charAt(0).toUpperCase() + desc.slice(1);
-      const tag = scope === 'mobile' ? '[Mobile] ' : scope === 'web' ? '[Web] ' : '';
-      bullets.push(`- ${tag}${desc}`);
-      nudgeLines.push(`${desc.replace(/\.+$/, '')}.`);
-    } else if (fixMatch) {
-      const scope = fixMatch[1]?.toLowerCase();
-      let desc = fixMatch[2].replace(/\s*\([^)]*#\d+[^)]*\)/g, '').trim();
-      desc = desc.charAt(0).toUpperCase() + desc.slice(1);
-      const tag = scope === 'mobile' ? '[Mobile] ' : scope === 'web' ? '[Web] ' : '';
-      bullets.push(`- ${tag}${desc}`);
-      nudgeLines.push(`${desc.replace(/\.+$/, '')}.`);
+    if (!featMatch && !fixMatch) continue;
+
+    const match = featMatch || fixMatch;
+    const isFeat = Boolean(featMatch);
+    const rawScope = match![1];
+    const rawDesc = match![2];
+
+    const scopeLower = rawScope?.toLowerCase();
+    if (scopeLower && EXCLUDED_SCOPES.has(scopeLower)) {
+      continue;
+    }
+
+    if (JARGON_REGEX.test(rawDesc)) {
+      continue;
+    }
+
+    let desc = rawDesc.replace(/\s*\([^)]*#\d+[^)]*\)/g, '').trim();
+    desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+    const tag = scopeLower === 'mobile' ? '[Mobile] ' : scopeLower === 'web' ? '[Web] ' : '';
+
+    const candidate: ParsedCandidate = {
+      bullet: `- ${tag}${desc}`,
+      sentence: `${desc.replace(/\.+$/, '')}.`,
+    };
+
+    if (isFeat) {
+      eligibleFeats.push(candidate);
+    } else {
+      eligibleFixes.push(candidate);
     }
   }
 
-  // The Release Nudge's starting sentences: a human edits these before shipping.
-  const nudge = nudgeLines.slice(0, 4);
+  const primaryItems: ParsedCandidate[] = [];
+  const featsToTake = eligibleFeats.slice(0, MAX_PRIMARY_ITEMS);
+  primaryItems.push(...featsToTake);
+
+  const remainingSlots = MAX_PRIMARY_ITEMS - primaryItems.length;
+  const fixesToTake = eligibleFixes.slice(0, remainingSlots);
+  primaryItems.push(...fixesToTake);
+
+  const fixesDisplaced = eligibleFixes.length > fixesToTake.length;
+
+  const bullets: string[] = primaryItems.map((item) => item.bullet);
+  if (fixesDisplaced) {
+    bullets.push('- General bug fixes and stability improvements');
+  }
+
+  let finalBullets: string[];
+  let nudgeLines: string[];
+
+  if (bullets.length === 0) {
+    finalBullets = ['- General stability and performance improvements'];
+    nudgeLines = ['General stability and performance improvements.'];
+  } else {
+    finalBullets = bullets;
+    nudgeLines = primaryItems.slice(0, 4).map((item) => item.sentence);
+  }
 
   return `---
 id: ${id}
@@ -283,13 +344,13 @@ platforms:
 #   - operator
 #   - viewer
 lines:
-${nudge.length > 0 ? nudge.map((l) => `  - ${l}`).join('\n') : '  - '}
+${nudgeLines.length > 0 ? nudgeLines.map((l) => `  - ${l}`).join('\n') : '  - '}
 ---
 
 # Overview
 Highlights and updates in this release.
 
 ## Highlights
-${bullets.length > 0 ? bullets.join('\n') : '- General stability and performance improvements'}
+${finalBullets.join('\n')}
 `;
 }
