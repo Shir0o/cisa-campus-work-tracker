@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.15.0...v1.15.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** override deepmerge to 4.1.2 (alert [#170](https://github.com/Shir0o/cisa-campus-work-tracker/issues/170)) ([#1999](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1999)) ([d09a60b](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d09a60b696efcf7ea2d10310c4086ed3e7c7118c))
+
 ## [1.15.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.14.0...v1.15.0) (2026-11-06)
 
 
