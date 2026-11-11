@@ -7,6 +7,8 @@ import {
   attentionPhrase,
   isTiedTo,
   openAsksIn,
+  openMentionsIn,
+  wantsAReply,
   worklistVerbFor,
   encouragementFor,
   type AttentionItem,
@@ -577,6 +579,36 @@ describe("buildAttentionItems — In the Conversation (#1604)", () => {
       msg("ask", "anna", 1, { contactId: "luke", kind: "nudge" }),
     ]);
     expect(worklistVerbFor(onYou.find((s) => s.contactId === "luke")!)).toBe("followedUp");
+  });
+});
+
+describe("buildAttentionItems — an @mention is the for-you signal", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+  });
+
+  const contacts: Contact[] = [{ id: "mark", name: "Mark Lin", createdBy: "t2", stage: "Student" } as Contact];
+  const msg = (id: string, over: Partial<ThreadMessageWithContact> = {}) =>
+    ({ id, contactId: "mark", from: "anna", fromName: "Anna Kim", kind: "comment", body: id, at: new Date().toISOString(), interactionId: null, mentionedUserIds: ["t1"], ...over }) as ThreadMessageWithContact;
+  const stackFor = (threads: ThreadMessageWithContact[]) => {
+    const items = buildAttentionItems({ role: "manager", uid: "t1", contacts, threads });
+    return partitionAttentionStacks(attentionStacksFor(items, "t1"), contacts, "t1", "manager").onYou.find((s) => s.contactId === "mark")!;
+  };
+
+  it("asks the person it names for Done, and to write back, while it is open", () => {
+    const stack = stackFor([msg("mn")]);
+    expect(worklistVerbFor(stack)).toBe("done");
+    expect(wantsAReply(stack)).toBe(true);
+    expect(openMentionsIn(stack).map((i) => i.id)).toEqual(["thread:mn"]);
+    expect(attentionPhrase(stack.items[0], { anna: "Anna Kim" })).toBe("Anna mentioned you");
+  });
+
+  it("is only information once it is closed", () => {
+    const stack = stackFor([msg("mn", { closedAt: new Date().toISOString(), closedBy: "t3" })]);
+    expect(worklistVerbFor(stack)).toBe("gotIt");
+    expect(openMentionsIn(stack)).toEqual([]);
+    expect(wantsAReply(stack)).toBe(false);
   });
 });
 

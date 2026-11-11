@@ -78,5 +78,18 @@ describe("traineeWaitingItems", () => {
     );
     expect(items.map((x) => x.id)).toEqual(["thread:q_mine"]);
   });
-});
 
+  it("puts an open @mention of the trainee on their list, from anyone, until it closes", () => {
+    const items = traineeWaitingItems(
+      "t1",
+      [
+        thread({ id: "mn", contactId: "c_other", from: "t2", kind: "comment", mentionedUserIds: ["t1"], at: "2026-02-02T00:00:00Z" }),
+        thread({ id: "shut", from: "ft1", kind: "comment", mentionedUserIds: ["t1"], closedAt: "2026-02-03T00:00:00Z" }),
+        thread({ id: "notme", from: "ft1", kind: "comment", mentionedUserIds: ["t2"] }),
+      ],
+      new Set(["c_mine"]),
+    );
+    expect(items.map((x) => x.id)).toEqual(["thread:mn"]);
+    expect(items[0]).toMatchObject({ kind: "comment", mention: true, by: "t2" });
+  });
+});

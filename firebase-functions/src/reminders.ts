@@ -15,6 +15,7 @@ import {
   type ReminderSchedule,
   type WeeklyReminderStaff,
 } from "../../packages/core/src/reminders";
+import { isOpenMention } from "../../packages/core/src/mentions";
 import {
   aroundTeamToWorkThrough,
   reviewedStackIds,
@@ -23,7 +24,7 @@ import {
 import type { Firestore } from "firebase-admin/firestore";
 
 export interface ReminderDeps {
-  /** Open Follow-up asks and questions, with a question's Thread replies. */
+  /** Open Follow-up asks, questions and @mentions, with a question's Thread replies. */
   candidates(): Promise<ReminderCandidate[]>;
   writeBell(notification: ReminderNotification): Promise<void>;
   markReminded(source: DueReminder["source"]): Promise<void>;
@@ -51,11 +52,17 @@ export async function runAskReminders(deps: ReminderDeps): Promise<ReminderRunRe
 export function firestoreReminderDeps(db: Firestore): ReminderDeps {
   return {
     async candidates() {
-      const snap = await db.collectionGroup("threads").where("kind", "in", ["nudge", "question"]).get();
+      // Every message is a comment now; one waits on someone only while it
+      // @mentions them and nobody has closed it.
+      const snap = await db.collectionGroup("threads").where("kind", "in", ["nudge", "question", "comment"]).get();
       const candidates: ReminderCandidate[] = [];
       for (const doc of snap.docs) {
         const data = doc.data();
-        const kind = data.kind === "nudge" ? "ask" : "question";
+        if (data.kind === "comment") {
+          const mentionedUserIds = Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : [];
+          if (!isOpenMention({ id: doc.id, from: data.from ?? "", kind: "comment", at: data.at ?? "", mentionedUserIds, closedAt: data.closedAt ?? null })) continue;
+        }
+        const kind = data.kind === "nudge" ? "ask" : data.kind === "question" ? "question" : "mention";
         let replies: ReminderCandidate["replies"];
         if (kind === "question") {
           const replySnap = await doc.ref.parent.where("parentId", "==", doc.id).limit(50).get();

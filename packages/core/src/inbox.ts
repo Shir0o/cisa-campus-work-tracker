@@ -1,4 +1,5 @@
 import type { Contact, Interaction } from "./types";
+import { isOpenMentionFor } from "./mentions";
 import { isFullTimer, isTrainee, fullTimerIds } from "./walking";
 import { inTheConversation, type ThreadKind, type ThreadMessageWithContact } from "./threads";
 
@@ -26,6 +27,8 @@ export interface InboxItem {
   title?: string;
   body?: string;
   kind?: ThreadKind; // set on thread items (question / nudge)
+  /** An open @mention of the reader: on their list until it closes. */
+  mention?: boolean;
 }
 
 const ms = (iso: string) => {
@@ -102,6 +105,23 @@ export function inboxItemsFor(
     }
   }
 
+  // Open @mentions of the full-timer: on their list until a reply, Done, or
+  // Never mind closes it.
+  for (const m of data.threads) {
+    if (!isOpenMentionFor(m, uid)) continue;
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      interactionId: m.interactionId,
+      body: m.body,
+      kind: m.kind,
+      mention: true,
+    });
+  }
+
   // Anything others wrote where the full-timer is In the Conversation (#1604):
   // they wrote in that stream in the 14 days before it, tied or not.
   const mine = data.threads.filter((m) => m.from === uid);
@@ -163,6 +183,24 @@ export function traineeWaitingItems(
         kind: m.kind,
       });
     }
+  }
+
+  // An open @mention of the trainee, from anyone, on any person they can
+  // read: on their list until a reply, Done, or Never mind closes it.
+  for (const m of threads) {
+    if (m.scope === "team" || !isOpenMentionFor(m, uid)) continue;
+    if (items.some((it) => it.id === "thread:" + m.id)) continue;
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      interactionId: m.interactionId,
+      body: m.body,
+      kind: m.kind,
+      mention: true,
+    });
   }
 
   return items.sort((a, b) => ms(b.at) - ms(a.at));

@@ -735,3 +735,20 @@ describe('queue preferences', () => {
     });
   });
 });
+
+describe('buildQueue — an open @mention of me', () => {
+  it('makes a msg card that wants a reply, on any person and from anyone, until it closes', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact({ id: 'shared', createdBy: 'other' })],
+        threads: [
+          message({ id: 'mn', contactId: 'shared', from: 'peer', fromName: 'Ana Ruiz', kind: 'comment', mentionedUserIds: ['me'], at: iso(-1) }),
+          message({ id: 'shut', contactId: 'shared', from: 'peer', kind: 'comment', mentionedUserIds: ['me'], closedAt: iso(-1), at: iso(-2), interactionId: 'i2' }),
+        ],
+      }),
+    );
+    const cards = q.filter((c) => c.kind === 'msg');
+    expect(cards.map((c) => c.id)).toEqual(['ftmsg:mn']);
+    expect(cards[0]).toMatchObject({ label: 'Ana mentioned you', needsReply: true });
+  });
+});

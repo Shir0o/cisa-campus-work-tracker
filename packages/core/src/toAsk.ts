@@ -26,6 +26,7 @@ import {
   type ReachReading,
 } from "./reach";
 import { campusCalendarDaysSince, REMIND_AFTER_CALENDAR_DAYS } from "./reminders";
+import { isOpenMention } from "./mentions";
 
 /** The team filter, as on Around the team. */
 export type ToAskTeamFilter = "all" | "campus" | "yp";
@@ -76,6 +77,8 @@ export interface ToAskThreadMessage {
   parentId?: string | null;
   /** `"team"` for the Full-timers stream, so a reply lands beside it. */
   scope?: "team" | null;
+  /** Teammates @mentioned: an open mention waits on them like an ask. */
+  mentionedUserIds?: string[] | null;
 }
 
 /** An Interaction, reduced to what names whoever cleared a Not-reached line. */
@@ -163,7 +166,7 @@ export interface ToAskInput {
   notepad?: ToAskNotepad | null;
 }
 
-export type ToAskSignalKind = "notReached" | "ask" | "question" | "noReply";
+export type ToAskSignalKind = "notReached" | "ask" | "question" | "noReply" | "mention";
 export type ToAskLineKind = "handwritten" | ToAskSignalKind;
 export type ToAskLineState = "open" | "asked" | "cleared";
 
@@ -182,7 +185,7 @@ export interface ToAskSignalMeta {
 }
 
 export interface ToAskClearedBy {
-  reason: "reached" | "askClosed" | "answered";
+  reason: "reached" | "askClosed" | "answered" | "mentionClosed";
   at: string;
   name?: string | null;
   /** The Interaction type, e.g. `text`, `call`. */
@@ -274,7 +277,7 @@ export function parseToAskKey(
   key: string,
 ): { kind: ToAskSignalKind; contactId: string; messageId?: string } | null {
   const [kind, contactId, messageId] = key.split("|");
-  if (kind !== "notReached" && kind !== "ask" && kind !== "question" && kind !== "noReply") return null;
+  if (kind !== "notReached" && kind !== "ask" && kind !== "question" && kind !== "noReply" && kind !== "mention") return null;
   if (!contactId) return null;
   return { kind, contactId, messageId };
 }
@@ -340,6 +343,19 @@ function openSignals(input: ToAskInput, nowMs: number): OpenSignal[] {
       signals.push({
         key: signalKey("ask", m.contactId, m.id),
         kind: "ask",
+        at: m.at,
+        contactId: m.contactId,
+        contactName: nameOf(m.contactId),
+        askerName: firstName(m.fromName || nameByUid.get(m.from)),
+        mine: m.from === uid,
+      });
+    } else if (isOpenMention(m)) {
+      // An @mention still open after the ask's three days: nobody it named
+      // has replied or said Done.
+      if (campusCalendarDaysSince(m.at, nowMs) < REMIND_AFTER_CALENDAR_DAYS) continue;
+      signals.push({
+        key: signalKey("mention", m.contactId, m.id),
+        kind: "mention",
         at: m.at,
         contactId: m.contactId,
         contactName: nameOf(m.contactId),
@@ -457,6 +473,11 @@ function clearedInfo(
     return { reason: "askClosed", at: message.closedAt, name: message.closedByName ?? null };
   }
 
+  if (kind === "mention") {
+    if (!message.closedAt) return null;
+    return { reason: "mentionClosed", at: message.closedAt, name: message.closedByName ?? null };
+  }
+
   // question
   const reply = ctx.messages
     .filter(
@@ -502,6 +523,7 @@ function defaultDraftText(signal: ToAskSignalMeta): string {
     return `${signal.contactName} — ${who} texted them and heard nothing back`;
   }
   const owner = signal.mine ? "your" : `${signal.askerName}'s`;
+  if (signal.kind === "mention") return `${signal.contactName} — ${owner} mention is still open`;
   return signal.kind === "ask"
     ? `${signal.contactName} — ${owner} follow-up ask is still open`
     : `${signal.contactName} — ${owner} question has no reply`;
@@ -521,7 +543,7 @@ export function toAskUpdateDestinations(
 ): ToAskUpdateDest[] {
   const dests: ToAskUpdateDest[] = ["line"];
   if (line.contactId) dests.push("contact");
-  if (line.kind === "ask" || line.kind === "question") dests.push("thread");
+  if (line.kind === "ask" || line.kind === "question" || line.kind === "mention") dests.push("thread");
   return dests;
 }
 
@@ -549,7 +571,7 @@ export function toAskThreadTarget(
   messages: readonly ToAskThreadMessage[],
 ): { contactId: string; parentId: string; interactionId: string | null; scope: "team" | null } | null {
   const parsed = parseToAskKey(key);
-  if (!parsed || (parsed.kind !== "ask" && parsed.kind !== "question") || !parsed.messageId) return null;
+  if (!parsed || (parsed.kind !== "ask" && parsed.kind !== "question" && parsed.kind !== "mention") || !parsed.messageId) return null;
   const message = messages.find((m) => m.id === parsed.messageId);
   if (!message) return null;
   return {

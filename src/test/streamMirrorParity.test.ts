@@ -35,6 +35,14 @@ const CORPUS: StreamMessage[][] = [
     { ...base, id: 'gone', kind: 'nudge', from: 'u2', at: at(20, 10), closedBy: 'u2', closedByName: 'Ben', closedAt: at(20, 11) },
     { ...base, id: 'kindless', kind: undefined, from: 'u3', at: at(24, 11) },
   ],
+  // @mentions: open, closed by one named, withdrawn by the sender, self-named, legacy.
+  [
+    { ...base, id: 'mo', from: 'maria', at: at(24, 8), mentionedUserIds: ['u2', 'maria', 'ruth'] },
+    { ...base, id: 'md', from: 'maria', at: at(23, 8), mentionedUserIds: ['u2'], closedBy: 'u2', closedByName: 'Ben', closedAt: at(23, 9) },
+    { ...base, id: 'mw', from: 'u2', at: at(22, 8), mentionedUserIds: ['maria'], closedBy: 'u2', closedByName: 'Ben', closedAt: at(22, 9) },
+    { ...base, id: 'ms', from: 'u2', at: at(21, 8), mentionedUserIds: ['u2'] },
+    { ...base, id: 'mq', kind: 'question', from: 'u2', at: at(21, 9), mentionedUserIds: ['maria'] },
+  ],
   // More than three repliers, and a duplicate among them, handed in newest first.
   [
     { ...base, id: 'r5', parentId: 'p', from: 'e', at: at(24, 10, 5) },

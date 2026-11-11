@@ -25,6 +25,8 @@ export interface StreamMessage {
   closedBy?: string | null;
   closedByName?: string | null;
   closedAt?: string | null;
+  /** Teammates @mentioned when it was written. */
+  mentionedUserIds?: string[] | null;
 }
 
 export interface StreamViewer {
@@ -77,6 +79,18 @@ export type AskState =
  *  write here) and Never mind (the asker only). */
 export type AskAction = 'followedUp' | 'neverMind';
 
+/** An @mention's state: open while it waits on the people it names (never
+ *  its sender); closed by one of them (a reply or Done) or withdrawn by the
+ *  sender (Never mind). */
+export type MentionState =
+  | { status: 'open'; waitingOn: string[] }
+  | { status: 'done'; by: StreamReplier; at: string }
+  | { status: 'withdrawn'; by: StreamReplier; at: string };
+
+/** What this viewer may press on an open mention: Done (anyone it names) and
+ *  Never mind (its sender). */
+export type MentionAction = 'done' | 'neverMind';
+
 /** The tag beside the author's name. */
 export type StreamTag = 'question' | 'ask';
 
@@ -92,6 +106,10 @@ export interface StreamRow<M extends StreamMessage = StreamMessage> {
   /** null unless the message is a Follow-up ask. */
   ask: AskState | null;
   askActions: AskAction[];
+  /** null unless the message @mentions someone (a legacy question or ask
+   *  keeps its own state instead). */
+  mention: MentionState | null;
+  mentionActions: MentionAction[];
   /** The author or a Full-timer — and never a parent whose replies remain,
    *  so no reply is orphaned. */
   canDelete: boolean;
@@ -158,6 +176,27 @@ function askActionsOf(m: StreamMessage, ask: AskState | null, viewer: StreamView
   return m.from === viewer.uid ? ['followedUp', 'neverMind'] : ['followedUp'];
 }
 
+function mentionedOthers(m: StreamMessage): string[] {
+  const out: string[] = [];
+  for (const uid of m.mentionedUserIds ?? []) if (uid && uid !== m.from && !out.includes(uid)) out.push(uid);
+  return out;
+}
+
+function mentionStateOf(m: StreamMessage): MentionState | null {
+  if (m.kind === 'question' || m.kind === 'nudge') return null;
+  const named = mentionedOthers(m);
+  if (named.length === 0) return null;
+  if (!m.closedAt) return { status: 'open', waitingOn: named };
+  const by = { uid: m.closedBy ?? '', name: m.closedByName ?? '' };
+  return { status: m.closedBy === m.from ? 'withdrawn' : 'done', by, at: m.closedAt };
+}
+
+function mentionActionsOf(m: StreamMessage, mention: MentionState | null, viewer: StreamViewer): MentionAction[] {
+  if (!mention || mention.status !== 'open' || !canWrite(viewer)) return [];
+  if (m.from === viewer.uid) return ['neverMind'];
+  return mention.waitingOn.includes(viewer.uid) ? ['done'] : [];
+}
+
 function summarise(replies: StreamMessage[]): ThreadSummary | null {
   if (replies.length === 0) return null;
   const repliers: StreamReplier[] = [];
@@ -201,6 +240,7 @@ function rowsOf<M extends StreamMessage>(
       !tagOf(m);
     const replies = replyMap.get(m.id) ?? [];
     const ask = askStateOf(m, nowMs);
+    const mention = mentionStateOf(m);
     out.push({
       type: 'row',
       message: m,
@@ -209,6 +249,8 @@ function rowsOf<M extends StreamMessage>(
       tag: tagOf(m),
       ask,
       askActions: askActionsOf(m, ask, viewer),
+      mention,
+      mentionActions: mentionActionsOf(m, mention, viewer),
       canDelete: (m.from === viewer.uid || isFullTimer(viewer)) && replies.length === 0,
     });
     prev = m;
