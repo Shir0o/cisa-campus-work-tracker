@@ -40,6 +40,7 @@ import {
 } from './data/interactions';
 import {
   addPrayer as addPrayerApi,
+  setPrayerTeamPrayer as setPrayerTeamPrayerApi,
   subscribeContactPrayers,
   updatePrayerStatus,
 } from './data/prayers';
@@ -207,6 +208,21 @@ export function useContactDetailData(contactId: string) {
         targetType: 'contact',
         type: 'comment',
         description: input.burden.trim(),
+      });
+    },
+
+    // The card's one-tap toggle. Always an explicit write: an absent flag
+    // reads as the team's, so taking it off must store false.
+    setPrayerTeamPrayer: async (prayer: PrayerRecord, teamPrayer: boolean) => {
+      if (!contact) return;
+      await setPrayerTeamPrayerApi(prayer.id, teamPrayer, by);
+      void logActivity({
+        action: teamPrayer ? 'brought a prayer to team prayer for' : 'took a prayer off team prayer for',
+        targetId: contactId,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'comment',
+        description: prayer.burden,
       });
     },
 

@@ -4,6 +4,7 @@ import {
   addPrayerBurden,
   addTeamPrayer,
   isTeamPrayer,
+  setPrayerTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
   getContactCarers,
@@ -452,5 +453,24 @@ describe('placeholder prayer burdens (#1691, #1765)', () => {
       (en as any).prayers.holding_in_prayer,
       (es as any).prayers.holding_in_prayer,
     ]);
+  });
+});
+
+describe('setPrayerTeamPrayer', () => {
+  const by = { uid: 'u1', name: 'Tony' };
+  beforeEach(() => mock(updateDoc).mockClear());
+
+  it('writes teamPrayer: true to bring a burden to the team', async () => {
+    await setPrayerTeamPrayer('p1', true, by);
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'prayers/p1' },
+      expect.objectContaining({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Tony' }),
+    );
+  });
+
+  // Deleting the field would make the burden count as the team's again.
+  it('writes an explicit teamPrayer: false to take it off', async () => {
+    await setPrayerTeamPrayer('p1', false, by);
+    expect(mock(updateDoc).mock.calls[0][1].teamPrayer).toBe(false);
   });
 });

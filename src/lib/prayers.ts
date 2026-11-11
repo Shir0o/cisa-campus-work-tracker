@@ -109,6 +109,25 @@ export async function updatePrayerStatus(
   }
 }
 
+// Bring a burden to the team prayer page, or take it off. Always writes the
+// flag: deleting it would make the burden count as the team's again.
+export async function setPrayerTeamPrayer(
+  prayerId: string,
+  teamPrayer: boolean,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, "prayers", prayerId), {
+      teamPrayer,
+      updatedAt: new Date().toISOString(),
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
+  }
+}
+
 /**
  * Whether a burden belongs on the team prayer page ("On our hearts"). Mirrors
  * `isTeamPrayer` in packages/core/src/prayerThread.ts — keep the two in step.

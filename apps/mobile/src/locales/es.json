@@ -1547,6 +1547,8 @@
       "remove_interaction_confirm": "Esta interacción tiene {count} mensaje(s) en su hilo. Al eliminarla, desaparecen del registro. ¿Eliminar de todos modos?",
       "pray_for": "Orar por {name}",
       "nothing_written_down": "Aún no hay nada escrito.",
+      "bring_to_team_prayer": "Llevar a la oración del equipo",
+      "take_off_team_prayer": "Quitar de la oración del equipo",
       "back": "← Atrás",
       "prayed": "Oré ✓",
       "prayed_for": "Oré por {name}",

@@ -287,6 +287,59 @@ describe('ContactScreen', () => {
     });
   });
 
+  describe('team prayer footer', () => {
+    const prayer = (over: Partial<PrayerRecord>): PrayerRecord => ({
+      id: 'prayer1',
+      contactId: 'contact1',
+      date: '2026-08-01T12:00:00.000Z',
+      burden: 'Safety on the drive home',
+      status: 'pending',
+      updatedAt: '2026-08-01T12:00:00.000Z',
+      ...over,
+    });
+    const renderWith = async (p: PrayerRecord, setPrayerTeamPrayer = jest.fn(), canWrite = true) => {
+      (useAuth as jest.Mock).mockReturnValue({
+        uid: 'user1',
+        user: { displayName: 'Staffer' },
+        role: canWrite ? 'trainee' : 'viewer',
+      });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        prayers: [p],
+        setPrayerTeamPrayer,
+      });
+      return await render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="prayers" />
+        </ThemeProvider>,
+      );
+    };
+
+    it('off the team: only "Bring to team prayer", and it brings the prayer', async () => {
+      const set = jest.fn();
+      const { getByText, queryByText } = await renderWith(prayer({ teamPrayer: false }), set);
+      expect(queryByText('On our hearts')).toBeNull();
+      await fireEvent.press(getByText('Bring to team prayer'));
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ id: 'prayer1' }), true);
+    });
+
+    it('on the team: shows the link and "Take off team prayer"', async () => {
+      const set = jest.fn();
+      const { getByText } = await renderWith(prayer({ teamPrayer: true }), set);
+      expect(getByText('On our hearts · Team prayers →')).toBeTruthy();
+      await fireEvent.press(getByText('Take off team prayer'));
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ id: 'prayer1' }), false);
+    });
+
+    it('read-only: the shared line shows without the button; nothing when not shared', async () => {
+      const shared = await renderWith(prayer({ teamPrayer: true }), jest.fn(), false);
+      expect(shared.getByText('On our hearts · Team prayers →')).toBeTruthy();
+      expect(shared.queryByText('Take off team prayer')).toBeNull();
+      const off = await renderWith(prayer({ teamPrayer: false }), jest.fn(), false);
+      expect(off.queryByText('Bring to team prayer')).toBeNull();
+    });
+  });
+
   it('renders empty/error state when contact is not found', async () => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,

@@ -1866,6 +1866,26 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(getFirestore({ uid: 'viewer1' }), 'prayers', 'prayer-edit'), edit));
     });
 
+    it('lets an operator toggle teamPrayer, rejects a non-boolean, and denies a viewer', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'prayers', 'prayer-team'), {
+          contactId: 'contact1',
+          burden: 'Peace',
+          status: 'pending',
+          teamPrayer: false,
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const flip = (teamPrayer: unknown) => ({ teamPrayer, updatedAt: '2026-10-19T00:00:00.000Z' });
+      const ref = (uid: string) => doc(getFirestore({ uid }), 'prayers', 'prayer-team');
+      await assertSucceeds(updateDoc(ref('operator1'), flip(true)));
+      await assertSucceeds(updateDoc(ref('operator1'), flip(false)));
+      await assertFails(updateDoc(ref('operator1'), flip('yes')));
+      await assertFails(updateDoc(ref('viewer1'), flip(true)));
+    });
+
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
       const db = getFirestore({ uid: 'operator1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {

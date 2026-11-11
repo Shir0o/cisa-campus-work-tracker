@@ -4501,6 +4501,23 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 }
 .cd-prayer-status button.on { background: var(--surface); color: var(--prayer-ink); box-shadow: var(--shadow-pop); }
 .cd-prayer-held { font-size: 12px; color: var(--on-surface-variant); }
+.cd-prayer-team { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; margin-top: 4px; }
+.cd-prayer-team-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--prayer-ink); font-size: 12.5px; font-weight: 600; text-decoration: none;
+}
+.cd-prayer-team-link:hover { text-decoration: underline; }
+.cd-prayer-team-on {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1px solid var(--stage-violet); border-radius: 999px; background: transparent;
+  color: var(--stage-violet); font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.cd-prayer-team-on:hover { background: color-mix(in oklch, var(--stage-violet) 10%, transparent); }
+.cd-prayer-team-off {
+  height: 28px; padding: 0 8px; border: 0; background: transparent;
+  color: var(--on-surface-variant); font-family: var(--font-sans); font-size: 12px; cursor: pointer;
+}
+.cd-prayer-team-off:hover { color: var(--on-surface); text-decoration: underline; }
 .cd-story-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .cd-story-entry {
   display: grid; grid-template-columns: 84px 14px minmax(0, 1fr); column-gap: 14px;

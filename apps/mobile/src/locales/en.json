@@ -1547,6 +1547,8 @@
       "remove_interaction_confirm": "This interaction has {count} message(s) in its thread. Removing it takes them out of the record. Remove anyway?",
       "pray_for": "Pray for {name}",
       "nothing_written_down": "Nothing written down yet.",
+      "bring_to_team_prayer": "Bring to team prayer",
+      "take_off_team_prayer": "Take off team prayer",
       "back": "← Back",
       "prayed": "Prayed ✓",
       "prayed_for": "Prayed for {name}",

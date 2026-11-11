@@ -12,7 +12,7 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { addPrayer } from '../src/data/prayers';
+import { addPrayer, setPrayerTeamPrayer } from '../src/data/prayers';
 
 const COLLECTION = { __collection: 'prayers' };
 const by = { uid: 'u1', name: 'Mei Tanaka' };
@@ -42,5 +42,25 @@ describe('addPrayer (packages/core)', () => {
   it('does not stamp prayerPage', async () => {
     await addPrayer({} as never, { contactId: 'c1', burden: 'Peace', teamPrayer: true }, by);
     expect(firestoreMock.addDoc.mock.calls[0][1]).not.toHaveProperty('prayerPage');
+  });
+});
+
+describe('setPrayerTeamPrayer (packages/core)', () => {
+  beforeEach(() => {
+    firestoreMock.doc.mockImplementation((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }));
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+  });
+
+  it('writes teamPrayer: true to bring a burden to the team', async () => {
+    await setPrayerTeamPrayer({} as never, 'p1', true, by);
+    const [ref, data] = firestoreMock.updateDoc.mock.calls[0];
+    expect(ref).toEqual({ path: 'prayers/p1' });
+    expect(data).toMatchObject({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+  });
+
+  // An absent flag reads as the team's, so taking it off must write false.
+  it('writes an explicit teamPrayer: false to take it off', async () => {
+    await setPrayerTeamPrayer({} as never, 'p1', false, by);
+    expect(firestoreMock.updateDoc.mock.calls[0][1].teamPrayer).toBe(false);
   });
 });

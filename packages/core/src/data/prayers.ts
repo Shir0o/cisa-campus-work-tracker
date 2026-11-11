@@ -97,6 +97,22 @@ export async function updatePrayerBurden(
   });
 }
 
+/** Put a burden on, or take it off, the team prayer page. Always writes the
+ *  flag: deleting it would read as the team's again (`isTeamPrayer`). */
+export async function setPrayerTeamPrayer(
+  db: Firestore,
+  prayerId: string,
+  teamPrayer: boolean,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  await updateDoc(doc(db, "prayers", prayerId), {
+    teamPrayer,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid || null,
+    updatedByName: by.name || null,
+  });
+}
+
 export async function updatePrayerStatus(
   db: Firestore,
   prayerId: string,

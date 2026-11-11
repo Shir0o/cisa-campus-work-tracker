@@ -47,6 +47,18 @@ export async function addPrayer(
   }
 }
 
+export async function setPrayerTeamPrayer(
+  prayerId: string,
+  teamPrayer: boolean,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    await core.setPrayerTeamPrayer(db, prayerId, teamPrayer, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
+  }
+}
+
 export async function updatePrayerBurden(
   prayerId: string,
   burden: string,

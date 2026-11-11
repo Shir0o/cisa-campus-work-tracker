@@ -70,6 +70,7 @@ import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { activitiesPageQuery, countActivities } from '../../packages/core/src/data/activities';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
+import { setPrayerTeamPrayer } from '../../packages/core/src/data/prayers';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
 import { traineeWaitingItems } from '../../packages/core/src/inbox';
@@ -739,5 +740,25 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
   it('credential audit — a Trainee is denied the feed (#1966)', async () => {
     await assertFails(getDocs(credentialAuditFeedQuery(dbFor(TRAINEE))));
+  });
+
+  // ── Take a prayer off team prayer: the flag is written, never deleted ─────
+  // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`).
+  // An operator may flip it either way; a viewer may not.
+  it('team prayer toggle — an operator brings a prayer to the team and takes it off', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'prayers', 'p-toggle'), {
+        contactId: 'c-mine', burden: 'Peace', status: 'pending', teamPrayer: false, updatedAt: ISO,
+      });
+    });
+    const by = { uid: STUDENT, name: 'Op' };
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', true, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', false, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
+  });
+
+  it('team prayer toggle — a viewer is refused (negative)', async () => {
+    await assertFails(setPrayerTeamPrayer(dbFor(VIEWER), 'p-toggle', true, { uid: VIEWER, name: 'V' }));
   });
 });

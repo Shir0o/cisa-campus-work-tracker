@@ -4,7 +4,7 @@
 // (#1406 — the phone's version of the web contact-tab fix in #1042).
 import { act, renderHook } from '@testing-library/react-native';
 import { useContactDetailData } from './useContactDetailData';
-import { addPrayer } from './data/prayers';
+import { addPrayer, setPrayerTeamPrayer } from './data/prayers';
 import type { Contact } from '@cisa/core';
 
 jest.mock('./AuthProvider', () => ({
@@ -39,6 +39,7 @@ jest.mock('./data/prayers', () => ({
   addPrayer: jest.fn(() => Promise.resolve()),
   subscribeContactPrayers: () => () => undefined,
   updatePrayerStatus: jest.fn(),
+  setPrayerTeamPrayer: jest.fn(),
 }));
 
 jest.mock('./data/threads', () => ({
@@ -76,5 +77,27 @@ describe('useContactDetailData.addPrayer', () => {
       { contactId: 'c1', burden: 'Peace\n\nfor her dad', teamPrayer: false },
       expect.objectContaining({ uid: 'u1' }),
     );
+  });
+});
+
+describe('useContactDetailData.setPrayerTeamPrayer', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('writes the flag explicitly, both ways', async () => {
+    const { result } = await renderHook(() => useContactDetailData('c1'));
+    const cb = (globalThis as unknown as { __contactCb?: (c: Contact) => void }).__contactCb;
+    await act(() => {
+      cb!({ id: 'c1', name: 'Ama Osei' } as Contact);
+    });
+
+    await act(async () => {
+      await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, false);
+    });
+    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', false, expect.objectContaining({ uid: 'u1' }));
+
+    await act(async () => {
+      await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, true);
+    });
+    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', true, expect.objectContaining({ uid: 'u1' }));
   });
 });

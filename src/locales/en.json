@@ -1920,6 +1920,8 @@
       "composer_log": "Log",
       "prayer_request": "Prayer request",
       "prayer_status": "Prayer status",
+      "bring_to_team_prayer": "Bring to team prayer",
+      "take_off_team_prayer": "Take off team prayer",
       "status_open": "Open",
       "edit_prayer": "Edit prayer",
       "composer_editing_prayer": "Editing prayer",

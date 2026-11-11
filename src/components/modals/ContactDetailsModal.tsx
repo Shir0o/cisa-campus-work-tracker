@@ -618,6 +618,15 @@ export default function ContactDetailsModal({
     }
   };
 
+  const handleSetPrayerTeamPrayer = async (prayer: PrayerRecord, teamPrayer: boolean) => {
+    if (!contact) return;
+    try {
+      await actions.setPrayerTeamPrayer(prayer, teamPrayer, { uid: user?.uid, name: user?.displayName });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "prayers");
+    }
+  };
+
   const handleUpdatePrayerBurden = async (
     prayer: PrayerRecord,
     words: { text: string; context: string },
@@ -821,6 +830,7 @@ export default function ContactDetailsModal({
       onRemoveInteraction={handleRemoveInteraction}
       onUpdateInteraction={handleUpdateInteraction}
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
+      onSetPrayerTeamPrayer={handleSetPrayerTeamPrayer}
       onUpdatePrayerBurden={handleUpdatePrayerBurden}
       interactionAdapterFor={interactionAdapterFor}
       streamViewer={streamViewer}

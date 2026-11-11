@@ -4253,6 +4253,7 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
         addPrayer: vi.fn(),
         updatePrayerStatus: vi.fn(),
         updatePrayerBurden: vi.fn(),
+        setPrayerTeamPrayer: vi.fn(),
         moveStage: vi.fn(),
         changeKind: vi.fn(),
         updateContact: vi.fn(),

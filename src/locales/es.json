@@ -1920,6 +1920,8 @@
       "composer_log": "Registrar",
       "prayer_request": "Petición de oración",
       "prayer_status": "Estado de la oración",
+      "bring_to_team_prayer": "Llevar a la oración del equipo",
+      "take_off_team_prayer": "Quitar de la oración del equipo",
       "status_open": "Abierta",
       "edit_prayer": "Editar oración",
       "composer_editing_prayer": "Editando oración",
