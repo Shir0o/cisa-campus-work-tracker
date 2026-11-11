@@ -621,7 +621,7 @@ export function useContactStory(
     ) => {
       const c = currentContactRef.current;
       if (!c?.id) return;
-      await setPrayerTeamPrayerDoc(prayer.id, teamPrayer, by);
+      await setPrayerTeamPrayerDoc(prayer.id, c.id, teamPrayer, by);
       await logActivity({
         action: teamPrayer ? "brought a prayer to team prayer for" : "took a prayer off team prayer for",
         targetId: c.id,

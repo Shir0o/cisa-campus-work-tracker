@@ -49,11 +49,12 @@ export async function addPrayer(
 
 export async function setPrayerTeamPrayer(
   prayerId: string,
+  contactId: string,
   teamPrayer: boolean,
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   try {
-    await core.setPrayerTeamPrayer(db, prayerId, teamPrayer, by);
+    await core.setPrayerTeamPrayer(db, prayerId, contactId, teamPrayer, by);
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
   }

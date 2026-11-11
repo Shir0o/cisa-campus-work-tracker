@@ -8,7 +8,11 @@ const firestoreMock = vi.hoisted(() => ({
   query: vi.fn(),
   where: vi.fn(),
   onSnapshot: vi.fn(),
+  writeBatch: vi.fn(),
+  deleteField: vi.fn(),
 }));
+const REMOVED = { __deleteField: true };
+const batch = vi.hoisted(() => ({ update: vi.fn(), commit: vi.fn() }));
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
@@ -19,6 +23,8 @@ const by = { uid: 'u1', name: 'Mei Tanaka' };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  firestoreMock.writeBatch.mockReturnValue(batch);
+  firestoreMock.deleteField.mockReturnValue(REMOVED);
   firestoreMock.collection.mockReturnValue(COLLECTION);
   firestoreMock.addDoc.mockResolvedValue({ id: 'p-new' });
 });
@@ -48,19 +54,28 @@ describe('addPrayer (packages/core)', () => {
 describe('setPrayerTeamPrayer (packages/core)', () => {
   beforeEach(() => {
     firestoreMock.doc.mockImplementation((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }));
-    firestoreMock.updateDoc.mockResolvedValue(undefined);
+    batch.update.mockClear();
+    batch.commit.mockClear();
+    batch.commit.mockResolvedValue(undefined);
   });
 
-  it('writes teamPrayer: true to bring a burden to the team', async () => {
-    await setPrayerTeamPrayer({} as never, 'p1', true, by);
-    const [ref, data] = firestoreMock.updateDoc.mock.calls[0];
-    expect(ref).toEqual({ path: 'prayers/p1' });
-    expect(data).toMatchObject({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+  it('brings a burden to the team and clears the contact removal flag in the same batch', async () => {
+    await setPrayerTeamPrayer({} as never, 'p1', 'c1', true, by);
+    const [prayerRef, prayerData] = batch.update.mock.calls[0];
+    expect(prayerRef).toEqual({ path: 'prayers/p1' });
+    expect(prayerData).toMatchObject({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+    const [contactRef, contactData] = batch.update.mock.calls[1];
+    expect(contactRef).toEqual({ path: 'contacts/c1' });
+    expect(contactData).toMatchObject({ prayerListRemoved: REMOVED, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+    expect(batch.commit).toHaveBeenCalledTimes(1);
   });
 
-  // An absent flag reads as the team's, so taking it off must write false.
-  it('writes an explicit teamPrayer: false to take it off', async () => {
-    await setPrayerTeamPrayer({} as never, 'p1', false, by);
-    expect(firestoreMock.updateDoc.mock.calls[0][1].teamPrayer).toBe(false);
+  // An absent flag reads as the team's, so taking it off must write false;
+  // the contact is left alone.
+  it('writes an explicit teamPrayer: false and leaves the contact untouched', async () => {
+    await setPrayerTeamPrayer({} as never, 'p1', 'c1', false, by);
+    expect(batch.update).toHaveBeenCalledTimes(1);
+    expect(batch.update.mock.calls[0][0]).toEqual({ path: 'prayers/p1' });
+    expect(batch.update.mock.calls[0][1].teamPrayer).toBe(false);
   });
 });

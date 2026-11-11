@@ -110,19 +110,22 @@ export async function updatePrayerStatus(
 }
 
 // Bring a burden to the team prayer page, or take it off. Always writes the
-// flag: deleting it would make the burden count as the team's again.
+// flag: deleting it would make the burden count as the team's again. Bringing
+// it to the team also clears the contact's `prayerListRemoved` in the same
+// batch (as addTeamPrayer does) so the person really is on the page; taking it
+// off leaves the contact alone.
 export async function setPrayerTeamPrayer(
   prayerId: string,
+  contactId: string,
   teamPrayer: boolean,
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   try {
-    await updateDoc(doc(db, "prayers", prayerId), {
-      teamPrayer,
-      updatedAt: new Date().toISOString(),
-      updatedBy: by.uid || null,
-      updatedByName: by.name || null,
-    });
+    const stamp = { updatedAt: new Date().toISOString(), updatedBy: by.uid || null, updatedByName: by.name || null };
+    const batch = writeBatch(db);
+    batch.update(doc(db, "prayers", prayerId), { teamPrayer, ...stamp });
+    if (teamPrayer) batch.update(doc(db, "contacts", contactId), { prayerListRemoved: deleteField(), ...stamp });
+    await batch.commit();
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
   }

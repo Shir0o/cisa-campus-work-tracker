@@ -1886,6 +1886,36 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(ref('viewer1'), flip(true)));
     });
 
+    // "Bring to team prayer" is one batch: the prayer flag plus clearing the
+    // contact's team-wide removal, stamped with ISO strings (setPrayerTeamPrayer).
+    it('lets an operator bring a prayer to the team and clear the contact removal in one batch; denies a viewer', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts', 'contact-batch'), {
+          name: 'Test',
+          email: 'test@example.com',
+          visibleTo: ['operator1'],
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'operator2', byName: 'Operator Two' },
+        });
+        await setDoc(doc(fs, 'prayers', 'prayer-batch'), {
+          contactId: 'contact-batch', burden: 'Peace', status: 'pending', teamPrayer: false,
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const run = (uid: string) => {
+        const fs = getFirestore({ uid });
+        const stamp = { updatedAt: '2026-10-19T00:00:00.000Z', updatedBy: uid, updatedByName: 'X' };
+        const batch = writeBatch(fs);
+        batch.update(doc(fs, 'prayers', 'prayer-batch'), { teamPrayer: true, ...stamp });
+        batch.update(doc(fs, 'contacts', 'contact-batch'), { prayerListRemoved: deleteField(), ...stamp });
+        return batch.commit();
+      };
+      await assertFails(run('viewer1'));
+      await assertSucceeds(run('operator1'));
+    });
+
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
       const db = getFirestore({ uid: 'operator1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {

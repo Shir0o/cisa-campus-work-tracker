@@ -458,19 +458,31 @@ describe('placeholder prayer burdens (#1691, #1765)', () => {
 
 describe('setPrayerTeamPrayer', () => {
   const by = { uid: 'u1', name: 'Tony' };
-  beforeEach(() => mock(updateDoc).mockClear());
+  beforeEach(() => {
+    mock(hoisted.batchUpdate).mockClear();
+    mock(hoisted.batchCommit).mockClear();
+  });
 
-  it('writes teamPrayer: true to bring a burden to the team', async () => {
-    await setPrayerTeamPrayer('p1', true, by);
-    expect(updateDoc).toHaveBeenCalledWith(
+  it('brings a burden to the team and clears the contact removal flag in the same batch', async () => {
+    await setPrayerTeamPrayer('p1', 'c1', true, by);
+    expect(hoisted.batchUpdate).toHaveBeenNthCalledWith(
+      1,
       { path: 'prayers/p1' },
       expect.objectContaining({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Tony' }),
     );
+    expect(hoisted.batchUpdate).toHaveBeenNthCalledWith(
+      2,
+      { path: 'contacts/c1' },
+      expect.objectContaining({ prayerListRemoved: hoisted.removed, updatedBy: 'u1' }),
+    );
+    expect(hoisted.batchCommit).toHaveBeenCalledTimes(1);
   });
 
-  // Deleting the field would make the burden count as the team's again.
-  it('writes an explicit teamPrayer: false to take it off', async () => {
-    await setPrayerTeamPrayer('p1', false, by);
-    expect(mock(updateDoc).mock.calls[0][1].teamPrayer).toBe(false);
+  // Deleting the field would make the burden count as the team's again; the
+  // contact is left alone.
+  it('writes an explicit teamPrayer: false and leaves the contact untouched', async () => {
+    await setPrayerTeamPrayer('p1', 'c1', false, by);
+    expect(hoisted.batchUpdate).toHaveBeenCalledTimes(1);
+    expect(mock(hoisted.batchUpdate).mock.calls[0][1].teamPrayer).toBe(false);
   });
 });

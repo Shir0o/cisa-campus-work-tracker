@@ -215,7 +215,7 @@ export function useContactDetailData(contactId: string) {
     // reads as the team's, so taking it off must store false.
     setPrayerTeamPrayer: async (prayer: PrayerRecord, teamPrayer: boolean) => {
       if (!contact) return;
-      await setPrayerTeamPrayerApi(prayer.id, teamPrayer, by);
+      await setPrayerTeamPrayerApi(prayer.id, contactId, teamPrayer, by);
       void logActivity({
         action: teamPrayer ? 'brought a prayer to team prayer for' : 'took a prayer off team prayer for',
         targetId: contactId,

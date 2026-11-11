@@ -742,23 +742,35 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await assertFails(getDocs(credentialAuditFeedQuery(dbFor(TRAINEE))));
   });
 
-  // ── Take a prayer off team prayer: the flag is written, never deleted ─────
-  // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`).
-  // An operator may flip it either way; a viewer may not.
-  it('team prayer toggle — an operator brings a prayer to the team and takes it off', async () => {
+  // ── Team prayer toggle: the flag is written, never deleted ────────────────
+  // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`). Bringing
+  // it to the team is a batch that also clears the contact's `prayerListRemoved`.
+  // An operator may do either; a viewer may not.
+  it('team prayer toggle — an operator brings a prayer to the team (clearing the contact removal) and takes it off', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'prayers', 'p-toggle'), {
         contactId: 'c-mine', burden: 'Peace', status: 'pending', teamPrayer: false, updatedAt: ISO,
       });
+      await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
+        prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
+      });
     });
     const by = { uid: STUDENT, name: 'Op' };
-    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', true, by)).resolves.toBeUndefined();
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', true, by)).resolves.toBeUndefined();
     expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
-    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', false, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).not.toHaveProperty('prayerListRemoved');
+
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
+        prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
+      });
+    });
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', false, by)).resolves.toBeUndefined();
     expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
+    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).toHaveProperty('prayerListRemoved'); // untouched
   });
 
   it('team prayer toggle — a viewer is refused (negative)', async () => {
-    await assertFails(setPrayerTeamPrayer(dbFor(VIEWER), 'p-toggle', true, { uid: VIEWER, name: 'V' }));
+    await assertFails(setPrayerTeamPrayer(dbFor(VIEWER), 'p-toggle', 'c-mine', true, { uid: VIEWER, name: 'V' }));
   });
 });

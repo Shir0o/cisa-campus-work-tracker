@@ -93,11 +93,11 @@ describe('useContactDetailData.setPrayerTeamPrayer', () => {
     await act(async () => {
       await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, false);
     });
-    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', false, expect.objectContaining({ uid: 'u1' }));
+    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', 'c1', false, expect.objectContaining({ uid: 'u1' }));
 
     await act(async () => {
       await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, true);
     });
-    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', true, expect.objectContaining({ uid: 'u1' }));
+    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', 'c1', true, expect.objectContaining({ uid: 'u1' }));
   });
 });
