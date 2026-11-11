@@ -1,6 +1,37 @@
 {
-  "latestReleaseId": "2026-11-05-v1.15.0",
+  "latestReleaseId": "2026-11-11-v1.15.1",
   "releases": [
+    {
+      "id": "2026-11-11-v1.15.1",
+      "version": "1.15.1",
+      "title": "Release 1.15.1",
+      "date": "2026-11-11",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Simplify and curate in-app release notes.",
+        "Use elevated dark panel token for Next Up card in dark mode."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Simplify and curate in-app release notes",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Use elevated dark panel token for Next Up card in dark mode",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-11-05-v1.15.0",
       "version": "1.15.0",
