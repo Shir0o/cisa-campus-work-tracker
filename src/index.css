@@ -159,6 +159,17 @@
     --rail-on-selected: #0A0A0B;
     --rail-line: rgba(255, 255, 255, 0.10);
 
+    /* My Day's Next up card, light: the other inverted surface on the page,
+       a near-black slab carrying white ink. In dark it rises instead — same
+       move as the rail. docs/design/DRIFT.md #67. */
+    --nextup: #131316;
+    --nextup-on: #FFFFFF;
+    --nextup-on-dim: rgba(255, 255, 255, 0.75);
+    --nextup-on-body: rgba(255, 255, 255, 0.85);
+    --nextup-chip: rgba(255, 255, 255, 0.15);
+    --nextup-chip-line: rgba(255, 255, 255, 0.20);
+    --nextup-line: transparent;
+
     /* Shape comes from `@theme` alone (ADR 0009). A theme block must not
        re-declare a `--radius-*` token, or light and dark drift apart.
        Guarded by src/test/radiusToken.test.ts. */
@@ -283,6 +294,18 @@
     --rail-selected: #FAFAFA;
     --rail-on-selected: #0A0A0B;
     --rail-line: #2A2A2E;
+
+    /* Next up, dark: the artboard draws an elevated card here, not an
+       inversion — #161618 on the #0A0A0B canvas with dim grey ink, the same
+       panel the cards beside it use. The old near-white `--accent-strong`
+       fill was a blinding slab. docs/design/DRIFT.md #67. */
+    --nextup: #161618;
+    --nextup-on: #FAFAFA;
+    --nextup-on-dim: #A1A1AA;
+    --nextup-on-body: #A1A1AA;
+    --nextup-chip: #202023;
+    --nextup-chip-line: #2A2A2E;
+    --nextup-line: #2A2A2E;
 
     /* Same hue angles as the light theme; lightness and chroma retuned for
        the dark canvas. */
@@ -5153,6 +5176,22 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 }
 .cal-mark.s { font-size: 11px; padding: 1px 8px; }
 .md-next .cal-mark { border-color: rgba(255,255,255,.28); color: rgba(255,255,255,.78); }
+
+/* My Day's Next up card. A near-black slab in light, an elevated panel in
+   dark (#67). Its eyebrow, body and chips read the slab's own ink tokens, so
+   they follow it in both themes instead of borrowing the inverted button ink. */
+.md-next-slab {
+  background: var(--nextup);
+  color: var(--nextup-on);
+  border: 1px solid var(--nextup-line);
+}
+.md-next-slab .md-next-eyebrow { color: var(--nextup-on-dim); }
+.md-next-slab .md-next-body { color: var(--nextup-on-body); }
+.md-next-slab .md-next-chip {
+  color: var(--nextup-on-body);
+  background: var(--nextup-chip);
+  border-color: var(--nextup-chip-line);
+}
 
 /* "Mei is away Thu–Sun." - the quiet line at the foot of the week */
 .md-week-away {

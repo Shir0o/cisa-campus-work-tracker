@@ -349,3 +349,17 @@ the shell. Entries #64 and #65 resolved the wrong way.
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
 | 66 | Spec #1444 story 55 lists Contact details among the large one-off popups, and #64/#65 wrapped the contact page (`/people/:id`), Combine contacts and Combine tags in `PopupFrame` on their routes. But the contact page is a page per ADR 0034, and Combine contacts and Combine tags became pages in the combine redesign (#1425/#1426). | **The code before #1519/#1521** — story 55 was wrong to list Contact details | All three are unwrapped back to pages in the app shell: Combine contacts and Combine tags get their page header back (and Combine tags its sticky **Combine {n} contacts** action); the contact page gets back its own layered Escape (Thread → pane → page) and its page footer for edit Save/Cancel. Their tests now assert no dialog role, no scrim and no sheet grabber at phone width. The other popups those PRs moved (Tag gender, Moving up a year, New contact, Attendance sync, Smart import) stay in the frame. |
+
+### 2026-11-11 — My Day's Next up card in dark
+
+Found walking `/my-day` in dark while auditing the card fills: the fix in #9
+made the card's ink legible but left its **fill** inverted. `--accent-strong` is
+`#131316` in light and `#FAFAFA` in dark, so in dark the slab became a
+near-white block — the brightest object on a page whose whole premise is a
+near-black canvas. The artboard draws this card, in dark, as `#161618`: the same
+elevated panel the Figures card and the rail use. Light is unchanged and stays
+the near-black slab.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 67 | The Next up card was `bg-accent-strong text-accent-on` with `/75`, `/80`, `/85`, `bg-accent-on/15` and `border-accent-on/20` children. That pair is correct for a **button** — it flips to stay legible — but wrong for a **surface**: in dark the card rendered as a `#FAFAFA` slab, the single loudest thing on My Day, while [`ink-dark/Floating.dc.html:143`](ink-dark/Floating.dc.html) draws it `#161618` with `#A1A1AA` secondary ink. The `-on` alpha variants made every child inherit the inversion, so there was no way to fix the fill without fixing the ink with it. | **Drawing** — dark rises, it does not invert (the rail's rule in #1/ADR 0003) | The card gets its own three-value token namespace instead of borrowing the accent pair: `--nextup` / `--nextup-on` / `--nextup-on-dim` / `--nextup-on-body` / `--nextup-chip` / `--nextup-chip-line` / `--nextup-line`, defined in both theme blocks. Light stays `#131316` with white ink; dark is `#161618` with a `#2A2A2E` hairline, `#FAFAFA` heading and `#A1A1AA` eyebrow, body and chips — all above 6:1. The card is now `.md-next-slab` and its children read `.md-next-eyebrow` / `.md-next-body` / `.md-next-chip`, so a future theme flips the slab and the ink together. |
