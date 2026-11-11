@@ -511,6 +511,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
                   onLongPress={(row) => setHeld(row)}
                   onOpenThread={openRowThread}
                   onCloseAsk={(row) => void data.closeAsk(row.message)}
+                  nameOf={(uid) => mentionCandidates.find((m) => m.uid === uid)?.name ?? ''}
                   editingId={editingMessage?.id ?? null}
                   onSaveEdit={async (body) => {
                     if (!editingMessage) return;
@@ -529,27 +530,27 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
       {tab === 'conversation' && canWrite && (
         <StreamComposer
           key={showing}
-          kinds={showing === 'open'}
           audience={
             showing === 'team'
               ? t('mobile.contact.audience_full_timers')
               : t('mobile.contact.audience_conversation').replace('{name}', first)
           }
-          askAudience={t('mobile.contact.audience_conversation_ask').replace('{name}', first)}
           locked={showing === 'team'}
-          placeholder={t('mobile.contact.placeholder_full_timers')}
+          placeholder={showing === 'team' ? t('mobile.contact.placeholder_full_timers') : t('mobile.stream.placeholder_comment')}
           candidates={showing === 'team' ? mentionCandidates.filter((m) => m.role === 'admin') : mentionCandidates}
           label={
             showing === 'team'
               ? t('mobile.contact.compose_full_timers')
               : t('mobile.contact.compose_conversation').replace('{name}', first)
           }
-          onSend={({ body, kind, mentionedUserIds }) =>
-            void data.postThreadMessage(
-              showing === 'team'
-                ? { interactionId: null, scope: 'team', kind: 'comment', body, mentionedUserIds }
-                : { interactionId: null, scope: null, kind, body, mentionedUserIds },
-            )
+          onSend={({ body, mentionedUserIds }) =>
+            void data.postThreadMessage({
+              interactionId: null,
+              scope: showing === 'team' ? 'team' : null,
+              kind: 'comment',
+              body,
+              mentionedUserIds,
+            })
           }
         />
       )}

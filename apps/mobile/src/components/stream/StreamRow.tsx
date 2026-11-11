@@ -3,18 +3,19 @@
 // A continuation drops the avatar and the name line. Everyone is left-aligned,
 // the viewer included, under their own name (G1–G3). Long-press stands in for
 // the web's hover toolbar (G7); an ask carries its state and, while open, the
-// buttons this viewer may press (K1–K4).
+// buttons this viewer may press (K1–K4). So does an @mention: Done for those it
+// names, "Waiting on …" and Never mind for its sender, a quiet line once closed.
 //
 // Source-agnostic: it draws a core `StreamRow` and hands events back, so the
 // person screen, a Thread and the phone's chat all use it.
 import { useState } from 'react';
 import { Image, Pressable, Text, TextInput, View, type TextStyle } from 'react-native';
-import type { AskAction, StreamMessage, StreamRow as StreamRowModel, ThreadSummary } from '@cisa/core';
+import type { AskAction, MentionAction, StreamMessage, StreamRow as StreamRowModel, ThreadSummary } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
 import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
-import { askLine, repliesLabel, timeOf, whenOf } from './format';
+import { askLine, mentionLine, repliesLabel, timeOf, whenOf } from './format';
 
 export const AVATAR = 36;
 const GAP = 10;
@@ -27,7 +28,10 @@ export interface StreamRowProps<M extends StreamMessage> {
   onLongPress?: (row: StreamRowModel<M>) => void;
   /** Present where the stream has Threads; the chip opens it. */
   onOpenThread?: (row: StreamRowModel<M>) => void;
-  onCloseAsk?: (row: StreamRowModel<M>, how: AskAction) => void;
+  /** Closes an ask (I followed up / Never mind) or an @mention (Done / Never mind). */
+  onCloseAsk?: (row: StreamRowModel<M>, how: AskAction | MentionAction) => void;
+  /** A teammate's name by uid, for "Waiting on …" under an @mention. */
+  nameOf?: (uid: string) => string;
   // What a source adds to its rows. Each is optional, so a stream that has none
   // of them (the person screen) draws as before.
   /** The sender's profile photo, where they have one; initials otherwise. */
@@ -62,6 +66,7 @@ export function StreamRowView<M extends StreamMessage>({
   onLongPress,
   onOpenThread,
   onCloseAsk,
+  nameOf,
   avatarUrl,
   badge,
   goneLabel,
@@ -76,7 +81,8 @@ export function StreamRowView<M extends StreamMessage>({
 }: StreamRowProps<M>) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
-  const { message: m, continuation, tag, ask, thread } = row;
+  const { message: m, continuation, tag, ask, mention, thread } = row;
+  const mentionActions = readOnly ? [] : row.mentionActions;
   const editing = !!editingId && editingId === m.id;
   const actions = readOnly ? [] : row.askActions;
   const withdrawn = ask?.status === 'withdrawn';
@@ -171,6 +177,28 @@ export function StreamRowView<M extends StreamMessage>({
               <AskButton label={t('mobile.stream.ask_followed_up')} primary onPress={() => onCloseAsk?.(row, 'followedUp')} />
             )}
             {actions.includes('neverMind') && (
+              <AskButton label={t('mobile.stream.ask_never_mind')} onPress={() => onCloseAsk?.(row, 'neverMind')} />
+            )}
+          </View>
+        )}
+
+        {!editing && !gone && !!mention && (mention.status !== 'open' || mentionActions.length > 0) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+            {(mention.status !== 'open' || mentionActions.includes('neverMind')) && (
+              <Text
+                style={{
+                  fontFamily: font.semi,
+                  fontSize: fs(12),
+                  color: mention.status === 'done' ? c.card.green : c.card.ink3,
+                }}
+              >
+                {mentionLine(mention, now, t, language, nameOf ?? (() => ''))}
+              </Text>
+            )}
+            {mentionActions.includes('done') && (
+              <AskButton label={t('mobile.stream.mention_done')} primary onPress={() => onCloseAsk?.(row, 'done')} />
+            )}
+            {mentionActions.includes('neverMind') && (
               <AskButton label={t('mobile.stream.ask_never_mind')} onPress={() => onCloseAsk?.(row, 'neverMind')} />
             )}
           </View>

@@ -110,6 +110,43 @@ describe('StreamRowView — what a chat adds to the row', () => {
   });
 });
 
+describe('StreamRowView — an @mention waits on the people it names', () => {
+  const mention = (over: Partial<StreamMessage> = {}) =>
+    m('mn', { kind: 'comment', mentionedUserIds: ['tony', 'grace'], ...over });
+  const rowFor = (msg: StreamMessage, uid: string) =>
+    buildStream({ messages: [msg], viewer: { uid, role: 'admin' }, now: NOW }).find((i) => i.type === 'row') as StreamRow;
+  const names: Record<string, string> = { tony: 'Tony Wang', grace: 'Grace Liu' };
+
+  it('offers a mentioned viewer Done, which closes it', async () => {
+    const onCloseAsk = jest.fn();
+    const { getByRole } = await wrap(<StreamRowView row={rowFor(mention(), 'tony')} now={NOW} onCloseAsk={onCloseAsk} />);
+    await fireEvent.press(getByRole('button', { name: 'Done' }));
+    expect(onCloseAsk).toHaveBeenCalledWith(expect.objectContaining({ message: expect.objectContaining({ id: 'mn' }) }), 'done');
+  });
+
+  it('shows its sender who it waits on, and Never mind', async () => {
+    const onCloseAsk = jest.fn();
+    const { getByRole, getByText, queryByRole } = await wrap(
+      <StreamRowView row={rowFor(mention(), 'maria')} now={NOW} onCloseAsk={onCloseAsk} nameOf={(uid) => names[uid] ?? ''} />,
+    );
+    expect(getByText('Waiting on Tony and Grace')).toBeTruthy();
+    expect(queryByRole('button', { name: 'Done' })).toBeNull();
+    await fireEvent.press(getByRole('button', { name: 'Never mind' }));
+    expect(onCloseAsk).toHaveBeenCalledWith(expect.anything(), 'neverMind');
+  });
+
+  it('says quietly who closed it, with nothing to press', async () => {
+    const { getByText, queryByRole } = await wrap(
+      <StreamRowView
+        row={rowFor(mention({ closedBy: 'grace', closedByName: 'Grace Liu', closedAt: '2026-09-30T11:00:00.000Z' }), 'tony')}
+        now={NOW}
+      />,
+    );
+    expect(getByText(/✓ Grace · done /)).toBeTruthy();
+    expect(queryByRole('button', { name: 'Done' })).toBeNull();
+  });
+});
+
 describe('StreamActionSheet — Pin', () => {
   const row = rowOf(m('a'));
   it('offers Pin or Unpin only when a handler is given', async () => {

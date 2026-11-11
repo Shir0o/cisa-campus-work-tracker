@@ -275,11 +275,12 @@ export function useContactDetailData(contactId: string) {
       await editThreadMessageApi(contactId, message.id, body);
     },
 
-    // I followed up / Never mind — both close the ask as the viewer; one
-    // closed by its own asker reads as withdrawn (#813).
+    // I followed up / Never mind on an ask, Done / Never mind on an @mention —
+    // each closes it as the viewer; one closed by its own author reads as
+    // withdrawn (#813).
     closeAsk: async (message: ThreadMessage) => {
       if (!contact || !uid) return;
-      await closeFollowUpAsk(contactId, message.id, { uid, name: by.name });
+      await closeFollowUpAsk(contactId, message.id, { uid, name: by.name }, message.scope);
     },
 
     addCollaborator: async (staffId: string, staffName: string) => {

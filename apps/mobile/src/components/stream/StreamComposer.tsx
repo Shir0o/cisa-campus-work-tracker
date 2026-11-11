@@ -1,8 +1,9 @@
 // The one composer box (ADR 0033, C1–C5), phone edition: the audience line
-// above it, then one box holding — on a Conversation only — the kind chips, the
-// staged attachments, the words, the @ and attach tools, and send. A selected
-// Follow-up ask chip takes the amber and its own placeholder, and the audience
-// line says the ask's reach. It holds its own draft; sending clears it.
+// above it, then one box holding the staged attachments, the words, the @ and
+// attach tools, and send. Every message is a plain comment: an @mention is the
+// only "for you" signal, and while the draft names someone a quiet line above
+// the box says who will get it on their list. It holds its own draft; sending
+// clears it.
 //
 // @mention candidates are the stream's own (ADR 0007) and the picked ones
 // reconcile against the body as sent — a name edited out notifies nobody. A
@@ -12,6 +13,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { joinNames } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { MULTILINE_FIELD_MAX_HEIGHT, useFieldReveal, type Revealable } from '../ui/KeyboardField';
@@ -22,14 +24,6 @@ import {
   type MentionUser,
 } from '../../lib/mentions';
 
-/** Comment · Question · Ask a follow-up (#813); `nudge` is a Follow-up ask. */
-export type StreamComposeKind = 'comment' | 'question' | 'nudge';
-const KINDS: { kind: StreamComposeKind; label: string; placeholder: string }[] = [
-  { kind: 'comment', label: 'mobile.stream.kind_comment', placeholder: 'mobile.stream.placeholder_comment' },
-  { kind: 'question', label: 'mobile.stream.kind_question', placeholder: 'mobile.stream.placeholder_question' },
-  { kind: 'nudge', label: 'mobile.stream.kind_follow_up', placeholder: 'mobile.stream.placeholder_follow_up' },
-];
-
 /** A file or contact card staged to go with the next post (C5). */
 export interface StreamStagedItem {
   key: string;
@@ -39,9 +33,7 @@ export interface StreamStagedItem {
 
 export function StreamComposer({
   audience,
-  askAudience,
   locked,
-  kinds,
   placeholder,
   label,
   candidates,
@@ -52,13 +44,8 @@ export function StreamComposer({
 }: {
   /** Whose eyes a message reaches (C3). */
   audience?: string;
-  /** The same while a Follow-up ask is being written. */
-  askAudience?: string;
   /** A lock before the audience line — the Full-timers stream. */
   locked?: boolean;
-  /** Kind chips inside the box — a Conversation only. */
-  kinds?: boolean;
-  /** Without kinds; with kinds each kind has its own. */
   placeholder?: string;
   /** The field's accessible name. */
   label: string;
@@ -69,22 +56,31 @@ export function StreamComposer({
   /** The paperclip — offered only where the source takes attachments (chat). */
   onAttach?: () => void;
   onUnstage?: (key: string) => void;
-  onSend: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => void;
+  onSend: (input: { body: string; mentionedUserIds: string[] }) => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
   const reveal = useFieldReveal();
   const field = useRef<TextInput>(null);
-  const [kind, setKind] = useState<StreamComposeKind>('comment');
   const [body, setBody] = useState('');
   const [sel, setSel] = useState(0);
   const [picked, setPicked] = useState<Array<{ uid: string; name: string }>>([]);
 
   const roster = candidates ?? [];
   const hasStaged = !!staged && staged.length > 0;
-  const ask = kinds && kind === 'nudge';
-  const line = ask && askAudience ? askAudience : audience;
-  const hint = kinds ? t(KINDS.find((k) => k.kind === kind)!.placeholder) : placeholder;
+  // Who the draft names, as it stands: a name picked and then edited out is
+  // nobody's (ADR 0007).
+  const named = reconcileMentionedUsers(body, picked);
+  const namedLine =
+    named.length > 0
+      ? t('mobile.stream.mention_list_line').replace(
+          '{names}',
+          joinNames(
+            named.map((uid) => (picked.find((p) => p.uid === uid)?.name || '').trim().split(/\s+/)[0]),
+            t('mobile.stream.names_and'),
+          ),
+        )
+      : null;
 
   const mention = useMemo(() => extractMentionCandidate(body, sel), [body, sel]);
   const matches = useMemo(
@@ -124,15 +120,21 @@ export function StreamComposer({
     setBody('');
     setPicked([]);
     setSel(0);
-    onSend({ body: said, kind: kinds ? kind : 'comment', mentionedUserIds });
+    onSend({ body: said, mentionedUserIds });
   };
 
   return (
     <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 10, backgroundColor: c.room.bg }}>
-      {!!line && (
+      {!!audience && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, marginLeft: 4 }}>
           {locked && <Ionicons name="lock-closed" size={12} color={c.room.ink2} />}
-          <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink2 }}>{line}</Text>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink2 }}>{audience}</Text>
+        </View>
+      )}
+      {!!namedLine && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, marginLeft: 4 }}>
+          <Ionicons name="at" size={12} color={c.room.ink2} />
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink2 }}>{namedLine}</Text>
         </View>
       )}
       <View
@@ -142,39 +144,10 @@ export function StreamComposer({
           borderColor: c.card.border,
           backgroundColor: c.card.bg,
           paddingHorizontal: 10,
-          paddingTop: kinds ? 4 : 8,
+          paddingTop: 8,
           paddingBottom: 4,
         }}
       >
-        {kinds && (
-          <View accessibilityRole="radiogroup" accessibilityLabel={t('mobile.stream.kind_group')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-            {KINDS.map((k) => {
-              const on = k.kind === kind;
-              const tone = k.kind === 'nudge' ? c.card.tones.due : null;
-              return (
-                <Pressable
-                  key={k.kind}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => setKind(k.kind)}
-                  style={({ pressed }) => ({
-                    minHeight: 44,
-                    justifyContent: 'center',
-                    paddingHorizontal: 12,
-                    borderRadius: 999,
-                    backgroundColor: on ? (tone ? tone.band : c.card.bg2) : 'transparent',
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ fontFamily: on ? font.bold : font.medium, fontSize: fs(12.5), color: on ? (tone ? tone.text : c.card.ink) : c.card.ink2 }}>
-                    {t(k.label)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-
         {hasStaged && (
           <View accessibilityLabel={t('mobile.stream.staged')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 6, paddingBottom: 2 }}>
             {staged!.map((s) => (
@@ -246,7 +219,7 @@ export function StreamComposer({
             onChangeText={change}
             onSelectionChange={(e) => setSel(e.nativeEvent.selection.start)}
             onFocus={() => reveal?.(field.current as unknown as Revealable | null)}
-            placeholder={hint}
+            placeholder={placeholder}
             placeholderTextColor={c.card.ink3}
             accessibilityLabel={label}
             multiline

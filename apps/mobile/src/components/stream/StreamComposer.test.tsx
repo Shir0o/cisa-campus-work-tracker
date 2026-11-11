@@ -49,7 +49,7 @@ describe('StreamComposer — @mention picker (C4)', () => {
     await type(getByLabelText('Write'), '@To');
     await fireEvent.press(getByText('Tony Wang'));
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(onSend).toHaveBeenCalledWith({ body: '@Tony Wang', kind: 'comment', mentionedUserIds: ['u1'] });
+    expect(onSend).toHaveBeenCalledWith({ body: '@Tony Wang', mentionedUserIds: ['u1'] });
   });
 
   it('drops the notification when the name is edited out before sending', async () => {
@@ -62,7 +62,23 @@ describe('StreamComposer — @mention picker (C4)', () => {
     await fireEvent.press(getByText('Tony Wang'));
     await fireEvent.changeText(input, 'never mind');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(onSend).toHaveBeenCalledWith({ body: 'never mind', kind: 'comment', mentionedUserIds: [] });
+    expect(onSend).toHaveBeenCalledWith({ body: 'never mind', mentionedUserIds: [] });
+  });
+});
+
+describe('StreamComposer — the list line', () => {
+  it('says who will get it on their list only while the draft @mentions someone', async () => {
+    const { getByLabelText, getByText, queryByText } = await wrap(
+      <StreamComposer label="Write" candidates={roster} onSend={jest.fn()} />,
+    );
+    const input = getByLabelText('Write');
+    await type(input, 'Hi ');
+    expect(queryByText(/will get this on their list/)).toBeNull();
+    await type(input, 'Hi @To');
+    await fireEvent.press(getByText('Tony Wang'));
+    expect(getByText('Tony will get this on their list')).toBeTruthy();
+    await type(input, 'never mind');
+    expect(queryByText(/will get this on their list/)).toBeNull();
   });
 });
 
@@ -96,7 +112,7 @@ describe('StreamComposer — chat attachments (C5)', () => {
       />,
     );
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(onSend).toHaveBeenCalledWith({ body: '', kind: 'comment', mentionedUserIds: [] });
+    expect(onSend).toHaveBeenCalledWith({ body: '', mentionedUserIds: [] });
   });
 });
 

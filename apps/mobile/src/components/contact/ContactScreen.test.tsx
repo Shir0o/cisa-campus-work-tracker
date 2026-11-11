@@ -934,19 +934,19 @@ describe('ContactScreen', () => {
       expect(queryByRole('button', { name: 'Ask someone to follow up' })).toBeNull();
     });
 
-    it('offers Comment, Question and Ask a follow-up on the Conversation composer, and posts the chosen kind', async () => {
+    it('offers no kind chips on the Conversation composer, and posts a plain comment', async () => {
       const post = jest.fn();
       (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'manager' });
       (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, postThreadMessage: post });
-      const { getByRole, getByLabelText } = await render(
+      const { getByRole, getByLabelText, queryByRole } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="conversation" />
         </ThemeProvider>,
       );
-      await fireEvent.press(getByRole('button', { name: 'Ask someone to follow up' }));
+      expect(queryByRole('button', { name: 'Ask someone to follow up' })).toBeNull();
       await fireEvent.changeText(getByLabelText('Write to everyone tied to Sarah'), 'Text her Thursday');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
-      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'nudge', body: 'Text her Thursday', mentionedUserIds: [] });
+      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'comment', body: 'Text her Thursday', mentionedUserIds: [] });
     });
 
     it('names your own messages with your name, not "You"', async () => {

@@ -2,7 +2,7 @@
 // day dividers, times, an ask's state line, a Thread chip's count. The model
 // says *what* (a calendar day, days open, who closed it); this says it in the
 // reader's language.
-import type { AskState, StreamDay } from '@cisa/core';
+import { joinNames, type AskState, type MentionState, type StreamDay } from '@cisa/core';
 import type { TranslateFunction } from '../../lib/LanguageProvider';
 
 const localeOf = (lang: string) => (lang === 'es' ? 'es' : 'en-US');
@@ -43,6 +43,28 @@ export function askLine(ask: AskState, now: number, t: TranslateFunction, lang: 
   }
   const key = ask.status === 'followedUp' ? 'mobile.stream.ask_done' : 'mobile.stream.ask_withdrawn';
   return t(key).replace('{name}', ask.by.name).replace('{when}', whenOf(ask.at, now, t, lang));
+}
+
+/** The line under an @mention: who it still waits on (for its sender), or who
+ *  closed it and when. */
+export function mentionLine(
+  mention: MentionState,
+  now: number,
+  t: TranslateFunction,
+  lang: string,
+  nameOf: (uid: string) => string,
+): string {
+  const first = (name: string) => (name || t('mobile.stream.someone')).trim().split(/\s+/)[0];
+  if (mention.status === 'open') {
+    return t('mobile.stream.mention_waiting').replace(
+      '{names}',
+      joinNames(mention.waitingOn.map((uid) => first(nameOf(uid))), t('mobile.stream.names_and')),
+    );
+  }
+  const key = mention.status === 'done' ? 'mobile.stream.mention_closed' : 'mobile.stream.ask_withdrawn';
+  return t(key)
+    .replace('{name}', mention.status === 'done' ? first(mention.by.name) : mention.by.name)
+    .replace('{when}', whenOf(mention.at, now, t, lang));
 }
 
 /** "1 reply" / "N replies". */
