@@ -12,22 +12,20 @@ import {
   type MentionMatch,
   type MentionUser,
 } from "../../lib/mentions";
-import { COMPOSE_KINDS, COMPOSE_ORDER } from "../ComposeKindPicker";
-import type { StreamComposeKind, StreamStagedItem } from "./types";
+import { joinNames } from "../../../packages/core/src/mentions";
+import type { StreamStagedItem } from "./types";
 
-// The one composer box (C1–C3): the audience above, then the box — kind chips
-// inside it where the source has kinds, the text, and a tools row of @, the
-// shortcut hint and send. ⌘/Ctrl+Enter sends; Enter picks a mention.
+// The one composer box (C1–C3): the audience above, then the box — the text,
+// and a tools row of @, the shortcut hint and send. ⌘/Ctrl+Enter sends; Enter
+// picks a mention. Every message is a plain comment: an @mention is the only
+// "for you" signal, and while the draft names someone a quiet line above the
+// box says who will get it on their list.
 
 type SubmitResult = void | Promise<void>;
 
 interface StreamComposerProps {
-  /** Offer Comment · Question · Ask a follow-up inside the box. */
-  kinds: boolean;
   audience?: string;
-  askAudience?: string;
   locked?: boolean;
-  /** Placeholder for a source without kinds (a reply, say). */
   placeholder?: string;
   hint: string;
   label: string;
@@ -44,7 +42,7 @@ interface StreamComposerProps {
    *  was edited meanwhile) and stays where it was if it rejects, so a failed
    *  send loses nothing. A send pressed while one is pending is held back; the
    *  draft stays for the next press. */
-  onSubmit: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => SubmitResult;
+  onSubmit: (input: { body: string; mentionedUserIds: string[] }) => SubmitResult;
 }
 
 function initials(name: string): string {
@@ -53,9 +51,7 @@ function initials(name: string): string {
 }
 
 export default function StreamComposer({
-  kinds,
   audience,
-  askAudience,
   locked,
   placeholder,
   hint,
@@ -80,7 +76,6 @@ export default function StreamComposer({
     setAnchor(el);
   }, []);
   const [draft, setDraft] = useState("");
-  const [kind, setKind] = useState<StreamComposeKind>("comment");
   const [mention, setMention] = useState<MentionMatch | null>(null);
   const [selected, setSelected] = useState(0);
   const [picked, setPicked] = useState<Array<{ uid: string; name: string }>>([]);
@@ -150,16 +145,15 @@ export default function StreamComposer({
     }
     const clear = () => {
       // Text typed while the write saved is a newer draft: keep it, and the
-      // kind and mentions that go with it (#1573).
+      // mentions that go with it (#1573).
       if (draftRef.current.trim() !== body) return;
       setDraft("");
       setPicked([]);
       setMention(null);
-      setKind("comment");
     };
     // Mentions reconcile against the body as sent (ADR 0007): a name picked
     // and then edited out notifies nobody.
-    const result = onSubmit({ body, kind: kinds ? kind : "comment", mentionedUserIds: reconcileMentionedUsers(body, picked) });
+    const result = onSubmit({ body, mentionedUserIds: reconcileMentionedUsers(body, picked) });
     if (result && typeof result.then === "function") {
       setBusy(true);
       // A rejection keeps the draft; whoever returned the promise says why.
@@ -180,8 +174,19 @@ export default function StreamComposer({
     handler: submit,
   });
 
-  const line = kind === "nudge" && askAudience ? askAudience : audience;
-  const ph = kinds ? t(COMPOSE_KINDS[kind].placeholder) : placeholder;
+  // Who the draft names, as it stands: a name picked and then edited out is
+  // nobody's (ADR 0007).
+  const named = reconcileMentionedUsers(draft, picked);
+  const namedLine =
+    named.length > 0
+      ? t("stream.mention_list_line").replace(
+          "{names}",
+          joinNames(
+            named.map((uid) => (picked.find((p) => p.uid === uid)?.name || "").trim().split(/\s+/)[0]),
+            t("stream.names_and"),
+          ),
+        )
+      : null;
   // "⌘↵ to post" is a keyboard hint. Below the phone breakpoint the pane is a
   // thumb-driven composer with no Command key, so the hint is not rendered at
   // all rather than left for CSS to hide (#1781).
@@ -192,28 +197,19 @@ export default function StreamComposer({
       {choosing && (
         <MentionAutocomplete candidates={matches} selectedIndex={selected} onSelect={pick} anchorEl={anchor} />
       )}
-      {line && (
+      {audience && (
         <div className="strm-aud">
           {locked && <Lock className="w-3 h-3" aria-hidden />}
-          {line}
+          {audience}
+        </div>
+      )}
+      {namedLine && (
+        <div className="strm-aud strm-aud-list" data-stream-mention-line="">
+          <AtSign className="w-3 h-3" aria-hidden />
+          {namedLine}
         </div>
       )}
       <div className="strm-cbox">
-        {kinds && (
-          <div className="strm-kinds" role="group" aria-label={t("thread.compose_kind_group")}>
-            {COMPOSE_ORDER.map((k) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={kind === k}
-                onClick={() => setKind(k)}
-                className={cn("strm-kind", kind === k && "on", kind === k && k === "nudge" && "ask")}
-              >
-                {t(COMPOSE_KINDS[k].label)}
-              </button>
-            ))}
-          </div>
-        )}
         {hasStaged && (
           <div className="strm-staged" role="list" aria-label={t("stream.staged")}>
             {staged!.map((s) => (
@@ -248,8 +244,8 @@ export default function StreamComposer({
           id={id}
           ref={setBox}
           value={draft}
-          rows={kind === "comment" ? 1 : 2}
-          placeholder={ph}
+          rows={1}
+          placeholder={placeholder}
           autoFocus={autoFocus}
           maxLength={maxLength}
           onChange={(e) => change(e.target.value, e.target.selectionStart || 0)}

@@ -1761,8 +1761,8 @@
       "overview": "Resumen",
       "follow_up": "Conversación",
       "discussion": "Tiempo completo",
-      "open_ask_one": "1 pregunta de seguimiento abierta",
-      "open_ask_many": "{count} preguntas de seguimiento abiertas",
+      "open_ask_one": "1 sigue abierto",
+      "open_ask_many": "{count} siguen abiertos",
       "conversation_switch": "Qué conversación",
       "full_timers_unread": "Nuevo en Tiempo completo",
       "interactions": "Interacciones",
@@ -2351,17 +2351,13 @@
     "audience_full_timers": "Solo Full-timers.",
     "just_posted": "Recién publicado",
     "to_work_through_label": "por trabajar",
-    "see_around": "Ver"
+    "see_around": "Ver",
+    "verb_done": "Hecho",
+    "snack_done": "Marcaste a {name} como hecho."
   },
   "thread": {
-    "kind_comment": "Actualización",
-    "kind_question": "Pregunta",
-    "kind_follow_up": "Pedir que alguien dé seguimiento",
     "send_post": "Publicar",
-    "compose_kind_group": "Qué estás escribiendo",
     "placeholder_comment": "Escribe algo…",
-    "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
-    "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
     "empty_interaction": "Aún no hay comentarios en esta conversación.",
     "empty_full_timers": "Aún no hay nada — empieza aquí abajo.",
     "empty_conversation": "Aún no hay nada — deja el primer comentario abajo."
@@ -2405,7 +2401,6 @@
     "compose_label": "Escribe un mensaje",
     "mention": "Mencionar a alguien",
     "audience_conversation": "Todos los vinculados a {name} ven esto.",
-    "audience_conversation_ask": "Todos los vinculados a {name} ven esto y pueden decir que hicieron el seguimiento.",
     "where_conversation": "Conversación · {name}",
     "edit": "Editar",
     "edited": "Editado",
@@ -2425,7 +2420,13 @@
     "attach": "Adjuntar",
     "remove_staged": "Quitar {name}",
     "staged": "Listo para enviar",
-    "new_messages": "Mensajes nuevos"
+    "new_messages": "Mensajes nuevos",
+    "mention_list_line": "{names} lo tendrán en su lista",
+    "names_and": "y",
+    "mention_done": "Hecho",
+    "mention_waiting": "Esperando a {names}",
+    "mention_closed": "{name} · hecho {when}",
+    "someone": "Alguien"
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",
@@ -2936,7 +2937,12 @@
     "ago_minutes": "hace {n} min",
     "ago_hours": "hace {n} h",
     "ago_day": "hace 1 día",
-    "ago_days": "hace {n} días"
+    "ago_days": "hace {n} días",
+    "draft_mention_mine": "{name} — tu mención sigue abierta",
+    "draft_mention_theirs": "{name} — la mención de {asker} sigue abierta",
+    "sig_mention_mine": "Mención abierta {days} días",
+    "sig_mention_theirs": "Mención de {asker} abierta {days} días",
+    "cleared_mention": "Resuelta · la mención se cerró"
   }
 ,
   "vault": {

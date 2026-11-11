@@ -109,7 +109,7 @@ export function interactionAdapter({
       subtitle: t("stream.thread_on_interaction").replace("{name}", first),
       quote: { label, body: interaction.content },
     },
-    capabilities: { kinds: false, attachments: false, canPost: mayWrite, canReply: mayWrite },
+    capabilities: { attachments: false, canPost: mayWrite, canReply: mayWrite },
     mentionCandidates: teamMembers.map((m) => ({ uid: m.id, name: m.name, role: m.role })),
     post: reply,
     reply: (_parent, input) => reply(input),

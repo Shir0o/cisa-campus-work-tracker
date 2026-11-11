@@ -100,7 +100,7 @@ describe("posting rules", () => {
   it("lets anyone post and reply in a DM or a group", () => {
     for (const type of ["direct", "group"] as const) {
       const a = chatAdapter(input({ room: room({ type }) }));
-      expect(a.capabilities).toEqual({ kinds: false, attachments: true, canPost: true, canReply: true });
+      expect(a.capabilities).toEqual({ attachments: true, canPost: true, canReply: true });
       expect(a.readOnlyNote).toBeUndefined();
     }
   });
@@ -136,7 +136,7 @@ describe("writes", () => {
   it("posts top-level with the staged attachments, the room's members, type and name, then clears the stage", async () => {
     const staged = [{ type: "contact" as const, id: "c1", name: "Daniel Reyes" }];
     const i = input({ staged });
-    await chatAdapter(i).post({ body: "Bringing Daniel's card", kind: "comment", mentionedUserIds: [] });
+    await chatAdapter(i).post({ body: "Bringing Daniel's card", mentionedUserIds: [] });
     expect(sendMessage).toHaveBeenCalledWith(
       "r1",
       "Bringing Daniel's card",
@@ -171,7 +171,7 @@ describe("writes", () => {
     const i = input();
     const adapter = chatAdapter(i);
     expect(adapter.failure?.post).toBe("That didn't send. Try again.");
-    await expect(adapter.post({ body: "x", kind: "comment", mentionedUserIds: [] })).rejects.toThrow();
+    await expect(adapter.post({ body: "x", mentionedUserIds: [] })).rejects.toThrow();
     expect(spy).toHaveBeenCalledWith("Failed to send message:", expect.any(Error));
     expect(i.onSent).not.toHaveBeenCalled();
     vi.mocked(sendMessage).mockRejectedValueOnce(new Error("offline"));

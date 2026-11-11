@@ -15,7 +15,6 @@ const t = (key: string) =>
     "modals.contactDetails.follow_up": "Conversation",
     "stream.where_conversation": "Conversation · {name}",
     "stream.audience_conversation": "Everyone tied to {name} sees this.",
-    "stream.audience_conversation_ask": "Everyone tied to {name} sees this and can say they followed up.",
     "thread.empty_conversation": "Nothing here yet.",
     "stream.edit_failed": "That didn't save. Try again in a moment.",
     "stream.post_failed": "That didn't post. Try again in a moment.",
@@ -68,7 +67,6 @@ describe("conversationAdapter", () => {
     expect(a.name).toBe("Conversation");
     expect(a.where).toBe("Conversation · Daniel Reyes");
     expect(a.audience).toBe("Everyone tied to Daniel sees this.");
-    expect(a.askAudience).toBe("Everyone tied to Daniel sees this and can say they followed up.");
     expect(a.empty).toBe("Nothing here yet.");
   });
 
@@ -77,8 +75,8 @@ describe("conversationAdapter", () => {
     ["manager", true],
     ["operator", true],
     ["viewer", false],
-  ])("a %s may post and reply: %s; kinds are offered, attachments are not", (role, may) => {
-    expect(make(role).capabilities).toEqual({ kinds: true, attachments: false, canPost: may, canReply: may });
+  ])("a %s may post and reply: %s; attachments are not offered", (role, may) => {
+    expect(make(role).capabilities).toEqual({ attachments: false, canPost: may, canReply: may });
   });
 
   it("offers any teammate as a mention (ADR 0007)", () => {
@@ -88,8 +86,8 @@ describe("conversationAdapter", () => {
     ]);
   });
 
-  it("posts through addThreadMessage with the kind, mentions, and everyone tied to notify", () => {
-    make().post({ body: "Text him", kind: "nudge", mentionedUserIds: ["josh"] });
+  it("posts a plain comment through addThreadMessage with mentions, and everyone tied to notify", () => {
+    make().post({ body: "Text him", mentionedUserIds: ["josh"] });
     expect(addThreadMessage).toHaveBeenCalledWith(
       "c1",
       {
@@ -98,7 +96,7 @@ describe("conversationAdapter", () => {
         scope: null,
         from: "maria",
         fromName: "Maria Santos",
-        kind: "nudge",
+        kind: "comment",
         body: "Text him",
         mentionedUserIds: ["josh"],
       },

@@ -44,7 +44,7 @@ beforeEach(() => {
 describe("followUpAdapter — a Feedback Note's Follow-ups as a stream", () => {
   it("is a plain stream: no kinds, no Threads, no mentions, no attachments; anyone with the note may post", () => {
     const a = make();
-    expect(a.capabilities).toEqual({ kinds: false, attachments: false, canPost: true, canReply: false });
+    expect(a.capabilities).toEqual({ attachments: false, canPost: true, canReply: false });
     expect(a.mentionCandidates).toEqual([]);
     expect(a.audience).toBe("");
     expect(a.empty).toBe("No follow-ups yet.");
@@ -107,7 +107,7 @@ describe("followUpAdapter — a Feedback Note's Follow-ups as a stream", () => {
   });
 
   it("posts through the server route with the ID token — the only write path", async () => {
-    await make().post({ body: "Which screen is it on?", kind: "comment", mentionedUserIds: [] });
+    await make().post({ body: "Which screen is it on?", mentionedUserIds: [] });
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/feedback/reply",
       expect.objectContaining({
@@ -119,7 +119,7 @@ describe("followUpAdapter — a Feedback Note's Follow-ups as a stream", () => {
   });
 
   it("still posts, without an Authorization header, when the token cannot be fetched", async () => {
-    await make([], { getIdToken: () => Promise.reject(new Error("no token")) }).post({ body: "hi", kind: "comment", mentionedUserIds: [] });
+    await make([], { getIdToken: () => Promise.reject(new Error("no token")) }).post({ body: "hi", mentionedUserIds: [] });
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/feedback/reply",
       expect.objectContaining({ headers: { "Content-Type": "application/json" } }),
@@ -141,7 +141,7 @@ describe("followUpAdapter — a Feedback Note's Follow-ups as a stream", () => {
   it("rejects when the server refuses, so the stream can say so", async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: "Server Error" }) as unknown as typeof fetch;
     const a = make([reply({ id: "r1" })]);
-    await expect(a.post({ body: "x", kind: "comment", mentionedUserIds: [] })).rejects.toThrow(/500/);
+    await expect(a.post({ body: "x", mentionedUserIds: [] })).rejects.toThrow(/500/);
     await expect(a.edit!(a.messages[0], "x")).rejects.toThrow(/500/);
   });
 

@@ -4345,13 +4345,12 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   width: 100%; background: var(--bg);
 }
 /* Phone targets in the Conversation pane (#1781): the pane's tabs and its ask
-   chip, the mention/attach tools, the send and the kind chips. Scoped to the
+   chip, the mention/attach tools and the send. Scoped to the
    contact page so the desktop stream keeps its density; the staged-attachment
    chip keeps its own 24px tool (its rule comes later). */
 @media (max-width: 720px) {
   .cdm-page .strm-tool,
   .cdm-page .strm-send { width: 44px; height: 44px; }
-  .cdm-page .strm-kind { height: 44px; }
   .cdm-page .cd-pane-tab,
   .cdm-page .cd-pane-asks { height: 44px; min-height: 44px; }
 }
@@ -4595,6 +4594,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   --strm-q-bg: #DBEAFE; --strm-q-fg: #1E40AF;
   --strm-ask-bg: #FEF3C7; --strm-ask-fg: #92400E; --strm-ask-line: #FDE68A;
   --strm-at-bg: #EFF6FF; --strm-at-fg: #1E40AF;
+  --strm-at-me-bg: #DBEAFE; --strm-at-me-fg: #1E3A8A;
   --strm-new: #B45309; --strm-new-line: #F59E0B;
   --strm-body: #18181B; --strm-mute: #71717A;
   display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0;
@@ -4603,7 +4603,8 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .dark .strm {
   --strm-q-bg: rgba(96, 165, 250, 0.18); --strm-q-fg: #93C5FD;
   --strm-ask-bg: rgba(245, 158, 11, 0.18); --strm-ask-fg: #FCD34D; --strm-ask-line: rgba(245, 158, 11, 0.4);
-  --strm-at-bg: rgba(96, 165, 250, 0.14); --strm-at-fg: #93C5FD;
+  --strm-at-bg: rgba(59, 130, 246, 0.18); --strm-at-fg: #93C5FD;
+  --strm-at-me-bg: rgba(59, 130, 246, 0.34); --strm-at-me-fg: #DBEAFE;
   --strm-new: #FBBF24; --strm-new-line: #F59E0B;
   --strm-body: #E4E4E7; --strm-mute: #A1A1AA;
 }
@@ -4652,6 +4653,8 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-when { font-size: 11.5px; color: var(--strm-mute); }
 .strm-tx { font-size: 14px; line-height: 1.5; margin: 1px 0 0; color: var(--strm-body); white-space: pre-wrap; overflow-wrap: anywhere; }
 .strm-at { color: var(--strm-at-fg); background: var(--strm-at-bg); border-radius: 4px; padding: 0 3px; font-weight: 500; }
+/* The viewer's own name stands out from the other mentions. */
+.strm-at.me { color: var(--strm-at-me-fg); background: var(--strm-at-me-bg); font-weight: 600; }
 
 .strm-av { width: 36px; height: 36px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; }
 .strm-av-xs { width: 20px; height: 20px; font-size: 8.5px; border: 2px solid var(--bg); }
@@ -4716,11 +4719,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-aud { font-size: 12px; color: var(--text-dim); margin: 0 0 7px 2px; display: flex; align-items: center; gap: 6px; }
 .strm-cbox { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); padding: 9px 9px 8px 12px; }
 .strm-cbox:focus-within { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
-.strm-kinds { display: flex; gap: 2px; margin: 0 0 2px -8px; flex-wrap: wrap; }
-.strm-kind { height: 26px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); cursor: pointer; }
-.strm-kind:hover { color: var(--text); }
-.strm-kind.on { background: var(--panel-2); color: var(--text); border-color: var(--border); }
-.strm-kind.on.ask { background: var(--strm-ask-bg); color: var(--strm-ask-fg); border-color: var(--strm-ask-line); }
 .strm-ta { display: block; width: 100%; border: 0; outline: 0; resize: none; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); padding: 5px 0 3px; min-height: 28px; max-height: 160px; background: transparent; field-sizing: content; }
 .strm-ta::placeholder { color: var(--strm-mute); }
 .strm-ctools { display: flex; align-items: center; gap: 4px; margin-top: 2px; }

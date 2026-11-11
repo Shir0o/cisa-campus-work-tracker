@@ -67,9 +67,9 @@ describe("CardConversation", () => {
       <CardConversation contact={kofi} uid="ft1" messages={[]} justPosted={new Set()} onPosted={vi.fn()} teamMembers={roster} />,
     );
 
-  it("reads the Conversation with kind chips and its audience above the box, in the compact stream", () => {
+  it("reads the Conversation with no kind chips and its audience above the box, in the compact stream", () => {
     const { container } = renderStrip();
-    expect(screen.getByRole("group", { name: "What are you writing" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "What are you writing" })).not.toBeInTheDocument();
     expect(screen.getByText("Everyone tied to Kofi sees this.")).toBeInTheDocument();
     expect(container.querySelector(".strm-compact")).toBeTruthy();
   });

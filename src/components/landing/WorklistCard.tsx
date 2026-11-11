@@ -32,7 +32,6 @@ import { teamLabelKey } from "../../lib/teams";
 import { useLanguage } from "../LanguageProvider";
 import { InboxState } from "../../lib/inboxState";
 import { Translate } from "../Translate";
-import { COMPOSE_KINDS, ComposeKindPicker, type ComposeKind } from "../ComposeKindPicker";
 import {
   addThreadMessage,
   closeFollowUpAsk,
@@ -92,6 +91,7 @@ export const VERB_LABEL: Record<WorklistVerb, string> = {
   reviewed: "whatsNew.verb_reviewed",
   answered: "whatsNew.verb_answered",
   followedUp: "whatsNew.verb_followed_up",
+  done: "whatsNew.verb_done",
   gotIt: "whatsNew.verb_got_it",
 };
 
@@ -100,6 +100,7 @@ export const VERB_SNACK: Record<WorklistVerb, string> = {
   reviewed: "whatsNew.snack_reviewed",
   answered: "whatsNew.snack_answered",
   followedUp: "whatsNew.snack_followed_up",
+  done: "whatsNew.snack_done",
   gotIt: "whatsNew.snack_got_it",
 };
 
@@ -180,11 +181,10 @@ function CardComposer({
   uid: string;
   meName: string;
   mobile?: boolean;
-  onPosted: (kind: ComposeKind) => void;
+  onPosted: () => void;
   onCancel: () => void;
 }) {
   const { t } = useLanguage();
-  const [kind, setKind] = useState<ComposeKind>("comment");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -194,7 +194,7 @@ function CardComposer({
     setBusy(true);
     await addThreadMessage(
       contact.id,
-      { interactionId: null, scope: null, from: uid, fromName: meName, kind, body },
+      { interactionId: null, scope: null, from: uid, fromName: meName, kind: "comment", body },
       {
         contactName: contact.name,
         stakeholders: contactStakeholdersOf(contact),
@@ -202,16 +202,15 @@ function CardComposer({
     );
     setBusy(false);
     setDraft("");
-    onPosted(kind);
+    onPosted();
   };
 
   return (
     <div className="mt-3 pt-3 border-t border-outline-variant/60">
-      <ComposeKindPicker value={kind} onChange={setKind} dense={mobile} />
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={t(COMPOSE_KINDS[kind].placeholder)}
+        placeholder={t("thread.placeholder_comment")}
         rows={mobile ? 3 : 2}
         autoFocus
         className="w-full p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"

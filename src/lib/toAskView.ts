@@ -61,6 +61,7 @@ export function toAskMessagesOf(threads: ThreadMessageWithContact[]): ToAskThrea
     closedByName: m.closedByName ?? null,
     parentId: m.parentId ?? null,
     scope: m.scope === "team" ? "team" : null,
+    mentionedUserIds: m.mentionedUserIds ?? null,
   }));
 }
 
@@ -86,6 +87,15 @@ export function draftText(signal: ToAskSignalMeta, t: Translate): string {
       signal.mine
         ? t("toAsk.draft_ask_mine", "{name} — your follow-up ask is still open")
         : t("toAsk.draft_ask_theirs", "{name} — {asker}'s follow-up ask is still open")
+    )
+      .replace("{name}", name)
+      .replace("{asker}", asker);
+  }
+  if (signal.kind === "mention") {
+    return (
+      signal.mine
+        ? t("toAsk.draft_mention_mine", "{name} — your mention is still open")
+        : t("toAsk.draft_mention_theirs", "{name} — {asker}'s mention is still open")
     )
       .replace("{name}", name)
       .replace("{asker}", asker);
@@ -129,6 +139,15 @@ export function signalChip(signal: ToAskSignalMeta, t: Translate): string {
       .replace("{asker}", asker)
       .replace("{days}", String(days));
   }
+  if (signal.kind === "mention") {
+    return (
+      signal.mine
+        ? t("toAsk.sig_mention_mine", "Mention open {days} days")
+        : t("toAsk.sig_mention_theirs", "{asker}'s mention open {days} days")
+    )
+      .replace("{asker}", asker)
+      .replace("{days}", String(days));
+  }
   if (signal.kind === "noReply") {
     const reacher = signal.reacherName || "Someone";
     if (signal.mine) {
@@ -160,6 +179,7 @@ export function signalChip(signal: ToAskSignalMeta, t: Translate): string {
 /** What cleared a struck-through line. */
 export function clearedText(cleared: ToAskClearedBy, t: Translate): string {
   if (cleared.reason === "askClosed") return t("toAsk.cleared_ask", "Cleared · the ask closed");
+  if (cleared.reason === "mentionClosed") return t("toAsk.cleared_mention", "Cleared · the mention closed");
   if (cleared.reason === "answered") {
     return t("toAsk.cleared_answered", "Cleared · answered in the Thread");
   }

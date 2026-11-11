@@ -37,8 +37,8 @@ function fakeAdapter(over: Partial<StreamAdapter> = {}): StreamAdapter {
     name: "Conversation",
     where: "Conversation · Daniel Reyes",
     audience: "Everyone tied to Daniel sees this.",
-    askAudience: "Everyone tied to Daniel sees this and can say they followed up.",
-    capabilities: { kinds: true, attachments: false, canPost: true, canReply: true },
+    capabilities: { attachments: false, canPost: true, canReply: true },
+    composer: { placeholder: "Write something…" },
     mentionCandidates: [
       { uid: "josh", name: "Josh Park", role: "Trainee" },
       { uid: "grace", name: "Grace Liu", role: "Full-timer" },
@@ -293,7 +293,7 @@ describe("Stream — Threads (T1–T3)", () => {
   });
 
   it("offers no reply box where the viewer may not reply", () => {
-    renderStream(fakeAdapter({ ...withReplies(), capabilities: { kinds: true, attachments: false, canPost: true, canReply: false } }));
+    renderStream(fakeAdapter({ ...withReplies(), capabilities: { attachments: false, canPost: true, canReply: false } }));
     expect(screen.queryByRole("button", { name: "Reply in thread" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /2 replies/ }));
     expect(screen.queryByPlaceholderText("Reply…")).toBeNull();
@@ -371,6 +371,48 @@ describe("Stream — kinds and Follow-up asks (K1–K3)", () => {
   });
 });
 
+describe("Stream — an @mention waits on the people it names", () => {
+  const mention = (over: Partial<StreamSourceMessage> = {}) =>
+    message({ id: "mn", from: "josh", fromName: "Josh Park", body: "@Maria Santos @Grace Liu can you call him?", mentionedUserIds: ["maria", "grace"], at: ago(60_000), ...over });
+  const candidates = [
+    { uid: "josh", name: "Josh Park" },
+    { uid: "grace", name: "Grace Liu" },
+    { uid: "maria", name: "Maria Santos" },
+  ];
+
+  it("offers a mentioned viewer Done, which closes it as them, and marks their own name", () => {
+    const adapter = fakeAdapter({ messages: [mention()], mentionCandidates: candidates });
+    renderStream(adapter);
+    const r = row("can you call him?");
+    fireEvent.click(within(r).getByRole("button", { name: "Done" }));
+    expect(adapter.closeAsk).toHaveBeenLastCalledWith(expect.objectContaining({ id: "mn" }), "done");
+    expect(within(r).getByText("@Maria Santos")).toHaveClass("strm-at", "me");
+    expect(within(r).getByText("@Grace Liu")).not.toHaveClass("me");
+  });
+
+  it("shows the sender who it is waiting on, and Never mind", () => {
+    const adapter = fakeAdapter({ messages: [mention()], mentionCandidates: candidates });
+    renderStream(adapter, { viewer: { uid: "josh", role: "manager" } });
+    const r = row("can you call him?");
+    expect(within(r).getByText("Waiting on Maria and Grace")).toBeInTheDocument();
+    expect(within(r).queryByRole("button", { name: "Done" })).toBeNull();
+    fireEvent.click(within(r).getByRole("button", { name: "Never mind" }));
+    expect(adapter.closeAsk).toHaveBeenLastCalledWith(expect.objectContaining({ id: "mn" }), "neverMind");
+  });
+
+  it("says quietly who closed it once it is done, with nothing to press", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [mention({ closedBy: "grace", closedByName: "Grace Liu", closedAt: ago(3_600_000) })],
+        mentionCandidates: candidates,
+      }),
+    );
+    const r = row("can you call him?");
+    expect(within(r).getByText(/Grace · done /)).toBeInTheDocument();
+    expect(within(r).queryByRole("button", { name: "Done" })).toBeNull();
+  });
+});
+
 describe("Stream — the composer (C1–C3)", () => {
   it("puts the audience above the box and posts a comment on ⌘/Ctrl+Enter", async () => {
     const adapter = fakeAdapter();
@@ -379,32 +421,32 @@ describe("Stream — the composer (C1–C3)", () => {
     const box = screen.getByPlaceholderText("Write something…");
     await userEvent.type(box, "  Saw him at lunch  ");
     fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
-    expect(adapter.post).toHaveBeenCalledWith({ body: "Saw him at lunch", kind: "comment", mentionedUserIds: [] });
+    expect(adapter.post).toHaveBeenCalledWith({ body: "Saw him at lunch", mentionedUserIds: [] });
     expect(box).toHaveValue("");
   });
 
-  it("offers kind chips inside the box; the ask chip changes the placeholder, the audience and what is posted", async () => {
-    const adapter = fakeAdapter();
-    renderStream(adapter);
-    const kinds = screen.getByRole("group", { name: "What are you writing" });
-    fireEvent.click(within(kinds).getByRole("button", { name: "Ask someone to follow up" }));
-    expect(within(kinds).getByRole("button", { name: "Ask someone to follow up" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Everyone tied to Daniel sees this and can say they followed up.")).toBeInTheDocument();
-    const box = screen.getByPlaceholderText(/What wants doing/);
-    await userEvent.type(box, "Text him about Thursday");
-    fireEvent.click(screen.getByRole("button", { name: "Post" }));
-    expect(adapter.post).toHaveBeenCalledWith({ body: "Text him about Thursday", kind: "nudge", mentionedUserIds: [] });
-    // Back to a comment for the next one.
-    expect(within(kinds).getByRole("button", { name: "Update" })).toHaveAttribute("aria-pressed", "true");
+  it("offers no kind chips: every message is a plain comment", () => {
+    renderStream(fakeAdapter());
+    expect(screen.queryByRole("group", { name: "What are you writing" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ask someone to follow up" })).toBeNull();
   });
 
-  it("shows no kind chips where the adapter allows no kinds", () => {
-    renderStream(fakeAdapter({ capabilities: { kinds: false, attachments: false, canPost: true, canReply: true } }));
-    expect(screen.queryByRole("group", { name: "What are you writing" })).toBeNull();
+  it("says who will get it on their list only while the draft @mentions someone", async () => {
+    renderStream(fakeAdapter());
+    const box = screen.getByPlaceholderText("Write something…");
+    await userEvent.type(box, "Ask ");
+    expect(screen.queryByText(/will get this on their list/)).toBeNull();
+    await userEvent.type(box, "@Gr");
+    fireEvent.keyDown(box, { key: "Enter" });
+    await userEvent.type(box, "@Jo");
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(screen.getByText("Grace and Josh will get this on their list")).toBeInTheDocument();
+    fireEvent.change(box, { target: { value: "never mind" } });
+    expect(screen.queryByText(/will get this on their list/)).toBeNull();
   });
 
   it("shows no composer where the viewer may not post", () => {
-    renderStream(fakeAdapter({ capabilities: { kinds: true, attachments: false, canPost: false, canReply: false } }));
+    renderStream(fakeAdapter({ capabilities: { attachments: false, canPost: false, canReply: false } }));
     expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
   });
 
@@ -419,7 +461,7 @@ describe("Stream — the composer (C1–C3)", () => {
     expect(box).toHaveValue("Ask @Grace Liu ");
     await userEvent.type(box, "about it");
     fireEvent.keyDown(box, { key: "Enter", metaKey: true });
-    expect(adapter.post).toHaveBeenCalledWith({ body: "Ask @Grace Liu about it", kind: "comment", mentionedUserIds: ["grace"] });
+    expect(adapter.post).toHaveBeenCalledWith({ body: "Ask @Grace Liu about it", mentionedUserIds: ["grace"] });
   });
 
   it("drops a mention whose name was edited out before posting (ADR 0007)", async () => {
@@ -430,7 +472,7 @@ describe("Stream — the composer (C1–C3)", () => {
     fireEvent.keyDown(box, { key: "Enter" });
     fireEvent.change(box, { target: { value: "never mind Grace" } });
     fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
-    expect(adapter.post).toHaveBeenCalledWith({ body: "never mind Grace", kind: "comment", mentionedUserIds: [] });
+    expect(adapter.post).toHaveBeenCalledWith({ body: "never mind Grace", mentionedUserIds: [] });
   });
 
   it("the @ button starts a mention", async () => {
@@ -578,7 +620,7 @@ describe("Stream — optional adapter capabilities", () => {
       renderStream(
         fakeAdapter({
           composer: { placeholder: "Ask a follow-up…", label: "Ask someone to follow up", submitLabel: "Send", hint: "⌘↵ to send" },
-          capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+          capabilities: { attachments: false, canPost: true, canReply: false },
         }),
         { footer: <p>Replies are public.</p> },
       );
@@ -599,7 +641,7 @@ describe("Stream — optional adapter capabilities", () => {
       fakeAdapter({
         post,
         failure: { post: "That didn't send.", edit: "That didn't save." },
-        capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+        capabilities: { attachments: false, canPost: true, canReply: false },
         composer: { placeholder: "Ask a follow-up…" },
       }),
     );
@@ -625,7 +667,7 @@ describe("Stream — optional adapter capabilities", () => {
         fakeAdapter({
           post,
           failure: { post: "That didn't send.", edit: "That didn't save." },
-          capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+          capabilities: { attachments: false, canPost: true, canReply: false },
           composer: { placeholder: "Ask a follow-up…" },
         }),
       );
@@ -647,7 +689,7 @@ describe("Stream — optional adapter capabilities", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Post" })).toBeEnabled());
       post.mockResolvedValue(undefined);
       fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
-      expect(post).toHaveBeenLastCalledWith({ body: "second note", kind: "comment", mentionedUserIds: [] });
+      expect(post).toHaveBeenLastCalledWith({ body: "second note", mentionedUserIds: [] });
       await waitFor(() => expect(box).toHaveValue(""));
     });
 
@@ -671,7 +713,7 @@ describe("Stream — what a source can set (#1258)", () => {
   it("uses the adapter's own placeholder where there are no kind chips, and locks the audience line", () => {
     renderStream(
       fakeAdapter({
-        capabilities: { kinds: false, attachments: false, canPost: true, canReply: true },
+        capabilities: { attachments: false, canPost: true, canReply: true },
         composer: { placeholder: "Write something only Full-timers will see…" },
         audience: "Only Full-timers see this — Trainees can't.",
         locked: true,
@@ -719,7 +761,7 @@ describe("Stream — an adapter that is itself one Thread (an Interaction's)", (
     fakeAdapter({
       name: "Thread",
       where: "Interaction · Daniel Reyes",
-      capabilities: { kinds: false, attachments: false, canPost: true, canReply: true },
+      capabilities: { attachments: false, canPost: true, canReply: true },
       replyPlaceholder: "Think it through together…",
       empty: "No comments on this interaction yet.",
       thread: {
@@ -770,7 +812,7 @@ describe("Stream — an adapter that is itself one Thread (an Interaction's)", (
 
   it("offers no reply box to a viewer who may not reply", () => {
     renderStream(
-      interactionAdapter({ capabilities: { kinds: false, attachments: false, canPost: false, canReply: false } }),
+      interactionAdapter({ capabilities: { attachments: false, canPost: false, canReply: false } }),
     );
     expect(screen.queryByPlaceholderText("Think it through together…")).toBeNull();
   });
@@ -839,7 +881,7 @@ describe("Stream — reading history while new messages arrive (#1764)", () => {
 
 describe("Stream — what a chat room adds", () => {
   const chat = (over: Partial<StreamAdapter> = {}) =>
-    fakeAdapter({ capabilities: { kinds: false, attachments: true, canPost: true, canReply: true }, audience: "", ...over });
+    fakeAdapter({ capabilities: { attachments: true, canPost: true, canReply: true }, audience: "", ...over });
 
   it("holds a pinned message first under its strip, out of date order", () => {
     renderStream(
@@ -931,7 +973,7 @@ describe("Stream — what a chat room adds", () => {
   });
 
   it("a viewer who may not post reads the surface's footer in the composer's place", () => {
-    renderStream(chat({ capabilities: { kinds: false, attachments: true, canPost: false, canReply: true } }), {
+    renderStream(chat({ capabilities: { attachments: true, canPost: false, canReply: true } }), {
       footer: <div>Only Full-timers post here. Anyone can reply in a thread.</div>,
     });
     expect(screen.getByText("Only Full-timers post here. Anyone can reply in a thread.")).toBeInTheDocument();
@@ -960,7 +1002,7 @@ describe("Stream — what a chat room adds", () => {
     const send = screen.getByRole("button", { name: "Post" });
     expect(send).not.toBeDisabled();
     fireEvent.click(send);
-    expect(adapter.post).toHaveBeenCalledWith({ body: "", kind: "comment", mentionedUserIds: [] });
+    expect(adapter.post).toHaveBeenCalledWith({ body: "", mentionedUserIds: [] });
   });
 
   it("no paperclip where the source takes no attachments", () => {

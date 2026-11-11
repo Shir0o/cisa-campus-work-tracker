@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { isOpenMention } from "../../../packages/core/src/mentions";
 import { AnimatePresence } from "motion/react";
 import {
   db,
@@ -427,7 +428,7 @@ export default function ContactDetailsModal({
     const member = teamMembers.find((m) => m.id === staffId);
     await addShare(staffId);
     const body = note ? `@${member?.name ?? ""} ${note}`.trim() : `@${member?.name ?? ""}`.trim();
-    await conversation.post({ body, kind: "comment", mentionedUserIds: [staffId] });
+    await conversation.post({ body, mentionedUserIds: [staffId] });
     setDelegateOpen(false);
   };
 
@@ -827,8 +828,9 @@ export default function ContactDetailsModal({
     />
   );
 
+  // Open Follow-up asks (legacy) and @mentions nobody has closed yet.
   const openAsks = conversation.messages.filter(
-    (m) => !m.parentId && m.kind === "nudge" && !m.closedAt,
+    (m) => !m.parentId && ((m.kind === "nudge" && !m.closedAt) || isOpenMention(m)),
   );
   const jumpToOpenAsk = () => {
     setPaneView("conversation");
