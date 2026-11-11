@@ -868,3 +868,32 @@ describe("addThreadMessage reaches the author of the message it answers", () => 
     expect(getDoc).not.toHaveBeenCalled();
   });
 });
+
+// An @mention closes, for everyone it named, on the first reply from one of them.
+describe("addThreadMessage closes the @mention a reply answers", () => {
+  const parent = (over: Record<string, unknown> = {}) => ({
+    exists: () => true,
+    data: () => ({ from: "tony", fromName: "Tony", kind: "comment", body: "@Anna @Tim ?", at: "2020-01-01T00:00:00.000Z", interactionId: null, mentionedUserIds: ["anna", "tim"], ...over }),
+  });
+  const closes = () => vi.mocked(updateDoc).mock.calls.filter((c) => "closedBy" in (c[1] as object));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("closes the parent as the replier when they are one of the people it names", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent() as never);
+    await addThreadMessage("C-1", { parentId: "mn", from: "anna", fromName: "Anna Lee", kind: "comment", body: "On it." });
+    expect(closes()).toHaveLength(1);
+    expect(closes()[0][0]).toEqual({ path: "contacts/C-1/threads/mn" });
+    expect(closes()[0][1]).toMatchObject({ closedBy: "anna", closedByName: "Anna Lee" });
+  });
+
+  it("leaves it open when the replier is not named, or it is already closed", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent() as never);
+    await addThreadMessage("C-1", { parentId: "mn", from: "jae", fromName: "Jae", kind: "comment", body: "Me too." });
+    vi.mocked(getDoc).mockResolvedValueOnce(parent({ closedAt: "2020-01-02T00:00:00.000Z" }) as never);
+    await addThreadMessage("C-1", { parentId: "mn", from: "tim", fromName: "Tim", kind: "comment", body: "Late." });
+    expect(closes()).toEqual([]);
+  });
+});

@@ -19,6 +19,7 @@ import { db, handleFirestoreError, OperationType, sendNotification } from "./fir
 import { isFullTimer } from "./walking";
 import { subscribeTiedSubcollection } from "./contactQueries";
 import { calendarDaysOpen } from "./stream";
+import { mentionsClosedByReply } from "../../packages/core/src/mentions";
 
 // "Walking together" threads — the single per-person conversation surface,
 // attached to a contact and (optionally) to one logged interaction. Stored as:
@@ -356,17 +357,19 @@ async function recentInStream(contactId: string, scope?: Scope): Promise<ThreadM
   }
 }
 
-/** The author of the message a reply answers (#1640), so a reply reaches them
- *  even after the 14-day window lapses and with no tie. A failed read only
- *  narrows who hears; the reply itself is already written. */
-async function parentAuthorOf(
+/** The message a reply answers: its author must hear the reply even after
+ *  the 14-day window lapses and with no tie (#1640), and the reply may close
+ *  its @mention. A failed read only narrows who hears; the reply itself is
+ *  already written. */
+async function parentOf(
   contactId: string,
   input: { parentId?: string | null; scope?: "team" | null },
-): Promise<string | null> {
+): Promise<ThreadMessageWithContact | null> {
   if (!input.parentId) return null;
   try {
     const snap = await getDoc(ref(contactId, input.parentId, input.scope));
-    return snap.exists() ? ((snap.data()?.from as string | undefined) ?? null) : null;
+    if (!snap.exists()) return null;
+    return { ...toMessage(snap as unknown as QueryDocumentSnapshot, input.scope === "team"), id: input.parentId, contactId };
   } catch {
     return null;
   }
@@ -497,7 +500,8 @@ export async function addThreadMessage(
 
     // The author of the message being answered (#1640): a reply must reach
     // them even when the 14-day window has lapsed and they are not tied.
-    const parentAuthor = await parentAuthorOf(contactId, input);
+    const parent = await parentOf(contactId, input);
+    const parentAuthor = parent?.from || null;
     if (
       parentAuthor &&
       parentAuthor !== input.from &&
@@ -515,6 +519,17 @@ export async function addThreadMessage(
         link: targetLink,
         coalesceKey: aboutThisPerson,
       });
+    }
+
+    // A reply from someone an open @mention names closes it, for everyone it
+    // named — the parent, or an earlier mention in the same Thread.
+    if (written && input.parentId) {
+      const pool = new Map(recent.map((m) => [m.id, m]));
+      if (parent) pool.set(parent.id, parent);
+      const reply = { id: written, from: input.from, at, parentId: input.parentId };
+      for (const m of mentionsClosedByReply([...pool.values()], reply)) {
+        void closeFollowUpAsk(contactId, m.id, { uid: input.from, name: input.fromName }, input.scope);
+      }
     }
 
     // Legacy fallback: notify.to when the caller passed no stakeholders.
@@ -536,7 +551,7 @@ export async function addThreadMessage(
   return written;
 }
 
-// ── Closing a follow-up ask (#813) ──────────────────────────────────────────
+// ── Closing a follow-up ask (#813) or an @mention ───────────────────────────
 // A follow up is texting or emailing the contact after the first encounter. So
 // an ask is closed by a person saying they did that — never implicitly. Logging
 // an Interaction does not close one and neither does replying in the thread:
@@ -544,15 +559,18 @@ export async function addThreadMessage(
 // silently would lose it with nobody noticing.
 
 /** Mark a follow-up ask done. Anyone tied to the contact may close it, and it
- *  closes for all of them at once. `retract` records the asker withdrawing it
- *  ("Never mind") rather than anyone having followed up. */
+ *  closes for all of them at once. Closed by its own asker, it reads as
+ *  withdrawn ("Never mind") rather than followed up. An @mention closes the
+ *  same way — Done (or a reply) from someone it names, Never mind from its
+ *  sender — and may sit in the Full-timers stream (`scope: "team"`). */
 export async function closeFollowUpAsk(
   contactId: string,
   messageId: string,
   by: { uid: string; name?: string | null },
+  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await updateDoc(ref(contactId, messageId), {
+    await updateDoc(ref(contactId, messageId, scope), {
       closedBy: by.uid,
       closedByName: by.name || null,
       closedAt: new Date().toISOString(),
@@ -570,9 +588,10 @@ export async function closeFollowUpAsk(
 export async function reopenFollowUpAsk(
   contactId: string,
   messageId: string,
+  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await updateDoc(ref(contactId, messageId), {
+    await updateDoc(ref(contactId, messageId, scope), {
       closedBy: null,
       closedByName: null,
       closedAt: null,

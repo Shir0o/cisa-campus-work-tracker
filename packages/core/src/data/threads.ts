@@ -31,6 +31,7 @@ import {
   type ThreadMessageWithContact,
 } from "../threads";
 import { isFullTimer } from "../walking";
+import { mentionsClosedByReply } from "../mentions";
 import { subscribeTiedSubcollection } from "./contacts";
 
 // The Full-timers stream (`scope: "team"`) lives in its own subcollection, so
@@ -57,6 +58,7 @@ function toMessage(id: string, data: Partial<ThreadMessage>, team: boolean): Thr
     closedBy: data.closedBy ?? null,
     closedByName: data.closedByName ?? null,
     closedAt: data.closedAt ?? null,
+    mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
   };
 }
 
@@ -103,14 +105,17 @@ export async function deleteThreadMessage(
 
 /** Close a Follow-up ask as `by`: they followed up, or — when `by` is the
  *  asker — withdrew it ("Never mind"). It closes once, for everyone tied; only
- *  these three keys move (#813). Mirrors the web app's `closeFollowUpAsk`. */
+ *  these three keys move (#813). An @mention closes the same way: Done (or a
+ *  reply) from someone it names, Never mind from its sender. Mirrors the web
+ *  app's `closeFollowUpAsk`. */
 export async function closeFollowUpAsk(
   db: Firestore,
   contactId: string,
   messageId: string,
   by: { uid: string; name?: string | null },
+  scope?: Scope,
 ): Promise<void> {
-  await updateDoc(msgRef(db, contactId, messageId), {
+  await updateDoc(msgRef(db, contactId, messageId, scope), {
     closedBy: by.uid,
     closedByName: by.name || null,
     closedAt: new Date().toISOString(),
@@ -138,11 +143,16 @@ const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContac
     id: d.id,
     contactId: d.ref.parent.parent?.id ?? "",
     interactionId: data.interactionId ?? null,
+    parentId: data.parentId ?? null,
     from: data.from ?? "",
     fromName: data.fromName ?? "",
     kind: (data.kind as ThreadKind) ?? "comment",
     body: data.body ?? "",
     at: data.at ?? new Date().toISOString(),
+    closedBy: data.closedBy ?? null,
+    closedByName: data.closedByName ?? null,
+    closedAt: data.closedAt ?? null,
+    mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
   };
 };
 
@@ -206,19 +216,20 @@ async function recentInStream(db: Firestore, contactId: string, scope?: Scope): 
   }
 }
 
-/** The author of the message a reply answers (#1640), so a reply reaches them
- *  even after the 14-day window lapses and with no tie. A failed read only
- *  narrows who hears; the reply itself is already written. */
-async function parentAuthorOf(
+/** The message a reply answers: its author hears the reply even after the
+ *  14-day window lapses and with no tie (#1640), and the reply may close its
+ *  @mention. A failed read only narrows who hears; the reply itself is
+ *  already written. */
+async function parentOf(
   db: Firestore,
   contactId: string,
   scope: Scope,
   parentId?: string | null,
-): Promise<string | null> {
+): Promise<ThreadMessage | null> {
   if (!parentId) return null;
   try {
     const snap = await getDoc(msgRef(db, contactId, parentId, scope));
-    return snap.exists() ? ((snap.data()?.from as string | undefined) ?? null) : null;
+    return snap.exists() ? toMessage(parentId, (snap.data() ?? {}) as Partial<ThreadMessage>, scope === "team") : null;
   } catch {
     return null;
   }
@@ -256,7 +267,7 @@ export async function addThreadMessage(
   const team = input.scope === "team";
   const mentionedUserIds = (input.mentionedUserIds ?? []).filter(Boolean);
   const at = new Date().toISOString();
-  await addDoc(col(db, contactId, input.scope), {
+  const created = await addDoc(col(db, contactId, input.scope), {
     interactionId: input.interactionId ?? null,
     parentId: input.parentId ?? null,
     scope: team ? "team" : null,
@@ -267,6 +278,20 @@ export async function addThreadMessage(
     at,
     ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
   });
+
+  // A reply from someone an open @mention names closes it, for everyone it
+  // named — the parent, or an earlier mention in the same Thread.
+  const parent = await parentOf(db, contactId, input.scope, input.parentId);
+  let recent: ThreadMessageWithContact[] | null = null;
+  if (input.parentId && created?.id) {
+    recent = await recentInStream(db, contactId, input.scope);
+    const pool = new Map<string, ThreadMessage>(recent.map((m) => [m.id, m]));
+    if (parent) pool.set(parent.id, parent);
+    const reply = { id: created.id, from: input.from, at, parentId: input.parentId };
+    for (const m of mentionsClosedByReply([...pool.values()], reply)) {
+      await closeFollowUpAsk(db, contactId, m.id, { uid: input.from, name: input.fromName }, input.scope).catch(() => undefined);
+    }
+  }
   if (!onNotify) return;
 
   const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
@@ -300,7 +325,7 @@ export async function addThreadMessage(
   if (notify?.to && notify.to !== input.from) recipients.add(notify.to);
   // And everyone In the Conversation here (#1604): they wrote in this stream in
   // the last 14 days. Not a tie, so a Release does not silence it.
-  const recent = await recentInStream(db, contactId, input.scope);
+  recent ??= await recentInStream(db, contactId, input.scope);
   // Writing there once is no access: someone unshared since must not keep
   // reading the person's messages through the bell.
   const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
@@ -308,7 +333,7 @@ export async function addThreadMessage(
   // The author of the message being answered (#1640): a reply reaches them even
   // after the 14-day window lapses and with no tie. Added before the team gate
   // below drops any Trainee, and deduped by the recipient set.
-  const parentAuthor = await parentAuthorOf(db, contactId, input.scope, input.parentId);
+  const parentAuthor = parent?.from || null;
   if (parentAuthor && parentAuthor !== input.from && canStillSee(parentAuthor)) recipients.add(parentAuthor);
   // The Full-timers stream is never announced to a Trainee, and a mention
   // already carried its own buzz.

@@ -662,6 +662,32 @@ service cloud.firestore {
                (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
       }
 
+      // Closing a follow-up ask (#813): a `nudge` is one shared open item, so
+      // anyone who can see the contact may say they followed up — it closes
+      // once, for everyone tied, rather than each of them dismissing a copy.
+      // An @mention closes the same way, but only for those it names (a reply
+      // or Done) and its sender (Never mind). `closedBy` must be the caller
+      // (you cannot record someone else having done it), and only these three
+      // keys may move; the body, kind and author stay immutable. Clearing all
+      // three is the undo, and is also how the asker retracts ("Never mind").
+      function isCloseOfAsk(before, after) {
+        return (before.kind == 'nudge' ||
+                (before.kind != 'question' &&
+                 before.get('mentionedUserIds', []).size() > 0 &&
+                 (before.from == request.auth.uid || request.auth.uid in before.get('mentionedUserIds', [])))) &&
+               (
+                 (after.get('closedBy', null) == request.auth.uid &&
+                  after.get('closedAt', null) is string &&
+                  after.get('closedAt', null).size() <= 40 &&
+                  (after.get('closedByName', null) == null ||
+                   (after.get('closedByName', null) is string && after.get('closedByName', null).size() <= 128)))
+                 ||
+                 (after.get('closedBy', null) == null &&
+                  after.get('closedAt', null) == null &&
+                  after.get('closedByName', null) == null)
+               );
+      }
+
       // Walking-together threads (trainee <-> full-timer). A light conversation
       // attached to the contact (interactionId null) or to one interaction.
       // Full-timers Discussion (`scope: "team"`) may not be written here: a
@@ -680,28 +706,7 @@ service cloud.firestore {
                         incoming().from == request.auth.uid;
         // Reactions have been removed. Body edits: author only, and the edit
         // stamps `editedAt` (kind/from/at are immutable). Closing a follow-up
-        // ask (#813): a `nudge` is one
-        // shared open item, so anyone who can see the contact may say they
-        // followed up — it closes once, for everyone tied, rather than each of
-        // them dismissing a copy. `closedBy` must be the caller (you cannot
-        // record someone else having done it), and only these three keys may
-        // move; the body, kind and author stay immutable. Clearing all three
-        // is the undo, and is also how the asker retracts ("Never mind").
-        function isCloseOfAsk(before, after) {
-          return before.kind == 'nudge' &&
-                 (
-                   (after.get('closedBy', null) == request.auth.uid &&
-                    after.get('closedAt', null) is string &&
-                    after.get('closedAt', null).size() <= 40 &&
-                    (after.get('closedByName', null) == null ||
-                     (after.get('closedByName', null) is string && after.get('closedByName', null).size() <= 128)))
-                   ||
-                   (after.get('closedBy', null) == null &&
-                    after.get('closedAt', null) == null &&
-                    after.get('closedByName', null) == null)
-                 );
-        }
-
+        // ask (#813) or an @mention: see isCloseOfAsk above.
         allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && seesParentContact() &&
                         (resource.data.get('scope', '') != 'team' || isAdmin()) && (
                         (
@@ -724,6 +729,11 @@ service cloud.firestore {
       // are posted and removed, never edited (the tab offers no edit).
       match /teamThreads/{threadId} {
         allow read, delete: if isApprovedUser() && isAdmin();
+        // Only an @mention's close moves here (the stream has no edit).
+        allow update: if isValidId(threadId) && isApprovedUser() && isAdmin() &&
+                        existing().kind != 'nudge' &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['closedBy', 'closedByName', 'closedAt']) &&
+                        isCloseOfAsk(existing(), incoming());
         allow create: if isValidId(threadId) && isApprovedUser() && isAdmin() &&
                         isValidThread(incoming()) &&
                         incoming().get('scope', null) == 'team' &&

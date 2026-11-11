@@ -449,3 +449,27 @@ describe('addThreadMessage reaches the author of the message it answers', () => 
     expect(onNotify.mock.calls.map((c) => c[0].userId)).not.toContain('tim');
   });
 });
+
+// An @mention closes, for everyone it named, on the first reply from one of them.
+describe('addThreadMessage closes the @mention a reply answers', () => {
+  const parent = (over: Record<string, unknown> = {}) => ({
+    exists: () => true,
+    data: () => ({ from: 'tony', fromName: 'Tony', kind: 'comment', body: '@Anna ?', at: '2020-01-01T00:00:00.000Z', mentionedUserIds: ['anna'], ...over }),
+  });
+
+  it('closes the parent as the replier when they are named, and not otherwise', async () => {
+    firestoreMock.doc.mockImplementation((_db, ...path: string[]) => ({ path: path.join('/') }));
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+    firestoreMock.getDoc.mockResolvedValueOnce(parent());
+    await addThreadMessage(db, 'c1', { parentId: 'mn', from: 'anna', fromName: 'Anna Lee', kind: 'comment', body: 'Done it.' });
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { path: 'contacts/c1/threads/mn' },
+      expect.objectContaining({ closedBy: 'anna', closedByName: 'Anna Lee' }),
+    );
+
+    firestoreMock.updateDoc.mockClear();
+    firestoreMock.getDoc.mockResolvedValueOnce(parent());
+    await addThreadMessage(db, 'c1', { parentId: 'mn', from: 'jae', fromName: 'Jae', kind: 'comment', body: 'Me too.' });
+    expect(firestoreMock.updateDoc).not.toHaveBeenCalled();
+  });
+});
