@@ -68,22 +68,21 @@ describe("fullTimersAdapter", () => {
     expect(a.where).toBe("Full-timers · Daniel Reyes");
     expect(a.audience).toBe("Only Full-timers see this — Trainees can't.");
     expect(a.locked).toBe(true);
-    expect(a.askAudience).toBeUndefined();
     expect(a.composer?.placeholder).toBe("Write something only Full-timers will see…");
     expect(a.empty).toBe("Nothing here yet.");
   });
 
-  it("offers no kinds and no attachments; a Full-timer may post and reply, nobody else may", () => {
-    expect(make("admin").capabilities).toEqual({ kinds: false, attachments: false, canPost: true, canReply: true });
-    expect(make("manager").capabilities).toEqual({ kinds: false, attachments: false, canPost: false, canReply: false });
+  it("offers no attachments; a Full-timer may post and reply, nobody else may", () => {
+    expect(make("admin").capabilities).toEqual({ attachments: false, canPost: true, canReply: true });
+    expect(make("manager").capabilities).toEqual({ attachments: false, canPost: false, canReply: false });
   });
 
   it("offers only Full-timers as mentions (ADR 0007), by the member's flag or its role", () => {
     expect(make().mentionCandidates.map((c) => c.uid)).toEqual(["ruth", "grace"]);
   });
 
-  it("posts to the team scope as a comment, whatever kind is asked for", () => {
-    make().post({ body: "Gentle with him", kind: "nudge", mentionedUserIds: ["ruth"] });
+  it("posts to the team scope as a comment", () => {
+    make().post({ body: "Gentle with him", mentionedUserIds: ["ruth"] });
     expect(addThreadMessage).toHaveBeenCalledWith(
       "c1",
       {
@@ -116,7 +115,7 @@ describe("fullTimersAdapter", () => {
 
   it("tells a caller what was just posted, with the promise of its real id", () => {
     const onPosted = vi.fn();
-    make("admin", [], onPosted).post({ body: "Hello", kind: "comment", mentionedUserIds: [] });
+    make("admin", [], onPosted).post({ body: "Hello", mentionedUserIds: [] });
     expect(onPosted).toHaveBeenCalledTimes(1);
     const [pending, landed] = onPosted.mock.calls[0];
     expect(pending).toMatchObject({ interactionId: null, parentId: null, scope: "team", from: "maria", fromName: "Maria Santos", kind: "comment", body: "Hello" });

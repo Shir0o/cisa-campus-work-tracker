@@ -3367,29 +3367,27 @@ describe('desktop story layout (design D)', () => {
     expect(pane.querySelector('[data-thread-pane]')).toBeNull();
   });
 
-  it('the Conversation pane names its audience above the box only — the header is the title alone — and offers the kinds', () => {
+  it('the Conversation pane names its audience above the box only — the header is the title alone — and offers no kinds', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
     const pane = screen.getByRole('region', { name: 'Conversation' });
     const audience = within(pane).getByText('Everyone tied to John sees this.');
     expect(audience.closest('[data-stream-composer]')).not.toBeNull();
     expect(within(pane).getByRole('heading', { name: 'Conversation' })).toBeInTheDocument();
-    expect(within(pane).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
+    expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
     expect(within(pane).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
   });
 
-  it('posts a Follow-up ask from the drawer to everyone tied', async () => {
+  it('posts a plain comment from the drawer to everyone tied', async () => {
     const contact = { ...mockContact, createdBy: 'user-9', carers: ['user-7'] };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} initialTab="thread" />);
     const drawer = screen.getByRole('region', { name: 'Conversation' });
 
-    fireEvent.click(within(drawer).getByRole('button', { name: 'Ask someone to follow up' }));
-    expect(within(drawer).getByText('Everyone tied to John sees this and can say they followed up.')).toBeInTheDocument();
-    fireEvent.change(within(drawer).getByPlaceholderText(/What wants doing/), { target: { value: 'Text John about Thursday' } });
+    fireEvent.change(within(drawer).getByPlaceholderText('Write something…'), { target: { value: 'Text John about Thursday' } });
     fireEvent.click(within(drawer).getByRole('button', { name: 'Post' }));
 
     expect(addThreadMessage).toHaveBeenCalledWith(
       'contact-abc',
-      expect.objectContaining({ kind: 'nudge', body: 'Text John about Thursday', parentId: null, from: 'user-123', fromName: 'Admin Tony' }),
+      expect.objectContaining({ kind: 'comment', body: 'Text John about Thursday', parentId: null, from: 'user-123', fromName: 'Admin Tony' }),
       expect.objectContaining({ contactName: 'John Doe', stakeholders: contact }),
     );
   });
@@ -3401,7 +3399,7 @@ describe('desktop story layout (design D)', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     const pane = screen.getByRole('region', { name: 'Conversation' });
 
-    const count = within(pane).getByRole('button', { name: '1 open Follow-up ask' });
+    const count = within(pane).getByRole('button', { name: '1 still open' });
     const row = pane.querySelector('[data-stream-row="ask-1"]') as HTMLElement;
     const scroll = vi.fn();
     row.scrollIntoView = scroll;
@@ -3821,11 +3819,11 @@ describe('desktop story layout (design D)', () => {
       return pane;
     };
 
-    it('opens the Conversation full-screen, with the kinds and its audience above the box', () => {
+    it('opens the Conversation full-screen, with its audience above the box and no kinds', () => {
       const pane = openPane();
       expect(pane.querySelector('[data-stream-list]')).toBeTruthy();
       expect(pane.querySelector('[data-thread-pane]')).toBeNull();
-      expect(within(pane).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
+      expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
       expect(within(pane).getByText('Everyone tied to John sees this.')).toBeInTheDocument();
     });
 
@@ -4255,6 +4253,7 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
         addPrayer: vi.fn(),
         updatePrayerStatus: vi.fn(),
         updatePrayerBurden: vi.fn(),
+        setPrayerTeamPrayer: vi.fn(),
         moveStage: vi.fn(),
         changeKind: vi.fn(),
         updateContact: vi.fn(),

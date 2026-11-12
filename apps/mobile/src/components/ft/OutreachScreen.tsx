@@ -712,13 +712,17 @@ function Outreach() {
 
   const nudge = async (o: OutreachRecord, n: OutreachName) => {
     if (n.contactId && n.spokeWith) {
+      // A plain comment that @mentions whoever got the number: the mention is
+      // what puts it on their list, until they reply or press Done.
+      const spoke = userById(n.spokeWith)?.displayName;
       await addThreadMessage(
         n.contactId,
         {
           from: me,
           fromName: userName,
-          kind: 'nudge',
-          body: `${firstName(n.name)} gave you their number at ${o.where} ${outreachDaysSince(o.date)} days ago and nobody has rung yet. Could you get to it today?`,
+          kind: 'comment',
+          body: `${spoke ? `@${spoke} ` : ''}${firstName(n.name)} gave you their number at ${o.where} ${outreachDaysSince(o.date)} days ago and nobody has rung yet. Could you get to it today?`,
+          mentionedUserIds: [n.spokeWith],
         },
         { to: n.spokeWith, contactName: n.name },
       );

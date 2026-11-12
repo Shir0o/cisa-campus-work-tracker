@@ -25,10 +25,6 @@ export interface TeamMemberLike {
   initials?: string;
 }
 
-/** The three kinds a Conversation composer offers (#813); `nudge` is a
- *  Follow-up ask. A source without kinds only ever posts `comment`. */
-export type StreamComposeKind = "comment" | "question" | "nudge";
-
 /** Something staged in the composer to go with the next post (C5): a chat's
  *  contact card or reference data. Each is removable before sending. */
 export interface StreamStagedItem {
@@ -45,8 +41,6 @@ export interface StreamMenuAction {
 }
 
 export interface StreamCapabilities {
-  /** Comment · Question · Ask a follow-up chips in the composer. */
-  kinds: boolean;
   /** An attach button in the tools row. No contact stream has one. */
   attachments: boolean;
   /** This viewer may post top-level messages. */
@@ -73,8 +67,6 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   where: string;
   /** The line above the composer saying whose eyes a message reaches. */
   audience: string;
-  /** The same line while a Follow-up ask is being written, when it differs. */
-  askAudience?: string;
   /** Shown above the audience line when the stream is restricted. */
   locked?: boolean;
   /** What an empty stream says. */
@@ -113,10 +105,13 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   staged?: StreamStagedItem[];
   attach?(): void;
   unstage?(key: string): void;
-  post(input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }): unknown;
+  /** Every post is a plain comment; an @mention is what puts it on someone's list. */
+  post(input: { body: string; mentionedUserIds: string[] }): unknown;
   reply(parent: M, input: { body: string; mentionedUserIds: string[] }): unknown;
-  /** Close a Follow-up ask: someone followed up, or the asker withdrew it. */
-  closeAsk(message: M, how: "followedUp" | "neverMind"): unknown;
+  /** Close a Follow-up ask (someone followed up, or the asker withdrew it) or
+   *  an @mention (Done from someone it names, or Never mind from its sender).
+   *  Either way it closes as the viewer. */
+  closeAsk(message: M, how: "followedUp" | "neverMind" | "done"): unknown;
   /** Reopen a closed or withdrawn Follow-up ask (#1496). */
   reopenAsk?(message: M): unknown;
   delete(message: M): unknown;

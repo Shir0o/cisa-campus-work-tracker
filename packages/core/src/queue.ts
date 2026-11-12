@@ -14,6 +14,7 @@ import { traineeMyPeople } from "./landing";
 import { firstName } from "./history";
 import type { Contact, Event, Interaction, PrayerRecord, Task } from "./types";
 import { inTheConversation, sameStream, type ThreadKind, type ThreadMessageWithContact } from "./threads";
+import { isOpenMentionFor } from "./mentions";
 
 export type QueueKind = "due" | "msg" | "follow" | "quiet" | "pray";
 export type QueueTone = "due" | "ask" | "follow" | "pray" | "note";
@@ -33,11 +34,12 @@ export interface QueueCard {
   title: string;
   contact?: Contact;
   task?: Task;
-  /** A msg card's featured text: the newest question or nudge, else the newest. */
+  /** A msg card's featured text: the newest question, nudge or open mention of
+   *  the reader, else the newest. */
   msg?: ThreadMessageWithContact;
   /** Every unread text in a msg card's stream, oldest → newest. */
   msgs?: ThreadMessageWithContact[];
-  /** A msg card's stream holds a question or nudge. */
+  /** A msg card's stream holds a question, nudge or open mention of the reader. */
   needsReply?: boolean;
   prayer?: PrayerRecord;
   /** The most recent logged conversation with this person, if any. */
@@ -255,7 +257,7 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
       const ftName = firstName(m.fromName ?? "The team");
       unread.push({
         m,
-        label: (MSG_LABEL[m.kind] || MSG_LABEL.note)(ftName),
+        label: isOpenMentionFor(m, input.uid) ? `${ftName} mentioned you` : (MSG_LABEL[m.kind] || MSG_LABEL.note)(ftName),
         title: `${ftName}: ${m.body.slice(0, 60)}`,
       });
     }
@@ -279,7 +281,18 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
   );
   for (const m of heard) {
     const who = firstName(m.fromName ?? "A teammate");
-    unread.push({ m, label: `${who} wrote back`, title: `${who}: ${m.body.slice(0, 60)}` });
+    const label = isOpenMentionFor(m, input.uid) ? `${who} mentioned you` : `${who} wrote back`;
+    unread.push({ m, label, title: `${who}: ${m.body.slice(0, 60)}` });
+    taken.add(m.id);
+  }
+
+  // 2c — an open @mention of you, from anyone, on any person you can see: on
+  // your list until a reply, Done, or Never mind closes it.
+  for (const m of input.threads) {
+    if (taken.has(m.id) || m.scope === "team" || !byId.has(m.contactId)) continue;
+    if (!isOpenMentionFor(m, input.uid) || input.isRead("thread:" + m.id)) continue;
+    const who = firstName(m.fromName ?? "A teammate");
+    unread.push({ m, label: `${who} mentioned you`, title: `${who}: ${m.body.slice(0, 60)}` });
   }
 
   // One card per stream (#1793): one reply answers the lot. The card features
@@ -292,7 +305,8 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
     if (s) s.push(u);
     else streams.push([u]);
   }
-  const asks = (u: (typeof unread)[number]) => u.m.kind === "question" || u.m.kind === "nudge";
+  const asks = (u: (typeof unread)[number]) =>
+    u.m.kind === "question" || u.m.kind === "nudge" || isOpenMentionFor(u.m, input.uid);
   const newestOf = (g: typeof unread) => parseMs(g[g.length - 1].m.at) ?? 0;
   for (const g of streams.sort((a, b) => newestOf(b) - newestOf(a))) {
     const newest = g[g.length - 1];

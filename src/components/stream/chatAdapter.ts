@@ -161,7 +161,7 @@ export function chatAdapter(i: ChatAdapterInput): ChatStreamAdapter {
     // A post is a confirmed write: a failed send keeps the draft and the stage.
     failure: { post: t("chat.send_failed"), edit: t("chat.send_failed") },
     readOnlyNote: canPost ? undefined : t("modals.guidance_announcement_bar"),
-    capabilities: { kinds: false, attachments: true, canPost, canReply },
+    capabilities: { attachments: true, canPost, canReply },
     // The members of the chat (ADR 0007), as the room already offered.
     mentionCandidates: i.members.map((m) => ({ uid: m.uid, name: m.displayName, role: m.role })),
     lastReadAt: i.lastReadAt,

@@ -11,6 +11,7 @@ import {
   partitionAttentionStacks,
   feedVisibleThreads,
   openAsksIn,
+  openMentionsIn,
   type AttentionStack,
   type WorklistVerb,
 } from "../../lib/attention";
@@ -218,12 +219,21 @@ export default function OnYouCard({
   const handleComplete = (stack: AttentionStack, verb: WorklistVerb) => {
     // A follow-up ask is closed once, for everyone tied to the contact: the
     // thing tracked is the errand, not five people's reading of it.
-    const asks = verb === "followedUp" && stack.contactId ? openAsksIn(stack) : [];
+    // Done closes the @mentions of the reader on the card, for everyone they
+    // named, the same way.
+    const asks =
+      verb === "followedUp" && stack.contactId
+        ? openAsksIn(stack)
+        : verb === "done" && stack.contactId
+          ? openMentionsIn(stack)
+          : [];
     for (const ask of asks) {
-      void closeFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""), {
-        uid,
-        name: meName,
-      });
+      void closeFollowUpAsk(
+        stack.contactId!,
+        ask.id.replace(/^thread:/, ""),
+        { uid, name: meName },
+        ask.scope,
+      );
     }
     InboxState.markCompleted(uid, stack.id);
     setCompletedHere((prev) => new Set(prev).add(stack.id));
@@ -237,7 +247,7 @@ export default function OnYouCard({
         return next;
       });
       for (const ask of asks) {
-        void reopenFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""));
+        void reopenFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""), ask.scope);
       }
     });
   };

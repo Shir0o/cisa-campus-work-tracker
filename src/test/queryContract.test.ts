@@ -70,6 +70,7 @@ import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { activitiesPageQuery, countActivities } from '../../packages/core/src/data/activities';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
+import { setPrayerTeamPrayer } from '../../packages/core/src/data/prayers';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
 import { traineeWaitingItems } from '../../packages/core/src/inbox';
@@ -739,5 +740,37 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
   it('credential audit — a Trainee is denied the feed (#1966)', async () => {
     await assertFails(getDocs(credentialAuditFeedQuery(dbFor(TRAINEE))));
+  });
+
+  // ── Team prayer toggle: the flag is written, never deleted ────────────────
+  // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`). Bringing
+  // it to the team is a batch that also clears the contact's `prayerListRemoved`.
+  // An operator may do either; a viewer may not.
+  it('team prayer toggle — an operator brings a prayer to the team (clearing the contact removal) and takes it off', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'prayers', 'p-toggle'), {
+        contactId: 'c-mine', burden: 'Peace', status: 'pending', teamPrayer: false, updatedAt: ISO,
+      });
+      await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
+        prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
+      });
+    });
+    const by = { uid: STUDENT, name: 'Op' };
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', true, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
+    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).not.toHaveProperty('prayerListRemoved');
+
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
+        prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
+      });
+    });
+    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', false, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
+    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).toHaveProperty('prayerListRemoved'); // untouched
+  });
+
+  it('team prayer toggle — a viewer is refused (negative)', async () => {
+    await assertFails(setPrayerTeamPrayer(dbFor(VIEWER), 'p-toggle', 'c-mine', true, { uid: VIEWER, name: 'V' }));
   });
 });

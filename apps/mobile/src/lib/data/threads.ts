@@ -66,16 +66,18 @@ export async function editThreadMessage(
   }
 }
 
-/** I followed up / Never mind on a Follow-up ask, as `by` (#813). */
+/** I followed up / Never mind on a Follow-up ask, or Done / Never mind on an
+ *  @mention, as `by` (#813). */
 export async function closeFollowUpAsk(
   contactId: string,
   messageId: string,
   by: { uid: string; name?: string | null },
+  scope?: 'team' | null,
 ): Promise<void> {
   try {
-    await core.closeFollowUpAsk(db, contactId, messageId, by);
+    await core.closeFollowUpAsk(db, contactId, messageId, by, scope);
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/threads/${messageId}`);
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/${sub(scope)}/${messageId}`);
   }
 }
 

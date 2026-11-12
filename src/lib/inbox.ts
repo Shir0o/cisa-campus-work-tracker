@@ -1,4 +1,5 @@
 import { isTrainee, fullTimerIds } from "./walking";
+import { isOpenMentionFor } from "../../packages/core/src/mentions";
 import type { ThreadKind, ThreadMessageWithContact } from "./threads";
 
 export type { ThreadMessageWithContact };
@@ -24,6 +25,8 @@ export interface InboxItem {
   title?: string;
   body?: string;
   kind?: ThreadKind; // set on thread items (question / nudge)
+  /** An open @mention of the reader: on their list until it closes. */
+  mention?: boolean;
 }
 
 const ms = (iso: string) => {
@@ -67,6 +70,24 @@ export function traineeWaitingItems(
         kind: m.kind,
       });
     }
+  }
+
+  // An open @mention of the trainee, from anyone, on any person they can
+  // read: on their list until a reply, Done, or Never mind closes it.
+  for (const m of threads) {
+    if (m.scope === "team" || !isOpenMentionFor(m, uid)) continue;
+    if (items.some((it) => it.id === "thread:" + m.id)) continue;
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      interactionId: m.interactionId,
+      body: m.body,
+      kind: m.kind,
+      mention: true,
+    });
   }
 
   return items.sort((a, b) => ms(b.at) - ms(a.at));

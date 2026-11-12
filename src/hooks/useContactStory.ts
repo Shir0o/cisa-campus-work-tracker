@@ -28,6 +28,7 @@ import {
 import type { Contact, Stage, Interaction, PrayerRecord, Gathering, Rhythm, SystemActivity } from "../types";
 import { buildContactStory, type StoryEntry } from "../lib/contactStory";
 import { subscribeRhythms } from "../lib/rhythms";
+import { setPrayerTeamPrayer as setPrayerTeamPrayerDoc } from "../lib/prayers";
 import { subscribeThreads, type ThreadMessage } from "../lib/threads";
 import {
   subscribeInteractionRemovals,
@@ -83,6 +84,7 @@ export interface ContactStoryActions {
     context?: string;
   }): Promise<void>;
   updatePrayerStatus(prayer: PrayerRecord, status: PrayerRecord["status"], answeredAtText?: string): Promise<void>;
+  setPrayerTeamPrayer(prayer: PrayerRecord, teamPrayer: boolean, by: { uid?: string | null; name?: string | null }): Promise<void>;
   updatePrayerBurden(
     prayer: PrayerRecord,
     words: { text: string; context: string },
@@ -611,6 +613,27 @@ export function useContactStory(
     []
   );
 
+  const setPrayerTeamPrayer = useCallback(
+    async (
+      prayer: PrayerRecord,
+      teamPrayer: boolean,
+      by: { uid?: string | null; name?: string | null },
+    ) => {
+      const c = currentContactRef.current;
+      if (!c?.id) return;
+      await setPrayerTeamPrayerDoc(prayer.id, c.id, teamPrayer, by);
+      await logActivity({
+        action: teamPrayer ? "brought a prayer to team prayer for" : "took a prayer off team prayer for",
+        targetId: c.id,
+        targetName: c.name,
+        targetType: "contact",
+        type: "edit",
+        description: prayer.burden,
+      });
+    },
+    []
+  );
+
   // Rewrites a prayer's words from the story (#1674). Status is left alone.
   const updatePrayerBurden = useCallback(
     async (
@@ -905,6 +928,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
+      setPrayerTeamPrayer,
       updatePrayerBurden,
       moveStage,
       changeKind,
@@ -922,6 +946,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
+      setPrayerTeamPrayer,
       updatePrayerBurden,
       moveStage,
       changeKind,

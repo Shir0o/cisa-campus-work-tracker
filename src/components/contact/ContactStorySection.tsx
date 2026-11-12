@@ -34,6 +34,7 @@ export interface ContactStorySectionProps {
     data: { content: string; dateTime?: string; type?: string },
   ): Promise<void>;
   onUpdatePrayerStatus: (prayer: PrayerRecord, status: PrayerRecord["status"]) => void;
+  onSetPrayerTeamPrayer: (prayer: PrayerRecord, teamPrayer: boolean) => void;
   onUpdatePrayerBurden(prayer: PrayerRecord, words: { text: string; context: string }): Promise<void>;
   interactionAdapterFor: (interaction: Interaction) => any;
   streamViewer: { uid: string; role?: string };
@@ -58,6 +59,7 @@ export default function ContactStorySection({
   onRemoveInteraction,
   onUpdateInteraction,
   onUpdatePrayerStatus,
+  onSetPrayerTeamPrayer,
   onUpdatePrayerBurden,
   interactionAdapterFor,
   streamViewer,
@@ -146,6 +148,7 @@ export default function ContactStorySection({
         prayer={p}
         canUpdatePrayers={canUpdatePrayers}
         onUpdateStatus={onUpdatePrayerStatus}
+        onSetTeamPrayer={onSetPrayerTeamPrayer}
         onEdit={() => {
           setEditingPrayerId(p.id);
           setEditPrayerData({ ...emptyComposer(), mode: "prayer", ...splitPrayerBurden(p.burden) });

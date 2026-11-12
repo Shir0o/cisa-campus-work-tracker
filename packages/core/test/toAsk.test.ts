@@ -796,3 +796,43 @@ describe("To ask line helpers", () => {
     expect(toAskThreadTarget("note:n1", messages)).toBeNull();
   });
 });
+
+describe("buildToAsk — an open @mention drafts a line on the ask schedule", () => {
+  const mention = (over: Partial<ToAskThreadMessage> = {}) =>
+    message({ id: "mn1", contactId: "c1", kind: "comment", from: "kate", fromName: "Kate Ng", mentionedUserIds: ["jae"], at: ago(3), ...over });
+
+  it("drafts a mention line three campus days after it was written", () => {
+    const view = buildToAsk(base({ people: [person("c1", { name: "Sam", carers: ["jae"] })], messages: [mention()] }));
+    const line = view.groups.find((g) => g.id === "jae")?.lines[0];
+    expect(line?.kind).toBe("mention");
+    expect(line?.signal).toMatchObject({ kind: "mention", askerName: "Kate", mine: false, days: 3 });
+    expect(line?.text).toBe("Sam — Kate's mention is still open");
+    expect(toAskUpdateDestinations(line!)).toEqual(["line", "contact", "thread"]);
+    expect(toAskThreadTarget(line!.key, [mention()])).toMatchObject({ contactId: "c1", parentId: "mn1" });
+  });
+
+  it("does not draft one two days old, nor a plain comment that names nobody", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        messages: [mention({ at: ago(2) }), mention({ id: "plain", mentionedUserIds: undefined, at: ago(5) })],
+      }),
+    );
+    expect(view.openCount).toBe(0);
+  });
+
+  it("clears the line once the mention is closed", () => {
+    const people = [person("c1", { carers: ["jae"] })];
+    const drafted = buildToAsk(base({ people, messages: [mention()] }));
+    const view = buildToAsk(
+      base({
+        people,
+        messages: [mention({ closedAt: ago(1), closedByName: "Jae" })],
+        notepad: { drafted: drafted.drafted },
+      }),
+    );
+    expect(view.openCount).toBe(0);
+    const line = view.groups.flatMap((g) => g.lines).find((l) => l.key === drafted.groups[0].lines[0].key);
+    expect(line?.clearedBy).toMatchObject({ reason: "mentionClosed", name: "Jae" });
+  });
+});

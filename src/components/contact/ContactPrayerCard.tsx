@@ -1,7 +1,8 @@
-import { Heart } from "lucide-react";
+import { Heart, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { splitPrayerBurden } from "../../lib/contactComposer";
 import type { PrayerRecord } from "../../types";
+import { isTeamPrayer } from "../../lib/prayers";
 import { useLanguage } from "../LanguageProvider";
 
 type PrayerStatus = PrayerRecord["status"];
@@ -21,11 +22,13 @@ export default function ContactPrayerCard({
   canUpdatePrayers,
   onUpdateStatus,
   onEdit,
+  onSetTeamPrayer,
 }: {
   prayer: PrayerRecord;
   canUpdatePrayers: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: PrayerStatus) => void;
   onEdit?: () => void;
+  onSetTeamPrayer?: (prayer: PrayerRecord, teamPrayer: boolean) => void;
 }) {
   const { t } = useLanguage();
   const p = prayer;
@@ -42,6 +45,9 @@ export default function ContactPrayerCard({
     heldDays != null && !isNaN(heldDays)
       ? `${t('modals.contactDetails.held')} ${heldDays} ${heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}`
       : null;
+
+  const onTeam = isTeamPrayer(p);
+  const canToggleTeam = canUpdatePrayers && !!onSetTeamPrayer;
 
   return (
     <article aria-label={t('modals.contactDetails.prayer_request')} className="cd-prayer">
@@ -90,6 +96,37 @@ export default function ContactPrayerCard({
           )}
           <span className="cd-composer-spacer" />
           {held && <span className="cd-prayer-held">{held}</span>}
+        </div>
+      )}
+      {(canToggleTeam || onTeam) && (
+        <div className="cd-prayer-team">
+          <span className="cd-composer-spacer" />
+          {onTeam ? (
+            <>
+              <a className="cd-prayer-team-link" href="/prayer">
+                <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('answered.on_our_hearts')} · {t('myDay.team_prayers')}</span>
+              </a>
+              {canToggleTeam && (
+                <button
+                  type="button"
+                  className="cd-prayer-team-off"
+                  onClick={() => onSetTeamPrayer!(p, false)}
+                >
+                  {t('modals.contactDetails.take_off_team_prayer')}
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className="cd-prayer-team-on"
+              onClick={() => onSetTeamPrayer!(p, true)}
+            >
+              <Users className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('modals.contactDetails.bring_to_team_prayer')}
+            </button>
+          )}
         </div>
       )}
     </article>

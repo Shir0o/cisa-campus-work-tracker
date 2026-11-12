@@ -78,6 +78,7 @@ export function toAskMessagesOf(threads: ThreadMessageWithContact[]): ToAskThrea
     closedByName: m.closedByName ?? null,
     parentId: m.parentId ?? null,
     scope: m.scope === 'team' ? 'team' : null,
+    mentionedUserIds: m.mentionedUserIds ?? null,
   }));
 }
 
@@ -109,6 +110,11 @@ export function draftText(signal: ToAskSignalMeta, t: Translate): string {
       .replace('{name}', name)
       .replace('{asker}', asker);
   }
+  if (signal.kind === 'mention') {
+    return (signal.mine ? t('mobile.toAsk.draft_mention_mine') : t('mobile.toAsk.draft_mention_theirs'))
+      .replace('{name}', name)
+      .replace('{asker}', asker);
+  }
   if (signal.kind === 'noReply') {
     return (signal.mine ? t('mobile.toAsk.draft_no_reply_mine') : t('mobile.toAsk.draft_no_reply_theirs'))
       .replace('{name}', name)
@@ -134,6 +140,11 @@ export function signalChip(signal: ToAskSignalMeta, t: Translate): string {
       .replace('{asker}', asker)
       .replace('{days}', days);
   }
+  if (signal.kind === 'mention') {
+    return (signal.mine ? t('mobile.toAsk.sig_mention_mine') : t('mobile.toAsk.sig_mention_theirs'))
+      .replace('{asker}', asker)
+      .replace('{days}', days);
+  }
   if (signal.kind === 'noReply') {
     const reacher = signal.reacherName || 'Someone';
     if (signal.mine) {
@@ -153,6 +164,7 @@ export function signalChip(signal: ToAskSignalMeta, t: Translate): string {
 /** What cleared a struck-through line. */
 export function clearedText(cleared: ToAskClearedBy, t: Translate): string {
   if (cleared.reason === 'askClosed') return t('mobile.toAsk.cleared_ask');
+  if (cleared.reason === 'mentionClosed') return t('mobile.toAsk.cleared_mention');
   if (cleared.reason === 'answered') return t('mobile.toAsk.cleared_answered');
   return cleared.name
     ? t('mobile.toAsk.cleared_named').replace('{name}', cleared.name)

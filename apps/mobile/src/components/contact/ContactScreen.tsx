@@ -35,6 +35,7 @@ import {
   firstName,
   ftAssignees,
   hasMinRole,
+  isTeamPrayer,
   lastTimeLine,
   parseMs,
   prayerCardKicker,
@@ -469,6 +470,8 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
                 canWrite={canWrite}
                 onPrayed={() => queueState.handle(prayerCardId(prayer.id))}
                 onAnswered={() => void data.markPrayerAnswered(prayer)}
+                onSetTeamPrayer={canWrite ? (team) => void data.setPrayerTeamPrayer(prayer, team) : undefined}
+                onOpenTeamPrayers={isFullTimer ? () => router.push('/prayer-log' as never) : undefined}
               />
             ))}
 
@@ -511,6 +514,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
                   onLongPress={(row) => setHeld(row)}
                   onOpenThread={openRowThread}
                   onCloseAsk={(row) => void data.closeAsk(row.message)}
+                  nameOf={(uid) => mentionCandidates.find((m) => m.uid === uid)?.name ?? ''}
                   editingId={editingMessage?.id ?? null}
                   onSaveEdit={async (body) => {
                     if (!editingMessage) return;
@@ -529,27 +533,27 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
       {tab === 'conversation' && canWrite && (
         <StreamComposer
           key={showing}
-          kinds={showing === 'open'}
           audience={
             showing === 'team'
               ? t('mobile.contact.audience_full_timers')
               : t('mobile.contact.audience_conversation').replace('{name}', first)
           }
-          askAudience={t('mobile.contact.audience_conversation_ask').replace('{name}', first)}
           locked={showing === 'team'}
-          placeholder={t('mobile.contact.placeholder_full_timers')}
+          placeholder={showing === 'team' ? t('mobile.contact.placeholder_full_timers') : t('mobile.stream.placeholder_comment')}
           candidates={showing === 'team' ? mentionCandidates.filter((m) => m.role === 'admin') : mentionCandidates}
           label={
             showing === 'team'
               ? t('mobile.contact.compose_full_timers')
               : t('mobile.contact.compose_conversation').replace('{name}', first)
           }
-          onSend={({ body, kind, mentionedUserIds }) =>
-            void data.postThreadMessage(
-              showing === 'team'
-                ? { interactionId: null, scope: 'team', kind: 'comment', body, mentionedUserIds }
-                : { interactionId: null, scope: null, kind, body, mentionedUserIds },
-            )
+          onSend={({ body, mentionedUserIds }) =>
+            void data.postThreadMessage({
+              interactionId: null,
+              scope: showing === 'team' ? 'team' : null,
+              kind: 'comment',
+              body,
+              mentionedUserIds,
+            })
           }
         />
       )}
@@ -899,6 +903,8 @@ function PrayerCard({
   canWrite,
   onPrayed,
   onAnswered,
+  onSetTeamPrayer,
+  onOpenTeamPrayers,
 }: {
   prayer: PrayerRecord;
   /** First name for the "Prayed for {name}" button. */
@@ -908,6 +914,10 @@ function PrayerCard({
   canWrite: boolean;
   onPrayed?: () => void;
   onAnswered?: () => void;
+  /** Bring to / take off team prayer. Only the open cards, and only for a writer. */
+  onSetTeamPrayer?: (teamPrayer: boolean) => void;
+  /** Where the "On our hearts" line goes; absent when this role has no such page. */
+  onOpenTeamPrayers?: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -977,6 +987,49 @@ function PrayerCard({
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink2 }}>{t('mobile.contact.answered')}</Text>
           </Pressable>
+        </View>
+      )}
+
+      {!done && (onSetTeamPrayer || isTeamPrayer(prayer)) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+          {isTeamPrayer(prayer) ? (
+            <>
+              <Pressable
+                onPress={onOpenTeamPrayers}
+                disabled={!onOpenTeamPrayers}
+                accessibilityRole={onOpenTeamPrayers ? 'link' : 'text'}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}
+              >
+                <Ionicons name="people-outline" size={15} color={c.card.tones.pray.text} />
+                <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.tones.pray.text }}>
+                  {t('answered.on_our_hearts')} · {t('myDay.team_prayers')}
+                </Text>
+              </Pressable>
+              {onSetTeamPrayer && (
+                <Pressable onPress={() => onSetTeamPrayer(false)} style={({ pressed }) => ({ minHeight: 32, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
+                  <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink2 }}>{t('mobile.contact.take_off_team_prayer')}</Text>
+                </Pressable>
+              )}
+            </>
+          ) : (
+            <Pressable
+              onPress={() => onSetTeamPrayer?.(true)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                minHeight: 36,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 1.5,
+                borderColor: c.card.tones.pray.dot,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Ionicons name="people-outline" size={15} color={c.card.tones.pray.text} />
+              <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.tones.pray.text }}>{t('mobile.contact.bring_to_team_prayer')}</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>

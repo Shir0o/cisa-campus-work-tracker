@@ -133,7 +133,9 @@ export function ftInboxRows(
           ? `${who} brought in ${name}`
           : item.type === "interaction"
             ? `${who} logged time with ${name}`
-            : item.kind && item.kind !== "question"
+            : item.mention
+              ? `${who} mentioned you about ${name}`
+              : item.kind && item.kind !== "question"
               ? `${who} wrote about ${name}`
               : ctx.carries(item.contactId)
                 ? `${who} asked you something about ${name}`

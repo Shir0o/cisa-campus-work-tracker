@@ -5,6 +5,7 @@ import { useLanguage } from "../LanguageProvider";
 import { useTranslate } from "../../hooks/useTranslate";
 import { buildStream, buildThread, type StreamRow, type StreamViewer, type ThreadSummary } from "../../lib/stream";
 import type { MentionUser } from "../../lib/mentions";
+import { joinNames } from "../../../packages/core/src/mentions";
 import StreamComposer from "./StreamComposer";
 import type { StreamAdapter, StreamMenuAction, StreamSourceMessage } from "./types";
 
@@ -97,8 +98,19 @@ export function Avatar({
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** The body, with each @mention of a candidate picked out. */
-function Body({ text: raw, candidates, translate }: { text: string; candidates: MentionUser[]; translate?: boolean }) {
+/** The body, with each @mention of a candidate picked out — the viewer's own
+ *  name brighter than the rest. */
+function Body({
+  text: raw,
+  candidates,
+  translate,
+  me,
+}: {
+  text: string;
+  candidates: MentionUser[];
+  translate?: boolean;
+  me?: string;
+}) {
   const { translatedText: text } = useTranslate(raw, { enabled: !!translate });
   // A picked mention carries the full name; one typed by hand is often just
   // the first name, in any case (as chat always highlighted it). Display
@@ -109,12 +121,17 @@ function Body({ text: raw, candidates, translate }: { text: string; candidates: 
     ].sort((a, b) => b.length - a.length);
     return names.length ? new RegExp(`(@(?:${names.map(escapeRe).join("|")})(?![\\p{L}\\p{N}_]))`, "giu") : null;
   }, [candidates]);
+  const mine = useMemo(() => {
+    const self = candidates.find((c) => c.uid === me);
+    if (!self?.name) return [];
+    return [`@${self.name}`, `@${self.name.trim().split(/\s+/)[0]}`].map((n) => n.toLowerCase());
+  }, [candidates, me]);
   if (!re) return <>{text}</>;
   return (
     <>
       {text.split(re).map((part, i) =>
         i % 2 === 1 ? (
-          <span key={i} className="strm-at" data-stream-mention="">
+          <span key={i} className={cn("strm-at", mine.includes(part.toLowerCase()) && "me")} data-stream-mention="">
             {part}
           </span>
         ) : (
@@ -201,8 +218,10 @@ interface RowProps<M extends StreamSourceMessage> {
   editFailure?: string;
   maxLength?: number;
   onDelete: () => void;
-  onCloseAsk: (how: "followedUp" | "neverMind") => void;
+  onCloseAsk: (how: "followedUp" | "neverMind" | "done") => void;
   onReopenAsk?: () => void;
+  /** The viewer's uid, so their own @mention reads brighter. */
+  me?: string;
   /** Source extras (#1259): each optional, each off by default. */
   badge?: string | null;
   photo?: string | null;
@@ -236,6 +255,7 @@ function Row<M extends StreamSourceMessage>({
   onDelete,
   onCloseAsk,
   onReopenAsk,
+  me,
   badge,
   photo,
   gone,
@@ -248,7 +268,9 @@ function Row<M extends StreamSourceMessage>({
 }: RowProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
-  const { message: m, tag, ask, askActions, thread } = row;
+  const { message: m, tag, ask, askActions, mention, mentionActions, thread } = row;
+  const firstNameOf = (uid: string) =>
+    (candidates.find((c) => c.uid === uid)?.name || t("stream.someone")).trim().split(/\s+/)[0];
   // A message that was just posted names its author so the marker has a place.
   const continuation = row.continuation && !justPosted;
   const [menu, setMenu] = useState(false);
@@ -352,7 +374,7 @@ function Row<M extends StreamSourceMessage>({
           <>
             {m.body && (
               <p className="strm-tx">
-                <Body text={m.body} candidates={candidates} translate={translate} />
+                <Body text={m.body} candidates={candidates} translate={translate} me={me} />
               </p>
             )}
             {extra}
@@ -405,6 +427,41 @@ function Row<M extends StreamSourceMessage>({
                   </button>
                 )}
               </>
+            )}
+          </div>
+        )}
+        {!gone && mention && (mention.status !== "open" || mentionActions.length > 0) && (
+          <div className="strm-status" data-stream-mention-status={mention.status}>
+            {mention.status === "open" && mentionActions.includes("done") && (
+              <button type="button" className="strm-btn strm-btn-pri" onClick={() => onCloseAsk("done")}>
+                {t("stream.mention_done")}
+              </button>
+            )}
+            {mention.status === "open" && mentionActions.includes("neverMind") && (
+              <>
+                <span className="strm-s-gone">
+                  {t("stream.mention_waiting").replace(
+                    "{names}",
+                    joinNames(mention.waitingOn.map(firstNameOf), t("stream.names_and")),
+                  )}
+                </span>
+                <button type="button" className="strm-btn strm-btn-ghost" onClick={() => onCloseAsk("neverMind")}>
+                  {t("stream.ask_never_mind")}
+                </button>
+              </>
+            )}
+            {mention.status === "done" && (
+              <span className="strm-s-gone">
+                <Check className="w-3.5 h-3.5 inline-block mr-1 align-[-2px]" aria-hidden />
+                {t("stream.mention_closed")
+                  .replace("{name}", (mention.by.name || t("stream.someone")).trim().split(/\s+/)[0])
+                  .replace("{when}", f.ago(mention.at))}
+              </span>
+            )}
+            {mention.status === "withdrawn" && (
+              <span className="strm-s-gone">
+                {t("stream.ask_withdrawn").replace("{name}", mention.by.name).replace("{when}", f.ago(mention.at))}
+              </span>
             )}
           </div>
         )}
@@ -650,7 +707,8 @@ export default function Stream<M extends StreamSourceMessage>({
     onAddToStory: onAddToStory ? () => onAddToStory(row.message) : undefined,
     addedToStory: !!storyMessageIds?.has(row.message.id),
     onDelete: () => void adapter.delete(row.message),
-    onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
+    onCloseAsk: (how: "followedUp" | "neverMind" | "done") => void adapter.closeAsk(row.message, how),
+    me: viewer.uid,
     onReopenAsk: adapter.reopenAsk ? () => void adapter.reopenAsk!(row.message) : undefined,
     photo: adapter.avatarUrl?.(row.message) ?? null,
     gone: adapter.goneLabel?.(row.message) ?? null,
@@ -745,7 +803,6 @@ export default function Stream<M extends StreamSourceMessage>({
       {can.canReply && (
         <StreamComposer
           key={thread.parent.message.id}
-          kinds={false}
           placeholder={adapter.replyPlaceholder ?? t("stream.reply_placeholder")}
           hint={t("stream.reply_hint")}
           label={t("stream.reply_label")}
@@ -819,9 +876,7 @@ export default function Stream<M extends StreamSourceMessage>({
             </p>
           )}
           <StreamComposer
-            kinds={can.kinds}
             audience={adapter.audience}
-            askAudience={adapter.askAudience}
             locked={adapter.locked}
             placeholder={words?.placeholder}
             hint={words?.hint ?? t("stream.post_hint")}

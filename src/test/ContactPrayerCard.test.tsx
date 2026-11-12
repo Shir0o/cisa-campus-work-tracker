@@ -59,4 +59,42 @@ describe('ContactPrayerCard — a prayer reads as a prayer (#1672)', () => {
     expect(screen.queryByRole('button', { name: 'Edit prayer' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Prayer status' })).toBeNull();
   });
+
+  describe('team prayer footer', () => {
+    const off = { ...prayer, teamPrayer: false } as PrayerRecord;
+    const on = { ...prayer, teamPrayer: true } as PrayerRecord;
+
+    it('off the team: offers only "Bring to team prayer", no label', () => {
+      const onSetTeamPrayer = vi.fn();
+      render(<ContactPrayerCard prayer={off} canUpdatePrayers onUpdateStatus={vi.fn()} onSetTeamPrayer={onSetTeamPrayer} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Bring to team prayer' }));
+      expect(onSetTeamPrayer).toHaveBeenCalledWith(off, true);
+      expect(screen.queryByText(/on our hearts/i)).toBeNull();
+      expect(screen.queryByText(/not on team prayer|only you|private/i)).toBeNull();
+    });
+
+    it('on the team: shows the link and a quiet "Take off team prayer"', () => {
+      const onSetTeamPrayer = vi.fn();
+      render(<ContactPrayerCard prayer={on} canUpdatePrayers onUpdateStatus={vi.fn()} onSetTeamPrayer={onSetTeamPrayer} />);
+      expect(screen.getByRole('link', { name: /On our hearts/ })).toHaveAttribute('href', '/prayer');
+      expect(screen.getByText(/Team prayers/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Take off team prayer' }));
+      expect(onSetTeamPrayer).toHaveBeenCalledWith(on, false);
+    });
+
+    it('an absent flag counts as the team (legacy)', () => {
+      render(<ContactPrayerCard prayer={prayer} canUpdatePrayers onUpdateStatus={vi.fn()} onSetTeamPrayer={vi.fn()} />);
+      expect(screen.getByRole('button', { name: 'Take off team prayer' })).toBeInTheDocument();
+    });
+
+    it('without permission: read-only line when shared, nothing when not', () => {
+      const { unmount } = render(<ContactPrayerCard prayer={on} canUpdatePrayers={false} onUpdateStatus={vi.fn()} onSetTeamPrayer={vi.fn()} />);
+      expect(screen.getByRole('link', { name: /On our hearts/ })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Take off team prayer' })).toBeNull();
+      unmount();
+      render(<ContactPrayerCard prayer={off} canUpdatePrayers={false} onUpdateStatus={vi.fn()} onSetTeamPrayer={vi.fn()} />);
+      expect(screen.queryByRole('button', { name: 'Bring to team prayer' })).toBeNull();
+      expect(screen.queryByText(/on our hearts/i)).toBeNull();
+    });
+  });
 });

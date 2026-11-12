@@ -1761,8 +1761,8 @@
       "overview": "Overview",
       "follow_up": "Conversation",
       "discussion": "Full-timers",
-      "open_ask_one": "1 open Follow-up ask",
-      "open_ask_many": "{count} open Follow-up asks",
+      "open_ask_one": "1 still open",
+      "open_ask_many": "{count} still open",
       "conversation_switch": "Which Conversation",
       "full_timers_unread": "New in Full-timers",
       "interactions": "Interactions",
@@ -1920,6 +1920,8 @@
       "composer_log": "Log",
       "prayer_request": "Prayer request",
       "prayer_status": "Prayer status",
+      "bring_to_team_prayer": "Bring to team prayer",
+      "take_off_team_prayer": "Take off team prayer",
       "status_open": "Open",
       "edit_prayer": "Edit prayer",
       "composer_editing_prayer": "Editing prayer",
@@ -2351,17 +2353,13 @@
     "audience_full_timers": "Full-timers only.",
     "just_posted": "Just posted",
     "to_work_through_label": "to work through",
-    "see_around": "See around"
+    "see_around": "See around",
+    "verb_done": "Done",
+    "snack_done": "Marked {name} done."
   },
   "thread": {
-    "kind_comment": "Update",
-    "kind_question": "Question",
-    "kind_follow_up": "Ask someone to follow up",
     "send_post": "Post",
-    "compose_kind_group": "What are you writing",
     "placeholder_comment": "Write something…",
-    "placeholder_question": "What do you want to know? Everyone tied to this person will see it.",
-    "placeholder_follow_up": "What wants doing — text them, email them? Say enough that anyone could pick it up.",
     "empty_interaction": "No comments on this interaction yet.",
     "empty_full_timers": "Nothing here yet — start it below.",
     "empty_conversation": "Nothing here yet — leave the first comment below."
@@ -2405,7 +2403,6 @@
     "compose_label": "Write a message",
     "mention": "Mention someone",
     "audience_conversation": "Everyone tied to {name} sees this.",
-    "audience_conversation_ask": "Everyone tied to {name} sees this and can say they followed up.",
     "where_conversation": "Conversation · {name}",
     "edit": "Edit",
     "edited": "Edited",
@@ -2425,7 +2422,13 @@
     "attach": "Attach",
     "remove_staged": "Remove {name}",
     "staged": "Staged to send",
-    "new_messages": "New messages"
+    "new_messages": "New messages",
+    "mention_list_line": "{names} will get this on their list",
+    "names_and": "and",
+    "mention_done": "Done",
+    "mention_waiting": "Waiting on {names}",
+    "mention_closed": "{name} · done {when}",
+    "someone": "Someone"
   },
   "chat": {
     "placeholder": "Write a message…",
@@ -2936,7 +2939,12 @@
     "ago_minutes": "{n}m ago",
     "ago_hours": "{n}h ago",
     "ago_day": "1 day ago",
-    "ago_days": "{n} days ago"
+    "ago_days": "{n} days ago",
+    "draft_mention_mine": "{name} — your mention is still open",
+    "draft_mention_theirs": "{name} — {asker}'s mention is still open",
+    "sig_mention_mine": "Mention open {days} days",
+    "sig_mention_theirs": "{asker}'s mention open {days} days",
+    "cleared_mention": "Cleared · the mention closed"
   }
 ,
   "vault": {

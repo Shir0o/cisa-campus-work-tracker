@@ -1,6 +1,6 @@
 // Shared (contact) prayer status writes — shared Firestore logic behind an
 // injected `db`. Mirrors the web app's src/lib/prayers.ts.
-import { addDoc, collection, doc, onSnapshot, query, updateDoc, where, type Firestore } from "firebase/firestore";
+import { addDoc, collection, deleteField, doc, onSnapshot, query, updateDoc, where, writeBatch, type Firestore } from "firebase/firestore";
 import type { PrayerRecord } from "../types";
 
 /** Live subscription to every team prayer, normalizing legacy docs (mirrors
@@ -95,6 +95,26 @@ export async function updatePrayerBurden(
     updatedBy: by.uid || null,
     updatedByName: by.name || null,
   });
+}
+
+/** Put a burden on, or take it off, the team prayer page. Always writes the
+ *  flag: deleting it would read as the team's again (`isTeamPrayer`). Bringing
+ *  it to the team also puts the person back on "On our hearts" in the same
+ *  batch (clears `prayerListRemoved`, as the web's `addTeamPrayer` does);
+ *  taking it off leaves the contact alone. */
+export async function setPrayerTeamPrayer(
+  db: Firestore,
+  prayerId: string,
+  contactId: string,
+  teamPrayer: boolean,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  const now = new Date().toISOString();
+  const stamp = { updatedAt: now, updatedBy: by.uid || null, updatedByName: by.name || null };
+  const batch = writeBatch(db);
+  batch.update(doc(db, "prayers", prayerId), { teamPrayer, ...stamp });
+  if (teamPrayer) batch.update(doc(db, "contacts", contactId), { prayerListRemoved: deleteField(), ...stamp });
+  await batch.commit();
 }
 
 export async function updatePrayerStatus(

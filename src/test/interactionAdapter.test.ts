@@ -99,7 +99,7 @@ describe("interactionAdapter", () => {
   });
 
   it("offers no kinds and no attachments; a writer may reply", () => {
-    expect(make("manager").capabilities).toEqual({ kinds: false, attachments: false, canPost: true, canReply: true });
+    expect(make("manager").capabilities).toEqual({ attachments: false, canPost: true, canReply: true });
     expect(make("viewer").capabilities.canReply).toBe(false);
   });
 

@@ -8,7 +8,7 @@
 // accessible role and name, never by class or grid span.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import OnYouCard from "../components/landing/OnYouCard";
 import { __resetUserEntityStateCache } from "../lib/userEntityState";
 import { InboxState, __resetInboxState } from "../lib/inboxState";
@@ -279,10 +279,27 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge", {
       uid: "u1",
       name: "Tony Wang",
-    });
+    }, undefined);
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge");
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge", undefined);
+  });
+
+  it("closes an open @mention of the reader for everyone it named when Done is pressed", () => {
+    render(
+      <OnYouCard
+        contacts={[contact()]}
+        interactions={[]}
+        threads={[{ ...question, id: "t_mn", kind: "comment", body: "@Tony can you call Alex?", mentionedUserIds: ["u1"] }]}
+        staffNameMap={{ u3: "Zion" }}
+      />,
+    );
+    expect(screen.getByText(/Zion mentioned you/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Done$/ }));
+    expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn", { uid: "u1", name: "Tony Wang" }, null);
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn", null);
   });
 
   it("an encouragement is summarised on the person's card, never a card of its own", () => {
@@ -337,13 +354,15 @@ describe("the worklist card, through On you (#813, #943)", () => {
     await vi.waitFor(() => expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true));
   });
 
-  it("offers the same three kinds the Conversation tab does", () => {
+  it("writes back as a plain comment, with no kind chips", async () => {
     card();
     fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
-    const picker = screen.getByRole("group", { name: "What are you writing" });
-    expect(within(picker).getByRole("button", { name: "Update" })).toBeInTheDocument();
-    expect(within(picker).getByRole("button", { name: "Question" })).toBeInTheDocument();
-    expect(within(picker).getByRole("button", { name: "Ask someone to follow up" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "What are you writing" })).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("Write something…"), { target: { value: "On it" } });
+    fireEvent.click(screen.getByRole("button", { name: /Post/ }));
+    await vi.waitFor(() =>
+      expect(addThreadMessage).toHaveBeenCalledWith("c1", expect.objectContaining({ kind: "comment", body: "On it" }), expect.anything()),
+    );
   });
 
   // The heart used to open a one-emoji picker whose bubble landed on the

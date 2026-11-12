@@ -11,13 +11,17 @@
 // "Three calendar days" is three days on the campus clock
 // (`America/Los_Angeles`), not three 24-hour periods: raised late on the eve of
 // a daylight-saving change, it is still due on the third day.
+//
+// An open @mention keeps the ask's schedule: still open three days after it was
+// written, its sender alone is told once. Like an ask, it is open until it is
+// closed (a reply or Done from someone it names, or the sender's Never mind).
 
 export const CAMPUS_TIME_ZONE = "America/Los_Angeles";
 export const REMIND_AFTER_CALENDAR_DAYS = 3;
 
 const DAY_MS = 86_400_000;
 
-export type ReminderKind = "ask" | "question";
+export type ReminderKind = "ask" | "question" | "mention";
 
 export interface ReminderReply {
   from: string;
@@ -33,7 +37,7 @@ export interface ReminderCandidate {
   body: string;
   /** ISO timestamp the ask or question was raised. */
   at: string;
-  /** Follow-up asks only: set once someone followed up or the asker withdrew. */
+  /** Follow-up asks and mentions: set once it was closed or withdrawn. */
   closedAt?: string | null;
   /** Set once this ask or question has been reminded; it is never reminded twice. */
   remindedAt?: string | null;
@@ -78,9 +82,15 @@ function campusDayNumber(ms: number): number {
 const excerpt = (body: string) =>
   body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
 
+const REMINDER_TITLE: Record<ReminderKind, string> = {
+  ask: "Nobody followed up",
+  question: "No reply yet on your question",
+  mention: "No reply yet on your mention",
+};
+
 function isDue(c: ReminderCandidate, now: number | Date): boolean {
   if (c.remindedAt) return false;
-  if (c.kind === "ask" && c.closedAt) return false;
+  if ((c.kind === "ask" || c.kind === "mention") && c.closedAt) return false;
   if (c.kind === "question" && (c.replies ?? []).some((r) => r.from !== c.from)) return false;
   return campusCalendarDaysSince(c.at, now) >= REMIND_AFTER_CALENDAR_DAYS;
 }
@@ -96,7 +106,7 @@ export function remindersDue(candidates: ReminderCandidate[], now: number | Date
     due.push({
       notification: {
         userId: c.from,
-        title: c.kind === "ask" ? "Nobody followed up" : "No reply yet on your question",
+        title: REMINDER_TITLE[c.kind],
         message: excerpt(c.body),
         type: "info",
         targetId: c.contactId,

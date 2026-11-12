@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { HelpCircle, Bell, Check, RotateCcw } from "lucide-react";
+import { AtSign, HelpCircle, Bell, Check, RotateCcw } from "lucide-react";
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../../components/AuthProvider";
@@ -58,11 +58,13 @@ function WaitingRow({
 }) {
   const { t } = useI18n();
   const isNudge = item.kind === "nudge";
-  const Icon = isNudge ? Bell : HelpCircle;
+  const Icon = item.mention ? AtSign : isNudge ? Bell : HelpCircle;
   const cls = isNudge ? "text-warning bg-warning/10" : "text-stage-amber bg-stage-amber-soft";
-  const title = isNudge
-    ? `${writerFirst} nudged a follow-up about ${contactName}`
-    : `${writerFirst} asked about ${contactName}`;
+  const title = item.mention
+    ? `${writerFirst} mentioned you about ${contactName}`
+    : isNudge
+      ? `${writerFirst} nudged a follow-up about ${contactName}`
+      : `${writerFirst} asked about ${contactName}`;
 
   return (
     <div

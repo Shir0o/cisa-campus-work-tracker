@@ -118,3 +118,23 @@ describe("remindersDue", () => {
     expect(REMIND_AFTER_CALENDAR_DAYS).toBe(3);
   });
 });
+
+describe("remindersDue — an open @mention (the ask schedule)", () => {
+  const mention = (over: Partial<ReminderCandidate> = {}): ReminderCandidate =>
+    ask({ messageId: "mn1", kind: "mention", body: "@Tony can you call Rio?", ...over });
+
+  it("tells its sender once, three calendar days after it was written", () => {
+    expect(remindersDue([mention()], new Date("2026-06-03T18:00:00.000Z"))).toEqual([]);
+    const due = remindersDue([mention()], new Date("2026-06-04T18:00:00.000Z"));
+    expect(due).toHaveLength(1);
+    expect(due[0].notification.userId).toBe("asker");
+    expect(due[0].notification.title).toBe("No reply yet on your mention");
+    expect(due[0].source).toEqual({ contactId: "c1", messageId: "mn1" });
+  });
+
+  it("never reminds a mention that was closed, or already reminded", () => {
+    const now = new Date("2026-06-04T18:00:00.000Z");
+    expect(remindersDue([mention({ closedAt: "2026-06-02T18:00:00.000Z" })], now)).toEqual([]);
+    expect(remindersDue([mention({ remindedAt: "2026-06-04T17:00:00.000Z" })], now)).toEqual([]);
+  });
+});

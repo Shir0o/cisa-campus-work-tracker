@@ -254,6 +254,15 @@ describe('ftInboxRows', () => {
     expect(row.reply).toBe('encourage');
   });
 
+  it('says an open @mention of you is one', () => {
+    const [row] = ftInboxRows(
+      [inboxItem({ id: 'thread:mn', type: 'thread', kind: 'comment', mention: true, body: '@Tony can you?' })],
+      ctx,
+    );
+    expect(row.headline).toBe('Jordan mentioned you about Rio');
+    expect(row.reply).toBe('write-back');
+  });
+
   it('offers a write-back on a question about someone you carry', () => {
     const [row] = ftInboxRows(
       [inboxItem({ id: 'thread:m1', type: 'thread', by: 'u3', body: 'Should I keep going?' })],

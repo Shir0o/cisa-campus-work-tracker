@@ -1547,6 +1547,8 @@
       "remove_interaction_confirm": "Esta interacción tiene {count} mensaje(s) en su hilo. Al eliminarla, desaparecen del registro. ¿Eliminar de todos modos?",
       "pray_for": "Orar por {name}",
       "nothing_written_down": "Aún no hay nada escrito.",
+      "bring_to_team_prayer": "Llevar a la oración del equipo",
+      "take_off_team_prayer": "Quitar de la oración del equipo",
       "back": "← Atrás",
       "prayed": "Oré ✓",
       "prayed_for": "Oré por {name}",
@@ -1597,7 +1599,6 @@
       "full_timers": "Tiempo completo",
       "which_stream": "Qué conversación",
       "audience_conversation": "Todos los vinculados a {name} ven esto.",
-      "audience_conversation_ask": "Todos los vinculados a {name} ven esto y pueden decir que hicieron el seguimiento.",
       "audience_full_timers": "Solo los de tiempo completo ven esto; los aprendices no.",
       "compose_conversation": "Escribe a todos los vinculados a {name}",
       "compose_full_timers": "Escribe a los de tiempo completo",
@@ -1646,15 +1647,15 @@
       "mention_list": "Menciones a compañeros",
       "staged": "Adjuntado",
       "remove_staged": "Quitar {name}",
-      "kind_group": "Qué estás escribiendo",
-      "kind_comment": "Actualización",
-      "kind_question": "Pregunta",
-      "kind_follow_up": "Pedir que alguien dé seguimiento",
       "placeholder_comment": "Escribe algo…",
-      "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
-      "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
       "pin": "Fijar",
-      "unpin": "Desfijar"
+      "unpin": "Desfijar",
+      "mention_list_line": "{names} lo tendrán en su lista",
+      "names_and": "y",
+      "mention_done": "Hecho",
+      "mention_waiting": "Esperando a {names}",
+      "mention_closed": "✓ {name} · hecho {when}",
+      "someone": "Alguien"
     },
     "queue": {
       "moved_to_later": "Movido a más tarde hoy.",
@@ -1892,7 +1893,12 @@
       "post": "Publicar novedad",
       "swipe_update": "Novedad",
       "swipe_dismiss": "Descartar",
-      "undo": "Deshacer"
+      "undo": "Deshacer",
+      "draft_mention_mine": "{name} — tu mención sigue abierta",
+      "draft_mention_theirs": "{name} — la mención de {asker} sigue abierta",
+      "sig_mention_mine": "Mención abierta {days} días",
+      "sig_mention_theirs": "Mención de {asker} abierta {days} días",
+      "cleared_mention": "Resuelta · la mención se cerró"
     }
   }
 }

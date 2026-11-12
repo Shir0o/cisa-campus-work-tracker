@@ -1866,6 +1866,56 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(getFirestore({ uid: 'viewer1' }), 'prayers', 'prayer-edit'), edit));
     });
 
+    it('lets an operator toggle teamPrayer, rejects a non-boolean, and denies a viewer', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'prayers', 'prayer-team'), {
+          contactId: 'contact1',
+          burden: 'Peace',
+          status: 'pending',
+          teamPrayer: false,
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const flip = (teamPrayer: unknown) => ({ teamPrayer, updatedAt: '2026-10-19T00:00:00.000Z' });
+      const ref = (uid: string) => doc(getFirestore({ uid }), 'prayers', 'prayer-team');
+      await assertSucceeds(updateDoc(ref('operator1'), flip(true)));
+      await assertSucceeds(updateDoc(ref('operator1'), flip(false)));
+      await assertFails(updateDoc(ref('operator1'), flip('yes')));
+      await assertFails(updateDoc(ref('viewer1'), flip(true)));
+    });
+
+    // "Bring to team prayer" is one batch: the prayer flag plus clearing the
+    // contact's team-wide removal, stamped with ISO strings (setPrayerTeamPrayer).
+    it('lets an operator bring a prayer to the team and clear the contact removal in one batch; denies a viewer', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts', 'contact-batch'), {
+          name: 'Test',
+          email: 'test@example.com',
+          visibleTo: ['operator1'],
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'operator2', byName: 'Operator Two' },
+        });
+        await setDoc(doc(fs, 'prayers', 'prayer-batch'), {
+          contactId: 'contact-batch', burden: 'Peace', status: 'pending', teamPrayer: false,
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const run = (uid: string) => {
+        const fs = getFirestore({ uid });
+        const stamp = { updatedAt: '2026-10-19T00:00:00.000Z', updatedBy: uid, updatedByName: 'X' };
+        const batch = writeBatch(fs);
+        batch.update(doc(fs, 'prayers', 'prayer-batch'), { teamPrayer: true, ...stamp });
+        batch.update(doc(fs, 'contacts', 'contact-batch'), { prayerListRemoved: deleteField(), ...stamp });
+        return batch.commit();
+      };
+      await assertFails(run('viewer1'));
+      await assertSucceeds(run('operator1'));
+    });
+
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
       const db = getFirestore({ uid: 'operator1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -3665,6 +3715,43 @@ describeRules('Firestore Security Rules', () => {
       });
     });
 
+    // ── Closing an @mention ─────────────────────────────────────────────────
+    // A message that @mentions someone is open on their list until one of them
+    // replies or presses Done, or its sender presses Never mind. It closes with
+    // the same three keys as a Follow-up ask — but only those it names and its
+    // sender may close it.
+    describe('closing an @mention', () => {
+      const close = (uid: string, name = uid) => ({ closedBy: uid, closedByName: name, closedAt: new Date().toISOString() });
+
+      it('lets a mentioned person close it (Done, or by replying)', async () => {
+        await seedThreadUsers();
+        await seedMsg('mn1', { from: 'operator1', mentionedUserIds: ['manager1', 'operator2'] });
+        await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'operator2' }), 'contacts/contact1/threads/mn1'), close('operator2')));
+      });
+
+      it('lets the sender withdraw it with Never mind, and undo a close', async () => {
+        await seedThreadUsers();
+        await seedMsg('mn2', { from: 'operator1', mentionedUserIds: ['operator2'] });
+        const db = getFirestore({ uid: 'operator1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts/contact1/threads/mn2'), close('operator1')));
+        await assertSucceeds(updateDoc(doc(db, 'contacts/contact1/threads/mn2'), { closedBy: null, closedByName: null, closedAt: null }));
+      });
+
+      it('refuses anyone it does not name, and a comment that names nobody', async () => {
+        await seedThreadUsers();
+        await seedMsg('mn3', { from: 'operator1', mentionedUserIds: ['operator2'] });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'admin1' }), 'contacts/contact1/threads/mn3'), close('admin1')));
+        await seedMsg('plain', { from: 'operator1' });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'operator1' }), 'contacts/contact1/threads/plain'), close('operator1')));
+      });
+
+      it('refuses recording someone else as the closer', async () => {
+        await seedThreadUsers();
+        await seedMsg('mn4', { from: 'operator1', mentionedUserIds: ['operator2'] });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'operator2' }), 'contacts/contact1/threads/mn4'), close('manager1')));
+      });
+    });
+
     it('lets the author create a message (from == uid)', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'operator1' });
@@ -3852,6 +3939,21 @@ describeRules('Firestore Security Rules', () => {
         await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t2'), teamMsg({ from: 'operator1' })));
         await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t3'), teamMsg({ scope: null })));
         await assertFails(updateDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded'), { body: 'edited' }));
+      });
+
+      it('lets a Full-timer it @mentions close a mention there, and nothing else move', async () => {
+        await seedThreadUsers();
+        await testEnv.withSecurityRulesDisabled(async (c) => {
+          const fs = c.firestore();
+          await setDoc(doc(fs, 'users', 'admin2'), { role: 'admin', approved: true });
+          await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com' });
+          await setDoc(doc(fs, 'contacts/tied/teamThreads/mn'), teamMsg({ mentionedUserIds: ['admin2'] }));
+          await setDoc(doc(fs, 'contacts/tied/teamThreads/plain'), teamMsg());
+        });
+        const closing = (uid: string) => ({ closedBy: uid, closedByName: uid, closedAt: new Date().toISOString() });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/mn'), { ...closing('admin2'), body: 'x' }));
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/plain'), closing('admin2')));
+        await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/mn'), closing('admin2')));
       });
 
       it('keeps every other role out, even a Trainee tied to the person', async () => {

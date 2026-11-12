@@ -144,12 +144,15 @@ describe('subscribeTiedThreads', () => {
       docs: [{
         id: 'm1',
         ref: { path: 'contacts/a/threads/m1', parent: { parent: { id: 'a' } } },
-        data: () => ({ from: 'u1', fromName: 'Ada', kind: 'question', body: 'q', at: '2026-01-01T00:00:00.000Z', interactionId: null }),
+        data: () => ({ from: 'u1', fromName: 'Ada', kind: 'comment', body: '@Bo q', at: '2026-01-01T00:00:00.000Z', interactionId: null, mentionedUserIds: ['trainee1'], closedBy: 'trainee1', closedByName: 'Bo', closedAt: '2026-01-02T00:00:00.000Z' }),
       }],
     });
 
     expect(cb.mock.lastCall![0]).toEqual([
-      { id: 'm1', contactId: 'a', interactionId: null, from: 'u1', fromName: 'Ada', kind: 'question', body: 'q', at: '2026-01-01T00:00:00.000Z' },
+      {
+        id: 'm1', contactId: 'a', interactionId: null, parentId: null, from: 'u1', fromName: 'Ada', kind: 'comment', body: '@Bo q',
+        at: '2026-01-01T00:00:00.000Z', mentionedUserIds: ['trainee1'], closedBy: 'trainee1', closedByName: 'Bo', closedAt: '2026-01-02T00:00:00.000Z',
+      },
     ]);
   });
 });

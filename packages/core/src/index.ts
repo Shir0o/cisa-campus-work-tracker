@@ -77,3 +77,4 @@ export * from './bibleStudy';
 export * from './data/bibleStudy';
 export * from './carers';
 export * from './homes';
+export * from './mentions';

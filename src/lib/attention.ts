@@ -5,6 +5,7 @@ import { inTheConversation, type ThreadMessage, type ThreadMessageWithContact } 
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { InboxState } from "./inboxState";
 import { parseMs } from "../components/landing/helpers";
+import { isOpenMentionFor } from "../../packages/core/src/mentions";
 
 export function toIsoTimestamp(val: unknown): string {
   const ms = parseMs(val);
@@ -52,6 +53,11 @@ export interface AttentionItem {
   interactionId?: string | null;
   kind?: string | null; // e.g. "question" | "nudge" | "note"
   mentioned?: boolean;
+  /** An @mention of the reader nobody has closed yet: on their list until a
+   *  reply, Done, or the sender's Never mind. */
+  openMention?: boolean;
+  /** "team" when the message is in the Full-timers stream. */
+  scope?: "team" | null;
   /** Follow-up asks: set once someone said they did it (or the asker retracted). */
   closedAt?: string | null;
   closedByName?: string | null;
@@ -278,6 +284,7 @@ export function buildAttentionItems(params: {
     // praise is worse than the praise is worth (#813).
     if (m.kind === "encouragement") continue;
     if (m.from && m.from !== uid && m.mentionedUserIds?.includes(uid)) {
+      const openMention = isOpenMentionFor(m, uid);
       // Ensure we don't duplicate if it was already added above as a question or full-timer item
       const existing = items.find((it) => it.id === "thread:" + m.id);
       if (!existing) {
@@ -293,9 +300,14 @@ export function buildAttentionItems(params: {
           closedAt: m.closedAt ?? null,
           closedByName: m.closedByName ?? null,
           mentioned: true,
+          ...(openMention ? { openMention: true, scope: m.scope ?? null } : {}),
         });
       } else {
         existing.mentioned = true;
+        if (openMention) {
+          existing.openMention = true;
+          existing.scope = m.scope ?? null;
+        }
       }
     }
   }
@@ -414,6 +426,7 @@ export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<strin
   if (item.type === "notification") return item.title || "New notification";
 
   if (item.type === "thread") {
+    if (item.openMention) return `${firstName} mentioned you`;
     switch (item.kind) {
       case "question":
         // The asker's own outstanding question reads from their side.
@@ -444,7 +457,7 @@ export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<strin
 /** The completion verb a card offers, or null when it offers none.
  *  Three families: things you look at, things you owe someone, and things that
  *  are only information. See docs/design/followup-reach/Inbox.dc.html. */
-export type WorklistVerb = "followedUp" | "answered" | "reviewed" | "gotIt";
+export type WorklistVerb = "followedUp" | "done" | "answered" | "reviewed" | "gotIt";
 
 // An ask that reaches you only because you are In the Conversation is not
 // yours to follow up on — that stays with those tied to the person (#1604).
@@ -454,6 +467,11 @@ const OPEN_ASK = (it: AttentionItem) =>
 /** The follow-up asks on this card still waiting on someone. */
 export function openAsksIn(stack: AttentionStack): AttentionItem[] {
   return stack.items.filter(OPEN_ASK);
+}
+
+/** The @mentions of the reader on this card still open — what Done closes. */
+export function openMentionsIn(stack: AttentionStack): AttentionItem[] {
+  return stack.items.filter((it) => it.type === "thread" && !!it.openMention);
 }
 
 /**
@@ -467,6 +485,7 @@ export function openAsksIn(stack: AttentionStack): AttentionItem[] {
  */
 export function worklistVerbFor(stack: AttentionStack): WorklistVerb | null {
   if (stack.items.some(OPEN_ASK)) return "followedUp";
+  if (openMentionsIn(stack).length > 0) return "done";
   if (stack.items.some((it) => it.type === "thread" && it.kind === "question")) {
     return "answered";
   }
@@ -487,10 +506,11 @@ export function isNewPerson(stack: AttentionStack): boolean {
   return stack.kinds.includes("contact");
 }
 
-/** True when the card wants words back — a question, or an ask nobody has taken. */
+/** True when the card wants words back — a question, an ask nobody has taken,
+ *  or an open @mention of the reader. */
 export function wantsAReply(stack: AttentionStack): boolean {
   return stack.items.some(
-    (it) => it.type === "thread" && (it.kind === "question" || OPEN_ASK(it)),
+    (it) => it.type === "thread" && (it.kind === "question" || OPEN_ASK(it) || !!it.openMention),
   );
 }
 

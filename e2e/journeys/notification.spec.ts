@@ -338,7 +338,7 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
     expect((await pushes()).filter((p) => p.uid === uid.trainee)).toHaveLength(1);
   });
 
-  test('a question from Around the team reaches every trainee tied to the person, carers included', async ({ page }) => {
+  test('a comment from Around the team reaches every trainee tied to the person, carers included', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/around');
     const card = page
@@ -350,13 +350,14 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
     await card.getByRole('button', { name: 'Comment' }).click();
     // One strip opens at a time, so its composer is the page's only one. The
     // box now carries a "Write a message" label, so target its placeholder.
-    await page.getByRole('button', { name: 'Question', exact: true }).click();
-    const box = page.getByPlaceholder(/What do you want to know/);
+    // Every message is a plain comment now: there are no kind chips.
+    await expect(page.getByRole('button', { name: 'Question', exact: true })).toHaveCount(0);
+    const box = page.getByPlaceholder('Write something…');
     await box.fill('Is Omar coming Thursday?');
     await page.getByRole('button', { name: 'Post' }).click();
 
-    await expectPushTo('trainee2', /asked about Omar Around/);
-    await expectPushTo('trainee', /asked about Omar Around/);
+    await expectPushTo('trainee2', /commented on Omar Around/);
+    await expectPushTo('trainee', /commented on Omar Around/);
   });
 
   test('a chat message buzzes the other member', async ({ page }) => {

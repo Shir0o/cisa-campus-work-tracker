@@ -174,10 +174,9 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     expect(closeBody!).toMatch(/height:\s*44px/);
     fourtyFour('.cdm-page .cd-pane-tab');
     fourtyFour('.cdm-page .cd-pane-asks');
-    // The composer's controls: mention/attach tools, send, and the kind chips.
+    // The composer's controls: mention/attach tools and send.
     fourtyFour('.cdm-page .strm-tool');
     fourtyFour('.cdm-page .strm-send');
-    fourtyFour('.cdm-page .strm-kind');
     // Scoped to the contact page, so the desktop stream keeps its density.
     expect(block).toMatch(/max-width:\s*720px/);
   });

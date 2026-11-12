@@ -61,7 +61,7 @@ const quiet = (p: Promise<unknown>) => void p.catch(() => {});
 function toneOf(line: ToAskLine): V2ToneKey {
   if (line.state === 'cleared') return 'note';
   if (line.kind === 'notReached') return 'follow';
-  if (line.kind === 'ask' || line.kind === 'question') return 'ask';
+  if (line.kind === 'ask' || line.kind === 'question' || line.kind === 'mention') return 'ask';
   if (line.kind === 'noReply') return 'due';
   return 'note';
 }

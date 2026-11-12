@@ -151,3 +151,21 @@ describe('inboxItemsFor — In the Conversation (#1604)', () => {
     expect(items.map((i) => i.id)).toEqual(['thread:q']);
   });
 });
+
+describe('an open @mention is on the mentioned person\'s list', () => {
+  const mention = (over: Partial<ThreadMessageWithContact> = {}) =>
+    msg({ id: 'mn', kind: 'comment', mentionedUserIds: [FT, TRAINEE], ...over });
+
+  it('reaches a Full-timer it names, until it closes', () => {
+    const ids = (threads: ThreadMessageWithContact[]) =>
+      inboxItemsFor(FT, { contacts: [], interactions: [], threads }).map((i) => i.id);
+    expect(ids([mention({ from: 'someone' })])).toEqual(['thread:mn']);
+    expect(ids([mention({ from: 'someone', closedAt: '2026-07-05T10:00:00Z' })])).toEqual([]);
+  });
+
+  it('reaches a Trainee it names, from anyone, until it closes', () => {
+    const items = traineeWaitingItems(TRAINEE, [mention({ from: FT }), mention({ id: 'x', from: FT, closedAt: '2026-07-05T10:00:00Z' })]);
+    expect(items.map((i) => i.id)).toEqual(['thread:mn']);
+    expect(items[0]).toMatchObject({ mention: true, kind: 'comment' });
+  });
+});

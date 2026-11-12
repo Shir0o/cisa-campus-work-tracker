@@ -75,7 +75,7 @@ export function followUpAdapter({ noteId, replies, me, asSubmitter, getIdToken, 
     // The public-tracker line is the footer under the composer, not an audience.
     audience: "",
     empty: t("feedback.no_follow_ups"),
-    capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+    capabilities: { attachments: false, canPost: true, canReply: false },
     mentionCandidates: [],
     composer: {
       placeholder: t("feedback.follow_up_placeholder"),

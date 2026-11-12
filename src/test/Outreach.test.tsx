@@ -137,14 +137,16 @@ describe('Outreach', () => {
     expect(todoCall.assigneeId).toBe('u1');
   });
 
-  it('nudge reminds whoever spoke with them via a thread message', async () => {
+  it('reminds whoever spoke with them with a comment that @mentions them', async () => {
     render(<Outreach />);
     const remind = await screen.findByRole('button', { name: 'Remind Ana' });
     fireEvent.click(remind);
     await waitFor(() => expect(addThreadMessage).toHaveBeenCalled());
     const call = vi.mocked(addThreadMessage).mock.calls[0];
     expect(call[0]).toBe('C-2'); // Chloe's contact
-    expect(call[1].kind).toBe('nudge');
+    expect(call[1].kind).toBe('comment');
+    expect(call[1].mentionedUserIds).toEqual(['u3']);
+    expect(call[1].body.startsWith('@Ana Reyes ')).toBe(true);
     expect(call[2]?.to).toBe('u3'); // Ana was the one who spoke with her
   });
 

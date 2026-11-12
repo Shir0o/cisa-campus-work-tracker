@@ -316,3 +316,39 @@ describe('buildThread — one message and its replies (T1, T2)', () => {
     expect(buildThread({ messages: messages(), viewer: MARIA, now: NOW }, 'missing')).toBeNull();
   });
 });
+
+describe('buildStream — an @mention waits on the people it names', () => {
+  const mention = (over: Partial<StreamMessage> = {}) =>
+    msg({ id: 'mn', kind: 'comment', from: 'maria', at: at(23, 16), mentionedUserIds: ['josh', 'grace'], ...over });
+
+  it('is open, waiting on everyone named but the sender', () => {
+    const [, row] = buildStream({ messages: [mention({ mentionedUserIds: ['josh', 'maria', 'grace'] })], viewer: MARIA, now: NOW });
+    expect((row as StreamRow).mention).toEqual({ status: 'open', waitingOn: ['josh', 'grace'] });
+  });
+
+  it.each([
+    ['closed by a mentioned person', { closedBy: 'josh', closedByName: 'Josh Park', closedAt: at(24, 9) }, 'done'],
+    ['withdrawn by the sender', { closedBy: 'maria', closedByName: 'Maria Santos', closedAt: at(24, 9) }, 'withdrawn'],
+  ])('reads %s', (_label, over, status) => {
+    const [, row] = buildStream({ messages: [mention(over)], viewer: MARIA, now: NOW });
+    expect((row as StreamRow).mention).toEqual({ status, by: { uid: over.closedBy, name: over.closedByName }, at: at(24, 9) });
+  });
+
+  it('has no mention state without anyone named, or on a legacy question or ask', () => {
+    for (const m of [mention({ mentionedUserIds: undefined }), mention({ kind: 'question' }), mention({ kind: 'nudge' })]) {
+      const [, row] = buildStream({ messages: [m], viewer: MARIA, now: NOW });
+      expect((row as StreamRow).mention).toBeNull();
+      expect((row as StreamRow).mentionActions).toEqual([]);
+    }
+  });
+
+  it.each([
+    ['a mentioned person', { uid: 'josh', role: 'manager' }, {}, ['done']],
+    ['the sender', { uid: 'maria', role: 'manager' }, {}, ['neverMind']],
+    ['someone not named', { uid: 'ruth', role: 'admin' }, {}, []],
+    ['a mentioned person, once closed', { uid: 'josh', role: 'manager' }, { closedBy: 'grace', closedAt: at(24, 9) }, []],
+  ])('%s may press %j', (_label, viewer, over, actions) => {
+    const [, row] = buildStream({ messages: [mention(over)], viewer, now: NOW });
+    expect((row as StreamRow).mentionActions).toEqual(actions);
+  });
+});

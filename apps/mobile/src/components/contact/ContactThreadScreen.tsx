@@ -137,6 +137,7 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
                   readOnly={!canWrite}
                   onLongPress={setHeld}
                   onCloseAsk={(row) => void data.closeAsk(row.message)}
+                  nameOf={(uid) => data.teamMembers.find((m) => m.uid === uid)?.displayName ?? ''}
                   editingId={editingMessage?.id ?? null}
                   onSaveEdit={async (body) => {
                     if (!editingMessage) return;
@@ -164,6 +165,7 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
                   readOnly={!canWrite}
                   onLongPress={setHeld}
                   onCloseAsk={(r) => void data.closeAsk(r.message)}
+                  nameOf={(uid) => data.teamMembers.find((m) => m.uid === uid)?.displayName ?? ''}
                   editingId={editingMessage?.id ?? null}
                   onSaveEdit={async (body) => {
                     if (!editingMessage) return;
