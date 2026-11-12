@@ -30,7 +30,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
 
   const displayedMetrics = filterGapsOnly
-    ? metrics.filter((m) => m.status.startsWith('needs-'))
+    ? metrics.filter((m) => m.status === 'needs-step')
     : metrics;
 
   const selectedContacts = selectedCell
@@ -44,7 +44,7 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
       })
     : [];
 
-  const needsNextStepCount = metrics.filter((m) => m.status.startsWith('needs-')).length;
+  const needsNextStepCount = metrics.filter((m) => m.status === 'needs-step').length;
 
   return (
     <div className="bg-surface rounded-xl border border-outline-variant shadow-xs overflow-hidden">
@@ -100,12 +100,20 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
                     <div className="font-semibold text-on-surface">{row.memberNames.join(' & ')}</div>
                     <div className="text-xs text-on-surface-variant">
                       {t('outreachBoard.pipeline_total_contacts', '{n} total contacts').replace('{n}', String(row.totalFoundedContacts))}
+                      {row.unplacedContacts > 0 && (
+                        <span className="text-on-surface-variant/70">
+                          {' · '}
+                          {t('outreachBoard.pipeline_unplaced_contacts', '{n} not on a step').replace('{n}', String(row.unplacedContacts))}
+                        </span>
+                      )}
                     </div>
                   </td>
 
-                  {sortedStages.map((s, idx) => {
+                  {sortedStages.map((s) => {
                     const count = row.stageCounts[s.id] || 0;
-                    const isZeroInGapStage = count === 0 && idx > 0 && row.status.startsWith('needs-');
+                    // Only the one step being guided to is a gap. Later empty
+                    // steps are simply not reached yet.
+                    const isGapCell = count === 0 && row.status === 'needs-step' && row.gapStageId === s.id;
 
                     return (
                       <td key={s.id} className="py-3.5 px-4 text-center">
@@ -120,33 +128,33 @@ export const PipelineMatrix: React.FC<PipelineMatrixProps> = ({
                             })
                           }
                           className={`inline-flex items-center justify-center min-w-8 h-7 px-2.5 rounded-md text-xs font-bold transition-transform active:scale-95 ${
-                            isZeroInGapStage
+                            isGapCell
                               ? 'bg-error-container text-on-error-container border border-error/40'
                               : count > 0
                               ? 'bg-surface-container-highest text-on-surface hover:bg-surface-variant'
                               : 'text-on-surface-variant/40 hover:text-on-surface-variant'
                           }`}
                         >
-                          {count === 0 && !isZeroInGapStage ? '—' : count}
+                          {count === 0 && !isGapCell ? '—' : count}
                         </button>
                       </td>
                     );
                   })}
 
                   <td className="py-3.5 px-6 text-center">
-                    {row.status === 'needs-first-appt' && (
+                    {row.status === 'needs-step' && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-error-container text-on-error-container border border-error/30 rounded-full text-xs font-semibold">
-                        Needs 1st Appt
-                      </span>
-                    )}
-                    {row.status === 'needs-regular-appt' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-tertiary-container text-on-tertiary-container border border-tertiary/30 rounded-full text-xs font-semibold">
-                        Needs Regular Appt
+                        {t('outreachBoard.pipeline_needs_stage', 'Needs {stage}').replace('{stage}', row.gapStageLabel ?? '')}
                       </span>
                     )}
                     {row.status === 'flowing' && (
                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-secondary-container text-on-secondary-container border border-secondary/30 rounded-full text-xs font-semibold">
-                        ✓ Active Flow
+                        ✓ {t('outreachBoard.pipeline_status_flowing', 'Active Flow')}
+                      </span>
+                    )}
+                    {row.status === 'unplaced' && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-surface-container-highest text-on-surface-variant border border-outline-variant rounded-full text-xs font-semibold">
+                        {t('outreachBoard.pipeline_status_unplaced', 'Not on a step yet')}
                       </span>
                     )}
                     {row.status === 'neutral' && <span className="text-on-surface-variant/40">—</span>}

@@ -60,7 +60,7 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
 import { PipelineMatrix } from '../components/pipeline/PipelineMatrix';
 import { computePipelineMetrics } from '../components/pipeline/pipelineLogic';
-import { usePartners } from '../lib/partners';
+import { partnersTermKey, usePartners } from '../lib/partners';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { PopupFrame } from '../components/ui/PopupFrame';
@@ -192,10 +192,6 @@ export default function OutreachBoard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role, effectiveUserId } = useAuth();
   const [boardView, setBoardView] = useState<'journey' | 'pipeline'>('journey');
-  const [followupThresholdDays, setFollowupThresholdDays] = useState<number>(() => {
-    const saved = localStorage.getItem('pipeline_followup_threshold');
-    return saved ? Number(saved) : 7;
-  });
   const pairings = usePartners();
   const [userNameMap, setUserNameMap] = useState<Record<string, string>>({});
 
@@ -219,10 +215,6 @@ export default function OutreachBoard() {
     return () => unsub();
   }, []);
 
-  const handleThresholdChange = (val: number) => {
-    setFollowupThresholdDays(val);
-    localStorage.setItem('pipeline_followup_threshold', String(val));
-  };
   const [stages, setStages] = useState<Stage[]>(cachedStages ?? []);
   useEffect(() => { stagesRef.current = stages; }, [stages]);
   // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
@@ -530,7 +522,7 @@ export default function OutreachBoard() {
   };
 
   const staffId = effectiveUserId || user?.uid;
-  const visibleJourneyContacts = journeyContacts(role, staffId, boardContacts, 'Fall 2026');
+  const visibleJourneyContacts = journeyContacts(role, staffId, boardContacts, partnersTermKey());
 
   const filteredContacts = visibleJourneyContacts.filter(c => {
     return c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -971,21 +963,6 @@ export default function OutreachBoard() {
                 {t('outreachBoard.shape_the_journey')}
               </button>
             )}
-            {isAdmin && boardView === 'pipeline' && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest text-xs text-on-surface">
-                <span className="text-on-surface-variant font-medium">{t('outreachBoard.pipeline_threshold_days')}:</span>
-                <select
-                  value={followupThresholdDays}
-                  onChange={(e) => handleThresholdChange(Number(e.target.value))}
-                  className="bg-transparent font-semibold text-on-surface outline-none cursor-pointer"
-                  aria-label={t('outreachBoard.pipeline_threshold_days')}
-                >
-                  <option value={7}>{t('outreachBoard.pipeline_threshold_7_days')}</option>
-                  <option value={14}>{t('outreachBoard.pipeline_threshold_14_days')}</option>
-                  <option value={30}>{t('outreachBoard.pipeline_threshold_30_days')}</option>
-                </select>
-              </div>
-            )}
             {boardView === 'journey' && (
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
@@ -1007,11 +984,10 @@ export default function OutreachBoard() {
           <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
             <PipelineMatrix
               metrics={computePipelineMetrics(
-                pairings.filter((p) => !p.endDate),
+                pairings,
                 stages,
                 visibleJourneyContacts,
-                userNameMap,
-                followupThresholdDays
+                userNameMap
               )}
               stages={stages}
               contacts={visibleJourneyContacts}
