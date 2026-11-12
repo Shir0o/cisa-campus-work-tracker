@@ -3157,8 +3157,14 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   const free = useMemo(() => trainees.filter((tr) => !openMembers.has(tr.uid)), [trainees, openMembers]);
 
   const commit = (next: PartnerPairing[]) => {
+    const before = pairings;
     setPairings(next);
-    void savePartners(next);
+    // A refused save (rules, offline) must not surface as an unhandled
+    // rejection: put the list back and say so.
+    savePartners(next).catch(() => {
+      setPairings(before);
+      alert(t('settings.pairs_save_failed', "Couldn't save that change to the pairs. Please try again."));
+    });
   };
 
   const closePicking = () => {

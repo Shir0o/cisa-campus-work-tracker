@@ -165,6 +165,7 @@
     "pairs_from": "from {start}",
     "pairs_history": "Earlier arrangements",
     "pairs_overlap": "That overlaps a pairing that's already ended or already covers that date.",
+    "pairs_save_failed": "Couldn't save that change to the pairs. Please try again.",
     "unnamed": "Unnamed",
     "member_options": "Member options",
     "edit_member": "Edit member",
