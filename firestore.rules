@@ -890,6 +890,14 @@ service cloud.firestore {
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
       allow create, update: if docId == 'walking' && isAdmin() && isValidWalkingSettings(incoming());
       allow create, update: if docId == 'partners' && isAdmin() && isValidPartnerSettings(incoming());
+      // A doc still carrying the legacy `byTerm` map is kept as the migration
+      // path (src/lib/partners.ts writes `pairings` with merge, so `byTerm`
+      // rides along). Without this, the strict shape above denied every save of
+      // such a doc. The update may touch `pairings` only; `byTerm` stays as it is.
+      allow update: if docId == 'partners' && isAdmin() &&
+                      incoming().keys().hasOnly(['pairings', 'byTerm']) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['pairings']) &&
+                      incoming().pairings is list;
       allow create, update: if docId == 'goal' && isAdmin() && isValidGoalSettings(incoming());
       allow delete: if false;
     }

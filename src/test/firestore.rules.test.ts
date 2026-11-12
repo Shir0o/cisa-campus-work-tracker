@@ -4256,6 +4256,34 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }));
     });
 
+    it('SP6: Admin can save pairings onto a doc that still holds legacy byTerm, but cannot change byTerm', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'settings', 'partners'), {
+          byTerm: { 'Fall 2026': [{ members: ['trainee1', 'trainee2'] }] },
+        });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      const ref = doc(db, 'settings', 'partners');
+      // savePartners' exact write: pairings merged in, byTerm left untouched.
+      await assertSucceeds(
+        setDoc(ref, { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }, { merge: true }),
+      );
+      // byTerm itself stays read-only, and no other key may join it.
+      await assertFails(setDoc(ref, { byTerm: {} }, { merge: true }));
+      await assertFails(setDoc(ref, { pairings: [], evil: true }, { merge: true }));
+      await assertFails(setDoc(ref, { pairings: 'not-a-list' }, { merge: true }));
+    });
+
+    it('SP7: Manager cannot save pairings onto a legacy byTerm doc', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'partners'), { byTerm: {} });
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [] }, { merge: true }));
+    });
+
     it('SWN1: Anyone (even unauthenticated) can read settings/whats_new', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'settings', 'whats_new'), {

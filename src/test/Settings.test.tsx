@@ -4,6 +4,7 @@ import { onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Settings from '../views/Settings';
 import { useAuth } from '../components/AuthProvider';
 import { dayKey, pairingId, type PartnerPairing } from '../lib/partners';
+import { handleFirestoreError } from '../lib/firebase';
 import { FirstRunStore } from '../lib/firstRun';
 import React from 'react';
 
@@ -463,6 +464,30 @@ describe('Settings', () => {
           { merge: true },
         );
       });
+    });
+
+    it('a refused save puts the list back and says so instead of throwing', async () => {
+      setupManagerAuth();
+      partnersMock([]);
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      vi.mocked(setDoc).mockImplementationOnce(() => Promise.reject(new Error('Missing or insufficient permissions.')));
+      vi.mocked(handleFirestoreError).mockImplementationOnce(() => {
+        throw new Error('denied');
+      });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Two trainees going out together'));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee User/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith("Couldn't save that change to the pairs. Please try again.");
+      });
+      expect(screen.queryByText('Trainee User and Trainee Two')).toBeNull();
+      alertSpy.mockRestore();
     });
 
     it('shows who is going out on their own this term', async () => {
