@@ -154,7 +154,7 @@ function EmailPasswordForm() {
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-4 py-3 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        className="w-full px-4 py-3 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
         required
       />
     <div className="relative">
@@ -165,7 +165,7 @@ function EmailPasswordForm() {
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 pr-12 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        className="w-full px-4 py-3 pr-12 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
         required
       />
       <button
@@ -175,7 +175,7 @@ function EmailPasswordForm() {
           passwordRef.current?.focus();
         }}
         aria-label={showPassword ? "Hide password" : "Show password"}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors cursor-pointer"
       >
         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
       </button>
@@ -184,28 +184,24 @@ function EmailPasswordForm() {
       <button
         type="submit"
         disabled={busy}
-        className="w-full py-3 bg-primary text-on-primary rounded-full font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+        className="w-full py-3 bg-primary text-on-primary rounded-full font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
       <div className="pt-2 text-center flex items-center justify-center gap-3 text-xs text-on-surface-variant">
-        <a
-          href="https://shir0o.github.io/cisa-campus-work-tracker/privacy.html"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/privacy"
           className="hover:text-accent transition-colors underline"
         >
           Privacy Policy
-        </a>
+        </Link>
         <span>&bull;</span>
-        <a
-          href="https://shir0o.github.io/cisa-campus-work-tracker/support.html"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/support"
           className="hover:text-accent transition-colors underline"
         >
           Support
-        </a>
+        </Link>
       </div>
     </form>
   );
@@ -333,7 +329,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         data-testid="sign-in-view"
         className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
       >
-        <div className="max-w-md w-full bg-surface-container rounded-xl p-8 text-center border border-outline-variant">
+        <div className="max-w-md w-full bg-surface-container rounded-2xl p-6 sm:p-8 shadow-sm text-center border border-outline-variant">
           <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
           <p className="text-on-surface-variant mb-8">
             Please sign in with your Google account to continue.
