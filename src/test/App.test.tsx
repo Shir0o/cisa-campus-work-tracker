@@ -229,6 +229,19 @@ describe('App Component', () => {
     expect(view.className).not.toMatch(/(?<!-)h-screen\b|h-dvh|min-h-dvh/);
   });
 
+  it('renders the privacy and support links as internal in-app routes', () => {
+    render(<App />);
+    const privacy = screen.getByRole('link', { name: 'Privacy Policy' });
+    const support = screen.getByRole('link', { name: 'Support' });
+
+    // In-app routes, so the sign-in card navigates instead of opening the
+    // static GitHub Pages copies in a new tab.
+    expect(privacy).toHaveAttribute('href', '/privacy');
+    expect(support).toHaveAttribute('href', '/support');
+    expect(privacy).not.toHaveAttribute('target');
+    expect(support).not.toHaveAttribute('target');
+  });
+
   it('calls signIn on Google sign in click', () => {
     render(<App />);
     const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });

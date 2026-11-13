@@ -59,9 +59,9 @@ const emptyForm = {
 export type SignUpFormState = typeof emptyForm;
 
 const inputCls =
-  'w-full h-11 px-3.5 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/50';
+  'w-full h-11 px-3.5 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/75';
 const textareaCls =
-  'w-full px-3.5 py-3 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none';
+  'w-full px-3.5 py-3 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/75 resize-none';
 
 interface SignUpProps {
   onBack?: () => void;
