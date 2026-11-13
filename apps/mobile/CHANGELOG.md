@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.15.1...v1.16.0) (2026-11-13)
+
+
+### Features
+
+* plain messages with [@mentions](https://github.com/mentions); bring to team prayer ([#2003](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2003)) ([9478ce1](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9478ce15fdcc296d5132e15c707d3087deb7a683))
+
 ## [1.15.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.15.0...v1.15.1) (2026-11-11)
 
 
