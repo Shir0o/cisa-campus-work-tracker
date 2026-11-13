@@ -1,6 +1,60 @@
 {
-  "latestReleaseId": "2026-11-05-v1.15.0",
+  "latestReleaseId": "2026-11-13-v1.16.0",
   "releases": [
+    {
+      "id": "2026-11-13-v1.16.0",
+      "version": "1.16.0",
+      "title": "Release 1.16.0",
+      "date": "2026-11-13",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Plain messages with @mentions; bring to team prayer.",
+        "Simplify and curate in-app release notes.",
+        "Polish sign-in and sign-up flows and contrast.",
+        "Credit contacts to the pair that founded them."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Plain messages with @mentions; bring to team prayer",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Simplify and curate in-app release notes",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Polish sign-in and sign-up flows and contrast",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Credit contacts to the pair that founded them",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "General bug fixes and stability improvements",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-11-05-v1.15.0",
       "version": "1.15.0",
