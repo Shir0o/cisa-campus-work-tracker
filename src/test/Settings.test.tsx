@@ -490,6 +490,31 @@ describe('Settings', () => {
       alertSpy.mockRestore();
     });
 
+    // Security audit (Nov 2026): every save replaces the whole list, so a
+    // save made before the stored list arrived erased every earlier pair.
+    it('saves nothing until the stored pairs have loaded', async () => {
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'users') callback({ docs: adminTraineeUsers });
+        else if (ref?.path !== 'settings/partners') callback({ docs: [] });
+        return vi.fn();
+      });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      vi.mocked(setDoc).mockClear();
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Two trainees going out together'));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee User/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
+
+      expect(alertSpy).toHaveBeenCalledWith('The pairs are still loading. Please try again in a moment.');
+      expect(vi.mocked(setDoc).mock.calls.some(([, data]: any[]) => data && 'pairings' in data)).toBe(false);
+      alertSpy.mockRestore();
+    });
+
     it('shows who is going out on their own this term', async () => {
       setupManagerAuth();
       partnersMock([{ id: 'p1', members: ['u-trainee', 'u-trainee2'], startDate: dayKey() }]);

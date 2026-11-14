@@ -1029,7 +1029,7 @@ export default function CoordinationNotes() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
-      const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
+      const isCmdK = (e.metaKey || e.ctrlKey) && e.key?.toLowerCase() === 'k';
       const isSlash = e.key === '/' && !isInput;
       if (isCmdK || isSlash) {
         e.preventDefault();

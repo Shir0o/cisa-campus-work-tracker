@@ -120,6 +120,18 @@ export interface DispatchResult {
   removed: number;
 }
 
+/**
+ * A push opens its link in the app, so only an in-app path is allowed. The
+ * notifications rules let an unauthenticated visitor write an ALL_ADMINS event
+ * (a public sign-up does), so a link to another site would put a phishing page
+ * one tap from every Full-timer's lock screen.
+ */
+export function safePushLink(link: unknown): string {
+  if (typeof link !== "string") return "/";
+  if (!link.startsWith("/") || link.startsWith("//") || link.startsWith("/\\")) return "/";
+  return link;
+}
+
 export async function dispatchNotification(
   n: BellNotification,
   deps: DispatchDeps,
@@ -129,7 +141,7 @@ export async function dispatchNotification(
   const payload = capPushPayload({
     title: n.title,
     body: n.message ?? "",
-    link: n.link || "/",
+    link: safePushLink(n.link),
     targetId: n.targetId ?? null,
     notificationId: n.id,
   });

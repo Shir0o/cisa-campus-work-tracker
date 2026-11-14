@@ -701,7 +701,7 @@ export class FeedbackPipeline {
       try {
         const kindLabel = kind || type;
         const cleanMsg = (message || '').trim();
-        const prefix = `[Feedback] ${kindLabel}: `;
+        const prefix = `[Feedback] ${String(kindLabel ?? '').replace(/[\r\n]+/g, ' ').slice(0, 40)}: `;
         const remaining = GITHUB_TITLE_MAX - prefix.length;
         const ellipsis = '…';
         const title =
@@ -709,6 +709,14 @@ export class FeedbackPipeline {
             ? prefix + cleanMsg
             : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
         const fence = '```';
+        // The message keeps its own backticks (people paste code), so its
+        // fence is one longer than any backtick run inside it and the text can
+        // never close the block early to write markdown into the issue.
+        const longestTickRun = Math.max(0, ...(cleanMsg.match(/`+/g) || []).map((run) => run.length));
+        const messageFence = '`'.repeat(Math.max(3, longestTickRun + 1));
+        // Single-line fields come from the client; a newline in one would let
+        // it add lines (a fake "Submitted by", a hidden comment) to the issue.
+        const oneLine = (value: unknown) => String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, 300);
         // The reporter's own focus/composition/viewport events (#1735). The
         // tracer records no typed text; the fence is neutralised so a trace can
         // never break out of its block.
@@ -722,19 +730,19 @@ export class FeedbackPipeline {
         const bodyLines = [
           '### Feedback Details',
           feedbackIssueSubmittedByLine(userName),
-          `- **Type:** ${type || 'enhancement'}`,
-          `- **Kind:** ${kindLabel}`,
+          `- **Type:** ${oneLine(type || 'enhancement')}`,
+          `- **Kind:** ${oneLine(kindLabel)}`,
           `- **Date:** ${new Date().toLocaleString()}`,
-          `- **Page URL:** ${redactRecordIds(url || '') || 'N/A'}`,
-          `- **Viewport:** ${viewport || 'N/A'}`,
-          `- **User Agent:** ${userAgent || 'N/A'}`,
+          `- **Page URL:** ${oneLine(redactRecordIds(url || '')) || 'N/A'}`,
+          `- **Viewport:** ${oneLine(viewport) || 'N/A'}`,
+          `- **User Agent:** ${oneLine(userAgent) || 'N/A'}`,
           // The image itself stays in-app; this only tells triage one exists.
           `- **Screenshot:** ${feedbackData.screenshot ? 'Captured (see the admin feedback list)' : 'None'}`,
           '',
           '### Message',
-          `${fence}text`,
+          `${messageFence}text`,
           cleanMsg,
-          fence,
+          messageFence,
           ...(trace ? ['', '### Input trace', `${fence}text`, trace, fence] : []),
           '',
           '---',

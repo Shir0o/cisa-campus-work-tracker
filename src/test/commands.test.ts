@@ -65,6 +65,22 @@ describe('registerCommand + dispatch', () => {
     unreg();
   });
 
+  // Sentry CAMPUS-TRACKER-WEB-2: Safari autofill dispatches a keydown with no
+  // `key`, and the dispatcher threw on `e.key.toLowerCase()`.
+  it('ignores a keydown that carries no key', () => {
+    const fn = make();
+    const unreg = registerCommand(fn);
+    const onError = vi.fn();
+    window.addEventListener('error', onError);
+    document.dispatchEvent(new Event('keydown', { cancelable: true }));
+    window.removeEventListener('error', onError);
+    expect(onError).not.toHaveBeenCalled();
+    expect(fn.handler).not.toHaveBeenCalled();
+    fire({ key: 'k', metaKey: true });
+    expect(fn.handler).toHaveBeenCalledTimes(1);
+    unreg();
+  });
+
   it('does not fire for a different key', () => {
     const fn = make();
     const unreg = registerCommand(fn);

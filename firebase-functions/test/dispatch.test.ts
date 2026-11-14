@@ -131,6 +131,17 @@ describe("dispatchNotification", () => {
     );
   });
 
+  it("never pushes a link that leaves the app", async () => {
+    for (const link of ["https://evil.example/login", "//evil.example", "/\\evil.example", "javascript:alert(1)"]) {
+      const deps = makeDeps({ u1: [expoDevice("d1", "t1")] });
+      await dispatchNotification({ id: "n10", userId: "ALL_ADMINS", title: "New event", link }, {
+        ...deps,
+        fullTimerIds: vi.fn(async () => ["u1"]),
+      });
+      expect(vi.mocked(deps.send).mock.calls[0][2].link).toBe("/");
+    }
+  });
+
   it("caps a long bell message in the payload handed to every device (#1440)", async () => {
     const deps = makeDeps({ u1: [expoDevice("d1", "t1")] });
     await dispatchNotification({ id: "n9", userId: "u1", title: "T", message: "x".repeat(10_000) }, deps);

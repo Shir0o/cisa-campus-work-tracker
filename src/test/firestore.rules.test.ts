@@ -192,6 +192,56 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(updateDoc(doc(db, 'users', 'trainee1'), { team: null }));
     });
 
+    // Security audit (Nov 2026): a Trainee could promote anyone, themselves
+    // included, to Full-timer.
+    it('A trainee cannot make themselves a Full-timer or change their own approval', async () => {
+      await seedUser('traineeA');
+      const db = getFirestore({ uid: 'traineeA', email: 'traineeA@example.com' });
+      await assertFails(updateDoc(doc(db, 'users', 'traineeA'), { role: 'admin' }));
+      await assertFails(updateDoc(doc(db, 'users', 'traineeA'), { role: 'operator' }));
+    });
+
+    it('A trainee cannot promote someone to, or demote someone from, Full-timer', async () => {
+      await seedUser('traineeB');
+      await seedUser('studentB', { role: 'operator' });
+      await seedUser('adminB', { role: 'admin' });
+      const db = getFirestore({ uid: 'traineeB', email: 'traineeB@example.com' });
+      await assertFails(updateDoc(doc(db, 'users', 'studentB'), { role: 'admin' }));
+      await assertFails(updateDoc(doc(db, 'users', 'adminB'), { role: 'viewer' }));
+      // Managing Students and Community still works.
+      await assertSucceeds(updateDoc(doc(db, 'users', 'studentB'), { role: 'viewer' }));
+      await assertSucceeds(updateDoc(doc(db, 'users', 'studentB'), { approved: false }));
+    });
+
+    it('A trainee cannot invite a Full-timer; a Full-timer can', async () => {
+      await seedUser('traineeC');
+      await seedUser('adminC', { role: 'admin' });
+      const trainee = getFirestore({ uid: 'traineeC', email: 'traineeC@example.com' });
+      const admin = getFirestore({ uid: 'adminC', email: 'adminC@example.com' });
+      await assertFails(setDoc(doc(trainee, 'invitations', 'new@example.com'), { email: 'new@example.com', role: 'admin', approved: true }));
+      await assertSucceeds(setDoc(doc(trainee, 'invitations', 'student@example.com'), { email: 'student@example.com', role: 'operator', approved: true }));
+      await assertSucceeds(setDoc(doc(admin, 'invitations', 'new@example.com'), { email: 'new@example.com', role: 'admin', approved: true }));
+    });
+
+    it("Nobody can claim an invitation sent to someone else's address", async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'invitations', 'invitee@example.com'), {
+          email: 'invitee@example.com', role: 'admin', approved: true,
+        });
+      });
+      const profile = {
+        email: 'invitee@example.com', displayName: 'Invitee', photoURL: null,
+        role: 'admin', approved: true,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      const attacker = getFirestore({ uid: 'attacker1', email: 'attacker@example.com' });
+      await assertFails(setDoc(doc(attacker, 'users', 'attacker1'), profile));
+      const unverified = getFirestore({ uid: 'unverified1', email: 'invitee@example.com', email_verified: false });
+      await assertFails(setDoc(doc(unverified, 'users', 'unverified1'), profile));
+      const invitee = getFirestore({ uid: 'invitee1', email: 'invitee@example.com' });
+      await assertSucceeds(setDoc(doc(invitee, 'users', 'invitee1'), profile));
+    });
+
     it('A trainee cannot put themselves — or anyone else — on a team', async () => {
       await seedUser('trainee2');
       await seedUser('trainee3');
