@@ -15,13 +15,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
 
-  console.log(`[CF Proxy] Intercepted request: ${request.method} "${url.pathname}${url.search}"`);
+  // Paths only: a query string can carry a secret (a guest link's `key`).
+  console.log(`[CF Proxy] Intercepted request: ${request.method} "${url.pathname}"`);
 
   // Establish Backend Destination Host on GCP Cloud Run
   const backendBaseUrl = env.BACKEND_API_URL || "https://campus-hub-backend-d2h5m26nrq-wl.a.run.app";
   const targetUrl = new URL(url.pathname + url.search, backendBaseUrl);
 
-  console.log(`[CF Proxy] Forwarding to: "${targetUrl.toString()}"`);
+  console.log(`[CF Proxy] Forwarding to: "${targetUrl.origin}${targetUrl.pathname}"`);
 
   // Handle HTTP OPTIONS preflight request for cross-origin compliance
   if (request.method === "OPTIONS") {

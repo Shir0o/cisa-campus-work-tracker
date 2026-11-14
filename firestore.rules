@@ -115,6 +115,15 @@ service cloud.firestore {
         return existing().get('team', null) == incoming().get('team', null);
       }
 
+      // A Trainee manages Students and Community, never Full-timers: they may
+      // not grant or remove the Full-timer role, nor change their own role or
+      // approval. Only a Full-timer changes those (security audit, Nov 2026).
+      function managerRoleChangeAllowed(userId) {
+        return incoming().role != 'admin' && existing().role != 'admin' &&
+               (!isOwner(userId) ||
+                (incoming().role == existing().role && incoming().approved == existing().approved));
+      }
+
       // The weekly reminder switch is each person's own (#1301); even a manager
       // changing someone else's record leaves it exactly as it was.
       function weeklyRemindersOffUnchanged() {
@@ -133,6 +142,10 @@ service cloud.firestore {
                         (incoming().approved == false && incoming().role == 'viewer') || 
                         isAdmin() ||
                         (
+                          // The invitation must be for the signed-in, verified
+                          // address, or anyone could claim someone else's.
+                          emailVerified() &&
+                          incoming().email.lower() == getAuthEmail() &&
                           exists(/databases/$(database)/documents/invitations/$(incoming().email.lower())) &&
                           get(/databases/$(database)/documents/invitations/$(incoming().email.lower())).data.role == incoming().role &&
                           get(/databases/$(database)/documents/invitations/$(incoming().email.lower())).data.approved == incoming().approved
@@ -140,7 +153,7 @@ service cloud.firestore {
                       );
 
       allow update: if isValidId(userId) && (
-                      (isManager() && (isAdmin() || teamUnchanged()) && weeklyRemindersOffUnchanged() && isValidUser(incoming())) ||
+                      (isManager() && (isAdmin() || (teamUnchanged() && managerRoleChangeAllowed(userId))) && weeklyRemindersOffUnchanged() && isValidUser(incoming())) ||
                       (isOwner(userId) &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'pushToken', 'weeklyRemindersOff']) &&
                        incoming().email == existing().email &&
@@ -274,7 +287,9 @@ service cloud.firestore {
 
       allow get: if isManager() || (isSignedIn() && getAuthEmail() == email.lower());
       allow list: if isManager();
-      allow create, update: if isManager() && isValidInvitation(incoming());
+      // Only a Full-timer invites a Full-timer.
+      allow create, update: if isManager() && isValidInvitation(incoming()) &&
+                              (isAdmin() || incoming().role != 'admin');
       allow delete: if isManager() || (isSignedIn() && getAuthEmail() == email.lower());
     }
 

@@ -3138,7 +3138,17 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   const [endingId, setEndingId] = useState<string | null>(null);
   const [endDate, setEndDate] = useState(dayKey());
 
-  useEffect(() => subscribePartners(setPairings), []);
+  // Every save replaces the whole list, so nothing is saved until the stored
+  // list has arrived: a save from the empty starting list would erase it.
+  const [loaded, setLoaded] = useState(false);
+  useEffect(
+    () =>
+      subscribePartners((next) => {
+        setPairings(next);
+        setLoaded(true);
+      }),
+    [],
+  );
 
   const term = partnersTermKey();
   const trainees = useMemo(() => users.filter((u) => u.role === 'manager' && isRealPerson(u)), [users]);
@@ -3157,6 +3167,10 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   const free = useMemo(() => trainees.filter((tr) => !openMembers.has(tr.uid)), [trainees, openMembers]);
 
   const commit = (next: PartnerPairing[]) => {
+    if (!loaded) {
+      alert(t('settings.pairs_not_loaded', 'The pairs are still loading. Please try again in a moment.'));
+      return;
+    }
     const before = pairings;
     setPairings(next);
     // A refused save (rules, offline) must not surface as an unhandled

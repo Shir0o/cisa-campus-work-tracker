@@ -49,6 +49,9 @@ const listeners = new Set<() => void>();
 let snapshot: Command[] = [];
 
 function shortcutMatches(s: CommandShortcut, e: KeyboardEvent): boolean {
+  // Safari autofill and some IMEs dispatch keydown with no `key` (Sentry
+  // CAMPUS-TRACKER-WEB-2); such an event matches no shortcut.
+  if (typeof e.key !== 'string' || e.key === '') return false;
   const key = e.key.toLowerCase();
   if (s.key.toLowerCase() !== key) return false;
   if (s.mod) return e.metaKey || e.ctrlKey;

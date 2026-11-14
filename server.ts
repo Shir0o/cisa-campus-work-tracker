@@ -52,7 +52,10 @@ export async function createApp() {
         "content-type": req.headers["content-type"],
         "user-agent": req.headers["user-agent"]
       }, null, 2)}`);
-      console.log(`Body/Payload: ${JSON.stringify(req.body, null, 2)}`);
+      // Bodies carry contact PII and message text; keep them out of production logs.
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`Body/Payload: ${JSON.stringify(req.body, null, 2)}`);
+      }
       console.log(`============================================================\n`);
     }
     next();
@@ -152,7 +155,8 @@ export async function createApp() {
     const email = decodedToken.email || "";
 
     let role: string;
-    if (email.toLowerCase() === "yilongwang05@gmail.com") {
+    // Like the rules' isSuperAdmin(): an unverified address is not the owner.
+    if (email.toLowerCase() === "yilongwang05@gmail.com" && decodedToken.email_verified === true) {
       role = "admin";
     } else {
       const userDoc = await getAdminDb().collection("users").doc(uid).get();
@@ -176,7 +180,7 @@ export async function createApp() {
       throw new Error("Multi-factor authentication required");
     }
 
-    return { uid, email, role };
+    return { uid, email, role, decodedToken };
   }
 
   // The Full-timer gate every combine endpoint shares. A refusal is answered
@@ -421,7 +425,9 @@ export async function createApp() {
         const hmac = crypto.createHmac("sha256", webhookSecret);
         const digest = "sha256=" + hmac.update(rawBody).digest("hex");
 
-        if (digest !== signature) {
+        const digestBuf = Buffer.from(digest);
+        const signatureBuf = Buffer.from(signature);
+        if (digestBuf.length !== signatureBuf.length || !crypto.timingSafeEqual(digestBuf, signatureBuf)) {
           console.warn("GitHub Webhook: Signature verification failed.");
           return res.status(403).json({ error: "Invalid signature." });
         }
@@ -1180,6 +1186,15 @@ Analyze the input text carefully and extract the following:
     }
   });
 
+  function escapeXml(value: unknown): string {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  }
+
   // Endpoint 2: URL-Encoded Twilio Webhook compatibility endpoint (SMS & WhatsApp trigger)
   app.post("/api/webhook/sms", standardRateLimiter, async (req, res) => {
     try {
@@ -1221,12 +1236,15 @@ Analyze the input text carefully and extract the following:
 
       await logApiCall("Twilio SMS", req.body, req.headers, "success", outcome);
 
+      // Name, location and notes are model output from the sender's own text,
+      // so they are escaped before going into the TwiML document.
+      const contactNotes = String(contact.notes ?? "");
       const twiml = `
 <Response>
   <Message>
-🎉 ${contact.isExisting ? "Logged Interaction with" : "Added"} ${contact.name}!
-📍 Location: ${contact.location ? contact.location : "Not specified"}
-${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes: ${contact.notes.substring(0, 100)}${contact.notes.length > 100 ? "..." : ""}`}
+🎉 ${contact.isExisting ? "Logged Interaction with" : "Added"} ${escapeXml(contact.name)}!
+📍 Location: ${contact.location ? escapeXml(contact.location) : "Not specified"}
+${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes: ${escapeXml(contactNotes.substring(0, 100))}${contactNotes.length > 100 ? "..." : ""}`}
   </Message>
 </Response>
       `.trim();
@@ -1235,12 +1253,7 @@ ${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes:
     } catch (error: any) {
       console.error("Webhook Quick Add Error: ", error);
       await logApiCall("Twilio SMS", req.body, req.headers, "error", "Error parsing SMS to contact.", error.message || String(error));
-      const safeErrorMsg = String(error.message || "Internal server processing error.")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
+      const safeErrorMsg = escapeXml(error.message || "Internal server processing error.");
       const twimlError = `
 <Response>
   <Message>
@@ -1470,11 +1483,13 @@ The current local date is: ${currentDate}.`,
   // AI Smart Import endpoint: parses raw text into contacts, interactions, and discussions
   app.post("/api/smart-import/parse", standardRateLimiter, async (req, res) => {
     try {
+      // Full-timers only, like the Smart Import button: the prompt carries every
+      // contact's name, email and phone, and the model's answer comes back here.
       if (process.env.NODE_ENV !== "test") {
         try {
-          await authenticateFirebaseUser(req);
+          await authorizeAdmin(req);
         } catch (authErr: any) {
-          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
         }
       }
 
@@ -1612,13 +1627,16 @@ ${JSON.stringify(contactsList)}`;
     try {
       let uid = "system";
       let userName = "Smart Import";
+      // Full-timers only: the commit writes with admin rights, past the rules'
+      // visibleTo checks, to any contact id the request names.
       if (process.env.NODE_ENV !== "test") {
         try {
-          const decodedToken = await authenticateFirebaseUser(req);
-          uid = decodedToken.uid;
+          const authorized = await authorizeAdmin(req);
+          const decodedToken = authorized.decodedToken;
+          uid = authorized.uid;
           userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Smart Import";
         } catch (authErr: any) {
-          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
         }
       }
 
@@ -2366,6 +2384,7 @@ ${JSON.stringify(contactsList)}`;
 
   app.post(
     ['/api/attendance-sync', '/api/attendance-sync/intake', '/api/attd/sync', '/api/integrations/attd/attendance'],
+    standardRateLimiter,
     handleAttendanceSyncIntake,
   );
 

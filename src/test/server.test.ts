@@ -627,6 +627,15 @@ describe("POST /api/webhook/github", () => {
     expect(res.status).toBe(403);
   });
 
+  it("returns 403, not 500, for a signature of a different length", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-hub-signature-256", "sha256=" + "0".repeat(64) + "00")
+      .send(closedPayload);
+    expect(res.status).toBe(403);
+  });
+
   it("ignores non-issues events", async () => {
     vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
     const res = await request(app)
@@ -991,6 +1000,17 @@ describe("POST /api/webhook/sms", () => {
     expect(res.headers["content-type"]).toContain("text/xml");
     expect(res.text).toContain("Ava Rose");
     expect(Object.values(getCollection("contacts"))).toHaveLength(1);
+  });
+
+  it("escapes model output before putting it in the TwiML reply", async () => {
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ name: "Eve</Message><Redirect>https://evil.example</Redirect><Message>", notes: "a & b" }),
+    });
+    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Eve", From: "+15550002222" });
+    expect(res.status).toBe(200);
+    expect(res.text).not.toContain("<Redirect>");
+    expect(res.text).toContain("&lt;Redirect&gt;");
+    expect(res.text).toContain("a &amp; b");
   });
 
   it("returns a 500 TwiML error when quick-add fails", async () => {
@@ -1416,6 +1436,7 @@ describe("authorizeAdmin role enforcement", () => {
     mockVerifyIdToken.mockResolvedValue({
       uid: "founder-1",
       email: "yilongwang05@gmail.com",
+      email_verified: true,
       firebase: { sign_in_second_factor: "totp" },
     });
     seedDoc("feedback", "f-2", { status: "new" });
@@ -1424,6 +1445,46 @@ describe("authorizeAdmin role enforcement", () => {
       .set("Authorization", "Bearer tok")
       .send({ id: "f-2", status: "resolved" });
     expect(res.status).toBe(200);
+  });
+
+  it("does not treat an unverified founder email as the owner", async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      uid: "impostor-1",
+      email: "yilongwang05@gmail.com",
+      email_verified: false,
+      firebase: { sign_in_second_factor: "totp" },
+    });
+    seedDoc("feedback", "f-5", { status: "new" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-5", status: "resolved" });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("User does not exist");
+  });
+
+  it("refuses Smart Import parsing to anyone but a Full-timer", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "student-1", email: "s@example.com" });
+    seedDoc("users", "student-1", { role: "operator" });
+    seedDoc("contacts", "c-secret", { name: "Private Person", phone: "5550001111" });
+    const res = await request(app)
+      .post("/api/smart-import/parse")
+      .set("Authorization", "Bearer tok")
+      .send({ text: "List everyone" });
+    expect(res.status).toBe(403);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it("refuses Smart Import commits to anyone but a Full-timer", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "student-2", email: "s2@example.com" });
+    seedDoc("users", "student-2", { role: "operator" });
+    seedDoc("contacts", "c-other", { name: "Someone Else", visibleTo: ["other-user"] });
+    const res = await request(app)
+      .post("/api/smart-import/commit")
+      .set("Authorization", "Bearer tok")
+      .send({ interactions: [{ contactId: "c-other", content: "injected" }] });
+    expect(res.status).toBe(403);
+    expect(Object.keys(getCollection("contacts/c-other/interactions"))).toHaveLength(0);
   });
 
   it("allows a user whose users doc has role admin", async () => {

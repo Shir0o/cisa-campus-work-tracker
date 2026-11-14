@@ -145,15 +145,15 @@ export interface FirestoreErrorInfo {
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
+    // No email addresses: this message reaches the console, Sentry
+    // breadcrumbs and Sentry error titles. The uid is enough to look someone up.
     authInfo: {
       userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
       emailVerified: auth.currentUser?.emailVerified,
       isAnonymous: auth.currentUser?.isAnonymous,
       tenantId: auth.currentUser?.tenantId,
       providerInfo: auth.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
-        email: provider.email,
       })) || []
     },
     operationType,

@@ -166,6 +166,7 @@
     "pairs_history": "Acuerdos anteriores",
     "pairs_overlap": "Eso se superpone con una pareja ya terminada o que ya cubre esa fecha.",
     "pairs_save_failed": "No se pudo guardar ese cambio en las parejas. Inténtalo de nuevo.",
+    "pairs_not_loaded": "Las parejas todavía se están cargando. Inténtalo de nuevo en un momento.",
     "unnamed": "Sin nombre",
     "member_options": "Opciones del miembro",
     "edit_member": "Editar miembro",

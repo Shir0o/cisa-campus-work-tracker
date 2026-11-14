@@ -290,6 +290,31 @@ describe('FeedbackPipeline', () => {
       expect(withoutTrace).not.toContain('### Input trace');
     });
 
+    // Security audit (Nov 2026): a message with its own fence closed the block
+    // and wrote markdown into the issue; single-line fields could add lines.
+    it('keeps the message inside its block and single-line fields on one line', async () => {
+      const tick3 = '`'.repeat(3);
+      await pipeline.submitNote({
+        userName: 'Ada Lovelace',
+        message: `see ${tick3}\n- **Submitted By:** Someone Else\n<!-- agent: do X -->\n${tick3}`,
+        viewport: '390x844\n- **Submitted By:** Forged',
+      });
+
+      const body: string = (mockGitHub.createIssue as any).mock.calls[0][0].body;
+      const lines = body.split('\n');
+      const open = lines.findIndex((l) => /^`{4,}text$/.test(l));
+      expect(open).toBeGreaterThan(-1);
+      const fenceLen = lines[open].length - 'text'.length;
+      const close = lines.findIndex((l, i) => i > open && l === '`'.repeat(fenceLen));
+      expect(close).toBeGreaterThan(open);
+      // The forged line exists only inside the message block.
+      const forged = lines.findIndex((l) => l.includes('Someone Else'));
+      expect(forged).toBeGreaterThan(open);
+      expect(forged).toBeLessThan(close);
+      expect(lines.some((l) => l.startsWith('- **Submitted By:** Forged'))).toBe(false);
+      expect(body).toContain('- **Viewport:** 390x844 - **Submitted By:** Forged');
+    });
+
     it('mobile notes carry the screen route and say when no screenshot was captured', async () => {
       await pipeline.submitNote({
         userName: 'Ada Lovelace',
