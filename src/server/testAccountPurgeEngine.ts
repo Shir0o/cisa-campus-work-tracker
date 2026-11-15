@@ -8,10 +8,10 @@ import { isTestAccount, selectedPurgePaths, type PurgePlan } from "../lib/testAc
  * unseen (Nov 2026). Order inside a group does not matter.
  */
 export function purgePlanFingerprint(plan: PurgePlan): string {
-  const groups = Object.keys(plan)
-    .filter((key) => key !== "accountLabels")
-    .sort()
-    .map((key) => [key, [...((plan as unknown as Record<string, string[]>)[key] || [])].sort()]);
+  const groups = Object.entries(plan)
+    .filter(([key]) => key !== "accountLabels")
+    .map(([key, value]) => [key, Array.isArray(value) ? value.map(String).sort() : []] as const)
+    .sort(([a], [b]) => a.localeCompare(b));
   return crypto.createHash("sha256").update(JSON.stringify(groups)).digest("hex");
 }
 
