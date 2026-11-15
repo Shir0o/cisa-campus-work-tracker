@@ -56,10 +56,33 @@ export function redactRecordIds(url: string): string {
   return url.replace(/[A-Za-z0-9_-]+/g, (token) => (isOpaqueRecordId(token) ? ':id' : token));
 }
 
+// Hidden in every comment the app itself posts to an issue, so the webhook can
+// tell its own echo from a person's comment even when the echo arrives before
+// the app has saved the comment id (Nov 2026).
+export const APP_RELAY_MARKER = '<!-- cisa-app-relay -->';
+
+// Only people who work on the repository may speak to a reporter through the
+// relay. A drive-by commenter on a public issue is not the team (Nov 2026).
+const RELAYED_AUTHOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+
+export function isTeamCommentAuthor(comment: { author_association?: unknown } | null | undefined): boolean {
+  const association = typeof comment?.author_association === 'string' ? comment.author_association : '';
+  return RELAYED_AUTHOR_ASSOCIATIONS.has(association.toUpperCase());
+}
+
 export function shouldDropComment(raw: string | null | undefined): boolean {
   const body = (raw || '').trim();
   if (!body) return true;
+  if (body.includes(APP_RELAY_MARKER)) return true;
   return body.toLowerCase().includes(TRIAGE_COMMENT_MARKER);
+}
+
+/** True when the issue lives in the repository this app files to. Owner and
+ *  repo names are compared case-insensitively, as GitHub does. */
+export function isIssueInRepo(issueUrl: string, repo: string): boolean {
+  const parsed = parseIssueUrl(issueUrl);
+  if (!parsed || !repo) return false;
+  return `${parsed.owner}/${parsed.repo}`.toLowerCase() === repo.toLowerCase();
 }
 
 export function replyPrefix(authorRole: 'submitter' | 'team', authorName?: string): string {
@@ -274,6 +297,17 @@ export class DefaultGitHubFeedbackPort implements GitHubFeedbackPort {
   private get token() {
     return process.env.GITHUB_TOKEN;
   }
+  /** Parse an issue URL, refusing any issue outside this app's repository:
+   *  the token must never be pointed at someone else's issues (Nov 2026). */
+  private ownIssue(issueUrl: string): { owner: string; repo: string; issueNumber: string } | null {
+    const parsed = parseIssueUrl(issueUrl);
+    if (!parsed) return null;
+    if (!isIssueInRepo(issueUrl, this.githubRepo)) {
+      console.warn('Refusing a GitHub call for an issue outside %s.', this.githubRepo);
+      return null;
+    }
+    return parsed;
+  }
 
   async createIssue(params: { title: string; body: string; labels: string[] }): Promise<{ html_url: string; number: number } | null> {
     const token = this.token;
@@ -318,7 +352,7 @@ export class DefaultGitHubFeedbackPort implements GitHubFeedbackPort {
       console.warn("GITHUB_TOKEN not configured; skipping GitHub issue status sync.");
       return false;
     }
-    const parsed = parseIssueUrl(issueUrl);
+    const parsed = this.ownIssue(issueUrl);
     if (!parsed) {
       console.error("Invalid GitHub issue URL format for sync: %s", issueUrl);
       return false;
@@ -350,14 +384,14 @@ export class DefaultGitHubFeedbackPort implements GitHubFeedbackPort {
   async postComment(issueUrl: string, body: string): Promise<number | null> {
     const token = this.token;
     if (!token || !issueUrl) return null;
-    const parsed = parseIssueUrl(issueUrl);
+    const parsed = this.ownIssue(issueUrl);
     if (!parsed) return null;
     const { owner, repo, issueNumber } = parsed;
     try {
       const res = await githubApiFetch(['repos', owner, repo, 'issues', issueNumber, 'comments'], {
         method: 'POST',
         headers: githubHeaders(token),
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: `${body}\n\n${APP_RELAY_MARKER}` }),
       });
       if (!res) return null;
       if (!res.ok) {
@@ -375,14 +409,14 @@ export class DefaultGitHubFeedbackPort implements GitHubFeedbackPort {
   async editComment(issueUrl: string, commentId: number, body: string): Promise<boolean> {
     const token = this.token;
     if (!token || !issueUrl) return false;
-    const parsed = parseIssueUrl(issueUrl);
+    const parsed = this.ownIssue(issueUrl);
     if (!parsed) return false;
     const { owner, repo } = parsed;
     try {
       const res = await githubApiFetch(['repos', owner, repo, 'issues', 'comments', String(commentId)], {
         method: 'PATCH',
         headers: githubHeaders(token),
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: `${body}\n\n${APP_RELAY_MARKER}` }),
       });
       if (!res) return false;
       if (!res.ok) {
@@ -399,7 +433,7 @@ export class DefaultGitHubFeedbackPort implements GitHubFeedbackPort {
   async fetchIssueTimeline(issueUrl: string): Promise<any[] | null> {
     const token = this.token;
     if (!token) return null;
-    const parsed = parseIssueUrl(issueUrl);
+    const parsed = this.ownIssue(issueUrl);
     if (!parsed) return null;
     const { owner, repo, issueNumber } = parsed;
     const res = await githubApiFetch(
@@ -786,6 +820,15 @@ export class FeedbackPipeline {
   async updateNote(input: UpdateFeedbackNoteInput): Promise<UpdateFeedbackNoteResult> {
     const { id, status, archived, githubIssueUrl } = input;
     if (!id) throw new FeedbackHttpError(400, "Missing required 'id' parameter.");
+    // A note may only be linked to an issue in this app's own repository, or
+    // unlinked with an empty value (Nov 2026).
+    if (
+      githubIssueUrl !== undefined &&
+      githubIssueUrl !== '' &&
+      (typeof githubIssueUrl !== 'string' || !isIssueInRepo(githubIssueUrl, this.githubRepo))
+    ) {
+      throw new FeedbackHttpError(400, `githubIssueUrl must be an issue in ${this.githubRepo}.`);
+    }
 
     const docRef = this.db.collection('feedback').doc(id);
     const docSnap = await docRef.get();
@@ -1005,6 +1048,11 @@ export class FeedbackPipeline {
     if (eventType === 'issue_comment') {
       if (action !== 'created' || !comment || typeof comment.body !== 'string') {
         return { handled: true, message: `Ignored issue_comment action: ${action}` };
+      }
+
+      if (!isTeamCommentAuthor(comment)) {
+        console.log('Feedback relay: ignored a comment from outside the repository team.');
+        return { handled: true, relayedCount: 0 };
       }
 
       const commentId = typeof comment.id === 'number' ? comment.id : null;

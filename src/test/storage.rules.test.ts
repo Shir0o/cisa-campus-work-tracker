@@ -5,7 +5,7 @@ import {
   initializeTestEnvironment,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { ref, uploadBytes } from 'firebase/storage';
+import { getMetadata, ref, uploadBytes } from 'firebase/storage';
 import { describe, it, beforeAll, afterAll } from 'vitest';
 import * as fs from 'fs';
 
@@ -111,6 +111,34 @@ describeRules('Cloud Storage Security Rules (#1403)', () => {
           contentType: 'image/jpeg',
         }),
       );
+    });
+  });
+
+  // Guest sign-ins carry `guest: true` in their token. They are signed in to
+  // Auth but are not members, so neither photo path is theirs (Nov 2026).
+  describe('guest sign-ins', () => {
+    const guestStorage = () =>
+      testEnv.authenticatedContext('guest-1', { guest: true }).storage();
+
+    it('denies a guest upload to visit and prayer photos', async () => {
+      for (const path of ['visits/visit-123/g.jpg', 'prayers/prayer-123/g.jpg']) {
+        await assertFails(
+          uploadBytes(ref(guestStorage(), path), new Uint8Array([1, 2, 3]), {
+            contentType: 'image/jpeg',
+          }),
+        );
+      }
+    });
+
+    it('denies a guest read of a stored photo, while a member can read it', async () => {
+      const path = 'visits/visit-123/seeded.jpg';
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await uploadBytes(ref(ctx.storage(), path), new Uint8Array([1, 2, 3]), {
+          contentType: 'image/jpeg',
+        });
+      });
+      await assertFails(getMetadata(ref(guestStorage(), path)));
+      await assertSucceeds(getMetadata(ref(getStorage('fulltimer-1'), path)));
     });
   });
 

@@ -198,17 +198,18 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         createdBy: contactData.createdBy as string | undefined,
       });
 
-      await addDoc(collection(db, 'contacts'), contactData);
+      const contactRef = await addDoc(collection(db, 'contacts'), contactData);
 
+      // The server writes the Full-timers' broadcast for this sign-up: the
+      // rules no longer let a signed-out visitor write notifications, so a
+      // stranger cannot push arbitrary alerts to the team.
       try {
-        await addDoc(collection(db, 'notifications'), {
-          userId: 'ALL_ADMINS',
-          title: 'New Student Sign-up',
-          message: `${form.name} has signed up via the public form.`,
-          type: 'event' as const,
-          read: false,
-          createdAt: serverTimestamp(),
+        const res = await fetch('/api/signup-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contactId: contactRef.id }),
         });
+        if (!res.ok) throw new Error(`signup-notify returned ${res.status}`);
       } catch (notifyError) {
         console.error('Failed to broadcast admin notification:', notifyError);
       }

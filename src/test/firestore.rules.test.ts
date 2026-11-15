@@ -936,6 +936,38 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(doc(admin, 'contacts/legacy')));
     });
 
+    it('refuses a signed-out create that claims a tie (Nov 2026)', async () => {
+      await seedVisibleToUsers();
+      const anon = getFirestore();
+      const base = { name: 'Stranger', email: null, inChurchLife: false };
+      // The public form's own shape still goes through.
+      await assertSucceeds(setDoc(doc(anon, 'contacts/plain'), { ...base, visibleTo: [] }));
+      // Any claimed tie would put the person in a Trainee's list.
+      await assertFails(setDoc(doc(anon, 'contacts/t1'), { ...base, visibleTo: ['manager1'] }));
+      await assertFails(setDoc(doc(anon, 'contacts/t2'), { ...base, createdBy: 'manager1', visibleTo: [] }));
+      await assertFails(setDoc(doc(anon, 'contacts/t3'), { ...base, addedBy: 'manager1' }));
+      await assertFails(setDoc(doc(anon, 'contacts/t4'), { ...base, carers: ['manager1'] }));
+      await assertFails(setDoc(doc(anon, 'contacts/t5'), { ...base, coCreators: ['manager1'] }));
+      await assertFails(setDoc(doc(anon, 'contacts/t6'), { ...base, founders: ['manager1'] }));
+    });
+
+    it('lets a signed-in member create only as themselves, unless a Full-timer (Nov 2026)', async () => {
+      await seedVisibleToUsers();
+      const base = { name: 'Walk-in', email: null, inChurchLife: false };
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(
+        setDoc(doc(trainee, 'contacts/mine'), { ...base, createdBy: 'manager1', visibleTo: ['manager1'] }),
+      );
+      await assertFails(
+        setDoc(doc(trainee, 'contacts/forged'), { ...base, createdBy: 'manager2', visibleTo: ['manager2'] }),
+      );
+      await assertSucceeds(
+        setDoc(doc(getFirestore({ uid: 'admin1' }), 'contacts/forFriend'), {
+          ...base, createdBy: 'manager2', visibleTo: ['manager2'],
+        }),
+      );
+    });
+
     it('refuses a Trainee list query without the access constraint, allows it with one', async () => {
       await seedVisibleToUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -2651,14 +2683,20 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(ref));
     });
 
-    it('MP2: A manager can read and write another user’s preferences, but a non-manager cannot', async () => {
+    it('MP2: Another Full-timer cannot read or write someone’s preferences; the super admin can (Nov 2026)', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'userPreferences', 'u1'), { personalContactIds: ['c1'] });
       });
-      const dbManager = getFirestore({ uid: 'u2' });
-      await assertSucceeds(getDoc(doc(dbManager, 'userPreferences', 'u1')));
-      await assertSucceeds(setDoc(doc(dbManager, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
+      const dbOtherAdmin = getFirestore({ uid: 'u2' });
+      await assertFails(getDoc(doc(dbOtherAdmin, 'userPreferences', 'u1')));
+      await assertFails(setDoc(doc(dbOtherAdmin, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'trainee1' }), 'userPreferences', 'u1')));
+
+      // Impersonation reads as the impersonated person, so the super admin keeps access.
+      const dbSuper = getFirestore({ uid: 'owner-sa', email: 'yilongwang05@gmail.com', email_verified: true });
+      await assertSucceeds(getDoc(doc(dbSuper, 'userPreferences', 'u1')));
+      await assertSucceeds(setDoc(doc(dbSuper, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
 
       const dbStudent = getFirestore({ uid: 'student1' });
       await assertFails(getDoc(doc(dbStudent, 'userPreferences', 'u1')));
@@ -2743,17 +2781,22 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(ref));
     });
 
-    it('MP7: A manager can read and write another user\u2019s inbox state, but a non-manager cannot', async () => {
+    it('MP7: Another Full-timer cannot read or write someone\u2019s inbox state; the super admin can (Nov 2026)', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'inboxState', 'u1'), {
           seen: { 'att:contact:c1': '2026-09-04T12:00:00.000Z' },
         });
       });
-      const dbManager = getFirestore({ uid: 'u2' });
-      await assertSucceeds(getDoc(doc(dbManager, 'inboxState', 'u1')));
+      const dbOtherAdmin = getFirestore({ uid: 'u2' });
+      await assertFails(getDoc(doc(dbOtherAdmin, 'inboxState', 'u1')));
+      await assertFails(
+        setDoc(doc(dbOtherAdmin, 'inboxState', 'u1'), { seen: {}, completed: {} }),
+      );
+      const dbSuper = getFirestore({ uid: 'owner-sa', email: 'yilongwang05@gmail.com', email_verified: true });
+      await assertSucceeds(getDoc(doc(dbSuper, 'inboxState', 'u1')));
       await assertSucceeds(
-        setDoc(doc(dbManager, 'inboxState', 'u1'), { seen: {}, completed: {} }),
+        setDoc(doc(dbSuper, 'inboxState', 'u1'), { seen: {}, completed: {} }),
       );
 
       // Reviewing is private: a Student learns nothing about a Full-timer's
@@ -2779,18 +2822,20 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(ref));
     });
 
-    it('MP5: A manager can read and write another user’s personal prayers, but a non-manager cannot', async () => {
+    it('MP5: Personal prayers are private: another Full-timer is denied, the super admin is not (Nov 2026)', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users/u1/personalPrayers/pp1'), {
           title: 'private', contactId: null, date: '2026-05-15', status: 'open',
         });
       });
-      const dbManager = getFirestore({ uid: 'u2' });
-      await assertSucceeds(getDoc(doc(dbManager, 'users/u1/personalPrayers/pp1')));
-      await assertSucceeds(setDoc(doc(dbManager, 'users/u1/personalPrayers/pp2'), {
+      const dbOtherAdmin = getFirestore({ uid: 'u2' });
+      await assertFails(getDoc(doc(dbOtherAdmin, 'users/u1/personalPrayers/pp1')));
+      await assertFails(setDoc(doc(dbOtherAdmin, 'users/u1/personalPrayers/pp2'), {
         title: 'manager prayer', contactId: null, date: '2026-05-15', status: 'open',
       }));
+      const dbSuper = getFirestore({ uid: 'owner-sa', email: 'yilongwang05@gmail.com', email_verified: true });
+      await assertSucceeds(getDoc(doc(dbSuper, 'users/u1/personalPrayers/pp1')));
 
       const dbStudent = getFirestore({ uid: 'student1' });
       await assertFails(getDoc(doc(dbStudent, 'users/u1/personalPrayers/pp1')));
@@ -3149,6 +3194,36 @@ describeRules('Firestore Security Rules', () => {
         updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), {
           memberIds: ['ft1', 'student1', 'student2'],
         }),
+      );
+    });
+
+    it('AN8: an unapproved or unknown sign-in cannot open a room (Nov 2026)', async () => {
+      await seedMemberUsers();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'pending9'), { role: 'viewer', approved: false });
+      });
+      const room = (uid: string) => ({
+        type: 'group',
+        name: 'Hi',
+        memberIds: [uid, 'student1'],
+        createdById: uid,
+        createdByName: 'Stranger',
+        createdAt: serverTimestamp(),
+      });
+      await assertFails(setDoc(doc(getFirestore({ uid: 'pending9' }), 'chatRooms', 'roomP'), room('pending9')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'nobody9' }), 'chatRooms', 'roomN'), room('nobody9')));
+    });
+
+    it('AN9: a member cannot take over createdById to gain the delete right (Nov 2026)', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), { createdById: 'student1' }),
+      );
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
+      // A Full-timer may still correct it.
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1'), { createdById: 'student1' }),
       );
     });
 
@@ -4229,12 +4304,13 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
-    it('SG1: Anyone (even unauthenticated) can read settings/goal', async () => {
+    it('SG1: settings/goal needs an approved member to read (Nov 2026)', async () => {
+      await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'settings', 'goal'), { on: true, count: 5 });
       });
-      const db = getFirestore(); // unauthenticated
-      await assertSucceeds(getDoc(doc(db, 'settings', 'goal')));
+      await assertFails(getDoc(doc(getFirestore(), 'settings', 'goal'))); // unauthenticated
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'operator1' }), 'settings', 'goal')));
     });
 
     it('SG2: Admin can write the day goal', async () => {
@@ -4261,12 +4337,13 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5, evil: true }));
     });
 
-    it('SP1: Anyone (even unauthenticated) can read settings/partners', async () => {
+    it('SP1: settings/partners needs an approved member to read (Nov 2026)', async () => {
+      await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'settings', 'partners'), { pairings: [] });
       });
-      const db = getFirestore(); // unauthenticated
-      await assertSucceeds(getDoc(doc(db, 'settings', 'partners')));
+      await assertFails(getDoc(doc(getFirestore(), 'settings', 'partners'))); // unauthenticated
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'operator1' }), 'settings', 'partners')));
     });
 
     it('SP2: Admin can write settings/partners', async () => {
@@ -4527,12 +4604,13 @@ describeRules('Firestore Security Rules', () => {
       teams: { yp: { days: [2], hour: 18 }, campus: { days: [2, 3], hour: 18 } },
     };
 
-    it('RS1: Anyone (even unauthenticated) can read the reminder schedule', async () => {
+    it('RS1: The reminder schedule needs an approved member to read (Nov 2026)', async () => {
+      await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'settings', 'reminder_schedule'), validSchedule);
       });
-      const db = getFirestore(); // unauthenticated
-      await assertSucceeds(getDoc(doc(db, 'settings', 'reminder_schedule')));
+      await assertFails(getDoc(doc(getFirestore(), 'settings', 'reminder_schedule'))); // unauthenticated
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'operator1' }), 'settings', 'reminder_schedule')));
     });
 
     it('RS2: Admin can write a valid schedule', async () => {
@@ -4666,6 +4744,24 @@ describeRules('Firestore Security Rules', () => {
         });
       });
     };
+
+    it('N0a: a signed-out visitor cannot push an ALL_ADMINS alert (the server writes the sign-up one)', async () => {
+      await seedUsers();
+      const db = getFirestore();
+      await assertFails(setDoc(doc(db, 'notifications', 'spam1'), {
+        userId: 'ALL_ADMINS', title: 'Urgent', message: 'Open this link', type: 'event', read: false,
+        createdAt: serverTimestamp(),
+      }));
+    });
+
+    it('N0b: an approved teammate can still write a notification', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'notifications', 'ok1'), {
+        userId: 'ALL_ADMINS', title: 'New event', message: 'Dinner Friday', type: 'event', read: false,
+        createdAt: serverTimestamp(),
+      }));
+    });
 
     it('N1: the recipient can mark their own personal notification read', async () => {
       await seedUsers();

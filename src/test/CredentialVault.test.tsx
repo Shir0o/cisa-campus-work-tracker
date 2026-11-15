@@ -23,6 +23,10 @@ const h = vi.hoisted(() => ({
   meta: null as unknown,
   entries: [] as { id: string; iv: string; ciphertext: string }[],
   entriesCb: null as null | ((snap: unknown) => void),
+  metaCb: null as null | ((snap: unknown) => void),
+  // What a transaction reads as the meta; separate from the subscription so
+  // a race (someone else created it first) can be staged.
+  txMetaExists: false,
   auditWrites: [] as Record<string, unknown>[],
   addedDocs: [] as { path: string; data: Record<string, unknown> }[],
   batches: [] as { set: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[],
@@ -77,6 +81,7 @@ vi.mock('firebase/firestore', () => ({
   limit: vi.fn(),
   onSnapshot: (ref: { path: string }, cb: (snap: unknown) => void) => {
     if (ref.path === 'credentialsMeta/current') {
+      h.metaCb = cb;
       cb({ data: () => h.meta ?? undefined });
     } else if (ref.path === 'credentials') {
       h.entriesCb = cb;
@@ -95,6 +100,18 @@ vi.mock('firebase/firestore', () => ({
   updateDoc: (ref: { path: string }, data: Record<string, unknown>) => h.updateDoc(ref, data),
   deleteDoc: (ref: { path: string }) => h.deleteDoc(ref),
   serverTimestamp: () => 'SERVER_TS',
+  runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<unknown>) => {
+    const writes: Promise<unknown>[] = [];
+    const tx = {
+      get: async () => ({ exists: () => h.txMetaExists || h.meta != null }),
+      set: (ref: { path: string }, data: Record<string, unknown>) => {
+        writes.push(h.setDoc(ref, data));
+      },
+    };
+    const result = await fn(tx);
+    await Promise.all(writes);
+    return result;
+  },
   writeBatch: () => {
     const batch = { set: vi.fn(), delete: vi.fn(), commit: vi.fn(async () => undefined) };
     h.batches.push(batch);
@@ -120,6 +137,8 @@ beforeEach(() => {
     { id: 'cred-2', iv: 'iv-2', ciphertext: 'ct-2' },
   ];
   h.entriesCb = null;
+  h.metaCb = null;
+  h.txMetaExists = false;
   h.auditWrites = [];
   h.addedDocs = [];
   h.batches = [];
@@ -363,5 +382,63 @@ describe('Credential vault page (#1967)', () => {
     expect(calls[1][1]).toMatchObject({ iv: 'iv-1b', ciphertext: 'ct-1b' });
     expect(calls[3][1]).toMatchObject({ action: 'rotate', actorUid: 'admin1', credentialId: 'vault' });
     expect(batch.commit).toHaveBeenCalled();
+  });
+
+  it('does not set a second passphrase when someone else created the vault first (Nov 2026)', async () => {
+    h.meta = null;
+    h.txMetaExists = true;
+    renderVault();
+
+    expect(await screen.findByRole('heading', { name: 'Set the vault passphrase' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Passphrase'), { target: { value: PASSPHRASE } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the vault' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(
+      'Another Full-timer set up the vault a moment ago. Unlock it with their passphrase.',
+    );
+    expect(h.setDoc).not.toHaveBeenCalled();
+    expect(screen.queryByText(ENTRY.label)).toBeNull();
+  });
+
+  it('locks when the passphrase is changed on another device (Nov 2026)', async () => {
+    renderVault();
+    await unlock();
+    expect(await screen.findByText(ENTRY.label)).toBeTruthy();
+
+    act(() => {
+      h.metaCb?.({ data: () => ({ ...META, salt: 'bmV3LXNhbHQ=' }) });
+    });
+
+    expect(await screen.findByLabelText('Passphrase')).toBeTruthy();
+    expect(screen.queryByText(ENTRY.label)).toBeNull();
+    expect(
+      screen.getByText('The vault passphrase was changed by another Full-timer. Unlock it with the new passphrase.'),
+    ).toBeTruthy();
+  });
+
+  it('re-opens an entry that was edited elsewhere instead of showing the old plaintext (Nov 2026)', async () => {
+    renderVault();
+    await unlock();
+    expect(await screen.findByText(ENTRY.label)).toBeTruthy();
+
+    h.openEntry.mockImplementation(async (_key: unknown, blob: { iv: string }) =>
+      blob.iv === 'iv-1-edited'
+        ? { ...ENTRY, label: 'Ministry inbox (new)' }
+        : blob.iv === 'iv-1'
+          ? ENTRY
+          : { ...ENTRY, label: 'Second login', username: 'second@example.org' },
+    );
+    act(() => {
+      h.entriesCb?.(
+        entrySnap([
+          { id: 'cred-1', iv: 'iv-1-edited', ciphertext: 'ct-1-edited' },
+          { id: 'cred-2', iv: 'iv-2', ciphertext: 'ct-2' },
+        ]),
+      );
+    });
+
+    expect(await screen.findByText('Ministry inbox (new)')).toBeTruthy();
+    expect(screen.queryByText(ENTRY.label)).toBeNull();
   });
 });

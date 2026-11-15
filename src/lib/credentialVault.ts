@@ -7,8 +7,8 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   updateDoc,
   writeBatch,
   type Firestore,
@@ -177,22 +177,39 @@ export function subscribeCredentialAudit(
 
 // ── Passphrase: create, unlock, rotate ──────────────────────────────────────
 
+/** Thrown by createVault when another Full-timer created the vault first. */
+export class VaultAlreadyExistsError extends Error {
+  constructor() {
+    super("The vault already exists.");
+    this.name = "VaultAlreadyExistsError";
+  }
+}
+
 /** The first passphrase *is* the vault: there is no meta to check it against
- *  yet, so this writes the salt, the cost and the check value. */
+ *  yet, so this writes the salt, the cost and the check value. It runs in a
+ *  transaction that refuses to write over an existing meta (Nov 2026): two
+ *  Full-timers opening an empty vault at once used to each set their own
+ *  passphrase, and the loser's entries would never open again. */
 export async function createVault(passphrase: string): Promise<CryptoKey> {
   const salt = newSalt();
   const key = await deriveKey(passphrase, salt, DEFAULT_ITERATIONS);
   const check = await makeCheck(key);
+  const metaRef = doc(db, "credentialsMeta", "current");
   try {
-    await setDoc(doc(db, "credentialsMeta", "current"), {
-      salt: bytesToSalt(salt),
-      iterations: DEFAULT_ITERATIONS,
-      check: encodeCheck(check),
-      schemaVersion: VAULT_SCHEMA_VERSION,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+    await runTransaction(db, async (tx) => {
+      const existing = await tx.get(metaRef);
+      if (existing.exists()) throw new VaultAlreadyExistsError();
+      tx.set(metaRef, {
+        salt: bytesToSalt(salt),
+        iterations: DEFAULT_ITERATIONS,
+        check: encodeCheck(check),
+        schemaVersion: VAULT_SCHEMA_VERSION,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
     });
   } catch (e) {
+    if (e instanceof VaultAlreadyExistsError) throw e;
     handleFirestoreError(e, OperationType.WRITE, "credentialsMeta/current");
   }
   return key;

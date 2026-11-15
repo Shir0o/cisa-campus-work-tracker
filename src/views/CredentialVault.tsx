@@ -20,6 +20,7 @@ import { openEntry, type VaultEntry } from "../lib/vaultCrypto";
 import {
   createEntry,
   createVault,
+  VaultAlreadyExistsError,
   deleteEntry,
   resetVault,
   rotatePassphrase,
@@ -72,6 +73,17 @@ export default function CredentialVault() {
   // The only place the key ever lives.
   const [key, setKey] = useState<CryptoKey | null>(null);
   const [plain, setPlain] = useState<Record<string, VaultEntry>>({});
+  // The iv each decrypted entry was opened from. An entry whose stored iv
+  // has moved on (edited or re-sealed elsewhere) is opened again rather than
+  // served from the stale plaintext (Nov 2026).
+  const [plainIv, setPlainIv] = useState<Record<string, string>>({});
+  // Which salt the open key belongs to. While this browser is creating,
+  // rotating or resetting, it waits for the meta to move off `from` and then
+  // adopts the new salt. Any other change to the salt means the passphrase
+  // was changed elsewhere, so the stale key is dropped (Nov 2026).
+  const [keySalt, setKeySalt] = useState<
+    { kind: "known"; salt: string } | { kind: "pending"; from: string | null } | null
+  >(null);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
 
   const [passphrase, setPassphrase] = useState("");
@@ -104,30 +116,49 @@ export default function CredentialVault() {
 
   // Every entry is decrypted once, at unlock (ADR 0051) — but a snapshot can
   // land before or after the key, and a rotate changes every blob, so the
-  // decryption is keyed off both and skips what it already has.
+  // decryption is keyed off both and skips what it already has, as long as
+  // the blob it has is still the stored one.
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
     void (async () => {
       for (const entryDoc of entries) {
-        if (plain[entryDoc.id]) continue;
+        if (plain[entryDoc.id] && plainIv[entryDoc.id] === entryDoc.iv) continue;
         try {
           const entry = await openEntry(key, { iv: entryDoc.iv, ciphertext: entryDoc.ciphertext });
-          if (!cancelled) setPlain((current) => ({ ...current, [entryDoc.id]: entry }));
+          if (!cancelled) {
+            setPlain((current) => ({ ...current, [entryDoc.id]: entry }));
+            setPlainIv((current) => ({ ...current, [entryDoc.id]: entryDoc.iv }));
+          }
         } catch {
           // A blob that will not open under this key is either mid-rotate or
-          // not ours; leave it out rather than render half a secret.
+          // not ours; leave it out rather than render half a secret, and
+          // drop any older plaintext of it.
+          if (!cancelled && plain[entryDoc.id]) {
+            setPlain((current) => {
+              const next = { ...current };
+              delete next[entryDoc.id];
+              return next;
+            });
+            setPlainIv((current) => {
+              const next = { ...current };
+              delete next[entryDoc.id];
+              return next;
+            });
+          }
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [key, entries, plain]);
+  }, [key, entries, plain, plainIv]);
 
   const lock = () => {
     setKey(null);
+    setKeySalt(null);
     setPlain({});
+    setPlainIv({});
     setRevealed(new Set());
     setPassphrase("");
     setEditing(null);
@@ -140,6 +171,25 @@ export default function CredentialVault() {
     setError(null);
     setNotice(null);
   };
+
+  useEffect(() => {
+    if (!key || !meta || !keySalt) return;
+    if (keySalt.kind === "pending") {
+      if (meta.salt !== keySalt.from) setKeySalt({ kind: "known", salt: meta.salt });
+      return;
+    }
+    if (meta.salt !== keySalt.salt) {
+      lock();
+      setNotice(
+        t(
+          "vault.changed_elsewhere",
+          "The vault passphrase was changed by another Full-timer. Unlock it with the new passphrase.",
+        ),
+      );
+    }
+    // lock and t are stable enough for this check; it only reacts to the meta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, meta, keySalt]);
 
   const remember = (action: CredentialAction, credentialId: string = VAULT_AUDIT_ID, field?: string) => {
     if (!uid) return;
@@ -154,7 +204,24 @@ export default function CredentialVault() {
     setNotice(null);
     try {
       if (!meta) {
-        const nextKey = await createVault(passphrase);
+        setKeySalt({ kind: "pending", from: null });
+        let nextKey: CryptoKey;
+        try {
+          nextKey = await createVault(passphrase);
+        } catch (err) {
+          setKeySalt(null);
+          if (err instanceof VaultAlreadyExistsError) {
+            setPassphrase("");
+            setError(
+              t(
+                "vault.already_created",
+                "Another Full-timer set up the vault a moment ago. Unlock it with their passphrase.",
+              ),
+            );
+            return;
+          }
+          throw err;
+        }
         setKey(nextKey);
         setPassphrase("");
         remember("unlock");
@@ -170,6 +237,7 @@ export default function CredentialVault() {
         return;
       }
       setKey(attempt.key);
+      setKeySalt({ kind: "known", salt: meta.salt });
       setPassphrase("");
       remember("unlock");
     } catch {
@@ -248,17 +316,22 @@ export default function CredentialVault() {
     setBusy(true);
     setError(null);
     setNotice(null);
+    // Our own new salt is about to land; don't read it as someone else's.
+    const previousSalt = keySalt;
+    setKeySalt({ kind: "pending", from: meta.salt });
     try {
       const nextKey = await rotatePassphrase(uid, key, nextPassphrase, entries, meta.iterations);
       setKey(nextKey);
       // Every blob was re-sealed under the new key, so the old plaintext map
       // is stale; clearing it makes the decrypt effect re-read the new ones.
       setPlain({});
+      setPlainIv({});
       setRevealed(new Set());
       setNextPassphrase("");
       setRotating(false);
       setNotice(t("vault.rotated", "New passphrase set. Share it with the other Full-timers."));
     } catch {
+      setKeySalt(previousSalt);
       setError(t("vault.rotate_failed", "The passphrase could not be changed. Please try again."));
     } finally {
       setBusy(false);
@@ -270,16 +343,20 @@ export default function CredentialVault() {
     setBusy(true);
     setError(null);
     setNotice(null);
+    const previousSalt = keySalt;
+    setKeySalt({ kind: "pending", from: meta.salt });
     try {
       const nextKey = await resetVault(uid, resetPassphrase, entries);
       setKey(nextKey);
       setPlain({});
+      setPlainIv({});
       setRevealed(new Set());
       setResetPassphrase("");
       setResetting(false);
       setConfirmReset(false);
       setNotice(t("vault.reset_done", "Vault reset. Share the new passphrase with the other Full-timers."));
     } catch {
+      setKeySalt(previousSalt);
       setError(t("vault.reset_failed", "The vault could not be reset. Please try again."));
     } finally {
       setBusy(false);
@@ -417,6 +494,7 @@ export default function CredentialVault() {
                 )}
               </div>
             )}
+            {notice && <p className="text-sm text-on-surface-variant mt-3 m-0">{notice}</p>}
             {error && (
               <p role="alert" className="text-sm text-error mt-3 m-0">
                 {error}

@@ -1,5 +1,7 @@
 interface Env {
   BACKEND_API_URL?: string;
+  /** Shared with Cloud Run, so the backend can believe X-Client-IP. */
+  PROXY_SHARED_SECRET?: string;
 }
 
 type PagesFunction<Env = any> = (context: {
@@ -31,7 +33,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Sync-Token, X-Twilio-Signature, X-Signature-Ed25519",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Sync-Token, X-Twilio-Signature, X-Signature-Ed25519, X-Quick-Add-Key",
         "Access-Control-Max-Age": "86400",
       },
     });
@@ -42,6 +44,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   headers.set("X-Forwarded-Host", url.host);
   headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
   headers.set("X-Forwarded-For", request.headers.get("cf-connecting-ip") || "");
+  // The visitor's address for the backend's rate limits, vouched for by the
+  // shared secret. Whatever a caller sent in these headers is replaced.
+  headers.set("X-Client-IP", request.headers.get("cf-connecting-ip") || "");
+  if (env.PROXY_SHARED_SECRET) {
+    headers.set("X-Proxy-Secret", env.PROXY_SHARED_SECRET);
+  } else {
+    headers.delete("X-Proxy-Secret");
+  }
 
   // Request Body Forwarding for POST/PUT requests
   let body: ArrayBuffer | null = null;

@@ -2832,7 +2832,8 @@
     "complete": "Purga completada",
     "removed": "Se eliminaron {n} rastros de cuentas de prueba.",
     "partial": "No se pudieron eliminar {n} elementos. Vuelve a ejecutar la purga para reintentarlo.",
-    "kept_self": "Tu propia cuenta ({who}) parece una cuenta de prueba y se conserva."
+    "kept_self": "Tu propia cuenta ({who}) parece una cuenta de prueba y se conserva.",
+    "accounts_named": "Se eliminarán estas cuentas: {who}."
   },
   "todoComposer": {
     "eyebrow": "Tarea",
@@ -2962,6 +2963,8 @@
     "unlock": "Abrir",
     "create": "Crear la bóveda",
     "not_recoverable": "Esta frase de paso no se guarda en ningún lado y no se puede recuperar. Tenela en el gestor de contraseñas del equipo.",
+    "changed_elsewhere": "Otro Full-timer cambió la frase de acceso de la bóveda. Ábrela con la nueva frase.",
+    "already_created": "Otro Full-timer acaba de crear la bóveda. Ábrela con su frase de acceso.",
     "wrong_passphrase": "Esa frase de paso no abrió la bóveda.",
     "unlock_failed": "No se pudo abrir la bóveda. Probá de nuevo.",
     "entries_title": "Accesos compartidos",

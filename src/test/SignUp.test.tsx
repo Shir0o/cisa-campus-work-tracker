@@ -103,9 +103,12 @@ describe('SignUp View Constants', () => {
 });
 
 describe('SignUp View', () => {
+  const fetchMock = vi.fn(() => Promise.resolve({ ok: true, status: 200 }));
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    fetchMock.mockImplementation(() => Promise.resolve({ ok: true, status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   it('renders single-step form with all primary inputs and chips', () => {
@@ -461,11 +464,42 @@ describe('SignUp View', () => {
     }
   });
 
+  it('asks the server to tell the Full-timers, and never writes a notification itself', async () => {
+    (addDoc as any).mockResolvedValueOnce({ id: 'contact-xyz' });
+
+    render(<SignUp />);
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
+      target: { value: 'Server Sam' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sophomore' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Economics' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-8888' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'sam@umail.edu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Outreach/Gospel' }));
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+
+    expect(await screen.findByText(/Thank you for signing up, Server\./i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/signup-notify',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ contactId: 'contact-xyz' }) }),
+    );
+    const notificationWrites = (addDoc as any).mock.calls.filter(
+      (c: any[]) => c[1] && c[1].userId === 'ALL_ADMINS',
+    );
+    expect(notificationWrites).toHaveLength(0);
+  });
+
   it('continues to the confirmation screen when the admin broadcast fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (addDoc as any)
-      .mockResolvedValueOnce({ id: 'contact-id' })
-      .mockRejectedValueOnce(new Error('notify down'));
+    (addDoc as any).mockResolvedValueOnce({ id: 'contact-id' });
+    fetchMock.mockImplementationOnce(() => Promise.reject(new Error('notify down')));
 
     render(<SignUp />);
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {

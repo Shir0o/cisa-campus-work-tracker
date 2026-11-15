@@ -19,12 +19,13 @@ describe('TestAccountPurgeModal', () => {
     feedback: [],
     contacts: ['contacts/c-test'],
     keptSelf: [] as string[],
+    accountLabels: ['reviewer@gmail.com'],
   };
 
   // Answers the preview (dryRun) with the plan, and the purge with `purged`.
   const serve = (purged = { deletedCount: 4, failed: [] as unknown[] }, plan = mockPlan) =>
     postApi.mockImplementation((_url: string, body: { dryRun?: boolean }) =>
-      Promise.resolve(body.dryRun ? { plan } : purged),
+      Promise.resolve(body.dryRun ? { plan, fingerprint: 'fp-1' } : purged),
     );
 
   beforeEach(() => {
@@ -81,8 +82,50 @@ describe('TestAccountPurgeModal', () => {
     });
 
     expect(screen.getByText(/Successfully removed 4 test account traces/i)).toBeInTheDocument();
-    expect(postApi).toHaveBeenCalledWith('/api/test-account-purge', { deleteTestContacts: false }, expect.any(String));
+    expect(postApi).toHaveBeenCalledWith('/api/test-account-purge', { deleteTestContacts: false, fingerprint: 'fp-1' }, expect.any(String));
     expect(onSuccess).toHaveBeenCalledWith(4);
+  });
+
+  it('names the accounts it will delete (Nov 2026)', async () => {
+    serve();
+    render(<TestAccountPurgeModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('purge-account-labels')).toHaveTextContent('reviewer@gmail.com');
+    });
+  });
+
+  it('shows the new list when the accounts changed since the preview (Nov 2026)', async () => {
+    const changed = { ...mockPlan, accounts: ['users/u-test', 'users/u-new'], accountLabels: ['reviewer@gmail.com', 'cisa-new@gmail.com'] };
+    let scans = 0;
+    postApi.mockImplementation((_url: string, body: { dryRun?: boolean }) => {
+      if (body.dryRun) {
+        scans += 1;
+        return Promise.resolve(scans === 1 ? { plan: mockPlan, fingerprint: 'fp-1' } : { plan: changed, fingerprint: 'fp-2' });
+      }
+      return Promise.reject(new Error('The test accounts changed since the preview. Check the new list before purging.'));
+    });
+
+    render(<TestAccountPurgeModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Purge Traces/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Purge Traces/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/changed since the preview/i)).toBeInTheDocument();
+      expect(screen.getByTestId('purge-account-labels')).toHaveTextContent('cisa-new@gmail.com');
+    });
+    expect(screen.queryByText('Purge Complete')).not.toBeInTheDocument();
+
+    // The next try carries the new preview's fingerprint.
+    postApi.mockImplementation((_url: string, body: { dryRun?: boolean }) =>
+      Promise.resolve(body.dryRun ? { plan: changed, fingerprint: 'fp-2' } : { deletedCount: 5, failed: [] }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Purge Traces/i }));
+    await waitFor(() => expect(screen.getByText('Purge Complete')).toBeInTheDocument());
+    expect(postApi).toHaveBeenLastCalledWith(
+      '/api/test-account-purge',
+      { deleteTestContacts: false, fingerprint: 'fp-2' },
+      expect.any(String),
+    );
   });
 
   it('passes deleteTestContacts true when checkbox is checked', async () => {
@@ -101,7 +144,7 @@ describe('TestAccountPurgeModal', () => {
       expect(screen.getByText('Purge Complete')).toBeInTheDocument();
     });
 
-    expect(postApi).toHaveBeenCalledWith('/api/test-account-purge', { deleteTestContacts: true }, expect.any(String));
+    expect(postApi).toHaveBeenCalledWith('/api/test-account-purge', { deleteTestContacts: true, fingerprint: 'fp-1' }, expect.any(String));
   });
 
   it('says when the signed-in account is kept, and when some items could not be removed', async () => {

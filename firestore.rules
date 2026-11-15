@@ -167,8 +167,11 @@ service cloud.firestore {
 
       // Personal prayers — private to the owning user; never shared. Powers the
       // "Your prayers" personal list on My Day.
+      // Private to the owning person (Nov 2026: managers no longer reach
+      // them). The super admin keeps access only so impersonation, which
+      // reads as the impersonated person, still works.
       match /personalPrayers/{prayerId} {
-        allow read, write, delete: if isApprovedUser() && (isOwner(userId) || isManager());
+        allow read, write, delete: if (isApprovedUser() && isOwner(userId)) || isSuperAdmin();
       }
 
       // Where this person's alerts are delivered: one doc per device — an Expo
@@ -247,8 +250,9 @@ service cloud.firestore {
 
     // 2b. User Preferences — private My Day settings (personal contacts,
     // messaging app) scoped to the owning user.
+    // Owner only, plus the super admin for impersonation (Nov 2026).
     match /userPreferences/{userId} {
-      allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
+      allow read, write: if (isApprovedUser() && isOwner(userId)) || isSuperAdmin();
     }
 
     // 2b-ii. To ask (#1649) — a Full-timer's private notepad of things to ask
@@ -266,7 +270,7 @@ service cloud.firestore {
     // question "have *I* looked at this" cannot be answered by one boolean on
     // a document a dozen Full-timers share.
     match /inboxState/{userId} {
-      allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
+      allow read, write: if (isApprovedUser() && isOwner(userId)) || isSuperAdmin();
     }
 
     // 2d. Personal Sync Tokens are server-only (ADR 0037, #1420): the plaintext
@@ -352,11 +356,26 @@ service cloud.firestore {
         return !('reachedAt' in data) || isSignedIn();
       }
 
+      // Nov 2026: who a person is tied to decides which Trainees can read
+      // them, so a create may not claim a tie it has no right to. Signed out
+      // (the public form), no tie at all: no creator, adder, co-creator,
+      // founder or carer, and nobody in visibleTo. Signed in, the creator is
+      // the caller, unless a Full-timer is entering it for someone.
+      function tiesSafeOnCreate(data) {
+        return (!isSignedIn() &&
+                !('createdBy' in data) && !('addedBy' in data) &&
+                !('coCreators' in data) && !('founders' in data) && !('carers' in data) &&
+                (!('visibleTo' in data) || data.visibleTo == null || data.visibleTo.size() == 0))
+               || (isSignedIn() &&
+                   (!('createdBy' in data) || data.createdBy == request.auth.uid || isAdmin()));
+      }
+
       allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming()) &&
                       // #1692: the public sign-up form is filled in by a stranger,
                       // so a create may not arrive already off the team's list.
                       !('prayerListRemoved' in incoming()) &&
-                      reachSafeOnCreate(incoming());
+                      reachSafeOnCreate(incoming()) &&
+                      tiesSafeOnCreate(incoming());
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
@@ -815,9 +834,10 @@ service cloud.firestore {
       allow delete: if isValidId(rhythmId) && isManager();
     }
 
-    // 6c. Settings — small team-wide singletons (e.g. settings/season). Publicly
-    // readable so the public sign-up reflects the active season / club-rush; only
-    // managers may change them.
+    // 6c. Settings — small team-wide singletons (e.g. settings/season). Only
+    // settings/season and settings/whats_new are publicly readable, so the
+    // public sign-up reflects the active season / club-rush; only managers may
+    // change them.
     match /settings/{docId} {
       function isValidSeasonSettings(data) {
         return data.keys().hasOnly(['override', 'clubRush', 'bfa']) &&
@@ -899,7 +919,13 @@ service cloud.firestore {
       allow create, update: if docId == 'reminder_schedule' && isAdmin() && isValidReminderSchedule(incoming());
 
       // Standard tags are readable by approved users, not the public.
-      allow read: if (docId != 'integrations' && docId != 'standard_tags') || isAdmin();
+      // Only the season (the public sign-up form reads it) and the What's new
+      // card stay readable without signing in. Everything else, pairings,
+      // walking pairs, goals and reminder times included, needs an approved
+      // member (Nov 2026); integrations stays Full-timer only.
+      allow read: if docId == 'season' || docId == 'whats_new';
+      allow read: if docId != 'integrations' && isApprovedUser();
+      allow read: if isAdmin();
       allow read: if docId == 'standard_tags' && isApprovedUser();
       allow create, update: if docId == 'standard_tags' && isAdmin() && isValidStandardTagsSettings(incoming());
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
@@ -1063,10 +1089,11 @@ service cloud.firestore {
       // deliberately not staff here.
       allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       
-      allow create: if isValidId(notificationId) && isValidNotification(incoming()) && (
-                      (isApprovedUser() && isOperator()) ||
-                      (incoming().userId == 'ALL_ADMINS' && incoming().type == 'event')
-                    );
+      // A signed-out visitor may not write here at all: the public sign-up
+      // form's ALL_ADMINS alert is written by the server (/api/signup-notify),
+      // so a stranger cannot push arbitrary alerts to every Full-timer.
+      allow create: if isValidId(notificationId) && isValidNotification(incoming()) &&
+                      isApprovedUser() && isOperator();
       
       // Full-timers' blanket access covers marking read / dismissing ALL_ADMINS broadcasts.
       allow update: if isValidId(notificationId) && isSignedIn() && (
@@ -1447,9 +1474,11 @@ service cloud.firestore {
       // Only room members can view chats.
       allow read: if isSignedIn() && isRoomMember();
 
-      // Create room: creator must be in the memberIds array and matches auth
-      // user. Only a Full-timer may open an announcement room.
-      allow create: if isSignedIn() &&
+      // Create room: creator must be an approved member (Nov 2026: an
+      // unapproved sign-in could open rooms and pull members into them), must
+      // be in the memberIds array and match the auth user. Only a Full-timer
+      // may open an announcement room.
+      allow create: if isApprovedUser() &&
                     request.resource.data.createdById == request.auth.uid &&
                     request.auth.uid in request.resource.data.memberIds &&
                     (!isAnnouncementRoom(incoming()) || isAdmin());
@@ -1458,8 +1487,11 @@ service cloud.firestore {
       // rooms — but only a Full-timer may change what KIND of room it is, or a
       // member could flip an announcement to a group and post into it.
       // Room members / admins can also reconcile membership or store presets (#743).
+      // Nor may a member rewrite createdById, which is what grants the right
+      // to delete the room (Nov 2026).
       allow update: if isSignedIn() && (isRoomMember() || isAdmin()) &&
-                    (isAdmin() || incoming().get('type', 'group') == existing().get('type', 'group'));
+                    (isAdmin() || (incoming().get('type', 'group') == existing().get('type', 'group') &&
+                                   incoming().get('createdById', null) == existing().get('createdById', null)));
       allow delete: if isSignedIn() && (isAdmin() || (resource.data.createdById == request.auth.uid));
 
       // Messages subcollection

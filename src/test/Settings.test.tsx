@@ -59,7 +59,24 @@ vi.mock('motion/react', () => {
   };
 });
 
+// What a transaction reads as settings/partners; tx.set goes through the
+// setDoc mock so a write is asserted the same way either path takes.
+const txStore = vi.hoisted(() => ({ partners: undefined as Record<string, unknown> | undefined }));
+
 vi.mock('firebase/firestore', () => ({
+  runTransaction: vi.fn(async (_db: any, fn: any) => {
+    const { setDoc: write } = await import('firebase/firestore');
+    const writes: Promise<unknown>[] = [];
+    const tx = {
+      get: async () => ({ exists: () => txStore.partners !== undefined, data: () => txStore.partners }),
+      set: (ref: any, data: any, opts: any) => {
+        writes.push((write as any)(ref, data, opts));
+      },
+    };
+    const result = await fn(tx);
+    await Promise.all(writes);
+    return result;
+  }),
   collection: vi.fn((_db: any, path: string) => ({ path })),
   onSnapshot: vi.fn((_ref: any, callback: any) => {
     callback({ docs: [], size: 0 });
@@ -404,7 +421,8 @@ describe('Settings', () => {
       },
     ];
 
-    const partnersMock = (pairings: PartnerPairing[]) => {
+    const partnersMock = (pairings: PartnerPairing[], stored: PartnerPairing[] = pairings) => {
+      txStore.partners = { pairings: stored };
       vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
         if (ref?.path === 'users') {
           callback({ docs: adminTraineeUsers });
@@ -463,6 +481,30 @@ describe('Settings', () => {
           { pairings: [{ id: pairingId(['u-trainee', 'u-trainee2'], dayKey()), members: ['u-trainee', 'u-trainee2'], startDate: dayKey() }] },
           { merge: true },
         );
+      });
+    });
+
+    it("keeps a pair another Full-timer saved after this screen loaded (Nov 2026)", async () => {
+      setupManagerAuth();
+      // The screen saw no pairs; meanwhile someone else stored one.
+      const other = { id: 'p-other', members: ['u-x', 'u-y'], startDate: '2026-09-01' };
+      partnersMock([], [other]);
+      vi.mocked(setDoc).mockClear();
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Two trainees going out together'));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee User/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
+
+      await waitFor(() => {
+        const write = vi.mocked(setDoc).mock.calls.find(([, data]: any[]) => data && 'pairings' in data);
+        expect(write).toBeTruthy();
+        const ids = (write![1] as any).pairings.map((p: PartnerPairing) => p.id);
+        expect(ids).toContain('p-other');
+        expect(ids).toContain(pairingId(['u-trainee', 'u-trainee2'], dayKey()));
       });
     });
 

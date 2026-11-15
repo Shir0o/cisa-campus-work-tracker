@@ -18,7 +18,8 @@ import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
 import { type TagCombine } from "./src/lib/tags";
 import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
-import { TestAccountPurgeEngine } from "./src/server/testAccountPurgeEngine";
+import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testAccountPurgeEngine";
+import { failsClosed, rateLimitKey, secretMatches } from "./src/server/requestGuards";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 import {
@@ -31,6 +32,10 @@ dotenv.config();
 
 export async function createApp() {
   const app = express();
+  // Cloud Run's front end is one proxy hop: trusting it makes req.ip the real
+  // caller instead of Google's front end, so rate limits count per visitor.
+  // Requests through the Cloudflare proxy are keyed by rateLimitKey().
+  app.set("trust proxy", 1);
 
   app.use(express.json({
     limit: "50mb",
@@ -72,6 +77,7 @@ export async function createApp() {
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "Too many requests. Please try again later." },
+    keyGenerator: rateLimitKey,
     skip: () => process.env.NODE_ENV === "test",
   });
 
@@ -232,6 +238,7 @@ export async function createApp() {
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "Too many notes from this address. Please wait a few minutes." },
+    keyGenerator: rateLimitKey,
     // Off under test, matching this file's existing NODE_ENV convention: the
     // suite drives both routes well past the cap from one address, and a
     // shared counter would make results depend on test order.
@@ -431,6 +438,9 @@ export async function createApp() {
           console.warn("GitHub Webhook: Signature verification failed.");
           return res.status(403).json({ error: "Invalid signature." });
         }
+      } else if (failsClosed()) {
+        console.error("GITHUB_WEBHOOK_SECRET not configured; refusing an unverifiable GitHub webhook.");
+        return res.status(503).json({ error: "Webhook verification is not configured." });
       } else {
         console.warn("GITHUB_WEBHOOK_SECRET not configured; skipping webhook signature verification.");
       }
@@ -1163,6 +1173,19 @@ Analyze the input text carefully and extract the following:
         } catch (authErr: any) {
           return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
         }
+      } else {
+        // Without a sign-in, the caller must hold the Shortcut key. Once
+        // QUICK_ADD_SECRET is set it is always required; production refuses
+        // keyless calls even before it is set.
+        const quickAddSecret = process.env.QUICK_ADD_SECRET;
+        if (quickAddSecret || failsClosed()) {
+          if (!secretMatches(req.get("x-quick-add-key"), quickAddSecret)) {
+            // Not written to webhook_logs: a flood of refused calls must not
+            // turn into a flood of database writes.
+            console.warn("Quick Add: refused a call without a valid key.");
+            return res.status(401).json({ error: "Unauthorized: sign in or send the Quick Add key." });
+          }
+        }
       }
 
       if (!text || typeof text !== "string") {
@@ -1208,6 +1231,13 @@ Analyze the input text carefully and extract the following:
           </Response>
         `);
         }
+      } else if (failsClosed()) {
+        console.error("TWILIO_AUTH_TOKEN not configured; refusing an unverifiable SMS webhook.");
+        return res.status(503).type("text/xml").send(`
+          <Response>
+            <Message>This number is not set up to add contacts yet.</Message>
+          </Response>
+        `);
       } else {
         console.warn("TWILIO_AUTH_TOKEN not configured; skipping SMS webhook signature verification.");
       }
@@ -1279,6 +1309,9 @@ Error: ${safeErrorMsg}
           console.warn(`GroupMe Webhook: group_id mismatch (got "${group_id}").`);
           return res.status(403).json({ error: "Forbidden: unrecognized group." });
         }
+      } else if (failsClosed()) {
+        console.error("GROUPME_GROUP_ID not configured; refusing a GroupMe webhook from an unknown group.");
+        return res.status(503).json({ error: "GroupMe webhook is not configured." });
       } else {
         console.warn("GROUPME_GROUP_ID not configured; accepting GroupMe webhook from any group.");
       }
@@ -1979,8 +2012,20 @@ ${JSON.stringify(contactsList)}`;
         ownerEmail: OWNER_EMAIL_SERVER,
       });
       const plan = await engine.scan(actor.actorId);
+      const fingerprint = purgePlanFingerprint(plan);
       if (req.body?.dryRun === true) {
-        return res.status(200).json({ success: true, dryRun: true, plan });
+        return res.status(200).json({ success: true, dryRun: true, plan, fingerprint });
+      }
+      // Delete only what the Full-timer was shown: a purge must carry the
+      // preview's fingerprint, and a scan that has changed since is refused
+      // with the new plan so the screen can show it (Nov 2026).
+      if (typeof req.body?.fingerprint !== "string" || req.body.fingerprint !== fingerprint) {
+        return res.status(409).json({
+          success: false,
+          error: "The test accounts changed since the preview. Check the new list before purging.",
+          plan,
+          fingerprint,
+        });
       }
       const result = await engine.purge(plan, { deleteTestContacts: req.body?.deleteTestContacts === true });
       return res.status(200).json({ success: true, ...result });
@@ -2130,6 +2175,7 @@ ${JSON.stringify(contactsList)}`;
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests" },
+    keyGenerator: rateLimitKey,
   });
 
   const MAX_GUEST_MD = 100000;
@@ -2775,6 +2821,52 @@ ${JSON.stringify(contactsList)}`;
     } catch (error: any) {
       console.error("Translation API Error: ", error);
       res.status(500).json({ error: error.message || "Failed to translate texts." });
+    }
+  });
+
+  // The public sign-up form's "New Student Sign-up" alert to the Full-timers.
+  // The browser used to write it straight into notifications, which let any
+  // signed-out visitor push arbitrary alerts to the team. Now the server
+  // writes it, worded here, at most once per real sign-up made in the last
+  // few minutes, and behind the rate limit.
+  const SIGNUP_NOTIFY_WINDOW_MS = 10 * 60 * 1000;
+  app.post("/api/signup-notify", standardRateLimiter, async (req, res) => {
+    try {
+      const contactId = req.body?.contactId;
+      if (typeof contactId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(contactId)) {
+        return res.status(400).json({ error: "A contactId is required." });
+      }
+      const db = getAdminDb();
+      const snap = await db.collection("contacts").doc(contactId).get();
+      const data: any = snap.exists ? snap.data() : null;
+      const tags: unknown[] = Array.isArray(data?.tags) ? data.tags : [];
+      const createdMs =
+        typeof data?.createdAt?.toMillis === "function"
+          ? data.createdAt.toMillis()
+          : Date.parse(String(data?.createdTime || ""));
+      const age = Date.now() - createdMs;
+      const recent = Number.isFinite(createdMs) && age >= -60_000 && age <= SIGNUP_NOTIFY_WINDOW_MS;
+      if (!data || !tags.includes("New Sign Up") || !recent) {
+        return res.status(404).json({ error: "No recent sign-up with that id." });
+      }
+
+      const notifRef = db.collection("notifications").doc(`signup-${contactId}`);
+      if ((await notifRef.get()).exists) {
+        return res.status(200).json({ success: true, alreadySent: true });
+      }
+      const name = String(data.name || "Someone").trim().slice(0, 100) || "Someone";
+      await notifRef.set({
+        userId: "ALL_ADMINS",
+        title: "New Student Sign-up",
+        message: `${name} has signed up via the public form.`,
+        type: "event",
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Sign-up notify error:", error);
+      return res.status(500).json({ error: "Could not send the sign-up alert." });
     }
   });
 

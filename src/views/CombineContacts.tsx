@@ -147,7 +147,11 @@ const renderValue = (value: string | string[]): string => {
  */
 export default function CombineContacts() {
   const { t } = useLanguage();
-  const { effectiveUserId, effectiveUserName } = useAuth();
+  const { user, effectiveUserId, effectiveUserName } = useAuth();
+  // A "not the same person" mark is credited to the signed-in person, never
+  // to whoever the owner is viewing the app as (Nov 2026).
+  const actorUid = user?.uid || effectiveUserId;
+  const actorName = user?.displayName || effectiveUserName || '';
   const [searchParams] = useSearchParams();
   // A pair the Full-timer picked in the directory (issue #1433) arrives as two
   // query params. It goes through the same review, without a match reason.
@@ -314,7 +318,7 @@ export default function CombineContacts() {
   };
 
   const markPair = async (pair: CombinePair) => {
-    if (!effectiveUserId || markingKey) return;
+    if (!actorUid || markingKey) return;
     const key = pairKey(pair);
     const ids = [pair.kept.id, pair.combinedIn.id].sort();
     setMarkingKey(key);
@@ -323,8 +327,8 @@ export default function CombineContacts() {
       await markNotSamePerson({
         contactA: pair.kept.id,
         contactB: pair.combinedIn.id,
-        uid: effectiveUserId,
-        name: effectiveUserName ?? '',
+        uid: actorUid,
+        name: actorName,
       });
       setMarks((prev) =>
         prev.some((m) => m.id === key)
@@ -334,8 +338,8 @@ export default function CombineContacts() {
               {
                 id: key,
                 contactIds: ids,
-                markedBy: effectiveUserId,
-                markedByName: effectiveUserName ?? '',
+                markedBy: actorUid,
+                markedByName: actorName,
                 markedAt: new Date().toISOString(),
               },
             ],

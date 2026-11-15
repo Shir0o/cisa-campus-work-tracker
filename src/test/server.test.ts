@@ -233,12 +233,13 @@ vi.mock("../lib/twilioVerify", () => ({
 
 // ── App under test (imported after mocks are registered) ────────────────────
 import { createApp } from "../../server";
+import { TestAccountPurgeEngine } from "../server/testAccountPurgeEngine";
 
 let app: Express;
 
 beforeEach(async () => {
   vi.stubEnv("GITHUB_TOKEN", "");
-  vi.stubEnv("GITHUB_REPO", "");
+  vi.stubEnv("GITHUB_REPO", "a/b"); // the repo the test issue URLs live in
   vi.stubEnv("GITHUB_WEBHOOK_SECRET", "");
   vi.stubEnv("TWILIO_AUTH_TOKEN", "");
   vi.stubEnv("GROUPME_GROUP_ID", "");
@@ -603,6 +604,35 @@ describe("POST /api/feedback/update", () => {
     vi.stubEnv("GITHUB_TOKEN", "gh-token");
     seedDoc("feedback", "fb-3", { status: "new", githubIssueUrl: "not-a-github-url" });
     const res = await request(app).post("/api/feedback/update").send({ id: "fb-3", status: "resolved" });
+    expect(res.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to link a note to an issue outside the app's repository (Nov 2026)", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "a/b");
+    seedDoc("feedback", "fb-4", { status: "new" });
+    for (const githubIssueUrl of ["https://github.com/someone/else/issues/1", "not-a-github-url", 42]) {
+      const res = await request(app).post("/api/feedback/update").send({ id: "fb-4", githubIssueUrl });
+      expect(res.status).toBe(400);
+    }
+    expect(getCollection("feedback")["fb-4"].githubIssueUrl).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Same repository (any case) and unlinking still work.
+    const ok = await request(app)
+      .post("/api/feedback/update")
+      .send({ id: "fb-4", githubIssueUrl: "https://github.com/A/B/issues/3" });
+    expect(ok.status).toBe(200);
+    const cleared = await request(app).post("/api/feedback/update").send({ id: "fb-4", githubIssueUrl: "" });
+    expect(cleared.status).toBe(200);
+  });
+
+  it("never calls GitHub for a stored issue URL outside the app's repository (Nov 2026)", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "a/b");
+    seedDoc("feedback", "fb-5", { status: "new", githubIssueUrl: "https://github.com/someone/else/issues/1" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-5", status: "resolved" });
     expect(res.status).toBe(200);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -975,6 +1005,122 @@ describe("POST /api/quick-add", () => {
     const res = await request(app).post("/api/quick-add").send({ text: "some text" });
     expect(res.status).toBe(500);
     expect(res.body.success).toBe(false);
+  });
+});
+
+describe("Quick Add key and unconfigured webhooks (security decisions, Nov 2026)", () => {
+  it("refuses a keyless Quick Add in production even before a key is set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await request(app).post("/api/quick-add").send({ text: "Met Jane Doe" });
+    expect(res.status).toBe(401);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a Quick Add with the wrong key once a key is set", async () => {
+    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("x-quick-add-key", "guess")
+      .send({ text: "Met Jane Doe" });
+    expect(res.status).toBe(401);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
+  });
+
+  it("accepts a Quick Add that sends the right key", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Jane Doe" }) });
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("x-quick-add-key", "shortcut-key")
+      .send({ text: "Met Jane Doe" });
+    expect(res.status).toBe(200);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(1);
+  });
+
+  it("still lets a signed-in teammate use Quick Add without the key", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Jane Doe" }) });
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("Authorization", "Bearer token")
+      .send({ text: "Met Jane Doe" });
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses the GitHub webhook in production when its secret is not set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .send({ action: "closed", issue: { html_url: "https://github.com/a/b/issues/7" } });
+    expect(res.status).toBe(503);
+  });
+
+  it("refuses the SMS webhook in production when the Twilio token is not set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Ava Rose" });
+    expect(res.status).toBe(503);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
+  });
+
+  it("refuses the GroupMe webhook in production when the group is not set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Robert", name: "Sam", sender_id: "s-1" });
+    expect(res.status).toBe(503);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
+  });
+});
+
+describe("POST /api/signup-notify", () => {
+  const recentSignup = (overrides: Record<string, unknown> = {}) => ({
+    name: "Naomi Park",
+    tags: ["New Sign Up"],
+    createdTime: new Date().toISOString(),
+    ...overrides,
+  });
+  const alerts = () =>
+    Object.values(getCollection("notifications")).filter((n: any) => n.userId === "ALL_ADMINS");
+
+  it("writes one Full-timer alert for a fresh public sign-up, worded by the server", async () => {
+    seedDoc("contacts", "c-new", recentSignup());
+    const res = await request(app).post("/api/signup-notify").send({ contactId: "c-new" });
+    expect(res.status).toBe(200);
+    expect(alerts()).toHaveLength(1);
+    expect(alerts()[0]).toMatchObject({
+      title: "New Student Sign-up",
+      message: "Naomi Park has signed up via the public form.",
+      type: "event",
+    });
+  });
+
+  it("sends the alert only once for the same sign-up", async () => {
+    seedDoc("contacts", "c-new", recentSignup());
+    await request(app).post("/api/signup-notify").send({ contactId: "c-new" });
+    const again = await request(app).post("/api/signup-notify").send({ contactId: "c-new" });
+    expect(again.status).toBe(200);
+    expect(alerts()).toHaveLength(1);
+  });
+
+  it("refuses a contact that is not a public sign-up", async () => {
+    seedDoc("contacts", "c-other", recentSignup({ tags: ["Friend"] }));
+    const res = await request(app).post("/api/signup-notify").send({ contactId: "c-other" });
+    expect(res.status).toBe(404);
+    expect(alerts()).toHaveLength(0);
+  });
+
+  it("refuses an old sign-up, so past contacts cannot be replayed into alerts", async () => {
+    seedDoc("contacts", "c-old", recentSignup({ createdTime: "2026-01-01T00:00:00.000Z" }));
+    const res = await request(app).post("/api/signup-notify").send({ contactId: "c-old" });
+    expect(res.status).toBe(404);
+    expect(alerts()).toHaveLength(0);
+  });
+
+  it("refuses a missing or malformed id", async () => {
+    expect((await request(app).post("/api/signup-notify").send({})).status).toBe(400);
+    expect((await request(app).post("/api/signup-notify").send({ contactId: "../x" })).status).toBe(400);
   });
 });
 
@@ -1418,6 +1564,48 @@ describe("authorizeAdmin role enforcement", () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("not an administrator");
+  });
+
+  it("purges only what the preview showed, refusing a changed scan (Nov 2026)", async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      uid: "founder-1",
+      email: "yilongwang05@gmail.com",
+      email_verified: true,
+      firebase: { sign_in_second_factor: "totp" },
+    });
+    const empty = { accounts: [], logins: [], invitations: [], personal: [], interactions: [], notes: [], chats: [], activity: [], asks: [], feedback: [], contacts: [], keptSelf: [] };
+    const before = { ...empty, accounts: ["users/rev"], accountLabels: ["reviewer@gmail.com"] };
+    const after = { ...empty, accounts: ["users/rev", "users/new"], accountLabels: ["reviewer@gmail.com", "cisa-new@gmail.com"] };
+    const scan = vi.spyOn(TestAccountPurgeEngine.prototype, "scan").mockResolvedValue(before as any);
+    const purge = vi
+      .spyOn(TestAccountPurgeEngine.prototype, "purge")
+      .mockResolvedValue({ deletedCount: 1, failed: [] } as any);
+    try {
+      const call = (body: Record<string, unknown>) =>
+        request(app).post("/api/test-account-purge").set("Authorization", "Bearer tok").send(body);
+
+      const preview = await call({ dryRun: true });
+      expect(preview.status).toBe(200);
+      expect(typeof preview.body.fingerprint).toBe("string");
+
+      // No fingerprint, or a wrong one: nothing is deleted.
+      expect((await call({})).status).toBe(409);
+      expect((await call({ fingerprint: "nope" })).status).toBe(409);
+
+      // Something new appeared after the preview.
+      scan.mockResolvedValue(after as any);
+      const stale = await call({ fingerprint: preview.body.fingerprint });
+      expect(stale.status).toBe(409);
+      expect(stale.body.plan.accountLabels).toContain("cisa-new@gmail.com");
+      expect(purge).not.toHaveBeenCalled();
+
+      const ok = await call({ fingerprint: stale.body.fingerprint });
+      expect(ok.status).toBe(200);
+      expect(purge).toHaveBeenCalledTimes(1);
+    } finally {
+      scan.mockRestore();
+      purge.mockRestore();
+    }
   });
 
   it("returns 403 when user has non-admin role", async () => {
@@ -2506,7 +2694,7 @@ describe("POST /api/webhook/github — issue_comment relay", () => {
   const payload = (over: Record<string, any> = {}) => ({
     action: "created",
     issue: { html_url: issueUrl },
-    comment: { id: 99, body: "Specced as #910. Confirmed as the textarea rather than the preview.", user: { login: "Shir0o", type: "User" } },
+    comment: { id: 99, body: "Specced as #910. Confirmed as the textarea rather than the preview.", user: { login: "Shir0o", type: "User" }, author_association: "OWNER" },
     ...over,
   });
 
@@ -2548,6 +2736,7 @@ describe("POST /api/webhook/github — issue_comment relay", () => {
         id: 100,
         body: "> *This was generated by AI during triage.*\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** the toolbar steals focus",
         user: { login: "Shir0o", type: "User" },
+        author_association: "OWNER",
       },
     });
 
@@ -2591,6 +2780,7 @@ describe("POST /api/webhook/github — issue_comment relay", () => {
         id: 101,
         body: "> *This was generated by AI during triage.*\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** the toolbar steals focus",
         user: { login: "Shir0o", type: "User" },
+        author_association: "OWNER",
       },
     });
 
@@ -2611,7 +2801,7 @@ describe("POST /api/webhook/github — issue_comment relay", () => {
       text: JSON.stringify({ relay: true, text: "We've traced this to the text box and a fix is on the way." }),
     });
 
-    const res = await post(payload({ comment: { id: 99, body: longRaw, user: { login: "Shir0o", type: "User" } } }));
+    const res = await post(payload({ comment: { id: 99, body: longRaw, user: { login: "Shir0o", type: "User" }, author_association: "OWNER" } }));
     expect(res.status).toBe(200);
     expect(res.body.relayedCount).toBe(1);
 
@@ -2640,6 +2830,34 @@ describe("POST /api/webhook/github — issue_comment relay", () => {
     expect(Object.values(getCollection("notifications"))).toEqual([
       expect.objectContaining({ userId: "user-ada", title: "A reply on your note", message: "We're on it." }),
     ]);
+  });
+  it("ignores a comment from someone outside the repository team (Nov 2026)", async () => {
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "Click here for a refund." }) });
+    for (const author_association of ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", undefined]) {
+      const body = payload({
+        comment: { id: 120, body: "Visit my site for a refund", user: { login: "drive-by", type: "User" }, author_association },
+      });
+      const res = await post(body);
+      expect(res.status).toBe(200);
+      expect(res.body.relayedCount).toBe(0);
+    }
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
+    expect(Object.values(getCollection("notifications"))).toHaveLength(0);
+  });
+
+  it("drops the app's own mirrored comment even before its id is stored (Nov 2026)", async () => {
+    const body = payload({
+      comment: {
+        id: 121,
+        body: "**Reporter replied:**\n\nAny news?\n\n<!-- cisa-app-relay -->",
+        user: { login: "Shir0o", type: "User" },
+        author_association: "OWNER",
+      },
+    });
+    const res = await post(body);
+    expect(res.body.relayedCount).toBe(0);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
   });
 });
 
@@ -2810,6 +3028,7 @@ describe("Feedback GitHub URLs are not a request-forgery surface", () => {
   });
 
   it("mirrors normally to a real issue URL", async () => {
+    vi.stubEnv("GITHUB_REPO", "Shir0o/cisa-campus-work-tracker");
     seedDoc("feedback", "fb-1", {
       userId: "user-ada",
       status: "new",

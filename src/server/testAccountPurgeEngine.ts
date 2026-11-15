@@ -1,4 +1,19 @@
+import crypto from "crypto";
 import { isTestAccount, selectedPurgePaths, type PurgePlan } from "../lib/testAccountPurge";
+
+/**
+ * A fingerprint of what a plan would delete. The preview hands it to the
+ * Full-timer's screen, and the purge only runs when a fresh scan still has the
+ * same fingerprint, so nothing that appeared after the preview is deleted
+ * unseen (Nov 2026). Order inside a group does not matter.
+ */
+export function purgePlanFingerprint(plan: PurgePlan): string {
+  const groups = Object.entries(plan)
+    .filter(([key]) => key !== "accountLabels")
+    .map(([key, value]) => [key, Array.isArray(value) ? value.map(String).sort() : []] as const)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return crypto.createHash("sha256").update(JSON.stringify(groups)).digest("hex");
+}
 
 // Test Account Purge, run with the Admin SDK (Settings → Danger Zone). The
 // client cannot do this itself: rules keep other people's push devices,
@@ -62,6 +77,7 @@ export class TestAccountPurgeEngine {
     const keptEmails = new Set([this.ownerEmail]);
     const testUids = new Set<string>();
     const accounts: string[] = [];
+    const accountLabels: string[] = [];
 
     const isKept = (uid: string, email?: string | null) =>
       uid === actorId || (email || "").trim().toLowerCase() === this.ownerEmail;
@@ -77,6 +93,7 @@ export class TestAccountPurgeEngine {
       }
       testUids.add(d.id);
       accounts.push(d.ref.path);
+      accountLabels.push(String(data.email || data.displayName || d.id));
     }
 
     // Auth logins: the test users above, plus test logins that never got a
@@ -170,6 +187,7 @@ export class TestAccountPurgeEngine {
       feedback,
       contacts,
       keptSelf,
+      accountLabels,
     };
   }
 
