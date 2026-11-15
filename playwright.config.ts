@@ -41,11 +41,13 @@ export default defineConfig({
       VITE_FIREBASE_FIRESTORE_DB_ID: process.env.VITE_FIREBASE_FIRESTORE_DB_ID || process.env.FIRESTORE_DATABASE_ID || 'qa-db',
       // The server's Admin SDK reads the same database as the browser, so a
       // server route (like the sign-up alert) sees what the page just wrote.
+      // On the emulator the browser uses the default database
+      // (src/lib/firebase.ts), which is also where pushBellEmulator listens.
       FIREBASE_FIRESTORE_DB_ID:
         process.env.FIREBASE_FIRESTORE_DB_ID ||
-        process.env.VITE_FIREBASE_FIRESTORE_DB_ID ||
-        process.env.FIRESTORE_DATABASE_ID ||
-        'qa-db',
+        ((process.env.VITE_USE_FIREBASE_EMULATOR ?? 'true') === 'true'
+          ? '(default)'
+          : process.env.VITE_FIREBASE_FIRESTORE_DB_ID || process.env.FIRESTORE_DATABASE_ID || 'qa-db'),
       ...(process.env.VITE_FIREBASE_API_KEY
         ? { VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY }
         : { VITE_FIREBASE_API_KEY: 'fake-emulator-api-key' }),
