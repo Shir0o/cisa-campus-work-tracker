@@ -99,7 +99,9 @@ export default function HomesModal({
 }: HomesModalProps) {
   const { t } = useLanguage();
   const { user, effectiveUserId } = useAuth();
-  const me = effectiveUserId || user?.uid || '';
+  // Writes are credited to the signed-in person, never to whoever the owner is
+  // viewing the app as (Nov 2026).
+  const actor = user?.uid || effectiveUserId || '';
   const myName = user?.displayName || 'A full-timer';
 
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -248,7 +250,7 @@ export default function HomesModal({
       });
       leaveEditor();
       showUndoSnack(t('homes.deleted_snack'), () => {
-        void restoreHome(home, { uid: me, name: myName }).catch((e) =>
+        void restoreHome(home, { uid: actor, name: myName }).catch((e) =>
           handleFirestoreError(e, OperationType.WRITE, `homes/${home.id}`),
         );
       });
@@ -266,7 +268,7 @@ export default function HomesModal({
     setActionError(null);
     setBusy(true);
     try {
-      await combineHomes(target, source, visits, { uid: me, name: myName });
+      await combineHomes(target, source, visits, { uid: actor, name: myName });
       void logActivity({
         action: 'combined a home into',
         targetId: target.id,
@@ -298,10 +300,10 @@ export default function HomesModal({
         active: editing.active,
       };
       if (editing.id) {
-        await updateHome(editing.id, input, { uid: me, name: myName });
+        await updateHome(editing.id, input, { uid: actor, name: myName });
         onHomeSaved({ id: editing.id, ...input });
       } else {
-        const id = await addHome(input, { uid: me, name: myName });
+        const id = await addHome(input, { uid: actor, name: myName });
         onHomeSaved({ id, ...input });
       }
       leaveEditor();

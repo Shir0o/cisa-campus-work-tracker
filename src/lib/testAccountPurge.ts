@@ -43,9 +43,12 @@ export interface PurgePlan {
   contacts: string[];
   /** Test accounts left alone because they are the one running the purge. */
   keptSelf: string[];
+  /** Who the accounts above are (email or name), so the preview can name
+   *  them before anything is deleted (Nov 2026). */
+  accountLabels?: string[];
 }
 
-export type PurgePathGroup = Exclude<keyof PurgePlan, 'logins' | 'keptSelf'>;
+export type PurgePathGroup = Exclude<keyof PurgePlan, 'logins' | 'keptSelf' | 'accountLabels'>;
 
 /** Delete order: traces first, then the account docs that own them. */
 export const PURGE_PATH_GROUPS: PurgePathGroup[] = [

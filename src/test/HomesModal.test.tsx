@@ -100,6 +100,22 @@ describe('HomesModal', () => {
     expect(by).toMatchObject({ uid: 'u1', name: 'Mei Tanaka' });
   });
 
+  it('credits a home to the signed-in owner while viewing the app as someone else (Nov 2026)', async () => {
+    (useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { uid: 'owner-1', displayName: 'Owner' },
+      effectiveUserId: 'cisa-trainee',
+    });
+    render(<HomesModal {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add a home' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Chens' } });
+    fireEvent.click(screen.getByRole('button', { name: /Bo Chen$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create home' }));
+
+    await waitFor(() => expect(addHome).toHaveBeenCalled());
+    const [, by] = (addHome as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(by).toMatchObject({ uid: 'owner-1', name: 'Owner' });
+  });
+
   it('proposes a home from a co-visited pair and confirms it', async () => {
     const visits = [visit('v1', ['c1', 'c3'])];
     render(<HomesModal {...baseProps} visits={visits} />);

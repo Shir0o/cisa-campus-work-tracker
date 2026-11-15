@@ -19,7 +19,7 @@
 // (migrateByTermToPairings), so history is readable before the first write of
 // the new shape and nothing is lost.
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, setDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { cleanPairings, cleanPartnerGroups, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./partnersModel";
 import type { PartnersSettings } from "../types";
@@ -100,8 +100,34 @@ export function usePartners(): PartnerPairing[] {
   return pairings;
 }
 
+/**
+ * Change the arrangement from what is stored now, not from what this screen
+ * last saw (Nov 2026). Two Full-timers editing pairs at once used to overwrite
+ * each other's change, since each saved its own whole list. `change` gets the
+ * current pairings inside a transaction and returns the new list, or null to
+ * write nothing. Resolves to what was written (or null).
+ */
+export async function updatePartners(
+  change: (current: PartnerPairing[]) => PartnerPairing[] | null,
+): Promise<PartnerPairing[] | null> {
+  try {
+    return await runTransaction(db, async (tx) => {
+      const snap = await tx.get(partnersDoc());
+      const current = deserializePartners(snap.exists() ? (snap.data() as PartnersSettings) : undefined);
+      const next = change(current);
+      if (!next) return null;
+      tx.set(partnersDoc(), { pairings: serializePairings(next) }, { merge: true });
+      return cleanPairings(next);
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.WRITE, "settings/partners");
+    return null;
+  }
+}
+
 /** Replace the whole dated arrangement in settings/partners. Legacy `byTerm` is
- *  left in place as the migration path; readers prefer `pairings`. */
+ *  left in place as the migration path; readers prefer `pairings`. Prefer
+ *  updatePartners for edits, so a concurrent change is not overwritten. */
 export async function savePartners(pairings: readonly PartnerPairing[]): Promise<void> {
   try {
     await setDoc(partnersDoc(), { pairings: serializePairings(pairings) }, { merge: true });

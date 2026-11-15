@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { TestAccountPurgeEngine, type PurgeAuth, type PurgeDb } from '../server/testAccountPurgeEngine';
+import {
+  TestAccountPurgeEngine,
+  purgePlanFingerprint,
+  type PurgeAuth,
+  type PurgeDb,
+} from '../server/testAccountPurgeEngine';
 
 const OWNER = 'owner@example.com';
 
@@ -107,6 +112,25 @@ describe('TestAccountPurgeEngine', () => {
     expect(plan.feedback).toEqual(['feedback/f1']);
     expect(plan.contacts).toEqual(['contacts/cTest']);
     expect(plan.keptSelf).toEqual(['cisa-admin@cisa.campus']);
+    expect(plan.accountLabels).toEqual(['reviewer@gmail.com']);
+  });
+
+  it('fingerprints what a plan deletes, so a changed scan can be told apart (Nov 2026)', async () => {
+    const { db, docs } = createFakeDb(seed());
+    const { auth } = createFakeAuth(authUsers);
+    const engine = new TestAccountPurgeEngine({ db, auth, ownerEmail: OWNER });
+    const first = await engine.scan('me');
+    const same = await engine.scan('me');
+    expect(purgePlanFingerprint(same)).toBe(purgePlanFingerprint(first));
+
+    // Order inside a group does not matter.
+    const shuffled = { ...first, logins: [...first.logins].reverse() };
+    expect(purgePlanFingerprint(shuffled)).toBe(purgePlanFingerprint(first));
+
+    // A new test account after the preview changes it.
+    docs.set('users/rev2', user('reviewer3@gmail.com', 'Reviewer Three'));
+    const later = await engine.scan('me');
+    expect(purgePlanFingerprint(later)).not.toBe(purgePlanFingerprint(first));
   });
 
   it('never deletes the account running the purge, even when it looks like a test account', async () => {

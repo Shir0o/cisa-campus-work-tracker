@@ -120,6 +120,11 @@ export default function LogVisitModal({
   const savedRef = useRef<SaveProgress>({});
 
   const me = effectiveUserId || user?.uid || '';
+  // Who a write is credited to: always the signed-in person. While the owner
+  // views the app as someone else, `me` is that person (or a stand-in id like
+  // cisa-trainee), and records stamped with it were credited to someone who
+  // never made them (Nov 2026).
+  const actor = user?.uid || me;
   const myName = user?.displayName || 'A full-timer';
 
   const allContacts = useMemo(
@@ -239,7 +244,7 @@ export default function LogVisitModal({
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
         serverCreatedAt: serverTimestamp(),
-        createdBy: me,
+        createdBy: actor,
         createdByName: myName,
         hasNewActivity: true,
         attendance: {},
@@ -330,7 +335,7 @@ export default function LogVisitModal({
         prayerBurden: visit?.prayerBurden ?? null,
         photos: existingPhotos,
       };
-      const by = { uid: me, name: myName, photoURL: user?.photoURL };
+      const by = { uid: actor, name: myName, photoURL: user?.photoURL };
 
       // A prayer and a to-do belong to the visit that produced them, so they're
       // only created the first time round — an edit fixes the record, it doesn't
@@ -350,7 +355,7 @@ export default function LogVisitModal({
                 contactId: ids[0],
                 contactName: chosen[0]?.name ?? null,
               },
-              { uid: me, name: myName },
+              { uid: actor, name: myName },
             );
           }
           input.followUpTaskId = saved.todoId;
@@ -360,7 +365,7 @@ export default function LogVisitModal({
             saved.prayerId = await addPrayerBurden(
               chosen[0].id,
               prayer.trim(),
-              { uid: me, name: myName },
+              { uid: actor, name: myName },
               // A visit prayer belongs to the contact, not the team page (#1406).
               false,
             );

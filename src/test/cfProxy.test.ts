@@ -75,4 +75,34 @@ describe('Cloudflare Pages Proxy Function (functions/api/[[path]].ts)', () => {
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
     expect(response.headers.get('access-control-allow-methods')).toContain('POST');
   });
+  it('vouches for the visitor address with the shared secret, replacing whatever the caller sent', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    globalThis.fetch = fetchSpy;
+    const request = new Request('https://cisa-campus.pages.dev/api/quick-add', {
+      method: 'GET',
+      headers: new Headers({
+        'cf-connecting-ip': '198.51.100.7',
+        'x-client-ip': '10.0.0.1',
+        'x-proxy-secret': 'forged',
+      }),
+    });
+
+    await onRequest({ request, env: { BACKEND_API_URL: 'https://b.a.run.app', PROXY_SHARED_SECRET: 'real' } } as any);
+    const sent = fetchSpy.mock.calls[0][1].headers as Headers;
+    expect(sent.get('x-client-ip')).toBe('198.51.100.7');
+    expect(sent.get('x-proxy-secret')).toBe('real');
+  });
+
+  it('drops a caller-sent proxy secret when none is configured', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    globalThis.fetch = fetchSpy;
+    const request = new Request('https://cisa-campus.pages.dev/api/quick-add', {
+      method: 'GET',
+      headers: new Headers({ 'cf-connecting-ip': '198.51.100.7', 'x-proxy-secret': 'forged' }),
+    });
+
+    await onRequest({ request, env: { BACKEND_API_URL: 'https://b.a.run.app' } } as any);
+    const sent = fetchSpy.mock.calls[0][1].headers as Headers;
+    expect(sent.get('x-proxy-secret')).toBeNull();
+  });
 });

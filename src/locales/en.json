@@ -2832,7 +2832,8 @@
     "complete": "Purge Complete",
     "removed": "Successfully removed {n} test account traces.",
     "partial": "{n} items could not be removed. Run the purge again to retry them.",
-    "kept_self": "Your own account ({who}) looks like a test account and is kept."
+    "kept_self": "Your own account ({who}) looks like a test account and is kept.",
+    "accounts_named": "These accounts will be deleted: {who}."
   },
   "todoComposer": {
     "eyebrow": "To-do",
@@ -2962,6 +2963,8 @@
     "unlock": "Unlock",
     "create": "Create the vault",
     "not_recoverable": "This passphrase is stored nowhere and cannot be recovered. Keep it in the team password manager.",
+    "changed_elsewhere": "The vault passphrase was changed by another Full-timer. Unlock it with the new passphrase.",
+    "already_created": "Another Full-timer set up the vault a moment ago. Unlock it with their passphrase.",
     "wrong_passphrase": "That passphrase did not open the vault.",
     "unlock_failed": "The vault could not be opened. Please try again.",
     "entries_title": "Shared logins",

@@ -74,7 +74,7 @@ import type { WhatsNewManifest } from '../scripts/compile-whats-new';
 import { useWhatsNewSettings } from '../lib/whatsNew';
 import {
   subscribePartners,
-  savePartners,
+  updatePartners,
   partnersTermKey,
   pairingsByTerm,
   rePair,
@@ -3166,16 +3166,20 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   const openMembers = useMemo(() => new Set(current.filter((p) => !p.endDate).flatMap((p) => p.members)), [current]);
   const free = useMemo(() => trainees.filter((tr) => !openMembers.has(tr.uid)), [trainees, openMembers]);
 
-  const commit = (next: PartnerPairing[]) => {
+  // `change` is applied twice: here, so the screen moves at once, and again
+  // inside the save's transaction against what is stored, so another
+  // Full-timer's edit made meanwhile is kept rather than overwritten.
+  const commit = (change: (current: PartnerPairing[]) => PartnerPairing[] | null) => {
     if (!loaded) {
       alert(t('settings.pairs_not_loaded', 'The pairs are still loading. Please try again in a moment.'));
       return;
     }
     const before = pairings;
-    setPairings(next);
+    const optimistic = change(pairings);
+    if (optimistic) setPairings(optimistic);
     // A refused save (rules, offline) must not surface as an unhandled
     // rejection: put the list back and say so.
-    savePartners(next).catch(() => {
+    updatePartners(change).catch(() => {
       setPairings(before);
       alert(t('settings.pairs_save_failed', "Couldn't save that change to the pairs. Please try again."));
     });
@@ -3197,7 +3201,12 @@ function PartnersSection({ users }: { users: AppUser[] }) {
     if (next.length === pairings.length) {
       alert(t('settings.pairs_overlap', "That overlaps a pairing that's already ended or already covers that date."));
     } else {
-      commit(next);
+      // Re-pair from what is stored when the save runs; if that now
+      // overlaps, write nothing.
+      commit((current) => {
+        const repaired = rePair(current, members, startDate);
+        return repaired.length === current.length ? null : repaired;
+      });
     }
     closePicking();
   };
@@ -3300,7 +3309,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
                   <button
                     type="button"
                     onClick={() => {
-                      commit(endPairing(pairings, p.id, endDate));
+                      commit((current) => endPairing(current, p.id, endDate));
                       setEndingId(null);
                     }}
                     className="shrink-0 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"

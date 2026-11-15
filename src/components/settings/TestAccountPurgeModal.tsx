@@ -16,7 +16,7 @@ type Step = 'preview' | 'purging' | 'done';
 const PURGE_API = '/api/test-account-purge';
 
 /** The preview rows, in display order; contacts are shown under the opt-in. */
-const ROWS: { group: Exclude<keyof PurgePlan, 'keptSelf'>; label: string }[] = [
+const ROWS: { group: Exclude<keyof PurgePlan, 'keptSelf' | 'accountLabels'>; label: string }[] = [
   { group: 'accounts', label: 'testAccountPurge.test_accounts' },
   { group: 'logins', label: 'testAccountPurge.sign_in_logins' },
   { group: 'invitations', label: 'testAccountPurge.pending_invitations' },
@@ -35,6 +35,9 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
   const [step, setStep] = useState<Step>('preview');
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<PurgePlan | null>(null);
+  // What the preview showed; the purge sends it back so the server deletes
+  // only that (Nov 2026).
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [deleteTestContacts, setDeleteTestContacts] = useState(false);
   const [deletedCount, setDeletedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
@@ -45,6 +48,7 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
     if (!isOpen) {
       setStep('preview');
       setPlan(null);
+      setFingerprint(null);
       setError(null);
       return;
     }
@@ -54,13 +58,14 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
       setLoading(true);
       setError(null);
       try {
-        const res = await postCombineApi<{ plan: PurgePlan }>(
+        const res = await postCombineApi<{ plan: PurgePlan; fingerprint: string }>(
           PURGE_API,
           { dryRun: true },
           'Failed to scan test accounts.',
         );
         if (isMounted) {
           setPlan(res.plan);
+          setFingerprint(res.fingerprint ?? null);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -82,13 +87,13 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
   if (!isOpen) return null;
 
   const handlePurge = async () => {
-    if (!plan) return;
+    if (!plan || !fingerprint) return;
     setStep('purging');
     setError(null);
     try {
       const res = await postCombineApi<{ deletedCount: number; failed: unknown[] }>(
         PURGE_API,
-        { deleteTestContacts },
+        { deleteTestContacts, fingerprint },
         'Failed to purge test account traces.',
       );
       setDeletedCount(res.deletedCount);
@@ -98,6 +103,20 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
     } catch (err: any) {
       setError(err?.message || 'Failed to purge test account traces.');
       setStep('preview');
+      // The list may have changed under the preview: show the current one
+      // and make the Full-timer look again before a second try.
+      try {
+        const fresh = await postCombineApi<{ plan: PurgePlan; fingerprint: string }>(
+          PURGE_API,
+          { dryRun: true },
+          'Failed to scan test accounts.',
+        );
+        setPlan(fresh.plan);
+        setFingerprint(fresh.fingerprint ?? null);
+      } catch {
+        setPlan(null);
+        setFingerprint(null);
+      }
     }
   };
 
@@ -171,6 +190,12 @@ export default function TestAccountPurgeModal({ isOpen, onClose, onSuccess }: Pr
                   {t('testAccountPurge.contacts_note')}
                 </div>
               </label>
+            )}
+
+            {plan && plan.accountLabels && plan.accountLabels.length > 0 && (
+              <p className="text-xs text-on-surface-variant" data-testid="purge-account-labels">
+                {t('testAccountPurge.accounts_named').replace('{who}', plan.accountLabels.join(', '))}
+              </p>
             )}
 
             {plan && plan.keptSelf.length > 0 && (
