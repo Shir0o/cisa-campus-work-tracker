@@ -959,7 +959,7 @@ describe('BibleStudyEditor view', () => {
     expect(phone.style.width).toBe('390px');
     expect(phone.style.height).toBe('844px');
     expect(phone.style.transform).toBe('scale(1)');
-    expect(phone.style.transformOrigin).toBe('top left');
+    expect(phone.style.transformOrigin).toMatch(/^(top left|left top)$/);
   });
 
   it('shows a handled state for a week that does not exist', async () => {
