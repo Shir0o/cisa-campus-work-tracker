@@ -106,7 +106,7 @@
     "@types/supertest": "^7.2.1",
     "@types/turndown": "^5.0.6",
     "@typescript-eslint/eslint-plugin": "^8.72.2",
-    "@typescript-eslint/parser": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.2",
     "@vitest/coverage-v8": "^5.1.0",
     "autoprefixer": "^10.6.2",
     "esbuild": "^0.28.2",
@@ -117,7 +117,7 @@
     "svgo": "^4.1.0",
     "tailwindcss": "^4.3.4",
     "tsx": "^4.23.13",
-    "typescript": "~7.0.2",
+    "typescript": "~5.8.3",
     "vite": "^8.3.7",
     "vitest": "^5.0.1"
   },
