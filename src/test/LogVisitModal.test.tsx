@@ -812,7 +812,7 @@ describe('LogVisitModal', () => {
         fireEvent.pointerDown(title, { pointerId: 1, clientY: 100 });
         vi.advanceTimersByTime(300);
         fireEvent.pointerMove(title, { pointerId: 1, clientY: 160 });
-        expect(sheet.style.translate).toBe('0 60px');
+        expect(sheet.style.translate).toMatch(/^0(px)? 60px$/);
 
         vi.advanceTimersByTime(300);
         fireEvent.pointerUp(title, { pointerId: 1, clientY: 160 });
