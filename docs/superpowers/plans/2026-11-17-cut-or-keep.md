@@ -35,7 +35,7 @@
 
 ## Execution
 
-Run tasks **serially** in one isolated worktree branched from `origin/main`, one subagent per task, each followed by a fresh reviewer. Branch `audit/NN-<slug>`, each from the previous task's branch; PR base is the previous branch (Task 1's base is `main`). Push and open the PR; never merge. Model and effort per task are in each heading.
+Run tasks **serially** in one isolated worktree branched from `origin/main`, one subagent per task, each followed by a fresh reviewer. Branch `audit/NN-<slug>`, each from the previous task's branch; PR base is the previous branch (Task 1's base is `main`). Push and open the PR; never merge. Model and effort per task are in each heading: sonnet by default; opus only where a mistake is costly and hard to see (the role cut across rules, the per-person prayer rules near the expression ceiling, native widgets, and the final review).
 
 ### Task 0: Commit the spec and plan — (me)
 - [ ] Branch `audit/00-spec` from `origin/main`; commit the two docs; push; PR "docs: cut-or-keep audit spec and plan".
@@ -60,25 +60,25 @@ Run tasks **serially** in one isolated worktree branched from `origin/main`, one
 - [ ] Delete files and branches; keep the `t()` system with English.
 - [ ] Gate (including `check:i18n`), functions `tsc`, commit, push, PR.
 
-### Task 3: Remove Outreach (spec §2) — opus, medium
+### Task 3: Remove Outreach (spec §2) — sonnet, high
 **Files:** `src/views/Outreach.tsx`, `apps/mobile/app/outreach.tsx`, `apps/mobile/src/components/ft/OutreachScreen.tsx`, `apps/mobile/src/lib/useOutreachData.ts`, `apps/mobile/src/lib/data/outreach.ts`, `packages/core/src/outreach.ts`, `packages/core/src/data/outreach.ts`, nav entries (web + `FtMoreScreen`), `permissions.ts` (`canSeeOutreach`/`canLogOutreach`), `/outreach` rules match, outreach auto-ask in `packages/core/src/toAsk.ts` (the outing source only; keep text-reach logic), `usageStats.ts`.
 - Keep the contact "where we met" field.
 - [ ] Failing tests: `/outreach` redirects home; to-ask derivation no longer produces outing lines but still produces text-reach lines.
 - [ ] Delete; gate; commit; push; PR.
 
-### Task 4: Remove BNPB suggestions (spec §4) — opus, medium
+### Task 4: Remove BNPB suggestions (spec §4) — sonnet, high
 **Files:** `src/views/SuggestionsQueue.tsx`, `src/components/landing/BnpbReviewCard.tsx`, `server.ts` (`/api/bnpb/sync` and token routes — read with Read), `users/*/interactionSuggestions`, `suggestionLinks`, `notACisaPeople`, `bnpb_sync_tokens` rules matches, Settings token UI, related indexes in `firestore.indexes.json`.
 - [ ] Check whether `packages/core/src/contactMatch.ts` is used by sign-up or Smart Import; keep it if so.
 - [ ] Failing tests: `/suggestions` redirects home; rules deny the removed collections.
 - [ ] Delete; gate; commit; push; PR. Draft (do not file) the BNPB ticket text in the PR body.
 
-### Task 5: Remove Questions for the team (spec §9) — opus, medium
+### Task 5: Remove Questions for the team (spec §9) — sonnet, high
 **Files:** `src/views/Questions.tsx`, `apps/mobile/app/ask.tsx`, `src/components/landing/AskStack.tsx`, `AskTheTeam.tsx`, `QuestionsPointerCard.tsx`, nav entry, question reminders in `firebase-functions/src/reminders.ts`.
 - Open questions still render and can be answered where they already show until closed; no UI creates one.
 - [ ] Failing tests: `/questions` and phone `ask` redirect; reminder schedule skips questions; an open legacy question still renders (fixture).
 - [ ] Delete; gate; commit; push; PR.
 
-### Task 6: Cut Messages chats; rebuild Announcements (spec §20) — opus, high
+### Task 6: Cut Messages chats; rebuild Announcements (spec §20) — sonnet, high
 **Files:** `src/views/Messages.tsx`, `src/services/chat.ts`, `apps/mobile/app/(tabs)/messages/*`, `src/components/modals/ChatDetailsModal.tsx`, `chatRooms`/`messages` rules, `e2e/journeys/messages-keyboard.spec.ts` (delete), nav.
 **Interfaces:** Produces collection `announcements/{id}`: `{ body: string, authorId, authorName, createdAt, gotIt: map<uid, timestamp> }`. `postAnnouncement(body: string): Promise<string>` (Full-timer only), `markGotIt(id: string): Promise<void>`, `useOpenAnnouncements(uid): Announcement[]` (no `gotIt[uid]`), `whoHasNot(a: Announcement, team: User[]): User[]`.
 - [ ] Failing tests: rules — Full-timer creates, Trainee cannot create, any approved user may set only their own `gotIt.<uid>`; `whoHasNot` returns the right names; posting writes one notification per user (so push follows from the bell).
@@ -87,14 +87,14 @@ Run tasks **serially** in one isolated worktree branched from `origin/main`, one
 - [ ] Update `notification.spec.ts` or `full-timer.spec.ts` with: post → Trainee sees card → Got it → poster sees count; run it.
 - [ ] Gate; commit; push; PR.
 
-### Task 7: Visits become an interaction type (spec §5) — opus, high
+### Task 7: Visits become an interaction type (spec §5) — sonnet, high
 **Files:** `src/views/Visits.tsx`, `VisitsMobile.tsx`, `src/components/visits/*`, `visits`/`homes` rules, nav, `LogInteractionModal.tsx`, interaction type list (core), contact story rendering.
 **Interfaces:** Interaction type `'visit'`; `logInteraction` accepts `contactIds: string[]` (writes one interaction per contact, same `groupId`).
 - [ ] Failing tests: logging a visit for 3 people writes 3 interactions sharing a `groupId`; a legacy `visits` doc's linked interaction still renders in the story (fixture); `/visits` redirects.
 - [ ] Build the type + multi-person pick; delete the page, cards, roster, stats.
 - [ ] Gate; commit; push; PR.
 
-### Task 8: Journey board → Directory; Directory lean (spec §22, §23) — opus, high
+### Task 8: Journey board → Directory; Directory lean (spec §22, §23) — sonnet, high
 **Files:** `src/views/OutreachBoard.tsx`, `OutreachBoardMobile.tsx`, `src/components/pipeline/PipelineMatrix.tsx`, `src/lib/board.ts`, `packages/core/src/board.ts`, `stageTones.ts` (colours), `src/views/Directory.tsx`, `src/views/Settings.tsx` (new Steps section), nav.
 - Directory: add "Not yet placed" to the step filter; remove background, interests, has-phone, custom date filters, bulk set-kind and bulk tag, header counts, row Reach. Keep copy emails.
 - Settings › Steps: add, rename, reorder, remove-with-reassign (moved from the board; no colour).
@@ -138,7 +138,7 @@ Run tasks **serially** in one isolated worktree branched from `origin/main`, one
 
 ## Phase 2 — Builds
 
-### Task 13: Notification rule (spec §28) — opus, medium
+### Task 13: Notification rule (spec §28) — sonnet, high
 **Files:** `src/lib/threads.ts`, `packages/core/src/data/threads.ts`, `src/hooks/useContactStory.ts`, `NewContactModal.tsx`, `LogInteractionModal.tsx`, `packages/core/src/data/contacts.ts`, `src/views/SignUp.tsx` + `packages/core/src/data/signup.ts`, `NotificationCenter.tsx`.
 - Sends only: @mention (+reminder), announcement, to-do assigned/due, report outcome, sign-up (Full-timers only). Remove bell filters.
 - [ ] Failing tests: posting a conversation message without a mention sends nothing; with a mention sends to the mentioned only; logging an interaction sends nothing; creating a contact sends nothing; a sign-up notifies only `admin` users.
@@ -162,11 +162,11 @@ Run tasks **serially** in one isolated worktree branched from `origin/main`, one
 - [ ] Failing tests: shown on the until-date, hidden the day after, hidden when null.
 - [ ] Gate; commit; push; PR.
 
-### Task 17: Impersonation check (spec §28) — opus, high
+### Task 17: Impersonation check (spec §28) — sonnet, high
 - [ ] Extend `e2e/journeys/impersonation.spec.ts`: a Full-timer viewing as a Trainee sees exactly that Trainee's Directory count and none of a seeded out-of-scope contact; writes while impersonating are attributed per the existing rule. Fix anything that fails. Run it.
 - [ ] Gate; commit; push; PR.
 
-### Task 18: Quick add — parse and in-app flow (spec §26) — opus, high
+### Task 18: Quick add — parse and in-app flow (spec §26) — sonnet, high
 **Interfaces:** server `POST /api/quick-add/parse` `{ text } → { contact: Partial<Contact>, match: { id, name }[] , interaction?: { type, when, notes }, prayer?: string, reminder?: { when, text } }` (reuses the Smart Import parse code and auth). Mobile route `apps/mobile/app/quick-add.tsx`; web modal from the same core types.
 - Preview card shows every parsed field, editable; Save writes contact (or picks a matched one), interaction, prayer, reminder in one batch. Zero or several matches → user picks; nothing saves without Save.
 - Long-press app icon shortcut "Quick add" (iOS + Android) via an Expo quick-actions config plugin opening `quick-add`.
