@@ -163,6 +163,17 @@ export async function addContactInteraction(
   });
   await updateDoc(doc(db, "contacts", c.id), activityPatch as Record<string, unknown>);
 
+  await announceInteraction(c, data);
+}
+
+/** What follows a logged interaction once it is saved: the "logged on your
+ *  behalf" bell for a named reacher (#1288) and the History entry. Split from
+ *  the write so a Visit logged for several people in one batch can announce each
+ *  person's entry afterwards. */
+export async function announceInteraction(
+  c: { id: string; name: string },
+  data: NewContactInteraction,
+): Promise<void> {
   if (data.reacher) {
     sendNotification({
       userId: data.reacher.id,

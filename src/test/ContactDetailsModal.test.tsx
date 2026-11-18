@@ -15,7 +15,22 @@ import { Frecency, __resetFrecencyCache } from '../lib/frecency';
 // out at the confirm step. Per-test `vi.spyOn` overrides take precedence.
 vi.stubGlobal('confirm', () => true);
 
-const hoisted = vi.hoisted(() => ({ messages: [] as any[] }));
+// Every batch the page opens, so a test can see what each one held and whether it
+// committed (a Visit for several people is written as one batch).
+const hoisted = vi.hoisted(() => {
+  const batches: { sets: any[]; updates: any[]; commit: any }[] = [];
+  return {
+    messages: [] as any[],
+    batches,
+    newBatch: () => {
+      const b = { sets: [] as any[], updates: [] as any[], commit: vi.fn().mockResolvedValue(undefined) } as any;
+      b.set = (ref: any, data: any) => { b.sets.push([ref, data]); return b; };
+      b.update = (ref: any, data: any) => { b.updates.push([ref, data]); return b; };
+      batches.push(b);
+      return b;
+    },
+  };
+});
 vi.mock('../lib/threads', () => ({
   useThreads: () => hoisted.messages,
   threadsFor: (msgs: any[]) => msgs,
@@ -41,6 +56,7 @@ vi.mock('firebase/firestore', () => {
     doc: vi.fn((_db, ...parts) => ({ path: parts.join('/'), id: parts[parts.length - 1] })),
     updateDoc: vi.fn().mockResolvedValue(true),
     addDoc: vi.fn().mockResolvedValue({ id: 'mock-new-id' }),
+    writeBatch: vi.fn(() => hoisted.newBatch()),
     deleteDoc: vi.fn().mockResolvedValue(true),
     arrayUnion: vi.fn((...args) => args),
     arrayRemove: vi.fn((...args) => args),
@@ -534,12 +550,15 @@ describe('ContactDetailsModal Component', () => {
 
   // Cut-or-keep §5: a Visit logged on the person's page can name the others seen
   // in the same visit, and each person's story gets its own entry.
-  it('logs a Visit for several people, one entry each sharing a groupId', async () => {
-    // `doc(collectionRef)` is how a fresh auto id is minted; the shared mock only
-    // knows the `doc(db, ...path)` form.
+  // The group is one batch, so a refused write saves nobody (and a retry cannot
+  // duplicate anyone or split the group).
+  const openVisitWithBo = async () => {
+    // `doc(collectionRef)` mints a fresh auto id; the shared mock only knows the
+    // `doc(db, ...path)` form.
+    let auto = 0;
     (firestore.doc as any).mockImplementation((first: any, ...parts: string[]) =>
       parts.length === 0
-        ? { path: `${first.path}/auto`, id: 'auto-group-1' }
+        ? { path: `${first.path}/auto-${++auto}`, id: `auto-${auto}` }
         : { path: parts.join('/'), id: parts[parts.length - 1] },
     );
     (firestore.onSnapshot as any).mockImplementation((q: any, callback: any) => {
@@ -552,6 +571,7 @@ describe('ContactDetailsModal Component', () => {
       }
       return () => {};
     });
+    hoisted.batches.length = 0;
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     clickLogInteractionMenu();
@@ -564,20 +584,56 @@ describe('ContactDetailsModal Component', () => {
       within(screen.getByRole('dialog', { name: 'Add people' })).getByRole('button', { name: /Bo Chen/ }),
     );
     fireEvent.mouseDown(document.body);
+  };
+  const entriesOf = (batch: any) =>
+    batch.sets.filter(([ref]: any[]) => ref.path.includes('/interactions')).map(([ref, d]: any[]) => ({ ref, d }));
+
+  it('logs a Visit for several people as one batch, one entry each sharing a groupId', async () => {
+    await openVisitWithBo();
     fireEvent.click(screen.getByRole('button', { name: 'Log' }));
 
-    await waitFor(() => {
-      const visits = (firestore.addDoc as any).mock.calls.filter(([, d]: any[]) => d?.type === 'visit');
-      expect(visits).toHaveLength(2);
-      expect(visits.map(([ref]: any[]) => ref.path)).toEqual([
-        'contacts/contact-abc/interactions',
-        'contacts/contact-bo/interactions',
-      ]);
-      const [[, first], [, second]] = visits;
-      expect(first.groupId).toBeTruthy();
-      expect(second.groupId).toBe(first.groupId);
-      expect(first.content).toBe('Dinner with the family.');
-    });
+    await waitFor(() => expect(hoisted.batches.some((b) => b.commit.mock.calls.length > 0)).toBe(true));
+    const committed = hoisted.batches.filter((b) => b.commit.mock.calls.length > 0);
+    expect(committed).toHaveLength(1);
+    const entries = entriesOf(committed[0]);
+    expect(entries.map((e: any) => e.d.contactId)).toEqual(['contact-abc', 'contact-bo']);
+    expect(entries.map((e: any) => e.ref.path.split('/')[1])).toEqual(['contact-abc', 'contact-bo']);
+    expect(entries.every((e: any) => e.d.type === 'visit' && e.d.content === 'Dinner with the family.')).toBe(true);
+    expect(entries[0].d.groupId).toBeTruthy();
+    expect(entries[1].d.groupId).toBe(entries[0].d.groupId);
+    // Nothing went down the one-person path.
+    expect((firestore.addDoc as any).mock.calls.filter(([, d]: any[]) => d?.type === 'visit')).toHaveLength(0);
+  });
+
+  it('saves nobody when the batch is refused, keeps the form, and a retry writes the group once', async () => {
+    await openVisitWithBo();
+    // The first batch the page opens will refuse.
+    const realNew = hoisted.newBatch;
+    hoisted.newBatch = () => {
+      const b = realNew();
+      b.commit.mockRejectedValueOnce(new Error('denied'));
+      hoisted.newBatch = realNew;
+      return b;
+    };
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+
+    await waitFor(() => expect(hoisted.batches.length).toBe(1));
+    await waitFor(() => expect(hoisted.batches[0].commit).toHaveBeenCalledTimes(1));
+    // Refused: nothing else was written for anyone, and the draft is still there.
+    expect((firestore.addDoc as any).mock.calls.filter(([, d]: any[]) => d?.type === 'visit')).toHaveLength(0);
+    expect(screen.getByPlaceholderText(/What happened with John/i)).toHaveValue('Dinner with the family.');
+    expect(screen.getByRole('button', { name: 'Remove Bo Chen' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+    await waitFor(() => expect(hoisted.batches.length).toBe(2));
+    await waitFor(() => expect(hoisted.batches[1].commit).toHaveBeenCalledTimes(1));
+
+    // The retry's batch holds the group once, and no one-by-one write ran.
+    const entries = entriesOf(hoisted.batches[1]);
+    expect(entries).toHaveLength(2);
+    expect(new Set(entries.map((e: any) => e.d.groupId)).size).toBe(1);
+    expect((firestore.addDoc as any).mock.calls.filter(([, d]: any[]) => d?.type === 'visit')).toHaveLength(0);
+    await waitFor(() => expect(screen.getByPlaceholderText(/What happened with John/i)).toHaveValue(''));
   });
 
   it('writes no groupId for a Visit to one person', async () => {

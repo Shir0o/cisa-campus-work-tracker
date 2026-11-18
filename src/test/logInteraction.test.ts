@@ -155,6 +155,38 @@ describe('logInteraction', () => {
     expect(writeBatch).toHaveBeenCalledTimes(1);
   });
 
+  it('carries the photo and the teammate who actually reached them onto every entry', async () => {
+    await logInteraction({
+      contactIds: ['c1', 'c2'],
+      contactNames: names,
+      type: 'visit',
+      dateTime: '2026-11-17T09:00',
+      content: 'x',
+      by: { ...by, photoURL: 'https://example.test/mei.jpg' },
+      reacher: { id: 'u2', name: 'Jae' },
+    });
+    for (const w of interactionSets()) {
+      expect(w.data).toMatchObject({
+        userPhoto: 'https://example.test/mei.jpg',
+        reachedById: 'u2',
+        reachedByName: 'Jae',
+      });
+    }
+    // Last seen names the reacher, the logger still stamps the update.
+    expect(h.batch.update.mock.calls[0][1]).toMatchObject({
+      lastContactedBy: 'Jae',
+      lastContactedById: 'u2',
+      updatedByName: 'Mei Tanaka',
+    });
+  });
+
+  it('writes no photo or reacher field when there are none', async () => {
+    await logInteraction({ contactIds: ['c1'], contactNames: names, type: 'call', dateTime: 'd', content: 'x', by });
+    const [only] = interactionSets();
+    expect('userPhoto' in only.data).toBe(false);
+    expect('reachedById' in only.data).toBe(false);
+  });
+
   it('refuses to log for nobody', async () => {
     await expect(
       logInteraction({ contactIds: [], type: 'visit', dateTime: 'd', content: 'x', by }),

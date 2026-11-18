@@ -24,7 +24,10 @@ export interface LogInteractionInput {
   /** The day it happened, `yyyy-MM-dd`. */
   dateTime: string;
   content: string;
-  by: { uid?: string | null; name: string };
+  by: { uid?: string | null; name: string; photoURL?: string | null };
+  /** The teammate who actually reached them, when a Full-timer logs it on their
+   *  behalf (#1288). */
+  reacher?: { id: string; name: string } | null;
   /** Follow-ups: each non-empty one becomes a to-do per person. */
   tasks?: Partial<Task>[];
 }
@@ -33,7 +36,7 @@ export interface LogInteractionInput {
 export const newInteractionGroupId = (): string => doc(collection(db, 'contacts')).id;
 
 export async function logInteraction(input: LogInteractionInput): Promise<{ groupId: string | null }> {
-  const { contactIds, contactNames = {}, type, dateTime, content, by, tasks = [] } = input;
+  const { contactIds, contactNames = {}, type, dateTime, content, by, reacher, tasks = [] } = input;
   if (contactIds.length === 0) throw new Error('logInteraction needs at least one person');
 
   const groupId = contactIds.length > 1 ? newInteractionGroupId() : null;
@@ -50,6 +53,8 @@ export async function logInteraction(input: LogInteractionInput): Promise<{ grou
       createdAt: serverTimestamp(),
       userId: by.uid,
       userName: by.name,
+      ...(by.photoURL ? { userPhoto: by.photoURL } : {}),
+      ...(reacher ? { reachedById: reacher.id, reachedByName: reacher.name } : {}),
       contactId,
       contactName,
       ...(groupId ? { groupId } : {}),
@@ -59,6 +64,7 @@ export async function logInteraction(input: LogInteractionInput): Promise<{ grou
     applyContactActivityToBatch(batch, doc(db, 'contacts', contactId), {
       date: dateTime,
       by: { uid: by.uid || null, name: by.name },
+      ...(reacher ? { reacher: { uid: reacher.id, name: reacher.name } } : {}),
       type: 'interaction',
     });
 
