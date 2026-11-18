@@ -227,18 +227,17 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('states the date plainly at the top when the newest published week is an older week', async () => {
+  it('puts no stale-week date chip in the header when the newest published week is older', async () => {
     const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     mockChain([{ ...sampleMeeting, date: twoWeeksAgo }]);
 
     renderAt('/s/cisa-wednesday');
 
     expect(screen.getAllByText(/Peace that holds/).length).toBeGreaterThanOrEqual(1);
-    // Byte-for-byte what it always said: the localized hook must not reword
-    // or re-space the English sentence (#1839).
-    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(
-      `Most recent · ${formatDay(twoWeeksAgo)}`,
-    );
+    // The top bar is one row of title, study and controls — an older week no
+    // longer adds a date chip above them.
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
+    expect(screen.queryByTestId('week-date-chip')).toBeNull();
   });
 
   it('renders never-published as its own state with no action offered', async () => {
@@ -325,15 +324,15 @@ describe('PublicStudyReader (above the seam)', () => {
   // got a deck with no study name, no date on the current week, no heading,
   // no main region, and the internal app name in the browser tab.
 
-  it('names the study and term and dates the current week (#1814)', async () => {
+  it('names the study and term in the header, with no date chip (#1814)', async () => {
     mockChain([sampleMeeting]);
 
     renderAt('/s/cisa-wednesday');
 
     expect(await screen.findByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
-    expect(screen.getByTestId('week-date-chip')).toHaveTextContent(formatDay(today));
-    // The stale week keeps its "Most recent · " prefix; a current week does
-    // not wear it.
+    // Neither a current week nor a stale week wears a date chip: the header is
+    // a single bar from the title to the text-size control.
+    expect(screen.queryByTestId('week-date-chip')).toBeNull();
     expect(screen.queryByTestId('stale-date-chip')).toBeNull();
     // Identity is the study and the code that opens it — both already public.
     // No personal contact line: a named ministry + contact person is a
@@ -413,7 +412,7 @@ describe('PublicStudyReader (above the seam)', () => {
     failed.unmount();
   });
 
-  it("carries the week's date in a permalink's title, where the chip is suppressed (#1814)", async () => {
+  it("carries the week's date in a permalink's title, with no chip in the header (#1814)", async () => {
     const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     mockChain([{ ...sampleMeeting, date: twoWeeksAgo, title: 'Older Week' }]);
     document.title = 'CISA Campus Work Tracker';
@@ -421,7 +420,7 @@ describe('PublicStudyReader (above the seam)', () => {
     const permalink = renderPermalink('/study/romans-fall26/' + twoWeeksAgo);
 
     await screen.findByText('Where peace starts');
-    // ADR 0011 keeps the permalink chip-free, so the date rides in the title.
+    // The header never carries a chip, so the date rides in the title.
     expect(screen.queryByTestId('week-date-chip')).toBeNull();
     expect(screen.queryByTestId('stale-date-chip')).toBeNull();
     expect(screen.getByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
