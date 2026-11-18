@@ -3,7 +3,6 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sunrise,
-  Kanban,
   Contact,
   CalendarCheck,
   CalendarDays,
@@ -49,7 +48,6 @@ import { sectionHrefFor } from '../../lib/navTrail';
 // same way). Fallback to LayoutDashboard for anything unmapped.
 const NAV_ICONS: Record<string, LucideIcon> = {
   '/': Sunrise,
-  '/board': Kanban,
   '/directory': Contact,
   '/history': HistoryIcon,
   '/attendance': CalendarCheck,

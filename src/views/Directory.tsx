@@ -48,17 +48,16 @@ import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
-import { DEFAULT_DIRECTORY_FILTERS, DIRECTORY_SORTS, readDirectoryFilters, writeDirectoryFilters, sortDirectoryContacts, type DirectorySort, type KindSegment } from '../lib/directoryFilters';
+import { DEFAULT_DIRECTORY_FILTERS, DIRECTORY_SORTS, NOT_YET_PLACED, readDirectoryFilters, writeDirectoryFilters, filterByStage, sortDirectoryContacts, type DirectorySort, type KindSegment } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
-import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
 import KindChip from '../components/ui/KindChip';
-import { contactKind, kindLabelKey, isKindSorted, type ContactKind } from '../lib/contactKind';
+import { contactKind, isKindSorted } from '../lib/contactKind';
 import { yearsToConfirm } from '../lib/movingUpAYear';
 import { reachByContact, unreachedTagCounts } from '../lib/reach';
 import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
-// ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
+// ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
 const DAY_MS = 86_400_000;
 const parseMs = (s?: any): number | null => {
   if (!s) return null;
@@ -79,58 +78,6 @@ const truncate = (str: string, len: number) =>
 
 type Touch = { ms: number; note: string };
 type TouchMap = Map<string, Touch>;
-
-// The eight matched stage tones (styles.css --t-*). Stored stage colors (bg-board-*) map onto these.
-export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
-
-const TONE_KEY_MAP: Record<string, ToneKey> = {
-  'bg-board-slate': 'slate',
-  'slate': 'slate',
-  'bg-board-clay': 'clay',
-  'clay': 'clay',
-  'bg-board-ochre': 'ochre',
-  'ochre': 'ochre',
-  'bg-board-sage': 'sage',
-  'sage': 'sage',
-  'bg-board-teal': 'teal',
-  'teal': 'teal',
-  'bg-board-indigo': 'indigo',
-  'indigo': 'indigo',
-  'bg-board-plum': 'plum',
-  'plum': 'plum',
-  'bg-board-rose': 'rose',
-  'rose': 'rose',
-  // legacy aliases
-  'bg-board-amber': 'clay',
-  'bg-board-orange': 'ochre',
-  'bg-board-emerald': 'sage',
-  'bg-board-crimson': 'rose',
-  'bg-board-ocean': 'slate',
-  'bg-primary': 'indigo',
-  'bg-primary-fixed-dim': 'slate',
-  'bg-secondary': 'teal',
-  'bg-orange-500': 'ochre',
-  'bg-orange': 'ochre',
-  'orange': 'ochre',
-  'accent': 'slate',
-  'amber': 'clay',
-  'violet': 'plum',
-};
-
-const ALL_TONES: ToneKey[] = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'];
-
-export const toneKeyFor = (color: string | undefined, index: number = 0): ToneKey => {
-  if (color && TONE_KEY_MAP[color]) return TONE_KEY_MAP[color];
-  return ALL_TONES[index % ALL_TONES.length];
-};
-
-export const toneStyle = (color: string | undefined, index: number = 0): React.CSSProperties => {
-  const k = toneKeyFor(color, index);
-  return {
-    '--tone': `var(--t-${k})`,
-    '--tone-soft': `var(--t-${k}-soft)`,
-  } as React.CSSProperties;
-};
 
 const peopleCount = (n: number) =>
   n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
@@ -377,28 +324,19 @@ export default function Directory() {
   }, []);
 
   const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
-  const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
-  const [filterInterest, setFilterInterest] = useState<string>(restoredFilters.filterInterest);
   const [kindSegment, setKindSegment] = useState<KindSegment>(restoredFilters.kindSegment);
   const [filterUnsorted, setFilterUnsorted] = useState<boolean>(restoredFilters.filterUnsorted);
   const [filterNotReached, setFilterNotReached] = useState<boolean>(restoredFilters.filterNotReached);
-  const [filterHasPhone, setFilterHasPhone] = useState<boolean>(restoredFilters.filterHasPhone);
-  const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
-  const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
   // The list's order (#1783), remembered with the filters.
   const [sort, setSort] = useState<DirectorySort>(restoredFilters.sort);
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
-  const [isKindModalOpen, setIsKindModalOpen] = useState(false);
-  // Both bulk pickers open blank (#1263): saving is someone deciding, so
+  // The bulk step picker opens blank (#1263): saving is someone deciding, so
   // there is no pre-chosen answer to confirm by accident.
-  const [bulkKind, setBulkKind] = useState<ContactKind | ''>('');
   const [bulkStage, setBulkStage] = useState('');
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
   // Moving up a year (#1351): a Full-timer's sorting work, beside Not sorted yet.
   const [movingUpAt, setMovingUpAt] = useState<Date | null>(null);
-  const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
@@ -409,22 +347,6 @@ export default function Directory() {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  // Update customRange with From/To validation. Invalid ranges (from > to) are
-  // rejected with a toast and `customRange` stays empty so the filter applies
-  // nothing — the contacts remain visible.
-  const updateCustomRange = (next: { from: string; to: string }) => {
-    setCustomRange(next);
-    if (next.from && next.to) {
-      const fromMs = new Date(next.from).getTime();
-      const toMs = new Date(next.to).getTime();
-      if (Number.isFinite(fromMs) && Number.isFinite(toMs) && fromMs > toMs) {
-        setCustomRange({ from: '', to: '' });
-        setToast(t('directory.date_range_invalid'));
-        return;
-      }
-    }
-  };
-
   // Retain the filter state per user so a remounted directory (returning from a
   // contact detail page) restores the same selections the user left behind.
   useEffect(() => {
@@ -432,39 +354,27 @@ export default function Directory() {
     writeDirectoryFilters(effectiveUserId, {
       searchQuery,
       filterStage,
-      filterSpiritualBackground,
-      filterInterest,
       kindSegment,
       filterUnsorted,
       filterNotReached,
-      filterHasPhone,
-      filterAddedWhen,
-      customRange,
       selectedTags,
       sort,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, sort]);
+  }, [effectiveUserId, searchQuery, filterStage, kindSegment, filterUnsorted, filterNotReached, selectedTags, sort]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsTagModalOpen(false);
         setIsStageModalOpen(false);
         setIsTagGenderOpen(false);
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || isStageModalOpen || isKindModalOpen || isTagGenderOpen || showFilterMenu) {
+    if (isStageModalOpen || isTagGenderOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen, isStageModalOpen, isKindModalOpen, showFilterMenu]);
-
-  // Days since last connected (interaction/comment, else createdAt) for a contact.
-  const daysFor = (c: Contact): number | null => {
-    const ms = lastTouchByContact.get(c.id)?.ms ?? parseMs(c.createdAt);
-    return ms != null ? daysSince(ms) : null;
-  };
+  }, [isStageModalOpen, showFilterMenu]);
 
   const staffId = effectiveUserId || user?.uid;
   const userContacts = useMemo(() => visibleContacts(role, staffId, contacts), [role, staffId, contacts]);
@@ -508,6 +418,16 @@ export default function Directory() {
     return map;
   }, [userContacts, searchQuery, teamDisplayNames]);
 
+  // The steps that exist, for the Step filter and for reading "no step" (§22).
+  const filterStageLabels = useMemo(() => stagesData.map(s => s.label), [stagesData]);
+  // A step can be removed in Settings while a reader's remembered filter still
+  // names it. Rather than showing an empty list under a filter the control can
+  // no longer display, start from All.
+  const activeStageFilter =
+    filterStage === 'All' || filterStage === NOT_YET_PLACED || filterStageLabels.includes(filterStage)
+      ? filterStage
+      : 'All';
+
   const filteredContacts = useMemo(() => {
     let result = userContacts;
 
@@ -516,20 +436,9 @@ export default function Directory() {
       result = result.filter(c => searchMatches.has(c.id));
     }
 
-    // Filter by Stage
-    if (filterStage !== 'All') {
-      result = result.filter(c => c.stage === filterStage);
-    }
-
-    // Filter by Spiritual Background
-    if (filterSpiritualBackground !== 'All') {
-      result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
-    }
-
-    // Filter by Interest
-    if (filterInterest !== 'All') {
-      result = result.filter(c => (c.interests || []).includes(filterInterest));
-    }
+    // Filter by Step (§22). "Not yet placed" keeps anyone whose step is
+    // missing, blank, or no longer exists.
+    result = filterByStage(result, activeStageFilter, filterStageLabels);
 
     // The kind of person (#1152, #1296). The segment narrows to one kind, but a
     // search looks across every kind, so it only applies when the box is empty.
@@ -539,34 +448,6 @@ export default function Directory() {
       result = result.filter(c => !isKindSorted(c));
     } else if (kindSegment !== 'all' && searchQuery.trim() === '') {
       result = result.filter(c => contactKind(c) === kindSegment);
-    }
-
-    // Filter by Added When (preset AND custom range, both must pass).
-    if (filterAddedWhen !== 'all' || customRange.from || customRange.to) {
-      result = result.filter(c => {
-        const ms = parseMs(c.createdAt);
-        if (ms == null) return false;
-        // Preset check — same calendar-day semantics as every other
-        // time-grouping surface (the shared DateBucket vocabulary), so
-        // "Added today" matches Around-the-team's "Today" heading (#1072).
-        if (filterAddedWhen !== 'all') {
-          const bucket = bucketFor(ms);
-          if (filterAddedWhen === 'today' && bucket !== 'today') return false;
-          if (filterAddedWhen === 'week' && !(bucket === 'today' || bucket === 'yesterday' || bucket === 'thisWeek')) return false;
-          if (filterAddedWhen === 'month' && !(bucket === 'today' || bucket === 'yesterday' || bucket === 'thisWeek' || bucket === 'lastWeek' || bucket === 'thisMonth')) return false;
-        }
-        // Custom range check
-        if (customRange.from) {
-          const fromMs = new Date(customRange.from).getTime();
-          if (Number.isFinite(fromMs) && ms < fromMs) return false;
-        }
-        if (customRange.to) {
-          // The date input gives YYYY-MM-DD; "to" must include the whole day.
-          const toMs = new Date(`${customRange.to}T23:59:59.999`).getTime();
-          if (Number.isFinite(toMs) && ms > toMs) return false;
-        }
-        return true;
-      });
     }
 
     // Filter by Tags (compare normalized values so compact season variants like
@@ -585,15 +466,10 @@ export default function Directory() {
       result = result.filter(c => !(reachByContactMap.get(c.id)?.reached ?? false));
     }
 
-    // Has phone (#1391): only people reachable by text, no format validation.
-    if (filterHasPhone) {
-      result = result.filter(c => typeof c.phone === 'string' && c.phone.trim() !== '');
-    }
-
     // The chosen order (#1783). It runs after every narrowing — search, kind,
-    // Stage, tags, added-when — and only rearranges the people still in the
-    // list, so the order can never widen what a filter hid. Pills and search
-    // narrow first for the same reason: a Step's people keep this order.
+    // Step, tags — and only rearranges the people still in the list, so the
+    // order can never widen what a filter hid. Pills and search narrow first
+    // for the same reason: a Step's people keep this order.
     //
     // "Connected with" is the same reading each card paints: an Interaction or
     // thread, the person's own last-contacted stamps, and a Gathering they were
@@ -622,103 +498,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, sort, lastTouchByContact, searchMatches, reachByContactMap]);
-
-  // Stage color per stage label.
-  const stageColorByLabel = useMemo(() => {
-    const map = new Map<string, string>();
-    stagesData.forEach((s) => map.set(s.label, s.color));
-    return map;
-  }, [stagesData]);
-
-  const handleBulkTag = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedIds.size === 0 || !newTag.trim()) return;
-    const normalizedTag = normalizeTag(newTag.trim());
-
-    try {
-      const batch = writeBatch(db);
-      const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
-
-      selectedContacts.forEach(contact => {
-        const currentTags = contact.tags || [];
-        if (!currentTags.some(t => normalizeTag(t).toLowerCase() === normalizedTag.toLowerCase())) {
-          const updatedTags = [...currentTags, normalizedTag];
-          batch.update(doc(db, 'contacts', contact.id), {
-            tags: updatedTags,
-            updatedAt: new Date().toISOString(),
-            updatedBy: user?.uid,
-            updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
-          });
-
-          logActivity({
-            action: `added tag #${normalizedTag} to`,
-            targetId: contact.id,
-            targetName: contact.name,
-            targetType: 'contact',
-            type: 'edit',
-            description: `Tags: [${currentTags.join(', ')}] → [${updatedTags.join(', ')}]`
-          });
-        }
-      });
-      await batch.commit();
-      setNewTag('');
-      setIsTagModalOpen(false);
-      setSelectedIds(new Set());
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'contacts');
-    }
-  };
-
-  // Bulk-set the kind (#1152). Full-timers only, and written alone: the rules
-  // keep the kind on its own branch, so it never travels with a profile edit.
-  // The stamp goes with it — this is a person deciding, which is exactly what
-  // takes someone out of Not sorted yet.
-  const handleBulkKind = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedIds.size === 0 || !isAdmin || !bulkKind) return;
-
-    // A Contact may be a student or a local — the fourth cell. The picker
-    // cannot express that, so setting someone to Contact writes only what the
-    // choice actually decides and leaves `isStudent` as it was.
-    const kindFields: Record<string, boolean> =
-      bulkKind === 'contact'
-        ? { inChurchLife: false }
-        : { inChurchLife: true, isStudent: bulkKind === 'our-own' };
-    try {
-      const batch = writeBatch(db);
-      const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
-      const now = new Date().toISOString();
-
-      selectedContacts.forEach(contact => {
-        const before = contactKind(contact);
-        batch.update(doc(db, 'contacts', contact.id), {
-          ...kindFields,
-          kindSetBy: user?.uid,
-          kindSetAt: now,
-          updatedAt: now,
-          updatedBy: user?.uid,
-          updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
-        });
-
-        if (before !== bulkKind) {
-          logActivity({
-            action: `updated the kind for`,
-            targetId: contact.id,
-            targetName: contact.name,
-            targetType: 'contact',
-            type: 'edit',
-            description: `Kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(bulkKind))}"`,
-          });
-        }
-      });
-      await batch.commit();
-      setIsKindModalOpen(false);
-      setSelectedIds(new Set());
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'contacts');
-    }
-  };
+  }, [userContacts, searchQuery, activeStageFilter, filterStageLabels, kindSegment, filterUnsorted, filterNotReached, selectedTags, sort, lastTouchByContact, searchMatches, reachByContactMap]);
 
   const handleBulkStage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -756,19 +536,7 @@ export default function Directory() {
     }
   };
 
-  const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
-  // Contacts without a group (blank/missing role) would otherwise render a
-  // blank option in the dropdown — drop them (#359).
-  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
-  const filterInterests = useMemo(() => {
-    const present = new Set<string>();
-    for (const c of userContacts) {
-      for (const i of c.interests || []) {
-        if (i) present.add(i);
-      }
-    }
-    return ['All', ...present];
-  }, [userContacts]);
+  const filterStages = useMemo(() => ['All', NOT_YET_PLACED, ...filterStageLabels], [filterStageLabels]);
   const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => getEffectiveContactTags(c.tags, c.createdAt))), [userContacts]);
 
   // Each tag chip's not-reached count (#1300): only Contacts added in the last
@@ -788,21 +556,6 @@ export default function Directory() {
     [userContacts, reachByContactMap],
   );
 
-  const newCount = useMemo(
-    () => userContacts.filter(c => {
-      const ms = parseMs(c.createdAt);
-      return ms != null && daysSince(ms) <= 14;
-    }).length,
-    [userContacts],
-  );
-  const overdueCount = useMemo(
-    () => userContacts.filter(c => {
-      const d = daysFor(c);
-      return d != null && d >= 7;
-    }).length,
-    [userContacts, lastTouchByContact],
-  );
-
   const toggleTagFilter = (tag: string) => {
     setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
@@ -812,18 +565,13 @@ export default function Directory() {
   const clearFilters = () => {
     setSearchQuery('');
     setFilterStage('All');
-    setFilterSpiritualBackground('All');
-    setFilterInterest('All');
     setKindSegment('contact');
     setFilterUnsorted(false);
     setFilterNotReached(false);
-    setFilterHasPhone(false);
-    setFilterAddedWhen('all');
-    setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterSpiritualBackground !== 'All' || filterInterest !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterHasPhone || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || activeStageFilter !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || selectedTags.length > 0;
 
   // Narrowing the list must not leave bulk actions pointed at rows the reader
   // can no longer see — on a phone the selection bar is the only place Remove
@@ -949,27 +697,11 @@ export default function Directory() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      {/* ── Header: serif title + prose summary ── */}
+      {/* ── Header: serif title + actions. The count strip is cut (§23); the
+          list's own line under the filters says how many people it holds. ── */}
       <header className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-4">
         <div className="flex-1 min-w-64">
           <h1 className="font-serif page-title text-on-surface">{t('directory.title')}</h1>
-          <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-            <b className="text-on-surface font-semibold">
-              {userContacts.length} {userContacts.length === 1 ? t('directory.person') : t('directory.people')}
-            </b>{' '}
-            {t('directory.in_your_care')}
-            {newCount > 0 && (
-              <>
-                {' '}— <span className="text-on-surface font-medium">{newCount}</span> {t('directory.new_in_last_two_weeks')}
-              </>
-            )}
-            {overdueCount > 0 && (
-              <>
-                , and <span className="text-on-surface font-medium">{overdueCount}</span> {t('directory.you_havent_connected')}
-              </>
-            )}
-            .
-          </p>
         </div>
         {/* Desktop actions (sm and up): three-across secondary actions + primary Add someone */}
         <div className="hidden sm:flex flex-wrap items-center gap-2 shrink-0">
@@ -1228,33 +960,19 @@ export default function Directory() {
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.stage')}</label>
                       <Select
-                        value={filterStage}
+                        value={activeStageFilter}
                         onChange={(e) => setFilterStage(e.target.value)}
                         className="h-11 sm:h-10 text-sm"
                       >
-                        {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? t('directory.all_stages') : s}</option>)}
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.spiritual_background')}</label>
-                      <Select
-                        value={filterSpiritualBackground}
-                        onChange={(e) => setFilterSpiritualBackground(e.target.value)}
-                        className="h-11 sm:h-10 text-sm"
-                      >
-                        {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? t('directory.all_backgrounds') : sb}</option>)}
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.interest')}</label>
-                      <Select
-                        value={filterInterest}
-                        onChange={(e) => setFilterInterest(e.target.value)}
-                        className="h-11 sm:h-10 text-sm"
-                      >
-                        {filterInterests.map(i => <option key={i} value={i}>{i === 'All' ? t('directory.all_interests') : i}</option>)}
+                        {filterStages.map(s => (
+                          <option key={s} value={s}>
+                            {s === 'All'
+                              ? t('directory.all_stages')
+                              : s === NOT_YET_PLACED
+                                ? t('directory.not_yet_placed')
+                                : s}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -1298,51 +1016,6 @@ export default function Directory() {
                         />
                         <span className="text-sm text-on-surface">{t('directory.not_reached_yet')}</span>
                       </label>
-                      <label className="flex items-center gap-2.5 min-h-[44px] sm:min-h-[40px] px-1 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          data-testid="filter-has-phone"
-                          checked={filterHasPhone}
-                          onChange={(e) => setFilterHasPhone(e.target.checked)}
-                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-on-surface">{t('directory.has_phone')}</span>
-                      </label>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.added_when')}</label>
-                      <Select
-                        value={filterAddedWhen}
-                        onChange={(e) => setFilterAddedWhen(e.target.value as 'all' | 'today' | 'week' | 'month')}
-                        className="h-11 sm:h-10 text-sm"
-                      >
-                        <option value="all">{t('directory.all_time')}</option>
-                        <option value="today">{t('directory.added_today')}</option>
-                        <option value="week">{t('directory.added_this_week')}</option>
-                        <option value="month">{t('directory.added_this_month')}</option>
-                      </Select>
-                      <div className="pt-2 space-y-1.5">
-                        <span className="text-xs font-medium text-on-surface-variant px-1">{t('directory.custom_range')}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="date"
-                            aria-label={t('directory.from')}
-                            value={customRange.from}
-                            onChange={(e) => updateCustomRange({ ...customRange, from: e.target.value })}
-                            className="flex-1 min-w-0 h-11 sm:h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
-                          />
-                          <span className="text-on-surface-variant">–</span>
-                          <input
-                            type="date"
-                            aria-label={t('directory.to')}
-                            value={customRange.to}
-                            onChange={(e) => updateCustomRange({ ...customRange, to: e.target.value })}
-                            className="flex-1 min-w-0 h-11 sm:h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
-                          />
-
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1452,18 +1125,6 @@ export default function Directory() {
               exit={{ opacity: 0, x: 8 }}
               className="flex items-center gap-1 max-w-full flex-wrap"
             >
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setBulkKind('');
-                    setIsKindModalOpen(true);
-                  }}
-                  className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
-                  title={t('directory.set_kind_for_selected')}
-                >
-                  {t('directory.kind')}
-                </button>
-              )}
               <button
                 onClick={() => {
                   setBulkStage('');
@@ -1473,13 +1134,6 @@ export default function Directory() {
                 title={t('directory.change_stage_for_selected')}
               >
                 <Kanban className="w-4 h-4" /> {t('directory.stage')}
-              </button>
-              <button
-                onClick={() => setIsTagModalOpen(true)}
-                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
-                title={t('directory.tag_selected')}
-              >
-                <Tag className="w-4 h-4" /> {t('directory.tag')}
               </button>
               <button
                 onClick={handleBulkEmail}
@@ -1541,9 +1195,7 @@ export default function Directory() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {filteredContacts.map((contact) => {
-            const stageColor = stageColorByLabel.get(contact.stage);
             const isStage = stagesData.some(s => s.label === contact.stage);
-            const tStyle = isStage ? toneStyle(stageColor) : undefined;
             const touch = lastTouchByContact.get(contact.id);
             const reach = reachByContactMap.get(contact.id);
             const reached = reach?.reached ?? false;
@@ -1564,9 +1216,8 @@ export default function Directory() {
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
-                style={tStyle}
                 className={cn(
-                  "group relative bg-surface rounded-3xl border border-outline-variant/60 p-5 transition-colors cursor-pointer hover:border-[var(--tone)]",
+                  "group relative bg-surface rounded-3xl border border-outline-variant/60 p-5 transition-colors cursor-pointer hover:border-outline",
                   selected && "border-primary bg-primary/5"
                 )}
               >
@@ -1605,13 +1256,7 @@ export default function Directory() {
                       <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
                       <div className="flex items-center gap-2 flex-wrap">
                         <KindChip contact={contact} showAll />
-                        <span
-                          style={tStyle}
-                          className={cn(
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
-                            isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
-                          )}
-                        >
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap bg-surface-variant text-on-surface-variant">
                           {isStage ? contact.stage : t('directory.unassigned')}
                         </span>
                       </div>
@@ -1711,67 +1356,6 @@ export default function Directory() {
 
       {/* ── Bulk Stage Modal ── */}
       <AnimatePresence>
-        {/* ── Who they are (kind) Modal ── */}
-        {isKindModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsKindModalOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
-            >
-              <div className="p-6 border-b border-outline-variant">
-                <h2 className="font-serif text-2xl text-on-surface">{t('contactKind.who_they_are')}</h2>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  {t('directory.for_selected').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people'))}
-                </p>
-              </div>
-
-              <form onSubmit={handleBulkKind} className="p-6 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.kind')}</label>
-                  <Select
-                    required
-                    data-testid="bulk-kind-select"
-                    value={bulkKind}
-                    onChange={e => setBulkKind(e.target.value as ContactKind)}
-                    className="h-12 px-4"
-                  >
-                    <option value="" disabled>{t('contactKind.choose')}</option>
-                    <option value="local-saint">{t('contactKind.local_saint')}</option>
-                    <option value="our-own">{t('contactKind.our_own')}</option>
-                    <option value="contact">{t('contactKind.contact')}</option>
-                  </Select>
-                </div>
-
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsKindModalOpen(false)}
-                    className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-                  >
-                    {t('directory.cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!bulkKind}
-                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {t('directory.save')}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
         {isStageModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
@@ -1835,64 +1419,6 @@ export default function Directory() {
         )}
       </AnimatePresence>
 
-      {/* ── Tag Modal ── */}
-      <AnimatePresence>
-        {isTagModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsTagModalOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
-            >
-              <div className="p-6 border-b border-outline-variant">
-                <h2 className="font-serif text-2xl text-on-surface">{t('directory.add_a_tag')}</h2>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  {t('directory.for_selected').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people'))}
-                </p>
-              </div>
-
-              <form onSubmit={handleBulkTag} className="p-6 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.tag')}</label>
-                  <input
-                    required
-                    autoFocus
-                    type="text"
-                    value={newTag}
-                    onChange={e => setNewTag(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-on-surface"
-                    placeholder={t('directory.tag_placeholder')}
-                  />
-                </div>
-
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsTagModalOpen(false)}
-                    className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Add tag
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
       <AnimatePresence>
         {toast && (
           <motion.div

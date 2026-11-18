@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor, TRAINEE_ROUTES } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor, TRAINEE_ROUTES } from '../lib/permissions';
 import * as permissionsModule from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
@@ -121,8 +121,8 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
-    manager:  ['/', '/directory', '/board', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/feedback', '/settings', '/bible-study/present'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/history', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -261,11 +261,11 @@ describe('roleLabel()', () => {
 describe('TopNav primary tabs per role', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('manager: Home, People, The Journey; hides gatherings/prayer/calendar', () => {
+  it('manager: Home and People; hides gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.queryByText('Shared Calendar')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
@@ -283,7 +283,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/answered', '/around']) {
+    for (const href of ['/', '/history', '/attendance', '/answered', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -294,7 +294,6 @@ describe('TopNav primary tabs per role', () => {
       'Gatherings',
       'Looking back',
       'My Day',
-      'The Journey',
       'Your reports',
     ]);
   });
@@ -358,7 +357,7 @@ describe('MobileNav', () => {
 
 // ─── 6. Trainee permission helpers ─────────────────────────────────────────
 
-describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings)', () => {
+describe('Trainee permission helpers (canSeeContact, visibleContacts, canSeeHistory, canSeeSettings)', () => {
 
   it('canSeeContact allows a full-timer any contact', () => {
     const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
@@ -442,19 +441,7 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
       { id: 'c3', createdBy: 'u4', season: 'Fall 2026', coCreators: [] },
     ];
     expect(visibleContacts('manager', 'u1', partnerContacts)).toEqual([partnerContacts[0], partnerContacts[1]]);
-    expect(journeyContacts('manager', 'u1', partnerContacts, 'Fall 2026')).toEqual([partnerContacts[0], partnerContacts[1]]);
     applyPartners({});
-  });
-
-  it('journeyContacts filters current semester contacts for trainees', () => {
-    const contacts = [
-      { id: 'c1', createdBy: 'u1', season: 'Fall 2026' },
-      { id: 'c2', createdBy: 'u1', season: 'Spring 2026' },
-      { id: 'c3', createdBy: 'u2', season: 'Fall 2026' },
-    ];
-
-    expect(journeyContacts('admin', 'u1', contacts, 'Fall 2026')).toHaveLength(3);
-    expect(journeyContacts('manager', 'u1', contacts, 'Fall 2026')).toEqual([contacts[0]]);
   });
 
   it('canSeeHistory and canSeeSettings hide tabs/pages for trainees', () => {
@@ -677,13 +664,13 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/around', '/feedback'] },
-      { label: 'People', hrefs: ['/board', '/directory', '/history'] },
+      { label: 'People', hrefs: ['/directory', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
       { label: 'Today', hrefs: ['/', '/feedback'] },
-      { label: 'People', hrefs: ['/board', '/directory'] },
+      { label: 'People', hrefs: ['/directory'] },
     ],
   };
 
@@ -810,31 +797,5 @@ describe('collaborator management rights (#1054) — web mirror', () => {
     // Missing uid or contact
     expect(canReleaseContact(null, { createdBy: 't1' })).toBe(false);
     expect(canReleaseContact('t1', null)).toBe(false);
-  });
-});
-
-// The Journey is outreach (#1152, ADR 0030): a Local saint sits outside it.
-// Our own stay, because the church-meeting step is theirs.
-describe('journeyContacts excludes Local saints', () => {
-  const person = (over: Record<string, unknown>) => ({ addedBy: 'u1', ...over });
-
-  it('drops a local saint from the board', () => {
-    const list = [person({ id: 'a', inChurchLife: true, isStudent: false })];
-    expect(journeyContacts('admin', 'u1', list)).toHaveLength(0);
-  });
-
-  it('keeps our own on the board', () => {
-    const list = [person({ id: 'b', inChurchLife: true, isStudent: true })];
-    expect(journeyContacts('admin', 'u1', list)).toHaveLength(1);
-  });
-
-  it('keeps contacts, including legacy documents carrying neither field', () => {
-    const list = [person({ id: 'c' }), person({ id: 'd', inChurchLife: false, isStudent: true })];
-    expect(journeyContacts('admin', 'u1', list)).toHaveLength(2);
-  });
-
-  it('drops a local saint for a trainee too', () => {
-    const list = [person({ id: 'e', inChurchLife: true, isStudent: false, carers: ['u1'] })];
-    expect(journeyContacts('manager', 'u1', list)).toHaveLength(0);
   });
 });

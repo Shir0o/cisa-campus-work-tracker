@@ -194,8 +194,9 @@ describe('NavRail (#664)', () => {
     renderRail({ role: 'manager' });
     expect(screen.queryByText('Visits')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
-    // Trainee does see /board ("The Journey").
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    // The Journey board is cut (§22), so People is the Trainee's outreach door.
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /People/ })).toBeInTheDocument();
   });
 
   // ── Current destination is unmistakable ─────────────────────────────

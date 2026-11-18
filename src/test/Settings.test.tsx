@@ -355,6 +355,44 @@ describe('Settings', () => {
     });
   });
 
+  // ── Steps (moved out of the Journey board, §22) ──
+
+  describe('steps section', () => {
+    const stepDocs = [
+      { id: 's1', data: () => ({ label: 'First Contact', color: 'bg-board-slate', order: 0 }) },
+      { id: 's2', data: () => ({ label: 'Regular', color: 'bg-board-teal', order: 1 }) },
+    ];
+
+    function snapshotWithSteps() {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'stages') callback({ docs: stepDocs, size: stepDocs.length });
+        else if (ref?.path === 'users') callback({ docs: mockUsers });
+        else if (ref?.path === 'invitations') callback({ docs: mockInvitations });
+        else callback({ docs: [], size: 0 });
+        return vi.fn();
+      });
+    }
+
+    it('a Full-timer sees the steps, in order', async () => {
+      setupManagerAuth();
+      snapshotWithSteps();
+
+      render(<Settings />);
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Steps' })).toBeInTheDocument();
+      expect(await screen.findByText('First Contact')).toBeInTheDocument();
+      expect(screen.getByText('Regular')).toBeInTheDocument();
+    });
+
+    it('a Trainee never sees the steps', () => {
+      setupTraineeAuth();
+
+      render(<Settings />);
+
+      expect(screen.queryByRole('heading', { level: 2, name: 'Steps' })).not.toBeInTheDocument();
+    });
+  });
+
   // ── Going out together (gospel partners) ──
 
   describe('going out together section', () => {

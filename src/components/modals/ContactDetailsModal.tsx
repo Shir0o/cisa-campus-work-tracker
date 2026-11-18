@@ -759,8 +759,6 @@ export default function ContactDetailsModal({
     sortedStages,
     canMoveStage,
     canDelete,
-    currentStageIndex,
-    currentStageInfo,
     openPrayers,
   } = useMemo(
     () =>
@@ -921,8 +919,6 @@ export default function ContactDetailsModal({
     currentContact,
     stages: sortedStages,
     canMoveStage,
-    currentStageIndex,
-    currentStageInfo,
     sinceText,
     carerNames,
     isAdmin,

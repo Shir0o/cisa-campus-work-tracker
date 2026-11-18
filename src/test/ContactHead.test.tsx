@@ -23,8 +23,6 @@ describe('ContactHead', () => {
     currentContact: contact,
     stages,
     canMoveStage: true,
-    currentStageIndex: 1,
-    currentStageInfo: stages[1],
     sinceText: 'Last connected 2 days ago',
     carerNames: ['John'],
     isAdmin: true,

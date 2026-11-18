@@ -299,11 +299,11 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     expect(res.ok).toBe(false);
   });
 
-  // ── Row 2: the Journey board does not load for trainees (#1218) ───────────
-  // #1036 tightened the rules; the board's contacts query had to carry the
-  // scope, or the whole board is permission-denied. The real web builder is
-  // `contactVisibilityConstraints`, which `OutreachBoard` spreads into its query.
-  it('row 2 — the board’s scoped contacts query returns the tied person and excludes the untied one', async () => {
+  // ── Row 2: the scoped contacts list does not load for trainees (#1218) ────
+  // #1036 tightened the rules; People's contacts query had to carry the scope,
+  // or the page is permission-denied. The real web builder is
+  // `contactVisibilityConstraints`, which `Directory` spreads into its query.
+  it('row 2 — People’s scoped contacts query returns the tied person and excludes the untied one', async () => {
     const db = dbFor(TRAINEE);
     const q = query(collection(db, 'contacts'), ...contactVisibilityConstraints('manager', TRAINEE));
     const snap = await getDocs(q);
@@ -312,7 +312,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     expect(ids).not.toContain('c-theirs'); // negative
   });
 
-  it('row 2 — the same query without the scope (the pre-#1224 board) is denied', async () => {
+  it('row 2 — the same query without the scope (the pre-#1224 page) is denied', async () => {
     await assertFails(getDocs(query(collection(dbFor(TRAINEE), 'contacts'))));
   });
 

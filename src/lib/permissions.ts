@@ -1,4 +1,3 @@
-import { contactKind } from './contactKind';
 export { visibleToOf } from './contactTies';
 export type { ContactTies } from './contactTies';
 
@@ -44,7 +43,6 @@ export const OWNER_VIEW_ROLES: OwnerViewRoleOption[] = [
 
 export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'manager',
-  '/board': 'manager',
   '/directory': 'manager',
   // Looking back is the whole team's record — every visit, note quote and
   // prayer burden in one stream — so it stays Full-timer-only. A Trainee takes
@@ -118,7 +116,6 @@ export function navExternalFor(role: AppRole | string | null): ExternalNavItem[]
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'manager' },
-  { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'manager' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'manager' },
@@ -157,7 +154,7 @@ export const NAV_ITEMS: NavItem[] = [
  *
  * Exported so the core mirror can be pinned to it (#1940).
  */
-export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/feedback', '/settings', '/contact', '/bible-study/present'];
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/feedback', '/settings', '/contact', '/bible-study/present'];
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
@@ -192,7 +189,7 @@ export interface NavGroup {
 // filtered by what the role can actually reach.
 const PRIMARY_BY_ROLE: Record<AppRole, string[]> = {
   admin: ['/coordination', '/directory', '/prayer'],
-  manager: ['/', '/directory', '/board'],
+  manager: ['/', '/directory'],
 };
 
 export function primaryNavFor(role: AppRole | string | null): NavItem[] {
@@ -228,7 +225,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 // test in src/test/permissions.test.tsx guards against drift.
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/around', '/feedback'],
-  People: ['/board', '/directory', '/history'],
+  People: ['/directory', '/history'],
   Gatherings: ['/attendance', '/bible-study'],
   Prayer: ['/prayer', '/answered'],
 };
@@ -334,21 +331,6 @@ export function visibleContacts<T extends { addedBy?: string; createdBy?: string
 ): T[] {
   if (seesAllPeople(role)) return list.slice();
   return list.filter((c) => canSeeContact(role, staffId, c));
-}
-
-export function journeyContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string; inChurchLife?: boolean; isStudent?: boolean }>(
-  role: AppRole | string | null,
-  staffId: string | null | undefined,
-  list: T[],
-  currentSeasonTag?: string
-): T[] {
-  // A Local saint sits outside outreach entirely (#1152, ADR 0030). Our own
-  // stay: the church-meeting step is theirs.
-  const visible = visibleContacts(role, staffId, list).filter((c) => contactKind(c) !== 'local-saint');
-  if (role === 'manager' && currentSeasonTag) {
-    return visible.filter((c) => !c.season || c.season === currentSeasonTag);
-  }
-  return visible;
 }
 
 export function hasMinRole(role: AppRole | string | null, min: AppRole): boolean {

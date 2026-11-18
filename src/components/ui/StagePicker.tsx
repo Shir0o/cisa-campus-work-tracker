@@ -6,24 +6,23 @@
 // (so the move is reachable from every tab), and `StageMoveSheet` is the
 // board's "Where is {name} now?" sheet, reached from the mobile hero.
 //
-// Both lists scroll: stages are admin-editable and there can be many.
+// Both lists scroll: stages are admin-editable and there can be many. A step
+// carries no colour of its own any more (cut-or-keep §22 cut step colours), so
+// every row wears the neutral token style.
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { Stage } from "../../types";
 import { cn } from "../../lib/utils";
-import { stageToneStyle } from "../../lib/stageTones";
 import { useLanguage } from "../LanguageProvider";
 
 /** The one row shape both the menu and the sheet use. */
 function StageOption({
   stage,
-  index,
   isHere,
   onSelect,
   size,
 }: {
   stage: Stage;
-  index: number;
   isHere: boolean;
   onSelect: () => void;
   size: "menu" | "sheet";
@@ -34,7 +33,6 @@ function StageOption({
   return (
     <button
       role={sheet ? undefined : "menuitem"}
-      style={stageToneStyle(stage.color, index)}
       onClick={onSelect}
       className={cn(
         "w-full flex items-center text-left transition-colors",
@@ -42,18 +40,16 @@ function StageOption({
           ? "gap-3.5 p-4 rounded-xl border min-h-[56px] text-[15px]"
           : "gap-2.5 px-4 py-2 text-sm",
         isHere
-          ? sheet
-            ? "bg-[var(--tone-soft)] border-[var(--tone)]/30 text-[var(--tone)] font-semibold"
-            : "bg-[var(--tone-soft)] font-semibold"
+          ? "bg-surface-variant font-semibold text-on-surface"
           : sheet
             ? "bg-surface border-outline-variant hover:bg-surface-variant"
             : "hover:bg-surface-variant",
       )}
     >
-      <span className="w-2 h-2 rounded-full bg-[var(--tone)] shrink-0" />
+      <span className="w-2 h-2 rounded-full bg-outline shrink-0" />
       <span className="flex-1 min-w-0 truncate">{stage.label}</span>
       {isHere ? (
-        <span className="text-[11.5px] font-semibold text-[var(--tone)] shrink-0">
+        <span className="text-[11.5px] font-semibold text-on-surface-variant shrink-0">
           {t('modals.contactDetails.here_now')}
         </span>
       ) : (
@@ -116,11 +112,10 @@ export function StageMenu({
         <div className="cd-menu" role="menu">
           <div className="cd-menu-label">{t('modals.contactDetails.move_to_step')}</div>
           <div className="cd-menu-list">
-            {stages.map((s, i) => (
+            {stages.map((s) => (
               <StageOption
                 key={s.id}
                 stage={s}
-                index={i}
                 isHere={s.label === current}
                 onSelect={() => pick(s.label)}
                 size="menu"
@@ -197,11 +192,10 @@ export function StageMoveSheet({
         </div>
 
         <div className="overflow-y-auto px-4 pb-8 pt-4 flex flex-col gap-2">
-          {stages.map((s, i) => (
+          {stages.map((s) => (
             <StageOption
               key={s.id}
               stage={s}
-              index={i}
               isHere={s.label === current}
               onSelect={() => pick(s.label)}
               size="sheet"

@@ -18,7 +18,6 @@ import {
   canRemoveContactMember as webCanRemove,
   canReleaseContact as webCanRelease,
   visibleContacts as webVisibleContacts,
-  journeyContacts as webJourneyContacts,
   visibleToOf as webVisibleToOf,
 } from '../lib/permissions';
 import {
@@ -33,7 +32,6 @@ import {
   canRemoveContactMember as coreCanRemove,
   canReleaseContact as coreCanRelease,
   visibleContacts as coreVisibleContacts,
-  journeyContacts as coreJourneyContacts,
   visibleToOf as coreVisibleToOf,
 } from '../../packages/core/src/permissions';
 import {
@@ -134,12 +132,6 @@ describe('contact visibility: web and core mirrors agree (#1047)', () => {
         const where = `${role} / ${reader}`;
         expect(webVisibleContacts(role, reader, list), where).toEqual(
           coreVisibleContacts(role, reader, list),
-        );
-        expect(webJourneyContacts(role, reader, list, 'Fall 2026'), where).toEqual(
-          coreJourneyContacts(role, reader, list, 'Fall 2026'),
-        );
-        expect(webJourneyContacts(role, reader, list), where).toEqual(
-          coreJourneyContacts(role, reader, list),
         );
       }
     }

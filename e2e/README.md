@@ -8,9 +8,9 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 
 | Spec | Area |
 | --- | --- |
-| `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
+| `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the person shows in People, scope negatives, mobile viewport (#1475) |
 | `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day), contact open without a crash, back-to-my-view (#1476) |
-| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; Announcements (post → a Trainee's card → Got it → the poster's count, §20); an old /messages bookmark landing on My Day; Visits as an interaction type (an old /visits bookmark landing on My Day, a legacy visit in a person's story, a Visit for two people sharing a groupId, a Trainee's people list kept to their own); plus the retired Settings & partners, Directory roles, On our hearts roles, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
+| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; Announcements (post → a Trainee's card → Got it → the poster's count, §20); an old /messages bookmark landing on My Day; Visits as an interaction type (an old /visits bookmark landing on My Day, a legacy visit in a person's story, a Visit for two people sharing a groupId, a Trainee's people list kept to their own); plus the retired Settings & partners, Directory roles, On our hearts roles, Notes/admin triage, and Quick Capture specs (#1477) |
 | `journeys/signup.spec.ts` | Public sign-up journey: a signed-out visitor submits the intake form, the lead appears for a Full-timer in Around the team and My Day, the sidebar carries the Sign-up form link; plus the retired /outreach route and the #1493 phone-preservation pair (#1478) |
 | `journeys/notification.spec.ts` | Notification journey: a reply raises a bell entry that opens its Thread (row 15, #1303), a contact notification opens the contact, plus the retired bell deep-linking (#682) and push-transport checks, an announcement reaching every other member's device (#1479) |
 | `credential-vault.spec.ts` | Credential vault journey (#1967, ADR 0051): a Full-timer reaches the vault from its one door in Settings → Security, unlocks the seeded fixture, reveals and adds an entry, and a reload locks it again; a Trainee is bounced from `/vault` and has no door. |
@@ -89,13 +89,14 @@ emulator.
 | ------------ | ------------- | ----------------------------------------------------------- |
 | Community    | `viewer`      | Home, Gospel, On our hearts, Answered, Your reports, Bible study |
 | Student      | `operator`    | Home, People, Gatherings, Coordination Notes, On our hearts, Answered, Your reports, Bible study |
-| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Your reports, Bible study |
+| Trainee      | `manager`     | Home, People, Looking back, Gatherings, Coordination Notes, Your reports, Bible study |
 | Full-timer   | `admin`       | All of the above, plus My Day (the home item), Around the team, and the Bible-study index |
 
-Every approved role lands on `/`; a guarded route (`/board`, `/directory`,
-`/history`, `/coordination`, `/admin/feedback`) redirects a denied role back to
-`/`. The matrix mirrors `src/lib/permissions.ts` (and its unit test,
-`src/test/permissions.test.tsx`).
+Every approved role lands on `/`; a guarded route (`/directory`, `/history`,
+`/coordination`, `/admin/feedback`) redirects a denied role back to `/`. An old
+`/board` bookmark redirects to `/directory`, where the Journey board's steps now
+live as People's Step filter. The matrix mirrors `src/lib/permissions.ts` (and
+its unit test, `src/test/permissions.test.tsx`).
 
 ## How sign-in works
 

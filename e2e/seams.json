@@ -39,7 +39,6 @@
         "src/views/MyDay.tsx",
         "src/views/MyDayMobile.tsx",
         "src/views/AroundTheTeam.tsx",
-        "src/views/OutreachBoard.tsx",
         "src/views/Attendance.tsx",
         "src/views/landings/*.tsx",
         "apps/mobile/src/lib/AuthProvider.tsx"

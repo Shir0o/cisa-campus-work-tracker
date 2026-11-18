@@ -21,7 +21,6 @@ import { useLanguage } from "../LanguageProvider";
 import KindChip from "../ui/KindChip";
 import { StageMenu } from "../ui/StagePicker";
 import { getEffectiveContactTags, tagStyle } from "../../lib/tags";
-import { stageToneStyle } from "../../lib/stageTones";
 import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKind";
 import type { Contact, Stage } from "../../types";
 
@@ -252,8 +251,6 @@ export interface ContactHeaderModel {
   currentContact: Contact;
   stages: Stage[];
   canMoveStage: boolean;
-  currentStageIndex: number;
-  currentStageInfo?: Stage;
   sinceText: string;
   carerNames: string[];
   isAdmin: boolean;
@@ -319,8 +316,6 @@ export default function ContactHead(props: ContactHeadProps) {
     currentContact,
     stages,
     canMoveStage,
-    currentStageIndex,
-    currentStageInfo,
     sinceText,
     carerNames,
     isAdmin,
@@ -531,16 +526,15 @@ export default function ContactHead(props: ContactHeadProps) {
                   {canMoveStage ? (
                     <button
                       onClick={onOpenMoveSheet}
-                      style={stageToneStyle(currentStageInfo?.color, currentStageIndex)}
                       aria-label={`${t('modals.contactDetails.move_to_step')}: ${currentContact.stage || t('modals.contactDetails.not_in_step')}`}
                       className={cn(
                         "cdm-stage-btn mt-2.5 inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-full text-sm font-semibold",
                         currentContact.stage
-                          ? "bg-[var(--tone-soft)] border border-[var(--tone)]/40 text-[var(--tone)]"
+                          ? "bg-surface-variant border border-outline-variant text-on-surface"
                           : "border border-outline text-on-surface-variant",
                       )}
                     >
-                      <span className={cn("w-2 h-2 rounded-full", currentContact.stage ? "bg-[var(--tone)]" : "bg-outline")} />
+                      <span className={cn("w-2 h-2 rounded-full", currentContact.stage ? "bg-outline" : "bg-outline")} />
                       <span className="truncate max-w-[200px]">{currentContact.stage || t('modals.contactDetails.not_in_step')}</span>
                       <ChevronDown className="w-3.5 h-3.5 opacity-75" />
                     </button>

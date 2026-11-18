@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { writeBatch, doc } from 'firebase/firestore';
-import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
+import { writeBatch, doc, addDoc, collection } from 'firebase/firestore';
+import {
+  STAGE_COLOR,
+  addStage,
+  applyStageReorder,
+  persistStageOrder,
+  removeStageWithReassign,
+  renameStageWithContacts,
+} from '../lib/data/stages';
 import type { Stage } from '../types';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -8,6 +15,8 @@ import type { Stage } from '../types';
 vi.mock('firebase/firestore', () => ({
   writeBatch: vi.fn(),
   doc: vi.fn((_db: unknown, coll: string, id: string) => ({ path: `${coll}/${id}`, id })),
+  collection: vi.fn((_db: unknown, path: string) => ({ path })),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'new-stage' })),
 }));
 
 vi.mock('../lib/firebase', () => ({ db: {} }));
@@ -84,6 +93,82 @@ describe('persistStageOrder', () => {
       { path: 'stages/s1', id: 's1' },
       { label: 'First Contact', color: 'bg-board-teal', order: 1 },
     );
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Step management, moved out of the Journey board into Settings (§22) ─────
+
+const mockBatch = () => {
+  const update = vi.fn();
+  const remove = vi.fn();
+  const commit = vi.fn(() => Promise.resolve());
+  vi.mocked(writeBatch).mockReturnValue({ update, delete: remove, commit } as never);
+  return { update, remove, commit };
+};
+
+describe('addStage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adds the step at the end, carrying the one persisted colour the rule requires', async () => {
+    await addStage('  Church Home  ', 3);
+
+    expect(collection).toHaveBeenCalledWith({}, 'stages');
+    expect(addDoc).toHaveBeenCalledWith({ path: 'stages' }, {
+      label: 'Church Home',
+      color: STAGE_COLOR,
+      order: 3,
+    });
+  });
+});
+
+describe('renameStageWithContacts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renames the step and moves its people to the new label in one batch', async () => {
+    const { update, commit } = mockBatch();
+
+    await renameStageWithContacts(stage('s2', 'Regular', 1), 'Established', ['c1', 'c2']);
+
+    expect(update).toHaveBeenCalledWith(
+      { path: 'stages/s2', id: 's2' },
+      { label: 'Established', color: 'bg-board-teal', order: 1 },
+    );
+    expect(update).toHaveBeenCalledWith({ path: 'contacts/c1', id: 'c1' }, { stage: 'Established' });
+    expect(update).toHaveBeenCalledWith({ path: 'contacts/c2', id: 'c2' }, { stage: 'Established' });
+    expect(update).toHaveBeenCalledTimes(3);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('removeStageWithReassign', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reassigns every person on the step to the chosen step, then deletes the step", async () => {
+    const { update, remove, commit } = mockBatch();
+
+    await removeStageWithReassign('s2', ['c1', 'c2'], 'Regular');
+
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenCalledWith({ path: 'contacts/c1', id: 'c1' }, { stage: 'Regular' });
+    expect(update).toHaveBeenCalledWith({ path: 'contacts/c2', id: 'c2' }, { stage: 'Regular' });
+    expect(remove).toHaveBeenCalledWith({ path: 'stages/s2', id: 's2' });
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes an empty step without touching any person', async () => {
+    const { update, remove, commit } = mockBatch();
+
+    await removeStageWithReassign('s3', [], '');
+
+    expect(update).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith({ path: 'stages/s3', id: 's3' });
     expect(commit).toHaveBeenCalledTimes(1);
   });
 });

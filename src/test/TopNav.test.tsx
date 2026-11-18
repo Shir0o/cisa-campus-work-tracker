@@ -136,7 +136,7 @@ describe('TopNav (top-anchored navigation)', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /more/i }));
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
     // The Visits page is cut (cut-or-keep §5): a visit is logged on the person.
