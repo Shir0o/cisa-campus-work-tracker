@@ -363,7 +363,7 @@ describe('GlobalSearch', () => {
 
   it('the phone bar carries destinations, not a search button (#1806)', () => {
     // ADR 0049: the centred FAB was a duplicate of the header's own search
-    // button, and the bar needed the slot for Messages and Questions.
+    // button, and the bar needed the slot for Messages and Questions (both since cut).
     h.mockAuth.value = TEST_USERS.manager;
     render(
       <MemoryRouter>
@@ -371,7 +371,7 @@ describe('GlobalSearch', () => {
       </MemoryRouter>,
     );
     expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Messages/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Messages/ })).not.toBeInTheDocument();
   });
 
   it('the trigger opens the palette, and the palette owns the query and its clear \u00d7', () => {

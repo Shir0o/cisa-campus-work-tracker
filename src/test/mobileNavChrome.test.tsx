@@ -122,32 +122,28 @@ describe('MobileNav re-tap (#1779)', () => {
 // ── Destinations (#1806, ADR 0049) ───────────────────────────────────────────
 //
 // The bar is the only surface a Trainee reaches in one tap. Messages took the
-// slot the search FAB held (a duplicate of the header's search). Questions for
-// the team shared it until the feature was cut (cut-or-keep §5), and took its
-// waiting badge with it.
+// slot the search FAB held (a duplicate of the header's search); chats and
+// Questions for the team are both cut (cut-or-keep §5, §20), and the waiting
+// badge went with them.
 describe('MobileNav destinations (#1806)', () => {
   beforeEach(() => {
     currentUser = { role: 'manager' };
   });
 
-  it('gives a trainee three destinations in one tap, and no Questions', () => {
+  it('gives a trainee two destinations in one tap, and no Messages or Questions', () => {
     renderAt('/');
-    for (const name of ['Home', 'Messages', 'People']) {
+    for (const name of ['Home', 'People']) {
       expect(screen.getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     }
     expect(screen.queryByRole('link', { name: /Questions/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Messages/ })).not.toBeInTheDocument();
   });
 
   it('keeps every destination at a 44px tap target', () => {
     renderAt('/');
-    for (const name of ['Home', 'Messages', 'People']) {
+    for (const name of ['Home', 'People']) {
       expect(screen.getByRole('link', { name: new RegExp(name) }).className).toContain('min-h-11');
     }
-  });
-
-  it('lights Messages on the routes underneath it', () => {
-    renderAt('/messages/room-1');
-    expect(screen.getByRole('link', { name: /Messages/ })).toHaveAttribute('aria-current', 'page');
   });
 
   it('draws no waiting badge on any destination, for a trainee or a full-timer', () => {

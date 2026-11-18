@@ -519,62 +519,6 @@ export interface FeedbackReply {
   editedAt?: string;
 }
 
-export interface ChatAttachment {
-  type: 'contact' | 'interaction' | 'event' | 'todo' | 'note' | 'prayer' | 'feedback' | 'phone';
-  id: string;
-  name: string;
-  subtitle?: string;
-  status?: string;
-  priority?: string;
-}
-
-export interface ChatRoom {
-  id: string;
-  // 'announcement' is a room the whole audience reads but only Full-timers can
-  // post to (mobile v2's member "Announcements"). Kept in step with
-  // packages/core/src/types.ts; firestore.rules is what enforces it.
-  type: 'direct' | 'group' | 'announcement';
-  name?: string;
-  memberIds: string[];
-  createdById: string;
-  createdByName: string;
-  createdAt: any;
-  lastMessage?: {
-    text: string;
-    senderId: string;
-    senderName: string;
-    timestamp: any;
-  };
-  audiencePreset?: 'everyone' | 'custom';
-  deletedFor?: string[];
-}
-
-export interface ChatMessage {
-  id: string;
-  roomId: string;
-  text: string;
-  senderId: string;
-  senderName: string;
-  senderPhoto?: string;
-  timestamp: any;
-  type: 'text' | 'system';
-  attachments?: ChatAttachment[];
-  /** A message pinned to the top of its conversation (thread's pinned strip). */
-  pinned?: boolean;
-  /** Uid of whoever pinned it — the announcement strip says "Pinned by {name}". */
-  pinnedBy?: string;
-  /** Tombstone for "take back for everyone": the author or a Full-timer sets
-   *  it and the thread shows a gone label instead of the text. Once set it
-   *  stays — a conversation never silently rewrites itself. */
-  deleted?: { by: string; at: any };
-  /** Slack-shaped thread parentId: null = top-level; set = reply (#563). */
-  parentId?: string | null;
-  /** Passive read receipts: uids who have had this announcement post appear on screen (#743). */
-  readBy?: string[];
-  /** Active acknowledgement: uids who deliberately tapped "Got it" (#743). */
-  acknowledged?: string[];
-}
-
 export interface ImpersonateTarget {
   key: string;
   name: string;

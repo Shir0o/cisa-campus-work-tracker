@@ -15,7 +15,6 @@ import { FeedbackKind } from '../types';
 
 export default function FeedbackFAB() {
   const { user, role } = useAuth();
-  const isMessagesPage = typeof window !== 'undefined' && window.location.pathname === '/messages';
   const [isOpen, setIsOpen] = useState(false);
   const [tuckedAway, setTuckedAway] = useState(false);
   const tuckedRef = useRef(false);
@@ -275,9 +274,7 @@ export default function FeedbackFAB() {
         onFocus={() => setTucked(false)}
         className={`fixed right-4 z-40 w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all duration-200 motion-reduce:transition-none flex items-center justify-center border-none cursor-pointer ${
           tucked ? 'opacity-0 translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
-        } ${
-          isMessagesPage ? 'bottom-28 lg:bottom-28 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
-        } ${
+        } bottom-20 lg:bottom-6 lg:right-6 ${
           isOpen
             ? 'bg-surface-container-highest text-on-surface-variant'
             : 'bg-primary text-on-primary hover:scale-105'
@@ -311,9 +308,7 @@ export default function FeedbackFAB() {
               role="dialog"
               aria-modal="true"
               aria-label={t('feedback.leave_note_for_team')}
-              className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-5 focus:outline-none ${
-                isMessagesPage ? 'bottom-44 lg:bottom-44 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
-              }`}
+              className="fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-5 focus:outline-none bottom-36 lg:bottom-20 lg:right-6"
             >
               {phase === 'done' ? (
                 /* Success */

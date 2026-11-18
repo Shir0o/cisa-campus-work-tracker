@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Contact,
-  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -94,18 +93,6 @@ export default function MobileNav() {
       className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 min-h-16 pb-[env(safe-area-inset-bottom)] bg-surface-container-low border-t border-outline-variant flex items-center justify-around z-50 animate-in slide-in-from-bottom duration-300 px-4"
     >
       <Destination to="/" label={homeLabel} icon={LayoutDashboard} active={section === '/'} />
-
-      {/* Messages is where a Trainee has live work, so it is a destination
-          rather than a drawer row (ADR 0049). The
-          centred search FAB that used to hold this middle slot was a duplicate:
-          the phone header already renders its own search button, and the bar
-          could not grow past five controls at 375px. */}
-      <Destination
-        to="/messages"
-        label={t('nav.messages', 'Messages')}
-        icon={MessageSquare}
-        active={section === '/messages'}
-      />
 
       <Destination
         to="/directory"

@@ -121,8 +121,8 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
-    manager:  ['/', '/directory', '/board', '/messages', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/messages', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/board', '/feedback', '/settings', '/bible-study/present'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -283,7 +283,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/messages', '/around']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -293,7 +293,6 @@ describe('TopNav primary tabs per role', () => {
       'Bible study',
       'Gatherings',
       'Looking back',
-      'Messages',
       'My Day',
       'The Journey',
       'Visits',
@@ -321,28 +320,28 @@ describe('TopNav primary tabs per role', () => {
 
 // ─── 5. MobileNav per role ───────────────────────────────────────────────────
 //
-// #1806 / ADR 0049: Messages is a destination, so the bar reads three for a
-// trainee and for a Full-timer (Questions shared the bar until it was cut,
-// cut-or-keep §5). The centred search FAB gave up its slot — the phone header
-// already carries a search button, so nothing left the shell's reach.
+// #1806 / ADR 0049: the bar reads two destinations for a trainee and for a
+// Full-timer (Messages and Questions both left it, cut-or-keep §5, §20). The
+// centred search FAB gave up its slot — the phone header already carries a
+// search button, so nothing left the shell's reach.
 
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('manager (trainee): shows all three destinations', () => {
+  it('manager (trainee): shows both destinations', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Messages')).toBeInTheDocument();
+    expect(screen.queryByText('Messages')).not.toBeInTheDocument();
     expect(screen.queryByText('Questions')).not.toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
   });
 
-  it('admin: shows My Day and the same two others', () => {
+  it('admin: shows My Day and the other destination', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
     expect(screen.getByText('My Day')).toBeInTheDocument();
-    expect(screen.getByText('Messages')).toBeInTheDocument();
+    expect(screen.queryByText('Messages')).not.toBeInTheDocument();
     expect(screen.queryByText('Questions')).not.toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
   });
@@ -680,13 +679,12 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/around', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/history'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
       { label: 'Today', hrefs: ['/', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory'] },
-      { label: 'Gatherings', hrefs: ['/messages'] },
     ],
   };
 

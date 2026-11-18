@@ -11,7 +11,7 @@ Configure how and when you receive alerts from CISA Campus Work Tracker to match
 ## Notification Channels
 
 1. **In-App Bell**: Displays active mentions, replies, and urgent follow-up items right inside the web navigation bar.
-2. **Push Notifications**: Receive timely alerts on mobile for direct messages, urgent follow-up assignments, and scheduled reminders.
+2. **Push Notifications**: Receive timely alerts on mobile for @mentions, team announcements, urgent follow-up assignments, and scheduled reminders.
 
 ## Customizing Your Preferences
 

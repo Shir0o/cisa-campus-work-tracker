@@ -61,7 +61,6 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/prayer': 'manager',
   '/answered': 'manager',
   '/settings': 'manager',
-  '/messages': 'manager',
   // Around the team is Full-timer-only (#943): the team's activity is pastoral
   // detail, and the pointer card on My Day is the only door.
   '/around': 'admin',
@@ -131,7 +130,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
-  { href: '/messages', label: 'Messages', minRole: 'manager' },
   // "Around the team" — the label the team already says, not renamed (#943).
   { href: '/around', label: 'Around the team', minRole: 'admin' },
   // Your reports (`/feedback`) is the submitter's own side of the feedback
@@ -163,7 +161,7 @@ export const NAV_ITEMS: NavItem[] = [
  *
  * Exported so the core mirror can be pinned to it (#1940).
  */
-export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/feedback', '/settings', '/contact', '/bible-study/present'];
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/feedback', '/settings', '/contact', '/bible-study/present'];
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
@@ -235,7 +233,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/around', '/feedback'],
   People: ['/board', '/directory', '/visits', '/history'],
-  Gatherings: ['/attendance', '/bible-study', '/messages'],
+  Gatherings: ['/attendance', '/bible-study'],
   Prayer: ['/prayer', '/answered'],
 };
 

@@ -7,7 +7,6 @@ import { Room } from '../../src/components/v2/Widget';
 import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useLanguage } from '../../src/lib/LanguageProvider';
-import { useMessagesData } from '../../src/lib/useMessagesData';
 import { translate } from '../../src/lib/i18n';
 
 // The shell — one of two, chosen by role, from the design project
@@ -15,7 +14,7 @@ import { translate } from '../../src/lib/i18n';
 //
 //   Trainee    no bar at all — the queue fills the screen and ☰ opens a drawer
 //              (src/components/queue/QueueDrawer.tsx)
-//   Full-timer Today · People · Messages · More
+//   Full-timer Today · People · More
 //
 // Which route each tab sits on lives in @cisa/core's `tabsForRole`, so the
 // screens that need a back row when they're NOT a tab (people) read
@@ -30,11 +29,9 @@ export function getMobileTabTitle(name: string, language: string = 'en'): string
   return translate(`mobile.nav.${name === 'index' ? 'today' : name}`, language);
 }
 
-/** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
- *  with a high-contrast unread dot beside Messages. */
+/** One button in the design's `.mbr-tabs`: a full-width pill behind the word. */
 export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
   const { c, font, fs } = useV2Theme();
-  const { t } = useLanguage();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
   // Selection and activation follow the Inversion Rule (DESIGN.md):
@@ -71,8 +68,6 @@ export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: B
         const { options } = descriptors[route.key];
         const focused = state.index === state.routes.indexOf(route);
         const label = (options.tabBarLabel as string | undefined) ?? options.title ?? route.name;
-        const badge = options.tabBarBadge;
-        const unread = typeof badge === 'number' && badge > 0;
         return (
           <Pressable
             key={route.key}
@@ -83,12 +78,7 @@ export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: B
             hitSlop={4}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
-            // Screen readers receive a fully localized label for badge state.
-            accessibilityLabel={
-              unread
-                ? t('mobile.nav.unread_tab').replace('{label}', label).replace('{count}', String(badge))
-                : label
-            }
+            accessibilityLabel={label}
             style={({ pressed }) => [
               styles.tab,
               focused && { backgroundColor: pill },
@@ -107,20 +97,6 @@ export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: B
             >
               {label}
             </Text>
-            {unread && (
-              // 6px dot centered beside label with label ink contrast on dark pill when focused.
-              <View
-                accessible={false}
-                style={{
-                  alignSelf: 'center',
-                  marginLeft: 5,
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: focused ? activeInk : c.room.mark,
-                }}
-              />
-            )}
           </Pressable>
         );
       })}
@@ -139,8 +115,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   // `.mbr-tabs button` — flex:1, 48 tall (Material 3 minimum touch target),
-  // interactive 16px radius (Bento token scale). Row layout so the word and the
-  // unread dot sit side by side.
+  // interactive 16px radius (Bento token scale).
   tab: {
     flex: 1,
     minHeight: 48,
@@ -165,7 +140,6 @@ export default function TabsLayout() {
 function RoleTabs() {
   const { role } = useAuth();
   const { language } = useLanguage();
-  const messages = useMessagesData();
 
   const tabs = tabsForRole(role);
   const mobileTitle = (name: string) => getMobileTabTitle(name, language);
@@ -190,13 +164,6 @@ function RoleTabs() {
     >
       <Tabs.Screen name="index" options={{ title: mobileTitle('index') }} />
       <Tabs.Screen name="people" options={slot('people', mobileTitle('people'))} />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          ...slot('messages', mobileTitle('messages')),
-          tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
-        }}
-      />
       <Tabs.Screen name="more" options={slot('more', mobileTitle('more'))} />
       {/* Not a screen any more: this route only redirects old links to People,
           where The Journey is the Step pills (ADR 0047). */}

@@ -338,30 +338,30 @@ describe('NavRail (#664)', () => {
     // surfaced via a non-title channel. The collapsed rail sets `data-tooltip`,
     // which NavRail's delegated focus handler turns into the portal bubble
     // for keyboard focus.
-    const messages = screen.getByRole('link', { name: /^Messages$/ });
-    expect(messages).toHaveAttribute('data-tooltip', 'Messages');
+    const answered = screen.getByRole('link', { name: /^Answered$/ });
+    expect(answered).toHaveAttribute('data-tooltip', 'Answered');
   });
 
   // ── Unclipped hover tooltip (#711) ────────────────────────────────────────
   it('shows the full label in a portal tooltip on hover, outside the rail (#711)', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail({ role: 'admin' });
-    const messages = screen.getByRole('link', { name: /^Messages$/ });
-    fireEvent.mouseOver(messages);
+    const answered = screen.getByRole('link', { name: /^Answered$/ });
+    fireEvent.mouseOver(answered);
     const tooltip = screen.getByRole('tooltip');
-    expect(tooltip).toHaveTextContent('Messages');
+    expect(tooltip).toHaveTextContent('Answered');
     // The bubble must NOT live inside the rail: both the aside and the
     // destinations nav clip overflow, which cropped the old CSS pseudo into
     // an unreadable sliver at the rail's edge (#711).
     expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
-    fireEvent.mouseOut(messages);
+    fireEvent.mouseOut(answered);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('shows the portal tooltip on keyboard focus (#665 AC6, #711)', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail({ role: 'admin' });
-    const messages = screen.getByRole('link', { name: /^Messages$/ });
+    const answered = screen.getByRole('link', { name: /^Answered$/ });
     // jsdom has no :focus-visible heuristic (it always answers false), so
     // simulate the engine: only this link answers true, as keyboard focus
     // would in a real browser.
@@ -369,13 +369,13 @@ describe('NavRail (#664)', () => {
     const spy = vi
       .spyOn(HTMLElement.prototype, 'matches')
       .mockImplementation(function (this: HTMLElement, selector: string) {
-        if (selector === ':focus-visible') return this === messages;
+        if (selector === ':focus-visible') return this === answered;
         return nativeMatches.call(this, selector);
       });
     try {
-      fireEvent.focus(messages);
+      fireEvent.focus(answered);
       const tooltip = screen.getByRole('tooltip');
-      expect(tooltip).toHaveTextContent('Messages');
+      expect(tooltip).toHaveTextContent('Answered');
       expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
     } finally {
       spy.mockRestore();

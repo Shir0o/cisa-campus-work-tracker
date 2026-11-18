@@ -41,7 +41,6 @@
         "src/views/AroundTheTeam.tsx",
         "src/views/OutreachBoard.tsx",
         "src/views/Attendance.tsx",
-        "src/views/Messages.tsx",
         "src/views/landings/*.tsx",
         "apps/mobile/src/lib/AuthProvider.tsx"
       ],

@@ -299,7 +299,7 @@ export default function NotificationCenter() {
         ) {
           navigate(`/people/${notif.targetId}`);
         } else {
-          navigate(`/messages/${notif.targetId}`);
+          navigate('/');
         }
       }
     }

@@ -85,25 +85,6 @@ export async function seedEmulator() {
     uids[key] = uid;
   }
 
-  // Seed one direct conversation so the messages rail renders both sections
-  // (Announcements vs Conversations) — sectioning only shows when both exist.
-  await db.collection('chatRooms').doc('e2e-dm-check-in').set(
-    {
-      type: 'direct',
-      memberIds: [uids.fulltimer, uids.trainee],
-      createdById: uids.fulltimer,
-      createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
-      createdAt: FieldValue.serverTimestamp(),
-      lastMessage: {
-        text: 'Welcome aboard! Reply here any time.',
-        senderId: uids.fulltimer,
-        senderName: DEFAULT_CREDENTIALS.fulltimer.label,
-        timestamp: FieldValue.serverTimestamp(),
-      },
-    },
-    { merge: true },
-  );
-
   // Seed initial sample gathering so gathering/attendance tests have data
   const sampleGatheringRef = db.collection('gatherings').doc('e2e-sample-gathering');
   await sampleGatheringRef.set({

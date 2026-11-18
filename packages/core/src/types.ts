@@ -412,41 +412,6 @@ export interface FeedbackReply {
   githubCommentId?: number;
 }
 
-export interface ChatAttachment {
-  type: 'contact' | 'interaction' | 'event' | 'todo' | 'note' | 'prayer' | 'feedback' | 'phone';
-  id: string;
-  name: string;
-  subtitle?: string;
-  status?: string;
-  priority?: string;
-}
-
-export interface ChatRoom {
-  id: string;
-  // 'announcement' is a room the whole audience reads but only Full-timers can
-  // post to — the design's "broadcast" conversation (MOBILE-V2.md, the member
-  // app's "Announcements" block). Enforced in firestore.rules; `canPostToRoom`
-  // in ./chat is the client-side mirror of that rule.
-  type: 'direct' | 'group' | 'announcement';
-  name?: string;
-  memberIds: string[];
-  createdById: string;
-  createdByName: string;
-  createdAt: unknown;
-  lastMessage?: {
-    text: string;
-    senderId: string;
-    senderName: string;
-    timestamp: unknown;
-  };
-  /** Audience preset stored for announcement rooms (#743). */
-  audiencePreset?: 'everyone' | 'custom';
-  /** Uids who hid this conversation from their own list ("delete for me").
-   *  The room stays intact for everyone else; `sendMessage` clears the array
-   *  so a new message brings the conversation back (WhatsApp-style). */
-  deletedFor?: string[];
-}
-
 // A member asking the team to pray for them (MOBILE-V2.md, the member app's
 // "Ask the team to pray"). Deliberately NOT a `Prayer`: that entity hangs off a
 // `contactId`, and a member is a user account, not a contact. Lives at
@@ -471,32 +436,6 @@ export interface HospitalityOffer {
   seats: string;
   note: string;
   updatedAt: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  roomId: string;
-  text: string;
-  senderId: string;
-  senderName: string;
-  senderPhoto?: string;
-  timestamp: unknown;
-  type: 'text' | 'system';
-  attachments?: ChatAttachment[];
-  /** A message pinned to the top of its conversation (thread's pinned strip). */
-  pinned?: boolean;
-  /** Uid of whoever pinned it — the announcement strip says "Pinned by {name}". */
-  pinnedBy?: string;
-  /** Tombstone for "take back for everyone": the author or a Full-timer sets
-   *  it and the thread shows a gone label instead of the text. Once set it
-   *  stays — a conversation never silently rewrites itself. */
-  deleted?: { by: string; at: unknown };
-  /** Slack-shaped thread parentId: null = top-level; set = reply (#563). */
-  parentId?: string | null;
-  /** Passive read receipts: uids who have had this announcement post appear on screen (#743). */
-  readBy?: string[];
-  /** Active acknowledgement: uids who deliberately tapped "Got it" (#743). */
-  acknowledged?: string[];
 }
 
 export interface ImpersonateTarget {

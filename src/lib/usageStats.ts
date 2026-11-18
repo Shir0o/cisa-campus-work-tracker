@@ -246,7 +246,6 @@ export function usagePathLabel(path: string): string {
     '/prayer': 'On our hearts',
     '/answered': 'Answered',
     '/settings': 'Settings',
-    '/messages': 'Messages',
     '/feedback': 'Leave a note',
     '/coordination': 'Coordination Notes',
     '/coordination/trash': 'Coordination Trash',

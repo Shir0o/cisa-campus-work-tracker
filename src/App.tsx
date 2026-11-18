@@ -71,7 +71,6 @@ const MyNotes = lazyWithRetry(() => import("./views/MyNotes"));
 /* v8 ignore stop */
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
-const Messages = lazyWithRetry(() => import("./views/Messages"));
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Ask = lazyWithRetry(() => import("./views/Ask"));
 const CredentialVault = lazyWithRetry(() => import("./views/CredentialVault"));
@@ -415,7 +414,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { contactId } = useParams();
-  const isMessagesPage = location.pathname.startsWith("/messages");
   const queryParams = new URLSearchParams(location.search);
   const tabParam = queryParams.get("tab");
   const initialTab = tabParam === "thread" || tabParam === "discussion" ? tabParam : undefined;
@@ -623,11 +621,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <main
               className={cn(
                 "flex-1 w-full min-h-0",
-                isMessagesPage
-                  ? "flex flex-col overflow-hidden"
-                  : selectedContact && contactId
-                    ? "overflow-hidden"
-                    : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+                selectedContact && contactId
+                  ? "overflow-hidden"
+                  : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
               )}
             >
               {selectedContact && contactId ? (
@@ -1057,47 +1053,6 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
-
-                <Route
-                  path="/messages"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout>
-                        <React.Suspense
-                          fallback={
-                            <div className="p-8 space-y-6">
-                              <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-xl" />
-                            </div>
-                          }
-                        >
-                          <Messages />
-                        </React.Suspense>
-                      </DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-
-                <Route
-                  path="/messages/:roomId"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout>
-                        <React.Suspense
-                          fallback={
-                            <div className="p-8 space-y-6">
-                              <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-xl" />
-                            </div>
-                          }
-                        >
-                          <Messages />
-                        </React.Suspense>
-                      </DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-
 
                 <Route
                   path="/around"

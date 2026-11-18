@@ -2290,8 +2290,7 @@ describeRules('Firestore Security Rules', () => {
 
     it('DD11: Approved members may read peers; unapproved users cannot, and no one may tamper', async () => {
       // The directory is intentionally readable by any *approved* member: the
-      // messaging member picker (CreateChatModal) queries the users collection
-      // as a plain approved user. The protections that remain are that
+      // member pickers query the users collection as a plain approved user. The protections that remain are that
       // unapproved users can't scrape PII, and a Trainee can't escalate another
       // member's profile to Full-timer.
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -2882,9 +2881,9 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  // The three collections mobile v2's member app writes to. See MOBILE-V2.md
-  // and firestore.rules sections 9b / 9c / chatRooms.
-  describe('Member app — prayer requests, hospitality, announcements', () => {
+  // The collections mobile v2's member app writes to. See MOBILE-V2.md and
+  // firestore.rules sections 9b / 9c; chatRooms is cut and asserted closed.
+  describe('Member app — prayer requests, hospitality, chats cut', () => {
     const seedMemberUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (c) => {
         await setDoc(doc(c.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
@@ -3056,431 +3055,55 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(doc(db, 'hospitalityOffers', 'community1')));
     });
 
-    // ── announcement rooms ───────────────────────────────────────────────────
-    const seedRoom = async (id: string, type: string) => {
+    // ── chats are cut ────────────────────────────────────────────────────────
+    // Cut-or-keep §20: chats, their messages and the Announcements room are
+    // gone, so nothing reads or writes chatRooms. The documents stay in
+    // Firestore, unread.
+    it('CH1: nobody reads or writes chatRooms or their messages, a Full-timer included', async () => {
+      await seedMemberUsers();
       await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'chatRooms', id), {
-          type,
+        await setDoc(doc(c.firestore(), 'chatRooms', 'room1'), {
+          type: 'group',
           name: 'Weekly notes',
-          memberIds: ['ft1', 'student1'],
+          memberIds: ['ft1', 'trainee1'],
           createdById: 'ft1',
           createdByName: 'Mei',
           createdAt: serverTimestamp(),
         });
-      });
-    };
-    const newChatMsg = (senderId: string) => ({
-      roomId: 'room1',
-      text: 'Hello everyone',
-      senderId,
-      senderName: 'Someone',
-      timestamp: serverTimestamp(),
-      type: 'text',
-    });
-
-    it('AN1: only a Full-timer can open an announcement room', async () => {
-      await seedMemberUsers();
-      const room = {
-        type: 'announcement',
-        name: 'Weekly notes',
-        memberIds: ['student1', 'ft1'],
-        createdByName: 'Someone',
-        createdAt: serverTimestamp(),
-      };
-      await assertSucceeds(
-        setDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'roomA'), {
-          ...room,
-          createdById: 'ft1',
-        }),
-      );
-      await assertFails(
-        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'roomB'), {
-          ...room,
-          createdById: 'student1',
-        }),
-      );
-    });
-
-    it('AN2: a member can still open a plain group room', async () => {
-      await seedMemberUsers();
-      await assertSucceeds(
-        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'roomC'), {
-          type: 'group',
-          name: 'Study crew',
-          memberIds: ['student1', 'student2'],
-          createdById: 'student1',
-          createdByName: 'Lila',
-          createdAt: serverTimestamp(),
-        }),
-      );
-    });
-
-    it('AN3: in an announcement room only a Full-timer can post', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'announcement');
-      await assertSucceeds(
-        setDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), newChatMsg('ft1')),
-      );
-      await assertFails(
-        setDoc(
-          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'),
-          newChatMsg('student1'),
-        ),
-      );
-    });
-
-    it('AN4: a member of the room can still read every announcement in it', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'announcement');
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'chatRooms/room1/messages/m0'), newChatMsg('ft1'));
-      });
-      await assertSucceeds(
-        getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m0')),
-      );
-    });
-
-    it('AN5: a group room is unaffected — a member posts as before', async () => {
-      await seedMemberUsers();
-      await seedRoom('room2', 'group');
-      await assertSucceeds(
-        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room2/messages/m3'), {
-          ...newChatMsg('student1'),
-          roomId: 'room2',
-        }),
-      );
-    });
-
-    it('AN6: a member cannot flip an announcement into a group to post in it', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'announcement');
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), { type: 'group' }),
-      );
-      // A member can still update the room in ways that leave the kind alone.
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), {
-          memberIds: ['ft1', 'student1', 'student2'],
-        }),
-      );
-    });
-
-    it('AN8: an unapproved or unknown sign-in cannot open a room (Nov 2026)', async () => {
-      await seedMemberUsers();
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'users', 'pending9'), { role: 'viewer', approved: false });
-      });
-      const room = (uid: string) => ({
-        type: 'group',
-        name: 'Hi',
-        memberIds: [uid, 'student1'],
-        createdById: uid,
-        createdByName: 'Stranger',
-        createdAt: serverTimestamp(),
-      });
-      await assertFails(setDoc(doc(getFirestore({ uid: 'pending9' }), 'chatRooms', 'roomP'), room('pending9')));
-      await assertFails(setDoc(doc(getFirestore({ uid: 'nobody9' }), 'chatRooms', 'roomN'), room('nobody9')));
-    });
-
-    it('AN9: a member cannot take over createdById to gain the delete right (Nov 2026)', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), { createdById: 'student1' }),
-      );
-      await assertFails(deleteDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
-      // A Full-timer may still correct it.
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1'), { createdById: 'student1' }),
-      );
-    });
-
-    it('AN7: room creator or admin can delete room, non-creator non-admin cannot', async () => {
-      await seedMemberUsers();
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'chatRooms', 'room1'), {
-          type: 'group',
-          name: 'Team',
-          memberIds: ['student1', 'student2'],
-          createdById: 'student1',
-          createdByName: 'Student One',
+        await setDoc(doc(c.firestore(), 'chatRooms/room1/messages/m1'), {
+          roomId: 'room1',
+          text: 'Hello everyone',
+          senderId: 'ft1',
+          senderName: 'Mei',
+          timestamp: serverTimestamp(),
+          type: 'text',
         });
       });
-
-      // Non-creator non-admin cannot delete
-      await assertFails(deleteDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms', 'room1')));
-
-      // Room creator can delete
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
-
-      // Re-seed room and test admin delete
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'chatRooms', 'room1'), {
-          type: 'group',
-          name: 'Team',
-          memberIds: ['student1', 'student2'],
-          createdById: 'student1',
-          createdByName: 'Student One',
-        });
-      });
-
-      // Admin (ft1) can delete
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1')));
-    });
-
-    it('AN8: a non-member (even an Admin / Full-timer) cannot read another user\'s private chat room', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group'); // memberIds: ['ft1', 'student1']
-
-      // Non-member admin (ft2) cannot read
-      await assertFails(getDoc(doc(getFirestore({ uid: 'ft2' }), 'chatRooms', 'room1')));
-      // Non-member student (student2) cannot read
-      await assertFails(getDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms', 'room1')));
-
-      // Members (ft1 and student1) can read
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1')));
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
-    });
-
-    // ── message-level acts: pin, take back for everyone ────────────────────────
-    // A sent message is immutable except for `pinned` / `deleted`
-    // (the Field Notes design's desktop thread). Anyone in the room can pin;
-    // only the author or a Full-timer can leave the `deleted`
-    // tombstone, and a tombstone stays.
-    const seedMsg = async (roomId: string, msgId: string, senderId: string, over: Record<string, unknown> = {}) => {
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), `chatRooms/${roomId}/messages/${msgId}`), {
-          ...newChatMsg(senderId),
-          roomId,
-          ...over,
-        });
-      });
-    };
-
-    it('MSG1: any room member can pin a message', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          pinned: true,
-        }),
-      );
-    });
-
-    it("MSG1b: a pin may record the pinner's own uid as pinnedBy, and unpinning may clear it (#1243)", async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      const ref = doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1');
-      await assertSucceeds(updateDoc(ref, { pinned: true, pinnedBy: 'student1' }));
-      await assertSucceeds(updateDoc(ref, { pinned: false, pinnedBy: deleteField() }));
-    });
-
-    it('MSG1c: a pin cannot credit someone else as pinnedBy (#1243)', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          pinned: true,
-          pinnedBy: 'ft1',
-        }),
-      );
-    });
-
-    it('MSG2: a member cannot edit the text, attachments or sender of a message', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          text: 'Rewritten',
-        }),
-      );
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          senderId: 'student1',
-        }),
-      );
-    });
-
-    it('MSG3: only the author or a Full-timer can take a message back for everyone', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      // A non-author member cannot tombstone it.
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          deleted: { by: 'student1', at: new Date().toISOString() },
-        }),
-      );
-      // The author can.
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
-          deleted: { by: 'ft1', at: new Date().toISOString() },
-        }),
-      );
-      // A Full-timer can take back anyone's message.
-      await seedMsg('room1', 'm2', 'student1');
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m2'), {
-          deleted: { by: 'ft1', at: new Date().toISOString() },
-        }),
-      );
-    });
-
-    it('MSG4: a tombstone stays — no undelete, and no pinning a gone message', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1', { deleted: { by: 'ft1', at: new Date().toISOString() } });
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
-          deleted: null,
-        }),
-      );
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          pinned: true,
-        }),
-      );
-    });
-
-    it('MSG4b: a tombstone write cannot also change pinned — the acts are separate', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      // The author may tombstone, but not in the same write as a pin change —
-      // a gone message can't be pinned, even mid-write.
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
-          deleted: { by: 'ft1', at: new Date().toISOString() },
-          pinned: true,
-        }),
-      );
-    });
-
-    it('AN3b: a member can create a message in an announcement room IF it is a reply to a top-level post (#743)', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'announcement');
-      await seedMsg('room1', 'root1', 'ft1'); // top-level announcement post (parentId is null/undefined)
-
-      // student1 replies to root1 -> succeeds
-      await assertSucceeds(
-        setDoc(
-          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/reply1'),
-          {
-            ...newChatMsg('student1'),
+      for (const uid of ['ft1', 'trainee1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'chatRooms', 'room1')));
+        await assertFails(getDoc(doc(db, 'chatRooms/room1/messages/m1')));
+        await assertFails(
+          setDoc(doc(db, 'chatRooms', 'room2'), {
+            type: 'group',
+            memberIds: [uid],
+            createdById: uid,
+            createdByName: 'Someone',
+            createdAt: serverTimestamp(),
+          }),
+        );
+        await assertFails(
+          setDoc(doc(db, 'chatRooms/room1/messages/m2'), {
             roomId: 'room1',
-            parentId: 'root1',
-          },
-        ),
-      );
-
-      // student1 tries to reply to a non-existent parent -> fails
-      await assertFails(
-        setDoc(
-          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/replyBad'),
-          {
-            ...newChatMsg('student1'),
-            roomId: 'room1',
-            parentId: 'nonExistentDoc',
-          },
-        ),
-      );
-
-      // student1 tries to reply to another reply (nested thread) -> fails
-      await assertFails(
-        setDoc(
-          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/replyNested'),
-          {
-            ...newChatMsg('student1'),
-            roomId: 'room1',
-            parentId: 'reply1',
-          },
-        ),
-      );
-
-      // Non-member student2 cannot reply -> fails
-      await assertFails(
-        setDoc(
-          doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/replyStranger'),
-          {
-            ...newChatMsg('student2'),
-            roomId: 'room1',
-            parentId: 'root1',
-          },
-        ),
-      );
-    });
-
-    it('MSG5: a non-member cannot pin a message', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group');
-      await seedMsg('room1', 'm1', 'ft1');
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1'), {
-          pinned: true,
-        }),
-      );
-    });
-
-    it('MSG7: a member can acknowledge a live post or update their own readBy entry (#743)', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'announcement');
-      await seedMsg('room1', 'm1', 'ft1');
-
-      // Member can add themselves to acknowledged
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          acknowledged: ['student1'],
-        }),
-      );
-
-      // Member can add themselves to readBy
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          readBy: ['student1'],
-        }),
-      );
-
-      // Member cannot add or remove someone else from acknowledged — including
-      // a swap (adding self while dropping theirs) or a bare drop of theirs
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          acknowledged: ['student2'],
-        }),
-      );
-
-      // Member can still drop their OWN entry while others' stay
-      await seedMsg('room1', 'm2', 'ft1', { acknowledged: ['ft1', 'student1', 'student2'] });
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'), {
-          acknowledged: ['ft1', 'student2'],
-        }),
-      );
-
-      // Member cannot drop someone else's entry, even keeping their own
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'), {
-          acknowledged: ['ft1', 'student1'],
-        }),
-      );
-    });
-
-    it('MSG6: a non-member (even an Admin / Full-timer) cannot read messages in another user\'s chat room', async () => {
-      await seedMemberUsers();
-      await seedRoom('room1', 'group'); // memberIds: ['ft1', 'student1']
-      await seedMsg('room1', 'm1', 'ft1');
-
-      // Non-member admin (ft2) cannot read message
-      await assertFails(getDoc(doc(getFirestore({ uid: 'ft2' }), 'chatRooms/room1/messages/m1')));
-      // Non-member student (student2) cannot read message
-      await assertFails(getDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1')));
-
-      // Members (ft1 and student1) can read message
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1')));
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1')));
+            text: 'Hi',
+            senderId: uid,
+            senderName: 'Someone',
+            timestamp: serverTimestamp(),
+            type: 'text',
+          }),
+        );
+        await assertFails(deleteDoc(doc(db, 'chatRooms', 'room1')));
+      }
     });
   });
 

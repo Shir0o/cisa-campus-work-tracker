@@ -103,12 +103,11 @@ export const IMP_SCOPE_LABEL: Record<string, string> = {
   prayer: 'On our hearts',
   answered: 'Answered',
   contacts: 'People',
-  messages: 'Messages',
   coordination: 'Coordination Notes',
   settings: 'Settings',
 };
 
-export const IMP_SCOPE_ORDER = ['board', 'history', 'attendance', 'prayer', 'contacts', 'answered', 'messages', 'coordination'];
+export const IMP_SCOPE_ORDER = ['board', 'history', 'attendance', 'prayer', 'contacts', 'answered', 'coordination'];
 
 function impList(a: string[]): string {
   return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1];

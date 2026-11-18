@@ -14,7 +14,6 @@ describe('sectionHrefFor (#803)', () => {
   });
 
   it('resolves the other declared leaf routes', () => {
-    expect(sectionHrefFor('/messages/room-7')).toBe('/messages');
     expect(sectionHrefFor('/coordination/trash')).toBe('/coordination');
     expect(sectionHrefFor('/admin/feedback')).toBe('/settings');
   });

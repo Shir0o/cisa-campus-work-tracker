@@ -15,10 +15,10 @@ describe('routeForNotificationLink', () => {
     // A message on an Interaction's Thread opens that Thread by its id.
     ['/people/c1?interaction=i9', '/contact/c1/thread?interaction=i9'],
     ['/people/c1', '/contact/c1'],
-    // A chat reply opens the Thread under its parent.
-    ['/messages/room-9?parent=m1', '/messages/room-9/thread?parent=m1'],
-    ['/messages/room-9', '/messages/room-9'],
-    ['/messages', '/messages'],
+    // Chats are cut: an old chat push lands on My Day.
+    ['/messages/room-9?parent=m1', '/'],
+    ['/messages/room-9', '/'],
+    ['/messages', '/'],
     ['/directory', '/people'],
     ['/feedback', '/your-notes'],
     ['/coordination/doc-2', '/coordination/doc-2'],

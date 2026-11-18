@@ -1,7 +1,7 @@
 # Core Data Access Layer (`packages/core/src/data`)
 
 ## Overview
-Platform-agnostic Firebase Firestore and Realtime Database data-access layer providing typed reactive subscriptions, query constraints, atomic batch operations, and mutations across contacts, interactions, todos, prayers, chat rooms, attendance, and settings.
+Platform-agnostic Firebase Firestore and Realtime Database data-access layer providing typed reactive subscriptions, query constraints, atomic batch operations, and mutations across contacts, interactions, todos, prayers, attendance, and settings.
 
 ## Interface
 - `subscribeContacts(db, options, onNext, onError)`: Reactive subscription to contacts collection with role-based `visibleTo` query constraints (`contacts.ts`)
@@ -26,11 +26,6 @@ Platform-agnostic Firebase Firestore and Realtime Database data-access layer pro
 - `addPrayer(db, prayer, author)`: Adds new prayer burden with explicit `teamPrayer` visibility flag (`prayers.ts`)
 - `updatePrayerBurden(db, prayerId, burden)`: Updates prayer burden text and modification metadata (`prayers.ts`)
 - `updatePrayerStatus(db, prayerId, status, narrative)`: Sets prayer status (`pending`, `answered`, `unanswered`) and answer narrative (`prayers.ts`)
-- `subscribeChatRooms(db, userId, onNext, onError)`: Subscribes to chat rooms where user ID is in memberIds, ordered by recency (`chat.ts`)
-- `subscribeRoomMessages(db, roomId, onNext, onError)`: Subscribes to messages within a specific chat room (`chat.ts`)
-- `getOrCreateDirectChat(db, currentUserId, otherUserId)`: Retrieves existing 1:1 direct chat room or initializes a new room (`chat.ts`)
-- `createGroupChat(db, creatorId, memberIds, name)`: Creates multi-user group chat room with system genesis message (`chat.ts`)
-- `createAnnouncementChat(db, creatorId, memberIds, name)`: Creates announcement channel with staff-only top-level posting permissions (`chat.ts`)
 - `subscribeBoardDocs(db, userRole, onNext, onError)`: Subscribes to active coordination note pages filtered by role audience tier (`board.ts`)
 - `subscribeTrashedBoardDocs(db, onNext, onError)`: Subscribes to soft-deleted coordination note pages (admin-only) (`board.ts`)
 - `softDeleteBoardDoc(db, rtdb, docId, deleter)`: Marks board doc as deleted in Firestore and removes RTDB live-collab node (`board.ts`)
@@ -50,10 +45,9 @@ Platform-agnostic Firebase Firestore and Realtime Database data-access layer pro
 - `subscribeBoardDocs`: Roles with no audience permissions (e.g. viewer) bypass querying entirely to avoid invalid empty `where('audience', 'in', [])` Firestore rejections (`board.ts`).
 - `submitSignUp`: Public sign-up submissions always initialize with stage `'Unassigned'` to prevent unvetted leads from entering The Journey pipeline prematurely (`signup.ts`).
 - `addTodo`: New tasks always default to `priority: 'medium'` and `status: 'pending'` (`todos.ts`).
-- `createRoomWithGenesis`: System genesis messages write `senderId: currentUser.uid` to comply with Firestore security rules requiring authenticated sender ID (`chat.ts`).
 
 ## Side Effects
-- Reads and writes to Firestore collections (`contacts`, `tasks`, `prayers`, `chatRooms`, `board_docs`, `events`, `settings`, `notifications`) (`contacts.ts`, `todos.ts`, `prayers.ts`, `chat.ts`, `board.ts`, `signup.ts`).
+- Reads and writes to Firestore collections (`contacts`, `tasks`, `prayers`, `board_docs`, `events`, `settings`, `notifications`) (`contacts.ts`, `todos.ts`, `prayers.ts`, `board.ts`, `signup.ts`).
 - Removes live collaborative editing nodes from Firebase Realtime Database (`board_docs_rtdb/${docId}`) on soft-delete (`board.ts`).
 - Dispatches in-app notification callbacks for assignment, completion, and trainee activity alerts (`contacts.ts`, `todos.ts`).
 - Executes multi-document atomic batch updates across `events` and `contacts` collections (`attendance.ts`).
