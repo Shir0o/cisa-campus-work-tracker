@@ -1,9 +1,7 @@
-import React from 'react';
 import { renderHook } from '@testing-library/react';
 import { parseISO } from 'date-fns';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useResolvedStudy, type ResolvedStudy } from '../components/bibleStudy/useResolvedStudy';
-import { LanguageProvider } from '../components/LanguageProvider';
 import * as bibleData from '../lib/data/bibleStudy';
 import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
 
@@ -55,17 +53,10 @@ describe('useResolvedStudy — the date labels speak the session language (#1839
     });
   }
 
-  const longDay = (iso: string, language: 'en' | 'es') =>
-    parseISO(iso).toLocaleDateString(language, { weekday: 'long', month: 'long', day: 'numeric' });
+  const longDay = (iso: string) =>
+    parseISO(iso).toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const render = (language?: 'en' | 'es') => {
-    const wrapper = language
-      ? ({ children }: { children: React.ReactNode }) => (
-          <LanguageProvider defaultLanguage={language}>{children}</LanguageProvider>
-        )
-      : undefined;
-    return renderHook(() => useResolvedStudy('cisa-wednesday'), { wrapper });
-  };
+  const render = () => renderHook(() => useResolvedStudy('cisa-wednesday'));
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -92,25 +83,13 @@ describe('useResolvedStudy — the date labels speak the session language (#1839
     expect(Object.keys(result.current).sort()).toEqual([...expectedKeys].sort());
 
     const { staleDateLabel, weekDateLabel } = result.current;
-    expect(staleDateLabel).toBe(`Most recent · ${longDay(twoWeeksAgo, 'en')}`);
-    expect(weekDateLabel).toBe(longDay(twoWeeksAgo, 'en'));
+    expect(staleDateLabel).toBe(`Most recent · ${longDay(twoWeeksAgo)}`);
+    expect(weekDateLabel).toBe(longDay(twoWeeksAgo));
   });
 
-  it('gives a Spanish session a warning and a Spanish date, not a translation of “Most recent”', () => {
-    mockChain(MEETING);
-
-    const { result } = render('es');
-
-    // "La más reciente" would read as "the week on screen is current", which
-    // is the opposite of what the chip exists to say (ADR 0014 §6).
-    expect(result.current.staleDateLabel).toBe(`La semana ya pasó · ${longDay(twoWeeksAgo, 'es')}`);
-    expect(result.current.weekDateLabel).toBe(longDay(twoWeeksAgo, 'es'));
-  });
-
-  it('shows a date that will not parse as stored, in both languages', () => {
+  it('shows a date that will not parse as stored', () => {
     mockChain({ ...MEETING, date: 'not-a-date' });
 
     expect(render().result.current.weekDateLabel).toBe('not-a-date');
-    expect(render('es').result.current.weekDateLabel).toBe('not-a-date');
   });
 });

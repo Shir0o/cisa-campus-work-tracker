@@ -20,7 +20,7 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), isSpanish: false, t: (key: string) => key }),
+  useLanguage: () => ({ language: 'en', t: (key: string) => key }),
 }));
 
 vi.mock('firebase/firestore', () => ({

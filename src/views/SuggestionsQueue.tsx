@@ -39,11 +39,11 @@ function formatWhen(iso: string): string {
   return `${day} · ${time}`;
 }
 
-function monthLabel(month: string, isSpanish: boolean): string {
+function monthLabel(month: string): string {
   const match = /^(\d{4})-(\d{2})$/.exec(month);
   if (!match) return month;
   return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString(
-    isSpanish ? 'es' : 'en-US',
+    'en-US',
     { month: 'long', year: 'numeric' },
   );
 }
@@ -369,7 +369,7 @@ function WhoIsThisCard({
  */
 export default function SuggestionsQueue() {
   const { user, role } = useAuth();
-  const { t, isSpanish } = useLanguage();
+  const { t } = useLanguage();
   const owner = isAppOwner(user?.email);
   const [suggestions, setSuggestions] = useState<InteractionSuggestion[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -479,7 +479,7 @@ export default function SuggestionsQueue() {
                 {queue.ready.map((section) => (
                   <div key={section.month} className="flex flex-col gap-3">
                     <h3 className="text-[12px] font-medium uppercase tracking-wide text-on-surface-variant">
-                      {monthLabel(section.month, isSpanish)}
+                      {monthLabel(section.month)}
                     </h3>
                     {section.items.map((item) => (
                       <SuggestionRow

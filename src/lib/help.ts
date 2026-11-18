@@ -1,4 +1,4 @@
-import type { HelpLocaleContent, HelpManifest, HelpPage } from '../scripts/compile-help';
+import type { HelpManifest, HelpPage } from '../scripts/compile-help';
 import type { AppRole } from './permissions';
 
 /**
@@ -26,13 +26,4 @@ export function helpPageForRole(
   slug: string,
 ): HelpPage | undefined {
   return visibleHelpPages(manifest, role).find((page) => page.slug === slug);
-}
-
-/**
- * The locale's content, falling back to English when a page has no authored
- * translation. The compiler bakes the fallback into the manifest, so this is
- * the runtime safety net for a hand-edited or partial manifest.
- */
-export function helpContentForLocale(page: HelpPage, locale: string): HelpLocaleContent {
-  return page.content[locale as keyof HelpPage['content']] ?? page.content.en;
 }

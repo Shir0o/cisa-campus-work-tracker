@@ -3,7 +3,6 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { t, getDictionary } from "../lib/i18n";
 import en from "../locales/en.json";
-import es from "../locales/es.json";
 
 describe("i18n dictionary and helper", () => {
   it("returns English translation when language is en", () => {
@@ -12,39 +11,33 @@ describe("i18n dictionary and helper", () => {
     expect(t("actions.save", "en")).toBe("Save");
   });
 
-  it("returns Spanish translation when language is es", () => {
-    expect(t("nav.my_day", "es")).toBe("Mi Día");
-    expect(t("actions.add_someone", "es")).toBe("Añadir persona");
-    expect(t("actions.save", "es")).toBe("Guardar");
-  });
-
-  it("falls back to English if key is missing in Spanish", () => {
-    expect(t("nav.my_day", "es")).toBe("Mi Día");
+  it("resolves only English: a stored Spanish preference falls back to English", () => {
+    expect(t("nav.my_day", "es" as never)).toBe("My Day");
+    expect(t("actions.save", "es" as never)).toBe("Save");
+    expect(getDictionary("es" as never)).toEqual(en);
   });
 
   it("falls back to explicit fallback if key does not exist anywhere", () => {
-    expect(t("non.existent.key", "es", "Custom Fallback")).toBe("Custom Fallback");
+    expect(t("non.existent.key", "en", "Custom Fallback")).toBe("Custom Fallback");
   });
 
   it("falls back to key if key does not exist and no fallback provided", () => {
-    expect(t("non.existent.key", "es")).toBe("non.existent.key");
+    expect(t("non.existent.key", "en")).toBe("non.existent.key");
   });
 
   it("asks a grammatical discard question for every popup noun in use (#1444)", () => {
-    // Spanish nouns differ in gender ("este chat", "esta visita"), so each
-    // noun carries its own demonstrative and the question is "¿Descartar
-    // {noun}?". New nouns must be added here, so a new popup can't ship
-    // "¿Descartar esta chat?" or a capitalised noun mid-sentence.
+    // New nouns must be added here, so a new popup can't ship a capitalised
+    // noun mid-sentence.
     const expected: Record<string, string> = {
-      "attendance.rhythm_noun": "¿Descartar este ritmo?",
-      "modals.chat_noun": "¿Descartar este chat?",
-      "modals.contact_noun": "¿Descartar este contacto?",
-      "modals.gathering_noun": "¿Descartar esta reunión?",
-      "modals.interaction_noun": "¿Descartar esta interacción?",
-      "modals.rhythm_noun": "¿Descartar este ritmo?",
-      "modals.smartImport.import_noun": "¿Descartar esta importación?",
-      "modals.visit_noun": "¿Descartar esta visita?",
-      "todoComposer.noun": "¿Descartar esta tarea?",
+      "attendance.rhythm_noun": "Discard this rhythm?",
+      "modals.chat_noun": "Discard this chat?",
+      "modals.contact_noun": "Discard this contact?",
+      "modals.gathering_noun": "Discard this gathering?",
+      "modals.interaction_noun": "Discard this interaction?",
+      "modals.rhythm_noun": "Discard this rhythm?",
+      "modals.smartImport.import_noun": "Discard this import?",
+      "modals.visit_noun": "Discard this visit?",
+      "todoComposer.noun": "Discard this task?",
     };
     const root = join(process.cwd(), "src/components");
     const inUse = new Set<string>();
@@ -56,29 +49,8 @@ describe("i18n dictionary and helper", () => {
     expect([...inUse].sort()).toEqual(Object.keys(expected).sort());
 
     for (const key of inUse) {
-      expect(t("popup.discard_question", "es").replace("{noun}", t(key, "es"))).toBe(expected[key]);
       expect(t("popup.discard_question", "en").replace("{noun}", t(key, "en"))).toMatch(/^Discard this [\w-]+\?$/);
     }
-  });
-
-  it("ensures key parity between en.json and es.json", () => {
-    function getKeys(obj: Record<string, any>, prefix = ""): string[] {
-      let keys: string[] = [];
-      for (const k of Object.keys(obj)) {
-        const path = prefix ? `${prefix}.${k}` : k;
-        if (typeof obj[k] === "object" && obj[k] !== null) {
-          keys = keys.concat(getKeys(obj[k], path));
-        } else {
-          keys.push(path);
-        }
-      }
-      return keys;
-    }
-
-    const enKeys = getKeys(en).sort();
-    const esKeys = getKeys(es).sort();
-
-    expect(esKeys).toEqual(enKeys);
   });
 
   it("resolves every contactDetails key the page actually renders", () => {
@@ -147,6 +119,5 @@ describe("i18n dictionary and helper", () => {
 
   it("returns the dictionary object for a given language", () => {
     expect(getDictionary("en")).toEqual(en);
-    expect(getDictionary("es")).toEqual(es);
   });
 });

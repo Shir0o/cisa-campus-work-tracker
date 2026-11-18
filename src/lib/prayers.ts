@@ -264,13 +264,11 @@ export function prayerCarrySummary(
 }
 
 /**
- * The two strings the picker and `startHolding` write as a stand-in burden
- * ("Holding in prayer", #1691). They are held here rather than read from the
- * reader's locale because the text was stored in the *author's* locale — which
- * is why a Spanish reader could meet the English string. A card that sees one
- * renders a prompt instead of printing it as prose (#1765).
+ * The string the picker and `startHolding` write as a stand-in burden
+ * ("Holding in prayer", #1691). A card that sees it renders a prompt instead of
+ * printing it as prose (#1765).
  */
-export const PRAYER_PLACEHOLDER_BURDENS = ['Holding in prayer', 'Sosteniendo en oración'];
+export const PRAYER_PLACEHOLDER_BURDENS = ['Holding in prayer'];
 
 export function isPlaceholderPrayerBurden(text: string | undefined | null): boolean {
   if (!text) return false;

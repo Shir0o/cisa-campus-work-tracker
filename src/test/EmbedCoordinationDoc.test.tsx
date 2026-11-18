@@ -7,8 +7,6 @@ import { signInWithCustomToken } from 'firebase/auth';
 import EmbedCoordinationDoc from '../views/EmbedCoordinationDoc';
 import { useAuth } from '../components/AuthProvider';
 import { logActivity } from '../lib/firebase';
-import { LanguageProvider } from '../components/LanguageProvider';
-import * as translator from '../lib/translator';
 
 const mockUseParams = vi.fn();
 vi.mock('react-router-dom', () => ({
@@ -253,23 +251,6 @@ describe('EmbedCoordinationDoc', () => {
     expect(screen.queryByTestId('contact-modal')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('select-contact'));
     expect(screen.getByTestId('contact-modal')).toHaveTextContent('Test Contact');
-  });
-
-  it('renders translated title and markdown in DocEditor when language is Spanish', async () => {
-    translator.setCachedTranslation('Wednesday care', 'Cuidado de miércoles', 'es');
-    translator.setCachedTranslation('# hi', '# hola', 'es');
-    mockAuthState({ user: { uid: 'u1', displayName: 'Tony Wang' }, isAdmin: true, loading: false });
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <EmbedCoordinationDoc />
-      </LanguageProvider>
-    );
-    openDoc();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('doc-title')).toHaveTextContent('Cuidado de miércoles');
-      expect(screen.getByTestId('doc-md')).toHaveTextContent('# hola');
-    });
   });
 
   describe('delete', () => {

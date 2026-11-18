@@ -59,22 +59,12 @@ describe("userPreferences", () => {
   });
 
   it("saveUserPreferences merges a patch onto the user doc", async () => {
-    await saveUserPreferences("u1", { desktopMessagingApp: "google", language: "es" });
+    await saveUserPreferences("u1", { desktopMessagingApp: "google" });
     expect(setDoc).toHaveBeenCalledWith(
       { path: "userPreferences/u1" },
-      { desktopMessagingApp: "google", language: "es" },
+      { desktopMessagingApp: "google" },
       { merge: true },
     );
-  });
-
-  it("subscribeUserPreferences correctly reads language preference", () => {
-    vi.mocked(onSnapshot).mockImplementation((_ref: any, next: any) => {
-      next({ data: () => ({ language: "es" }) });
-      return vi.fn();
-    });
-    const cb = vi.fn();
-    subscribeUserPreferences("u1", cb);
-    expect(cb).toHaveBeenCalledWith({ language: "es" });
   });
 
   it("saveUserPreferences routes write errors through handleFirestoreError", async () => {

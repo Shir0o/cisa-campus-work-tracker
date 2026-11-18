@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot } from 'firebase/firestore';
 import CoordinationTrash from '../views/CoordinationTrash';
 import { useAuth } from '../components/AuthProvider';
-import { LanguageProvider } from '../components/LanguageProvider';
 import { restoreBoardDoc, deleteBoardDoc, purgeExpiredTrash } from '../lib/data/board';
 
 vi.mock('../components/AuthProvider', () => ({
@@ -87,23 +86,6 @@ describe('CoordinationTrash', () => {
     render(<CoordinationTrash />);
 
     expect(await screen.findByText('Trash is empty.')).toBeInTheDocument();
-  });
-
-  // #1850: the row chip is a locale-blind date-fns format, so Spanish read "Mon".
-  it('abbreviates the weekday in the reader\'s language', async () => {
-    setupSnapshot(trashedDocs);
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <CoordinationTrash />
-      </LanguageProvider>,
-    );
-
-    await screen.findByText('Old planning page');
-    const esWeekday = new Intl.DateTimeFormat('es', { weekday: 'short' }).format(
-      new Date('2026-06-01T00:00:00'),
-    );
-    expect(screen.getByText(esWeekday)).toBeInTheDocument();
-    expect(screen.queryByText('Mon')).not.toBeInTheDocument();
   });
 
   it('restores a page when clicking Restore', async () => {

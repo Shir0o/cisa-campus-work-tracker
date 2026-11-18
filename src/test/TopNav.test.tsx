@@ -187,22 +187,6 @@ describe('TopNav (top-anchored navigation)', () => {
     }
   });
 
-  // The EN/ES toggles measured 37×24 and 35×24 in the drawer footer at 375px,
-  // half the repo's 44px phone minimum (#1779). The visual pill stays 24px; the
-  // button around it is 44px and pulls the extra height back with a negative
-  // margin so the tray does not grow.
-  it('gives the drawer footer language toggles a 44px hit area (#1779)', () => {
-    h.layout = { ...h.layout, isMobileMenuOpen: true };
-    renderTopNav();
-
-    const nav = screen.getByRole('navigation', { name: /mobile menu/i });
-    for (const label of ['EN', 'ES']) {
-      const toggle = within(nav).getByRole('button', { name: label });
-      expect(toggle.className, label).toContain('min-h-11');
-      expect(toggle.className, label).toContain('-my-2.5');
-    }
-  });
-
   it('renders profile dropdown with persona, season chip, Settings and Log out', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /Profile/i }));
@@ -259,36 +243,5 @@ describe('TopNav (top-anchored navigation)', () => {
     const logoImg = screen.getByAltText('CISA Campus Work Tracker');
     fireEvent.error(logoImg);
     expect(logoImg.style.display).toBe('none');
-  });
-
-  it('renders language selector in the profile menu', () => {
-    renderTopNav();
-    fireEvent.click(screen.getByRole('button', { name: /Profile/i }));
-    expect(screen.getByText('Language')).toBeInTheDocument();
-    expect(screen.getByText('EN')).toBeInTheDocument();
-    expect(screen.getByText('ES')).toBeInTheDocument();
-  });
-
-  it('renders translated tabs in Spanish mode when cached', async () => {
-    const { setCachedTranslation } = await import('../lib/translator');
-    const { LanguageProvider } = await import('../components/LanguageProvider');
-
-    setCachedTranslation('Coordination Notes', 'Notas de coordinación', 'es');
-    setCachedTranslation('People', 'Personas', 'es');
-    setCachedTranslation('On our hearts', 'En nuestros corazones', 'es');
-    setCachedTranslation('More', 'Más', 'es');
-
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <LanguageProvider defaultLanguage="es">
-          <TopNav />
-        </LanguageProvider>
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText('Notas de coordinación')).toBeInTheDocument();
-    expect(screen.getByText('Personas')).toBeInTheDocument();
-    expect(screen.getByText('En nuestros corazones')).toBeInTheDocument();
-    expect(screen.getByText('Más')).toBeInTheDocument();
   });
 });

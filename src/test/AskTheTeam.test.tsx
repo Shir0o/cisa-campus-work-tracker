@@ -2,7 +2,6 @@ import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import AskTheTeam from "../components/landing/AskTheTeam";
-import { LanguageProvider } from "../components/LanguageProvider";
 import { useAuth } from "../components/AuthProvider";
 import { addAsk, deleteAskReply } from "../lib/asks";
 
@@ -291,78 +290,5 @@ describe("AskTheTeam component (#680) per-reply delete", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Delete answer$/ }));
 
     await vi.waitFor(() => expect(deleteAskReply).toHaveBeenCalledWith("q1r1"));
-  });
-});
-
-// #1831: the card printed English origin and wait sentences inside a Spanish
-// session. Both are now composed through the shared translators in lib/asks.
-describe("AskTheTeam origin and wait in Spanish (#1831)", () => {
-  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (useAuth as unknown as Mock).mockReturnValue({
-      user: { uid: "t1", displayName: "Zion Park" },
-    });
-    mockMessages = [
-      {
-        id: "es1",
-        parentId: null,
-        owner: "t1",
-        from: "t1",
-        fromName: "Zion Park",
-        kind: "question",
-        body: "Una pregunta directa",
-        at: daysAgo(0),
-      },
-      {
-        id: "es2",
-        parentId: null,
-        owner: "t1",
-        from: "t1",
-        fromName: "Zion Park",
-        takenBy: "ft1",
-        takenByName: "Mei Lin",
-        kind: "question",
-        body: "Una pregunta apuntada en persona",
-        at: daysAgo(1),
-      },
-      {
-        id: "es3",
-        parentId: null,
-        owner: "ft1",
-        from: "ft1",
-        fromName: "Mei Lin",
-        kind: "question",
-        body: "La pregunta de la líder",
-        at: daysAgo(2),
-      },
-    ];
-  });
-
-  it("writes every origin sentence and the wait line in Spanish, with the pen's name intact", () => {
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <AskTheTeam meUid="t1" />
-      </LanguageProvider>,
-    );
-
-    // origin_you_here · origin_in_person_you · origin_here
-    expect(screen.getByText("La preguntaste aquí, con tus propias palabras")).toBeInTheDocument();
-    expect(screen.getByText("Preguntada en persona · Mei la escribió por ti")).toBeInTheDocument();
-    expect(screen.getByText("Preguntada aquí, con sus propias palabras")).toBeInTheDocument();
-
-    // waited_today · waited_yesterday · waited_days, and never "1 días"
-    expect(screen.getByText(/preguntada hoy/)).toBeInTheDocument();
-    expect(screen.getByText(/esperando desde ayer/)).toBeInTheDocument();
-    expect(screen.getByText(/esperando 2 días/)).toBeInTheDocument();
-    expect(screen.queryByText(/1 días/)).not.toBeInTheDocument();
-
-    // No English origin or wait sentence survives the Spanish session.
-    expect(
-      screen.queryByText(
-        /You asked this here|Asked here|Asked in person|asked today|waiting since yesterday|waiting \d+ days|wrote it down|written down by/,
-      ),
-    ).not.toBeInTheDocument();
   });
 });

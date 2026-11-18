@@ -30,7 +30,7 @@ vi.mock('../components/ThemeProvider', () => ({
 }));
 
 vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), isSpanish: false, t: (_k: string, fb?: string) => fb ?? _k }),
+  useLanguage: () => ({ language: 'en', t: (_k: string, fb?: string) => fb ?? _k }),
 }));
 
 vi.mock('../lib/firebase', () => ({

@@ -11,8 +11,6 @@ vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({
     language: 'en',
-    setLanguage: vi.fn(),
-    isSpanish: false,
     t: (key: string) => {
       const templates: Record<string, string> = {
         'bnpb.home_review_count': '{n} interaction to review',

@@ -27,8 +27,7 @@ import { translate } from '../../src/lib/i18n';
 
 /** Resolves the localized display title for a tab route. */
 export function getMobileTabTitle(name: string, language: string = 'en'): string {
-  const lang = language === 'es' ? 'es' : 'en';
-  return translate(`mobile.nav.${name === 'index' ? 'today' : name}`, lang);
+  return translate(`mobile.nav.${name === 'index' ? 'today' : name}`, language);
 }
 
 /** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
@@ -201,7 +200,7 @@ function RoleTabs() {
       <Tabs.Screen name="more" options={slot('more', mobileTitle('more'))} />
       {/* Not a screen any more: this route only redirects old links to People,
           where The Journey is the Step pills (ADR 0047). */}
-      <Tabs.Screen name="journey" options={{ title: translate('mobile.nav.the_journey', language === 'es' ? 'es' : 'en'), href: null }} />
+      <Tabs.Screen name="journey" options={{ title: translate('mobile.nav.the_journey', language), href: null }} />
     </Tabs>
   );
 }

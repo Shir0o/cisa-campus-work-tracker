@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import OutreachBoardMobile from '../views/OutreachBoardMobile';
-import { LanguageProvider } from '../components/LanguageProvider';
 
 // jsdom does not implement Element.scrollTo (used by the tab auto-scroll effect).
 beforeAll(() => {
@@ -116,19 +115,6 @@ describe('OutreachBoardMobile', () => {
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
-  });
-
-  it('localizes the stage chrome in Spanish (#1763)', () => {
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <OutreachBoardMobile {...baseProps} contacts={[contact()]} />
-      </LanguageProvider>,
-    );
-    expect(
-      screen.getByText('1 estudiante, avanzando desde un primer saludo hacia una familia de iglesia.'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/moving from a first hello/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Mover a Alice a otro paso')).toBeInTheDocument();
   });
 
   it('adds an Unassigned tab when there are unmapped contacts', () => {
@@ -273,37 +259,5 @@ describe('OutreachBoardMobile', () => {
       expect(status).toHaveTextContent('0 people');
       expect(status).toHaveTextContent('1 more in Regular');
     });
-
-    it('speaks Spanish', () => {
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <OutreachBoardMobile {...baseProps} contacts={twoInFirst()} />
-        </LanguageProvider>,
-      );
-      const field = screen.getByRole('searchbox', { name: 'Buscar a alguien en este paso' });
-      fireEvent.change(field, { target: { value: 'cara' } });
-      expect(screen.getByRole('button', { name: '1 más en Regular' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Borrar búsqueda' })).toBeInTheDocument();
-    });
-  });
-
-  it('renders translated contact notes in Spanish mode when cached', async () => {
-    const { setCachedTranslation } = await import('../lib/translator');
-
-    setCachedTranslation('Coffee chat', 'Charla de café', 'es');
-
-    const lastTouchByContact = new Map([['c1', { ms: Date.now(), note: 'Coffee chat' }]]);
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <OutreachBoardMobile
-          {...baseProps}
-          contacts={[contact()]}
-          lastTouchByContact={lastTouchByContact}
-        />
-      </LanguageProvider>
-    );
-
-    expect(screen.getByText('Charla de café')).toBeInTheDocument();
-    expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
   });
 });

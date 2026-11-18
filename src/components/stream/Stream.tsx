@@ -143,8 +143,8 @@ function Body({
 }
 
 function useFormatters() {
-  const { t, language } = useLanguage();
-  const locale = language === "es" ? "es" : "en-US";
+  const { t } = useLanguage();
+  const locale = "en-US";
   return useMemo(() => {
     const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
     const dateTime = (iso: string) =>

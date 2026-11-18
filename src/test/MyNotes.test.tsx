@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import MyNotes from '../views/MyNotes';
-import { LanguageProvider } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
 import { FOLLOW_UPS_SEEN_KEY } from '../lib/feedbackFollowUps';
 
@@ -266,30 +265,6 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       render(<MyNotes />);
       expect(screen.getByRole('button', { name: /1 reply · Sep 1, 2026/ })).toBeInTheDocument();
     });
-
-    it('counts and marks in Spanish with the app’s own thread vocabulary', () => {
-      visitedOn(VISIT);
-      noteDocs = [answered()];
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <MyNotes />
-        </LanguageProvider>,
-      );
-      expect(screen.getByRole('button', { name: /2 respuestas · Nuevo · 1 sept 2026/ })).toBeInTheDocument();
-    });
-  });
-
-  it('speaks the note’s own vocabulary in Spanish, dates included', () => {
-    noteDocs = [{ ...NOTE, outcome: 'not-planned' }];
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <MyNotes />
-      </LanguageProvider>,
-    );
-    expect(screen.getByText('Una idea')).toBeInTheDocument();
-    expect(screen.getByText('No planeado')).toBeInTheDocument();
-    expect(screen.getByText(/no pensamos construirlo/)).toBeInTheDocument();
-    expect(screen.getByText('1 sept 2026')).toBeInTheDocument();
   });
 
   it('prefers the message written at close over the canned sentence', () => {

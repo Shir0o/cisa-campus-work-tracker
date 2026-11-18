@@ -22,7 +22,6 @@ import {
   PRAYER_PLACEHOLDER_BURDENS,
 } from '../lib/prayers';
 import en from '../locales/en.json';
-import es from '../locales/es.json';
 import { handleFirestoreError } from '../lib/firebase';
 
 const hoisted = vi.hoisted(() => {
@@ -448,11 +447,8 @@ describe('placeholder prayer burdens (#1691, #1765)', () => {
     expect(isPlaceholderPrayerBurden(undefined)).toBe(false);
   });
 
-  it('stays in step with both locale strings', () => {
-    expect(PRAYER_PLACEHOLDER_BURDENS).toEqual([
-      (en as any).prayers.holding_in_prayer,
-      (es as any).prayers.holding_in_prayer,
-    ]);
+  it('stays in step with the locale string', () => {
+    expect(PRAYER_PLACEHOLDER_BURDENS).toEqual([(en as any).prayers.holding_in_prayer]);
   });
 });
 

@@ -1,6 +1,6 @@
 import type { AppRole } from '../lib/permissions';
 
-export type HelpLocale = 'en' | 'es';
+export type HelpLocale = 'en';
 
 export interface HelpSource {
   slug: string;
@@ -103,7 +103,7 @@ export function parseHelpMarkdown(raw: string): HelpParsedPage {
   };
 }
 
-/** Compiles authored help sources into an ordered, English-fallback manifest. */
+/** Compiles authored help sources into an ordered manifest. */
 export function compileHelpManifest(sources: HelpSource[]): HelpManifest {
   const grouped = new Map<string, Partial<Record<HelpLocale, HelpParsedPage>>>();
 
@@ -121,7 +121,6 @@ export function compileHelpManifest(sources: HelpSource[]): HelpManifest {
       throw new Error(`Help page "${slug}" is missing its English source`);
     }
 
-    const es = byLocale.es;
     pages.push({
       slug,
       order: en.order,
@@ -129,7 +128,6 @@ export function compileHelpManifest(sources: HelpSource[]): HelpManifest {
       ...(en.audience ? { audience: en.audience } : {}),
       content: {
         en: { title: en.title, body: en.body },
-        es: es ? { title: es.title, body: es.body } : { title: en.title, body: en.body },
       },
     });
   }

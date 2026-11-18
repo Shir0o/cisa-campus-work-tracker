@@ -16,8 +16,7 @@ import { UndoSnackbar } from '../components/UndoSnackbar';
 /** Day / month / weekday names follow the reader's language, not date-fns'
  *  English default. */
 function useDayNames() {
-  const { language } = useLanguage();
-  const tag = language === 'es' ? 'es' : 'en-US';
+  const tag = 'en-US';
   const fmt = (d: Date, options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(tag, options).format(d);
   return {

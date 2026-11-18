@@ -14,7 +14,7 @@ import {
 // translated whole. The judgment and hash come from the shared @cisa/core copy.
 export { isAlreadySpanish, shouldShowAsIs, detectLanguage, computeTranslationHash };
 
-export type AppLanguage = 'en' | 'es';
+export type AppLanguage = 'en';
 
 // ── Multi-Tier Caching ────────────────────────────────────────────────────────
 

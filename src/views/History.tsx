@@ -490,7 +490,7 @@ export default function History() {
   const rows = useMemo(() => historyRows(filtered), [filtered]);
 
   const dayInfo = useCallback(
-    (iso: string) => dayMark(iso, language, t),
+    (iso: string) => dayMark(iso, t),
     [language, t],
   );
 
@@ -736,7 +736,7 @@ export default function History() {
                       )}
                       {h.tail && <span> {h.tail}</span>}
                       <span className="mx-1.5 text-on-surface-variant/50">·</span>
-                      <span className="text-[13px] text-on-surface-variant/80">{relTime(a.createdAt, language)}</span>
+                      <span className="text-[13px] text-on-surface-variant/80">{relTime(a.createdAt)}</span>
                     </div>
                     {h.detail && (
                       <div className="text-[13.5px] text-on-surface-variant/90 leading-relaxed mt-1">

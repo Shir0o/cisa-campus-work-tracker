@@ -23,8 +23,6 @@ import {
 } from "./dispatch";
 import { expoSender, expoReceiptFetcher, webPushSender } from "./transports";
 import { processExpoReceipts, type PendingReceipt } from "./receipts";
-import { advanceTranslationCron } from "./translate";
-import { firestoreTranslationDeps, geminiTranslator } from "./translateFirestore";
 import {
   firestoreReminderDeps,
   firestoreWeeklyDeps,
@@ -36,7 +34,6 @@ initializeApp();
 
 const EXPO_ACCESS_TOKEN = defineSecret("EXPO_ACCESS_TOKEN");
 const VAPID_PRIVATE_KEY = defineSecret("VAPID_PRIVATE_KEY");
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 // Public half of the Web Push (VAPID) pair — must match WEB_PUSH_PUBLIC_KEY in
 // src/lib/webPush.ts; rotating one without the other breaks browser push. The
 // private half is the VAPID_PRIVATE_KEY secret.
@@ -219,28 +216,6 @@ function scheduledReceiptsFor(database: string) {
 
 export const scheduledReceiptsProd = scheduledReceiptsFor("prod");
 export const scheduledReceiptsQa = scheduledReceiptsFor("qa-db");
-
-function scheduledTranslationFor(database: string) {
-  return onSchedule(
-    {
-      schedule: "0 4 * * *",
-      timeZone: "America/Los_Angeles",
-      region: "us-east1",
-      secrets: [GEMINI_API_KEY],
-      timeoutSeconds: 300,
-    },
-    async () => {
-      const db = getFirestore(database);
-      const translator = geminiTranslator(fetch, GEMINI_API_KEY.value());
-      const deps = firestoreTranslationDeps(db, translator, () => FieldValue.serverTimestamp());
-      const result = await advanceTranslationCron(deps, { maxItemsPerRun: 200 });
-      console.log(`[ScheduledTranslate] ${database} run complete:`, result);
-    },
-  );
-}
-
-export const scheduledTranslateProd = scheduledTranslationFor("prod");
-export const scheduledTranslateQa = scheduledTranslationFor("qa-db");
 
 /** Once a day on campus time, tell each asker whose Follow-up ask or question
  *  has gone unanswered three calendar days. The rule lives in @cisa/core. */

@@ -1133,7 +1133,7 @@ function WeeklyReminderSection({ uid, off }: { uid: string; off: boolean }) {
 }
 
 function ReminderScheduleSection() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [schedule, setSchedule] = useState<ReminderSchedule>(DEFAULT_REMINDER_SCHEDULE);
   useEffect(() => subscribeReminderSchedule(setSchedule), []);
 
@@ -1181,7 +1181,7 @@ function ReminderScheduleSection() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-on-surface">{row.label}</span>
               <span className="text-[12px] text-on-surface-variant">
-                {reminderTimeSummary(row.time, language)}
+                {reminderTimeSummary(row.time)}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -1225,54 +1225,6 @@ function ReminderScheduleSection() {
             </div>
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-// ── Language ───────────────────────────────────────────────────────────
-
-const LANGUAGES: { key: 'en' | 'es'; label: string; noteKey: string; note: string; flag: string }[] = [
-  { key: 'en', label: 'English', noteKey: 'settings.language_en_note', note: 'Default language', flag: '🇺🇸' },
-  { key: 'es', label: 'Español', noteKey: 'settings.language_es_note', note: 'Traducción inteligente en vivo', flag: '🇪🇸' },
-];
-
-function LanguageSection() {
-  const { language, setLanguage, t } = useLanguage();
-
-  return (
-    <section className="mt-10">
-      <SectionHeader title={t('settings.language', 'Language')} sub={t('settings.language_sub', 'Choose your preferred interface and live translation language.')} />
-      <div className="grid grid-cols-2 gap-3 max-w-xl">
-        {LANGUAGES.map(({ key, label, noteKey, note, flag }) => {
-          const active = language === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setLanguage(key)}
-              aria-pressed={active}
-              className={cn(
-                'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-colors cursor-pointer',
-                active
-                  ? 'border-transparent bg-primary text-on-primary'
-                  : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {/* Decorative: the language's own name is the next span, so an
-                    aria-label here made a screen reader say "English English". */}
-                <span className="text-xl leading-none" aria-hidden="true">{flag}</span>
-                <span className={cn('font-serif text-base leading-none', active ? 'text-on-primary' : 'text-on-surface')}>
-                  {label}
-                </span>
-              </div>
-              <span className={cn('text-xs', active ? 'text-on-primary/80' : 'text-on-surface-variant')}>
-                {t(noteKey, note)}
-              </span>
-            </button>
-          );
-        })}
       </div>
     </section>
   );
@@ -3998,12 +3950,6 @@ export default function Settings() {
       node: <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />,
     },
     {
-      id: 'settings-language',
-      label: t('settings.language', 'Language'),
-      visible: true,
-      node: <LanguageSection />,
-    },
-    {
       id: 'settings-whats-new',
       label: t('settings.whats_new', "What's New"),
       visible: true,
@@ -4141,7 +4087,6 @@ export default function Settings() {
         <NavigationSection />
         <NotificationsSection />
         <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />
-        <LanguageSection />
         <WhatsNewSection
           onOpen={() => setWhatsNewOpen(true)}
           isAdmin={isAdmin}

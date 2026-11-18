@@ -4,7 +4,6 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 const roleState = vi.hoisted(() => ({ role: 'viewer' as string }));
-const langState = vi.hoisted(() => ({ language: 'en' as string }));
 
 vi.mock('../components/AuthProvider', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -14,9 +13,7 @@ vi.mock('../components/AuthProvider', () => ({
 vi.mock('../components/LanguageProvider', () => ({
   LanguageProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useLanguage: () => ({
-    language: langState.language,
-    isSpanish: langState.language === 'es',
-    setLanguage: vi.fn(),
+    language: 'en',
     t: (_key: string, fallback?: string) => fallback ?? _key,
   }),
 }));
@@ -51,7 +48,6 @@ vi.mock('../generated/help.json', () => ({
               '`code`',
             ].join('\n'),
           },
-          es: { title: 'Empezar', body: '# Empezar\n\nHola **mundo**.' },
         },
       },
       {
@@ -61,7 +57,6 @@ vi.mock('../generated/help.json', () => ({
         audience: ['admin'],
         content: {
           en: { title: 'Admin Console', body: 'Admins only' },
-          es: { title: 'Consola', body: 'Solo administradores' },
         },
       },
       {
@@ -91,7 +86,6 @@ function renderHelp(path: string) {
 describe('Help view', () => {
   beforeEach(() => {
     roleState.role = 'viewer';
-    langState.language = 'en';
   });
 
   it('lists only the pages a role may see', () => {
@@ -128,19 +122,5 @@ describe('Help view', () => {
     renderHelp('/help/getting-started');
     expect(screen.getByRole('heading', { name: 'Getting Started' })).toBeInTheDocument();
     expect(screen.getByText('world')).toBeInTheDocument();
-  });
-
-  it('renders authored Spanish content', () => {
-    langState.language = 'es';
-    renderHelp('/help/getting-started');
-    expect(screen.getByRole('heading', { name: 'Empezar' })).toBeInTheDocument();
-    expect(screen.getByText('mundo')).toBeInTheDocument();
-  });
-
-  it('falls back to English when a page has no translation', () => {
-    langState.language = 'es';
-    renderHelp('/help/english-only');
-    expect(screen.getByRole('link', { name: 'English Only' })).toBeInTheDocument();
-    expect(screen.getByText('No translation yet')).toBeInTheDocument();
   });
 });

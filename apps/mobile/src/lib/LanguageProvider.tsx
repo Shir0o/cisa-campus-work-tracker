@@ -1,6 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './AuthProvider';
+import React, { createContext, useContext } from 'react';
 import { translate } from './i18n';
 import type { AppLanguage } from './translator';
 
@@ -8,115 +6,21 @@ export type TranslateFunction = (key: string, fallback?: string) => string;
 
 interface LanguageContextType {
   language: AppLanguage;
-  setLanguage: (lang: AppLanguage) => void;
-  isSpanish: boolean;
   t: TranslateFunction;
 }
 
-const STORAGE_KEY = 'cisa_language';
+const LANGUAGE: AppLanguage = 'en';
 
-const LanguageContext = createContext<LanguageContextType | null>(null);
+const t: TranslateFunction = (key, fallback) => translate(key, LANGUAGE, fallback);
 
-export function LanguageProvider({
-  children,
-  defaultLanguage = 'en',
-}: {
-  children: React.ReactNode;
-  defaultLanguage?: AppLanguage;
-}) {
-  let effectiveUserId: string | null = null;
-  try {
-    const auth = useAuth();
-    effectiveUserId = auth.effectiveUserId;
-  } catch {
-    // AuthProvider not in tree
-  }
+const VALUE: LanguageContextType = { language: LANGUAGE, t };
 
-  const [language, setLanguageState] = useState<AppLanguage>(defaultLanguage);
+const LanguageContext = createContext<LanguageContextType>(VALUE);
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === 'en' || saved === 'es') {
-        setLanguageState(saved);
-      }
-    }).catch(() => {});
-  }, []);
-
-  // Sync with Firestore user preferences if authenticated
-  useEffect(() => {
-    if (!effectiveUserId) return;
-
-    let unsubscribe = () => {};
-    import('./data/userPreferences').then(({ subscribeUserPreferences }) => {
-      unsubscribe = subscribeUserPreferences(effectiveUserId!, (prefs) => {
-        if (prefs.language && (prefs.language === 'en' || prefs.language === 'es')) {
-          setLanguageState(prefs.language);
-          AsyncStorage.setItem(STORAGE_KEY, prefs.language).catch(() => {});
-        }
-      });
-    }).catch(() => {});
-
-    return () => {
-      unsubscribe();
-    };
-  }, [effectiveUserId]);
-
-  const savePrefTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const setLanguage = React.useCallback((lang: AppLanguage) => {
-    setLanguageState(lang);
-    AsyncStorage.setItem(STORAGE_KEY, lang).catch(() => {});
-    if (effectiveUserId) {
-      if (savePrefTimerRef.current) {
-        clearTimeout(savePrefTimerRef.current);
-      }
-      savePrefTimerRef.current = setTimeout(() => {
-        import('./data/userPreferences').then(({ saveUserPreferences }) => {
-          saveUserPreferences(effectiveUserId!, { language: lang }).catch(() => {});
-        }).catch(() => {});
-      }, 500);
-    }
-  }, [effectiveUserId]);
-
-  useEffect(() => {
-    return () => {
-      if (savePrefTimerRef.current) {
-        clearTimeout(savePrefTimerRef.current);
-      }
-    };
-  }, []);
-
-  const t = React.useCallback(
-    (key: string, fallback?: string) => translate(key, language, fallback),
-    [language],
-  );
-
-  const value = React.useMemo<LanguageContextType>(
-    () => ({
-      language,
-      setLanguage,
-      isSpanish: language === 'es',
-      t,
-    }),
-    [language, setLanguage, t],
-  );
-
-  return (
-    <LanguageContext.Provider value={value}>
-      {children}
-    </LanguageContext.Provider>
-  );
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  return <LanguageContext.Provider value={VALUE}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    return {
-      language: 'en' as AppLanguage,
-      setLanguage: () => {},
-      isSpanish: false,
-      t: (key: string, fallback?: string) => translate(key, 'en', fallback),
-    };
-  }
-  return context;
+  return useContext(LanguageContext);
 }

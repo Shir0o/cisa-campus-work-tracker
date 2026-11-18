@@ -3,9 +3,13 @@ import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { useTranslate, useTranslateMarkdown } from "../hooks/useTranslate";
 import { Translate, OriginalToggle } from "../components/Translate";
-import { LanguageToggle } from "../components/LanguageToggle";
 import { LanguageProvider, useLanguage, useI18n } from "../components/LanguageProvider";
 import * as translator from "../lib/translator";
+
+// The reading translation runs toward English only: Spanish written by the
+// team is read in English. English text passes through untouched.
+const SPANISH = "Oración por mi familia";
+const ENGLISH = "Prayer for my family";
 
 function TestTranslateComponent({ text }: { text: string }) {
   const { translatedText, isPending } = useTranslate(text);
@@ -17,23 +21,11 @@ function TestTranslateComponent({ text }: { text: string }) {
   );
 }
 
-function TestLanguageSwitcher() {
-  const { language, setLanguage } = useLanguage();
-  return (
-    <div>
-      <span data-testid="current-lang">{language}</span>
-      <button onClick={() => setLanguage("es")}>Switch ES</button>
-      <button onClick={() => setLanguage("en")}>Switch EN</button>
-    </div>
-  );
-}
-
 function TestI18nComponent() {
-  const { t, language, isSpanish } = useI18n();
+  const { t, language } = useI18n();
   return (
     <div>
       <span data-testid="i18n-lang">{language}</span>
-      <span data-testid="i18n-is-spanish">{isSpanish ? "yes" : "no"}</span>
       <span data-testid="i18n-save">{t("actions.save")}</span>
       <span data-testid="i18n-custom">{t("non.existent", "Fallback Text")}</span>
     </div>
@@ -59,7 +51,7 @@ function mockFetchTranslations(translations: Array<{ original: string; translate
       ok: true,
       json: async () => ({
         success: true,
-        targetLang: "es",
+        targetLang: "en",
         translations: texts.map((t) => ({
           original: t,
           translated: map.get(t) ?? t,
@@ -78,9 +70,9 @@ describe("useTranslate and Translate component", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns original text synchronously when language is English", () => {
+  it("returns original text synchronously when it is already English", () => {
     render(
-      <LanguageProvider defaultLanguage="en">
+      <LanguageProvider>
         <TestTranslateComponent text="Welcome to Campus" />
       </LanguageProvider>
     );
@@ -89,70 +81,52 @@ describe("useTranslate and Translate component", () => {
     expect(screen.getByTestId("translated").textContent).toBe("Welcome to Campus");
   });
 
-  it("translates a Spanish prayer burden toward English for an English reader", async () => {
-    const translateSpy = vi.spyOn(translator, "translateText").mockResolvedValueOnce(
-      "Prayer for my family",
-    );
+  it("translates a Spanish prayer burden toward English for the reader", async () => {
+    const translateSpy = vi.spyOn(translator, "translateText").mockResolvedValueOnce(ENGLISH);
 
     render(
-      <LanguageProvider defaultLanguage="en">
-        <TestTranslateComponent text="Oración por mi familia" />
+      <LanguageProvider>
+        <TestTranslateComponent text={SPANISH} />
       </LanguageProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("translated").textContent).toBe("Prayer for my family");
+      expect(screen.getByTestId("translated").textContent).toBe(ENGLISH);
       expect(screen.getByTestId("pending").textContent).toBe("done");
     });
-    expect(translateSpy).toHaveBeenCalledWith("Oración por mi familia", "en");
+    expect(translateSpy).toHaveBeenCalledWith(SPANISH, "en");
   });
 
   it("returns cached translation instantly without loading state", () => {
-    translator.setCachedTranslation("Welcome to Campus", "Bienvenido al Campus", "es");
+    translator.setCachedTranslation(SPANISH, ENGLISH, "en");
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <TestTranslateComponent text="Welcome to Campus" />
+      <LanguageProvider>
+        <TestTranslateComponent text={SPANISH} />
       </LanguageProvider>
     );
 
     expect(screen.getByTestId("pending").textContent).toBe("done");
-    expect(screen.getByTestId("translated").textContent).toBe("Bienvenido al Campus");
-  });
-
-  it("fetches and renders translation when not cached", async () => {
-    vi.spyOn(translator, "translateText").mockResolvedValueOnce("Bienvenido al Campus");
-
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <TestTranslateComponent text="Welcome to Campus" />
-      </LanguageProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("translated").textContent).toBe("Bienvenido al Campus");
-    });
+    expect(screen.getByTestId("translated").textContent).toBe(ENGLISH);
   });
 
   it("Translate component renders translated text inside specified element", async () => {
-    translator.setCachedTranslation("Fellowship", "Compañerismo", "es");
+    translator.setCachedTranslation("Compañerismo de oración", "Prayer fellowship", "en");
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <Translate text="Fellowship" as="h1" className="text-xl font-bold" data-testid="title" />
+      <LanguageProvider>
+        <Translate text="Compañerismo de oración" as="h1" className="text-xl font-bold" data-testid="title" />
       </LanguageProvider>
     );
 
     const titleEl = screen.getByTestId("title");
     expect(titleEl.tagName.toLowerCase()).toBe("h1");
-    expect(titleEl.textContent).toBe("Compañerismo");
+    expect(titleEl.textContent).toBe("Prayer fellowship");
   });
 
   it("Translate component supports children as string content and number content", async () => {
-    translator.setCachedTranslation("Settings", "Ajustes", "es");
-
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <Translate as="div" data-testid="settings-label">Settings</Translate>
         <Translate as="div" data-testid="number-label">{42}</Translate>
       </LanguageProvider>
@@ -160,7 +134,7 @@ describe("useTranslate and Translate component", () => {
 
     const el = screen.getByTestId("settings-label");
     expect(el.tagName.toLowerCase()).toBe("div");
-    expect(el.textContent).toBe("Ajustes");
+    expect(el.textContent).toBe("Settings");
 
     const numEl = screen.getByTestId("number-label");
     expect(numEl.textContent).toBe("42");
@@ -168,7 +142,7 @@ describe("useTranslate and Translate component", () => {
 
   it("handles empty or null text gracefully", () => {
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestTranslateComponent text="" />
       </LanguageProvider>
     );
@@ -179,7 +153,7 @@ describe("useTranslate and Translate component", () => {
 
   it("respects enabled: false option", () => {
     function DisabledTranslateComponent() {
-      const { translatedText, isPending } = useTranslate("Active item", { enabled: false });
+      const { translatedText, isPending } = useTranslate(SPANISH, { enabled: false });
       return (
         <div>
           <span data-testid="pending">{isPending ? "loading" : "done"}</span>
@@ -189,100 +163,74 @@ describe("useTranslate and Translate component", () => {
     }
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <DisabledTranslateComponent />
       </LanguageProvider>
     );
 
     expect(screen.getByTestId("pending").textContent).toBe("done");
-    expect(screen.getByTestId("translated").textContent).toBe("Active item");
+    expect(screen.getByTestId("translated").textContent).toBe(SPANISH);
   });
 
   it("supports showOriginalToggle and toggles back and forth", () => {
-    translator.setCachedTranslation("Original Prayer Note", "Nota de oración original", "es");
+    translator.setCachedTranslation(SPANISH, ENGLISH, "en");
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <Translate text="Original Prayer Note" showOriginalToggle data-testid="ugc-text" />
+      <LanguageProvider>
+        <Translate text={SPANISH} showOriginalToggle data-testid="ugc-text" />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("ugc-text").textContent).toContain("Nota de oración original");
-    const toggleBtn = screen.getByRole("button", { name: "Ver original" });
+    expect(screen.getByTestId("ugc-text").textContent).toContain(ENGLISH);
+    const toggleBtn = screen.getByRole("button", { name: "Show original" });
     expect(toggleBtn).toBeInTheDocument();
 
     fireEvent.click(toggleBtn);
-    expect(screen.getByTestId("ugc-text").textContent).toContain("Original Prayer Note");
-    expect(screen.getByRole("button", { name: "Ver traducción" })).toBeInTheDocument();
+    expect(screen.getByTestId("ugc-text").textContent).toContain(SPANISH);
+    expect(screen.getByRole("button", { name: "Show translation" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Ver traducción" }));
-    expect(screen.getByTestId("ugc-text").textContent).toContain("Nota de oración original");
+    fireEvent.click(screen.getByRole("button", { name: "Show translation" }));
+    expect(screen.getByTestId("ugc-text").textContent).toContain(ENGLISH);
   });
 
   it("renders standalone OriginalToggle button and handles clicks", () => {
     const onToggle = vi.fn();
-    const { rerender } = render(
-      <LanguageProvider defaultLanguage="es">
-        <OriginalToggle showingOriginal={false} onToggle={onToggle} />
-      </LanguageProvider>
-    );
+    const { rerender } = render(<OriginalToggle showingOriginal={false} onToggle={onToggle} />);
 
-    const btn = screen.getByRole("button", { name: "Ver original" });
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByRole("button", { name: "Show original" }));
     expect(onToggle).toHaveBeenCalledTimes(1);
 
-    rerender(
-      <LanguageProvider defaultLanguage="es">
-        <OriginalToggle showingOriginal={true} onToggle={onToggle} />
-      </LanguageProvider>
-    );
-    expect(screen.getByRole("button", { name: "Ver traducción" })).toBeInTheDocument();
+    rerender(<OriginalToggle showingOriginal={true} onToggle={onToggle} />);
+    expect(screen.getByRole("button", { name: "Show translation" })).toBeInTheDocument();
   });
 
-  it("OriginalToggle formats in English when targetLang is English", () => {
-    const onToggle = vi.fn();
+  it("useI18n hook provides translation helper and the English language", () => {
     render(
-      <LanguageProvider defaultLanguage="en">
-        <OriginalToggle showingOriginal={false} onToggle={onToggle} targetLang="en" />
-      </LanguageProvider>
-    );
-
-    expect(screen.getByRole("button", { name: "Show original" })).toBeInTheDocument();
-  });
-
-  it("useI18n hook provides translation helper and active language status", () => {
-    render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestI18nComponent />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("i18n-lang").textContent).toBe("es");
-    expect(screen.getByTestId("i18n-is-spanish").textContent).toBe("yes");
-    expect(screen.getByTestId("i18n-save").textContent).toBe("Guardar");
+    expect(screen.getByTestId("i18n-lang").textContent).toBe("en");
+    expect(screen.getByTestId("i18n-save").textContent).toBe("Save");
     expect(screen.getByTestId("i18n-custom").textContent).toBe("Fallback Text");
   });
 
   it("updates translation when subscriber callback fires", async () => {
-    let pendingPromise: Promise<string>;
-    vi.spyOn(translator, "translateText").mockImplementationOnce(() => {
-      pendingPromise = new Promise(() => {}); // never resolves
-      return pendingPromise;
-    });
+    vi.spyOn(translator, "translateText").mockImplementationOnce(() => new Promise(() => {}));
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <TestTranslateComponent text="Late update" />
+      <LanguageProvider>
+        <TestTranslateComponent text="Actualización tardía" />
       </LanguageProvider>
     );
 
     expect(screen.getByTestId("pending").textContent).toBe("loading");
 
-    const hash = translator.computeTranslationHash("es", "Late update");
-    translator.setCachedTranslation("Late update", "Actualización tardía", "es");
+    translator.setCachedTranslation("Actualización tardía", "Late update", "en");
 
     await waitFor(() => {
-      expect(screen.getByTestId("translated").textContent).toBe("Actualización tardía");
+      expect(screen.getByTestId("translated").textContent).toBe("Late update");
       expect(screen.getByTestId("pending").textContent).toBe("done");
     });
   });
@@ -291,83 +239,39 @@ describe("useTranslate and Translate component", () => {
     vi.spyOn(translator, "translateText").mockRejectedValueOnce(new Error("Fail"));
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <TestTranslateComponent text="Error fallback item" />
+      <LanguageProvider>
+        <TestTranslateComponent text="Elemento con error de traducción" />
       </LanguageProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("translated").textContent).toBe("Error fallback item");
+      expect(screen.getByTestId("translated").textContent).toBe("Elemento con error de traducción");
       expect(screen.getByTestId("pending").textContent).toBe("done");
     });
   });
 
-  it("falls back to English when useLanguage is used outside LanguageProvider", () => {
-    render(<TestLanguageSwitcher />);
-    expect(screen.getByTestId("current-lang").textContent).toBe("en");
-  });
-
-  it("LanguageProvider provides language state and persists selection", () => {
-    render(
-      <LanguageProvider defaultLanguage="en">
-        <TestLanguageSwitcher />
-      </LanguageProvider>
-    );
-
-    expect(screen.getByTestId("current-lang").textContent).toBe("en");
-    fireEvent.click(screen.getByText("Switch ES"));
-    expect(screen.getByTestId("current-lang").textContent).toBe("es");
-    expect(localStorage.getItem("cisa_language")).toBe("es");
-  });
-
-  it("LanguageToggle switches language on click", () => {
-    render(
-      <LanguageProvider defaultLanguage="en">
-        <LanguageToggle />
-      </LanguageProvider>
-    );
-
-    const esButton = screen.getByRole("button", { name: "ES" });
-    fireEvent.click(esButton);
-    expect(localStorage.getItem("cisa_language")).toBe("es");
-
-    // Clicking ES again when already ES
-    fireEvent.click(esButton);
-    expect(localStorage.getItem("cisa_language")).toBe("es");
-
-    const enButton = screen.getByRole("button", { name: "EN" });
-    fireEvent.click(enButton);
-    expect(localStorage.getItem("cisa_language")).toBe("en");
-
-    // Clicking EN again when already EN
-    fireEvent.click(enButton);
-    expect(localStorage.getItem("cisa_language")).toBe("en");
-  });
-
-  it("useLanguage fallback returns no-op functions when used outside Provider", () => {
+  it("useLanguage outside LanguageProvider is English", () => {
     function FallbackConsumer() {
-      const { setLanguage, t, isSpanish } = useLanguage();
+      const { language, t } = useLanguage();
       return (
         <div>
-          <button onClick={() => setLanguage("es")}>Set Lang</button>
+          <span data-testid="current-lang">{language}</span>
           <span data-testid="t-out">{t("actions.save", "Fallback")}</span>
-          <span data-testid="spanish">{isSpanish ? "yes" : "no"}</span>
         </div>
       );
     }
 
     render(<FallbackConsumer />);
-    expect(screen.getByTestId("spanish").textContent).toBe("no");
+    expect(screen.getByTestId("current-lang").textContent).toBe("en");
     expect(screen.getByTestId("t-out").textContent).toBe("Save");
-    fireEvent.click(screen.getByText("Set Lang"));
   });
 
   it("Translate component applies loading transition class while pending translation", async () => {
     vi.spyOn(translator, "translateText").mockImplementationOnce(() => new Promise(() => {}));
 
     render(
-      <LanguageProvider defaultLanguage="es">
-        <Translate text="Fresh text waiting" data-testid="pending-translate" />
+      <LanguageProvider>
+        <Translate text="Oración fresca en espera para hoy" data-testid="pending-translate" />
       </LanguageProvider>
     );
 
@@ -378,12 +282,12 @@ describe("useTranslate and Translate component", () => {
 });
 
 describe("useTranslateMarkdown", () => {
-  const MD = "# One\n\nHello.\n\n# Two\n\nWorld.";
-  const ES_MD = "# Uno\n\nHola.\n\n# Dos\n\nMundo.";
-  const SEC1 = "# One\n\nHello.";
-  const SEC2 = "# Two\n\nWorld.";
-  const SEC1_ES = "# Uno\n\nHola.";
-  const SEC2_ES = "# Dos\n\nMundo.";
+  const SEC1 = "# Uno\n\nOración por mi familia esta semana.";
+  const SEC2 = "# Dos\n\nEl estudio bíblico fue muy bueno esta mañana.";
+  const SEC1_EN = "# One\n\nPrayer for my family this week.";
+  const SEC2_EN = "# Two\n\nThe Bible study was very good this morning.";
+  const MD = `${SEC1}\n\n${SEC2}`;
+  const EN_MD = `${SEC1_EN}\n\n${SEC2_EN}`;
 
   beforeEach(() => {
     localStorage.clear();
@@ -391,47 +295,47 @@ describe("useTranslateMarkdown", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns original markdown when language is English, without hitting the API", () => {
+  it("returns English markdown as is, without hitting the API", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(
-      <LanguageProvider defaultLanguage="en">
-        <TestMarkdownComponent text={MD} />
+      <LanguageProvider>
+        <TestMarkdownComponent text={EN_MD} />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("md-translated").textContent).toBe(MD);
+    expect(screen.getByTestId("md-translated").textContent).toBe(EN_MD);
     expect(screen.getByTestId("md-pending").textContent).toBe("done");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("joins cached translations instantly when every section is cached", async () => {
-    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
-    translator.setCachedTranslation(SEC2, SEC2_ES, "es");
+    translator.setCachedTranslation(SEC1, SEC1_EN, "en");
+    translator.setCachedTranslation(SEC2, SEC2_EN, "en");
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestMarkdownComponent text={MD} />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("md-translated").textContent).toBe(ES_MD);
+    expect(screen.getByTestId("md-translated").textContent).toBe(EN_MD);
     expect(screen.getByTestId("md-pending").textContent).toBe("done");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("sends only the uncached sections to the API and mixes in cached ones", async () => {
-    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
-    const fetchSpy = mockFetchTranslations([{ original: SEC2, translated: SEC2_ES }]);
+    translator.setCachedTranslation(SEC1, SEC1_EN, "en");
+    const fetchSpy = mockFetchTranslations([{ original: SEC2, translated: SEC2_EN }]);
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestMarkdownComponent text={MD} />
       </LanguageProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("md-translated").textContent).toBe(ES_MD);
+      expect(screen.getByTestId("md-translated").textContent).toBe(EN_MD);
       expect(screen.getByTestId("md-pending").textContent).toBe("done");
     });
 
@@ -444,7 +348,7 @@ describe("useTranslateMarkdown", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Offline"));
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestMarkdownComponent text={MD} />
       </LanguageProvider>
     );
@@ -459,74 +363,34 @@ describe("useTranslateMarkdown", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {}));
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestMarkdownComponent text={MD} />
       </LanguageProvider>
     );
 
     expect(screen.getByTestId("md-pending").textContent).toBe("loading");
 
-    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
+    translator.setCachedTranslation(SEC1, SEC1_EN, "en");
 
     await waitFor(() => {
-      expect(screen.getByTestId("md-translated").textContent).toBe(`${SEC1_ES}\n\n${SEC2}`);
+      expect(screen.getByTestId("md-translated").textContent).toBe(`${SEC1_EN}\n\n${SEC2}`);
       expect(screen.getByTestId("md-pending").textContent).toBe("loading");
     });
   });
 
   it("retains markdown structure including checklists, bold, and subheadings across translations", async () => {
-    const complexMd = "# Agenda\n\n- [ ] Task 1 (@Mei)\n- [x] Task 2\n\n**Important notice**\n\n> Quote line";
-    const complexEs = "# Agenda\n\n- [ ] Tarea 1 (@Mei)\n- [x] Tarea 2\n\n**Aviso importante**\n\n> Línea de cita";
-    translator.setCachedTranslation(complexMd, complexEs, "es");
+    const complexMd = "# Agenda\n\n- [ ] Tarea 1 (@Mei)\n- [x] Tarea 2\n\n**Aviso importante**\n\n> Línea de cita";
+    const complexEn = "# Agenda\n\n- [ ] Task 1 (@Mei)\n- [x] Task 2\n\n**Important notice**\n\n> Quote line";
+    translator.setCachedTranslation(complexMd, complexEn, "en");
 
     render(
-      <LanguageProvider defaultLanguage="es">
+      <LanguageProvider>
         <TestMarkdownComponent text={complexMd} />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("md-translated").textContent).toBe(complexEs);
-    expect(screen.getByTestId("md-translated").textContent).toContain("- [ ] Tarea 1 (@Mei)");
-    expect(screen.getByTestId("md-translated").textContent).toContain("**Aviso importante**");
-  });
-
-  it("synchronously updates translatedSections when language changes without showing empty string", async () => {
-    translator.setCachedTranslation(MD, ES_MD, "es");
-
-    function LanguageSwitchMarkdownWrapper() {
-      const { language, setLanguage } = useLanguage();
-      const { translatedText } = useTranslateMarkdown(MD);
-      return (
-        <div>
-          <span data-testid="active-lang">{language}</span>
-          <span data-testid="rendered-md">{translatedText}</span>
-          <button onClick={() => setLanguage("es")}>Switch ES</button>
-          <button onClick={() => setLanguage("en")}>Switch EN</button>
-        </div>
-      );
-    }
-
-    render(
-      <LanguageProvider defaultLanguage="en">
-        <LanguageSwitchMarkdownWrapper />
-      </LanguageProvider>
-    );
-
-    expect(screen.getByTestId("rendered-md").textContent).toBe(MD);
-
-    fireEvent.click(screen.getByRole("button", { name: "Switch ES" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("active-lang").textContent).toBe("es");
-      expect(screen.getByTestId("rendered-md").textContent).toBe(ES_MD);
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Switch EN" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("active-lang").textContent).toBe("en");
-      expect(screen.getByTestId("rendered-md").textContent).toBe(MD);
-    });
+    expect(screen.getByTestId("md-translated").textContent).toBe(complexEn);
+    expect(screen.getByTestId("md-translated").textContent).toContain("- [ ] Task 1 (@Mei)");
+    expect(screen.getByTestId("md-translated").textContent).toContain("**Important notice**");
   });
 });
-

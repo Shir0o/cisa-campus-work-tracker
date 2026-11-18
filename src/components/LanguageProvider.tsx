@@ -1,101 +1,31 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { AppLanguage, saveUserPreferences, subscribeUserPreferences } from "../lib/userPreferences";
-import { useAuth } from "./AuthProvider";
+import React, { createContext, useContext, useEffect } from "react";
+import type { AppLanguage } from "../lib/userPreferences";
 import { t as translateKey } from "../lib/i18n";
 import { claimedDocumentTitle } from "../lib/documentTitle";
 
 interface LanguageContextType {
   language: AppLanguage;
-  setLanguage: (lang: AppLanguage) => void;
-  isSpanish: boolean;
   t: (key: string, fallback?: string) => string;
 }
 
-const STORAGE_KEY = "cisa_language";
+const LANGUAGE: AppLanguage = "en";
+
+const t = (key: string, fallback?: string) => translateKey(key, LANGUAGE, fallback);
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
-export function LanguageProvider({
-  children,
-  defaultLanguage = "en",
-}: {
-  children: React.ReactNode;
-  defaultLanguage?: AppLanguage;
-}) {
-  let effectiveUserId: string | null = null;
-  try {
-    const auth = useAuth();
-    effectiveUserId = auth.effectiveUserId;
-  } catch {
-    // AuthProvider not in tree (e.g. standalone test)
-  }
-  const [language, setLanguageState] = useState<AppLanguage>(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "en" || saved === "es") {
-        return saved;
-      }
-    }
-    return defaultLanguage;
-  });
+const VALUE: LanguageContextType = { language: LANGUAGE, t };
 
-  // Sync with Firestore user preferences if authenticated
-  useEffect(() => {
-    if (!effectiveUserId) return;
-
-    const unsubscribe = subscribeUserPreferences(effectiveUserId, (prefs) => {
-      if (prefs.language && (prefs.language === "en" || prefs.language === "es")) {
-        setLanguageState(prefs.language);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, prefs.language);
-        }
-      }
-    });
-
-    return unsubscribe;
-  }, [effectiveUserId]);
-
-  const savePrefTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const setLanguage = React.useCallback((lang: AppLanguage) => {
-    setLanguageState(lang);
-    if (typeof window !== "undefined" && window.localStorage) {
-      localStorage.setItem(STORAGE_KEY, lang);
-    }
-    if (effectiveUserId) {
-      if (savePrefTimerRef.current) {
-        clearTimeout(savePrefTimerRef.current);
-      }
-      savePrefTimerRef.current = setTimeout(() => {
-        saveUserPreferences(effectiveUserId, { language: lang });
-      }, 500);
-    }
-  }, [effectiveUserId]);
-
-  useEffect(() => {
-    return () => {
-      if (savePrefTimerRef.current) {
-        clearTimeout(savePrefTimerRef.current);
-      }
-    };
-  }, []);
-
-  const t = React.useCallback(
-    (key: string, fallback?: string) => {
-      return translateKey(key, language, fallback);
-    },
-    [language],
-  );
-
-  // Keep browser/PWA metadata in sync with the active language.
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  // Keep browser metadata in sync with the English strings.
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    document.documentElement.lang = language;
+    document.documentElement.lang = LANGUAGE;
     // A route that names its own page (the study readers, #1814/#1838) keeps
-    // that name through a language change: effects run before this one, so the
-    // route's title is already on the document.
-    document.title = claimedDocumentTitle() ?? translateKey("meta.title", language);
+    // that name: effects run before this one, so the route's title is already
+    // on the document.
+    document.title = claimedDocumentTitle() ?? translateKey("meta.title", LANGUAGE);
 
     let metaDescription = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!metaDescription) {
@@ -103,52 +33,21 @@ export function LanguageProvider({
       metaDescription.setAttribute("name", "description");
       document.head.appendChild(metaDescription);
     }
-    metaDescription.setAttribute("content", translateKey("meta.description", language));
-
-    let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    if (!manifestLink) {
-      manifestLink = document.createElement("link");
-      manifestLink.setAttribute("rel", "manifest");
-      document.head.appendChild(manifestLink);
-    }
-    manifestLink.setAttribute(
-      "href",
-      language === "es" ? "/manifest-es.json" : "/manifest.json",
-    );
-  }, [language]);
-
-  const value = React.useMemo<LanguageContextType>(
-    () => ({
-      language,
-      setLanguage,
-      isSpanish: language === "es",
-      t,
-    }),
-    [language, setLanguage, t],
-  );
+    metaDescription.setAttribute("content", translateKey("meta.description", LANGUAGE));
+  }, []);
 
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={VALUE}>
       {children}
     </LanguageContext.Provider>
   );
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    return {
-      language: "en" as AppLanguage,
-      setLanguage: () => {},
-      isSpanish: false,
-      t: (key: string, fallback?: string) => translateKey(key, "en", fallback),
-    };
-  }
-  return context;
+  return useContext(LanguageContext) ?? VALUE;
 }
 
 export function useI18n() {
-  const { t, language, isSpanish } = useLanguage();
-  return { t, language, isSpanish };
+  const { t, language } = useLanguage();
+  return { t, language };
 }
-

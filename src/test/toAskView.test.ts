@@ -17,7 +17,6 @@ import { applyTeams } from '../lib/teams';
 import type { Contact, Interaction } from '../types';
 import type { ThreadMessageWithContact } from '../lib/threads';
 import en from '../locales/en.json';
-import es from '../locales/es.json';
 
 // A tiny i18n stand-in: returns the fallback with placeholders filled.
 const t = (_key: string, fallback?: string) => fallback ?? _key;
@@ -192,10 +191,8 @@ describe('toAskView — the words', () => {
     // #1962: `cleared_named` shipped with a {verb} the renderer never fills.
     const cleared = { reason: 'reached' as const, at: 'now', name: 'Jae' };
     const english = clearedText(cleared, dictionaryT(en));
-    const spanish = clearedText(cleared, dictionaryT(es));
     expect(english).toBe('Cleared · Jae reached them');
-    expect(spanish).toBe('Resuelta · Jae se puso en contacto');
-    expect([english, spanish].join(' ')).not.toContain('{');
+    expect(english).not.toContain('{');
   });
 });
 
@@ -238,7 +235,7 @@ describe('toAskView — Post an update words', () => {
 
   it('fills every placeholder in the shipped dictionaries', () => {
     const names = { contact: 'Priya', trainee: 'Jae' };
-    for (const dict of [en, es]) {
+    for (const dict of [en]) {
       const tt = dictionaryT(dict);
       const words = [
         ...(['line', 'contact', 'thread'] as const).flatMap((d) => [

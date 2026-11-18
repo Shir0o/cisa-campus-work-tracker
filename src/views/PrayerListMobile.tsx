@@ -589,7 +589,7 @@ function PrayerItemMobile({
   isManager?: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
@@ -629,7 +629,7 @@ function PrayerItemMobile({
         <div className="flex items-baseline gap-2 flex-wrap prt-prayer-tools">
           {label && <SectionEyebrow label={label} current={variant === 'week'} />}
           <span className="text-[12px] text-on-surface-variant/80">
-            {formatDate(prayer.date, language === 'es' ? 'es' : 'en-US')}
+            {formatDate(prayer.date, 'en-US')}
           </span>
           {nudge && (
             <span className={cn(EYEBROW, 'text-error')}>{nudge}</span>

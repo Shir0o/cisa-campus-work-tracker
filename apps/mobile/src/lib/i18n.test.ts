@@ -36,14 +36,10 @@ describe('mobile i18n', () => {
     expect(translate('actions.cancel', 'en')).toBe('Cancel');
   });
 
-  it('resolves nested keys in Spanish', () => {
-    expect(translate('mobile.nav.today', 'es')).toBe('Hoy');
-    expect(translate('actions.cancel', 'es')).toBe('Cancelar');
-  });
-
-  it('falls back to English when a Spanish key is missing', () => {
-    expect(translate('mobile.nav.today', 'es')).not.toBe('mobile.nav.today');
-    expect(translate('definitely.missing.key', 'es')).toBe('definitely.missing.key');
+  it('resolves only English: a stored Spanish preference falls back to English', () => {
+    expect(translate('mobile.nav.today', 'es' as never)).toBe('Today');
+    expect(translate('actions.cancel', 'es' as never)).toBe('Cancel');
+    expect(getDictionary('es' as never)).toEqual(getDictionary('en'));
   });
 
   it('falls back to the supplied fallback before returning the key', () => {
@@ -55,18 +51,8 @@ describe('mobile i18n', () => {
     expect(usedKeys.length).toBeGreaterThan(0);
 
     const en = getDictionary('en');
-    const es = getDictionary('es');
     const missingEn = usedKeys.filter((key) => !resolves(en, key)).sort();
-    const missingEs = usedKeys.filter((key) => !resolves(es, key)).sort();
 
-    expect({ missingEn, missingEs }).toEqual({ missingEn: [], missingEs: [] });
-  });
-
-  it('keeps English and Spanish dictionaries at parity for mobile keys', () => {
-    const en = getDictionary('en');
-    const es = getDictionary('es');
-    const enMobile = (en as any).mobile ?? {};
-    const esMobile = (es as any).mobile ?? {};
-    expect(Object.keys(enMobile).sort()).toEqual(Object.keys(esMobile).sort());
+    expect(missingEn).toEqual([]);
   });
 });

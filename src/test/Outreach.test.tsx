@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Outreach, { otWhen } from '../views/Outreach';
+import Outreach from '../views/Outreach';
 import { useAuth } from '../components/AuthProvider';
 import { canAccessRoute } from '../lib/permissions';
 
@@ -311,16 +311,6 @@ describe('Outreach', () => {
     expect(screen.getByRole('button', { name: 'Ana Reyes' }).getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('formats a date in the reader’s language, day first', () => {
-    const iso = '2026-08-14';
-    const inSpanish = otWhen(iso, (_k, fallback) => fallback ?? _k, 'es');
-    const expected = new Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' }).format(new Date(iso + 'T12:00:00Z'));
-    // Day, then month, in both languages — the gutter stacks it that way, and
-    // Spanish already reads it that way (#1846).
-    expect(inSpanish).toBe(`14\u00a0${expected}`);
-    expect(otWhen(iso, (_k, fallback) => fallback ?? _k, 'en')).toBe('14\u00a0Aug');
-  });
-
   it('is a Full-timer\'s alone — trainees and any legacy role are locked out', () => {
     expect(canAccessRoute('admin', '/outreach')).toBe(true);
     for (const role of ['manager', 'operator', 'viewer']) {
@@ -440,22 +430,6 @@ describe('Outreach says a date one way (#1846)', () => {
     render(<Outreach />);
     const card = (await screen.findByRole('button', { name: /Cedar Park — the north lawn/ })).closest('article')!;
     expectOneOrder(card, monthIn('en'));
-  });
-
-  it('reads day then month in both slots, in Spanish', async () => {
-    const { LanguageProvider } = await import('../components/LanguageProvider');
-    localStorage.setItem('cisa_language', 'es');
-    try {
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <Outreach />
-        </LanguageProvider>,
-      );
-      const card = (await screen.findByRole('button', { name: /Cedar Park — the north lawn/ })).closest('article')!;
-      expectOneOrder(card, monthIn('es'));
-    } finally {
-      localStorage.clear();
-    }
   });
 
   it('never lets a separator be a flex item of its own', async () => {

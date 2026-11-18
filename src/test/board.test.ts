@@ -83,13 +83,8 @@ describe('Board Pure Helpers', () => {
       expect(weekdayOf('2026-06-17', 'en')).toBe('Wednesday');
     });
 
-    it('formats the weekday in the reader\'s language (#1850)', () => {
-      expect(weekdayOf('2026-06-16', 'es')).toBe('martes');
-    });
-
     it('returns empty string for invalid dates', () => {
       expect(weekdayOf('invalid-date', 'en')).toBe('');
-      expect(weekdayOf('invalid-date', 'es')).toBe('');
     });
   });
 
@@ -98,23 +93,14 @@ describe('Board Pure Helpers', () => {
       expect(dateLabelOf('2026-06-16', 'en')).toBe('Jun 16');
     });
 
-    it('formats the month and day in the reader\'s language (#1850)', () => {
-      expect(dateLabelOf('2026-06-16', 'es')).toBe('16 jun');
-    });
-
     it('returns the input date if invalid', () => {
       expect(dateLabelOf('invalid-date', 'en')).toBe('invalid-date');
-      expect(dateLabelOf('invalid-date', 'es')).toBe('invalid-date');
     });
   });
 
   describe('longDateOf', () => {
     it('writes the weekday and date in English', () => {
       expect(longDateOf('2026-10-24', 'en')).toBe('Saturday, Oct 24');
-    });
-
-    it('writes the weekday and date in the reader\'s language, comma included (#1850)', () => {
-      expect(longDateOf('2026-10-24', 'es')).toBe('sábado, 24 oct');
     });
 
     it('returns empty string for invalid dates', () => {
@@ -181,10 +167,6 @@ describe('Board Pure Helpers', () => {
     it('returns short weekday name', () => {
       expect(weekdayShort('2026-06-16', 'en')).toBe('Tue');
       expect(weekdayShort('invalid-date', 'en')).toBe('');
-    });
-
-    it('abbreviates the weekday in the reader\'s language (#1850)', () => {
-      expect(weekdayShort('2026-06-16', 'es')).toBe('mar');
     });
   });
 
@@ -493,13 +475,6 @@ More text
 
       const taskResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'welcome emails', 'en');
       expect(taskResults.some((r) => r.kind === 'task' && r.taskId === 'task1')).toBe(true);
-    });
-
-    it('writes result dates in the reader\'s language (#1850)', () => {
-      const [en] = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'en');
-      const [es] = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'es');
-      expect(en.subtitle).toBe('Jun 25');
-      expect(es.subtitle).toBe('25 jun');
     });
   });
 });

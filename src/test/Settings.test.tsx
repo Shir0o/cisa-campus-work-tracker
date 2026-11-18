@@ -33,9 +33,8 @@ vi.mock('../components/NavShellProvider', () => ({
   NavShellProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-const mockSetLanguage = vi.fn();
 vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false, t: (_key: string, fallback?: string) => fallback ?? _key }),
+  useLanguage: () => ({ language: 'en', t: (_key: string, fallback?: string) => fallback ?? _key }),
 }));
 
 vi.mock('../views/FeedbackList', () => ({
@@ -274,7 +273,6 @@ describe('Settings', () => {
       const { container } = render(<Settings />);
 
       expect(within(container).getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
-      expect(within(container).getByRole('heading', { level: 2, name: 'Language' })).toBeInTheDocument();
       expect(within(container).getByRole('heading', { level: 2, name: 'Your weekly reminders' })).toBeInTheDocument();
 
       for (const name of [
@@ -304,18 +302,6 @@ describe('Settings', () => {
 
       expect(screen.getByText('Pending approval')).toBeInTheDocument();
       expect(screen.queryByText('Approved')).not.toBeInTheDocument();
-    });
-
-    it('renders Language section and allows switching language', () => {
-      setupTraineeAuth();
-
-      render(<Settings />);
-
-      expect(screen.getByText('Language')).toBeInTheDocument();
-      expect(screen.getByText('Español')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('Español'));
-      expect(mockSetLanguage).toHaveBeenCalledWith('es');
     });
   });
 
@@ -1857,7 +1843,6 @@ describe('Settings', () => {
       const { resolve } = await import('node:path');
       const source = readFileSync(resolve(process.cwd(), 'src/views/Settings.tsx'), 'utf8');
       const en = (await import('../locales/en.json')).default as any;
-      const es = (await import('../locales/es.json')).default as any;
       const lookup = (dict: any, key: string) =>
         key.split('.').reduce<any>((node, part) => (node && typeof node === 'object' ? node[part] : undefined), dict);
 
@@ -1867,7 +1852,6 @@ describe('Settings', () => {
       const missing: string[] = [];
       for (const key of new Set(keys)) {
         if (typeof lookup(en, key) !== 'string') missing.push(`${key} (en)`);
-        if (typeof lookup(es, key) !== 'string') missing.push(`${key} (es)`);
       }
       expect(missing).toEqual([]);
     });

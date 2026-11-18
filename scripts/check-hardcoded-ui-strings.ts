@@ -9,7 +9,7 @@
  *     from being introduced without a t() key.
  *  2. Mobile key guard — a full-tree scan of `apps/mobile/src` for static
  *     `t('mobile.…')` keys, failing when any key is absent from the phone
- *     locale files (en.json / es.json). This is the flight recorder for escape
+ *     locale file (en.json). This is the flight recorder for escape
  *     row 14 (#740 deleted `mobile.contact.how_we_met` while the sheet still
  *     used it). The scan is scoped to the `mobile.` namespace — the keys the
  *     app owns — mirroring the #1415 mobile jest guard; the legacy root
@@ -132,7 +132,6 @@ export function findMissingMobileKeys(
 const MOBILE_SRC_DIR = 'apps/mobile/src';
 const MOBILE_LOCALE_FILES: Record<string, string> = {
   en: 'apps/mobile/src/locales/en.json',
-  es: 'apps/mobile/src/locales/es.json',
 };
 
 export function checkMobileI18n(
@@ -183,7 +182,7 @@ export function run(): void {
 
   const stringViolations = checkHardcodedStrings();
   if (stringViolations.length > 0) {
-    console.error('Hardcoded user-facing UI strings detected in this diff. Use t() with en/es dictionary keys instead.\n');
+    console.error('Hardcoded user-facing UI strings detected in this diff. Use t() with en dictionary keys instead.\n');
     for (const v of stringViolations) console.error(`  ${v}`);
     failed = true;
   } else {
@@ -192,11 +191,11 @@ export function run(): void {
 
   const missingMobileKeys = checkMobileI18n();
   if (missingMobileKeys.length > 0) {
-    console.error('Mobile t() keys missing from the phone locales. Add them to apps/mobile/src/locales/en.json and es.json.\n');
+    console.error('Mobile t() keys missing from the phone locale. Add them to apps/mobile/src/locales/en.json.\n');
     for (const v of missingMobileKeys) console.error(`  ${v.lang}: ${v.key}`);
     failed = true;
   } else {
-    console.log('All mobile t() keys resolve in the phone locales.');
+    console.log('All mobile t() keys resolve in the phone locale.');
   }
 
   if (failed) process.exit(1);
