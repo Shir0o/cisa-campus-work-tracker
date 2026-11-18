@@ -712,6 +712,8 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
 
     await page.getByLabel('Post an announcement').fill(body);
     await page.getByRole('button', { name: 'Post', exact: true }).click();
+    // The composer clears only once the post (and its bell entries) are committed.
+    await expect(page.getByLabel('Post an announcement')).toHaveValue('', { timeout: 10_000 });
 
     await expect(yours(page)).toBeVisible({ timeout: 10_000 });
     await expect(yours(page).getByText(progress)).toBeVisible({ timeout: 10_000 });
@@ -910,9 +912,11 @@ test.describe('Full-timer journey — Quick Capture and a person\'s step (#1477)
       timeout: 5_000,
     });
 
-    // People reflects the new step: the person's own card wears it.
-    await page.goto('/directory');
-    await waitForShell(page);
+    // People reflects the new step: the person's own card wears it. Navigate
+    // in-app — a full reload can drop the still-pending write and show the old
+    // step.
+    await page.getByRole('link', { name: 'People', exact: true }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeVisible({ timeout: 10_000 });
     const advanced = page.getByRole('main').locator('div.group').filter({ hasText: captured }).first();
     await expect(advanced.getByText('Second Contact', { exact: true })).toBeVisible({ timeout: 10_000 });
 
