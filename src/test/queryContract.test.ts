@@ -33,7 +33,6 @@ import {
   arrayUnion,
   collection,
   doc,
-  getCountFromServer,
   getDoc,
   getDocs,
   query,
@@ -46,7 +45,6 @@ import {
 // The app's real builders. `src/lib/contactQueries` is the web mirror the
 // board, Directory, My Day and every contact picker spread into their query.
 import { contactVisibilityConstraints } from '../lib/contactQueries';
-import { unreadMessagesQuery } from '../lib/chatUnread';
 import { credentialAuditFeedQuery } from '../lib/credentialVault';
 import {
   contactReadConstraints,
@@ -69,6 +67,8 @@ import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { activitiesPageQuery, countActivities } from '../../packages/core/src/data/activities';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
+import { markGotIt, postAnnouncement, subscribeAnnouncements } from '../../packages/core/src/data/announcements';
+import type { Announcement } from '../../packages/core/src/announcements';
 import { setPrayerTeamPrayer } from '../../packages/core/src/data/prayers';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
@@ -238,44 +238,13 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
         lines: [{ id: 'n1', text: 'Ask Jae about Sam', group: 'jae', createdAt: ISO }],
       });
 
-      // The chat room whose unread count the Messages rail resolves (#1791),
-      // and one the trainee must not be able to count.
-      const chatAt = (min: number) => Timestamp.fromMillis(Date.parse(ISO) + min * 60_000);
-      await seedDoc(db, 'chatRooms/room-team', {
-        type: 'group',
-        name: 'Team',
-        memberIds: [TRAINEE, ADMIN],
-        createdById: ADMIN,
-        createdByName: 'Admin',
-        createdAt: chatAt(0),
-        lastMessage: { text: 'm3', senderId: ADMIN, senderName: 'Admin', timestamp: chatAt(30) },
-      });
-      for (const [id, min] of [['m1', 10], ['m2', 20], ['m3', 30]] as const) {
-        await seedDoc(db, `chatRooms/room-team/messages/${id}`, {
-          roomId: 'room-team',
-          text: id,
-          senderId: ADMIN,
-          senderName: 'Admin',
-          timestamp: chatAt(min),
-          type: 'text',
-        });
-      }
-      await seedDoc(db, 'chatRooms/room-outside', {
-        type: 'group',
-        name: 'Not mine',
-        memberIds: [OTHER_TRAINEE],
-        createdById: OTHER_TRAINEE,
-        createdByName: 'Other',
-        createdAt: chatAt(0),
-        lastMessage: { text: 'secret', senderId: OTHER_TRAINEE, senderName: 'Other', timestamp: chatAt(10) },
-      });
-      await seedDoc(db, 'chatRooms/room-outside/messages/m-secret', {
-        roomId: 'room-outside',
-        text: 'secret',
-        senderId: OTHER_TRAINEE,
-        senderName: 'Other',
-        timestamp: chatAt(10),
-        type: 'text',
+      // An announcement a Full-timer posted for the whole team (§20).
+      await seedDoc(db, 'announcements/ann-1', {
+        body: 'Retreat moves to Saturday',
+        authorId: ADMIN,
+        authorName: 'Admin',
+        createdAt: Timestamp.fromMillis(Date.parse(ISO)),
+        gotIt: {},
       });
 
       // The vault's audit feed (#1966): entries a Full-timer appends. The feed
@@ -618,33 +587,52 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     }
   });
 
-  // ── #1791: the unread count on a conversation row ──────────────────────────
-  // The Messages rail resolves each unread room with one aggregate read over
-  // the messages after this device's mark. Every role that opens Messages must
-  // be able to run it for their own rooms; anyone outside the room must not.
-  it('row 23 — members count unread chat messages; an outsider cannot (#1791)', async () => {
-    const mark = Date.parse(ISO) + 15 * 60_000; // after m1, before m2 and m3
-    for (const uid of [TRAINEE, ADMIN]) {
-      const db = dbFor(uid);
-      const unread = await assertSucceeds(
-        getCountFromServer(unreadMessagesQuery(db, 'room-team', mark)),
-      );
-      expect(unread.data().count).toBe(2);
-      const all = await assertSucceeds(
-        getCountFromServer(unreadMessagesQuery(db, 'room-team', null)),
-      );
-      expect(all.data().count).toBe(3);
+  // ── Announcements (cut-or-keep §20) ────────────────────────────────────────
+  // The card on every home reads the newest announcements; a Full-timer posts
+  // one and writes a bell entry per person; anyone approved says Got it for
+  // themselves. The app's real builders, run for each role.
+  it('row 23 — every approved Full-timer and Trainee reads the announcements; an unapproved user cannot', async () => {
+    for (const uid of [ADMIN, ADMIN_FRESH, TRAINEE, OTHER_TRAINEE]) {
+      const res = await awaitSnapshot<Announcement[]>((cb, onError) => subscribeAnnouncements(dbFor(uid), cb, onError));
+      expect(res.ok, uid).toBe(true);
+      if (res.ok) expect(res.value.map((a) => a.id)).toContain('ann-1');
     }
+    const denied = await awaitSnapshot<Announcement[]>((cb, onError) => subscribeAnnouncements(dbFor(PENDING), cb, onError));
+    expect(denied.ok).toBe(false);
+  });
 
-    // The row's count clears when the mark is past the newest message.
-    const read = await assertSucceeds(
-      getCountFromServer(unreadMessagesQuery(dbFor(TRAINEE), 'room-team', Date.parse(ISO) + 60 * 60_000)),
+  it('row 23 — a Full-timer posts, and a Trainee and an unapproved user cannot', async () => {
+    const notified: string[] = [];
+    const id = await postAnnouncement(dbFor(ADMIN), { uid: ADMIN, name: 'Admin' }, 'New time', [TRAINEE, OTHER_TRAINEE], (n) => {
+      notified.push(n.userId);
+    });
+    expect(id).toBeTruthy();
+    expect(notified).toEqual([TRAINEE, OTHER_TRAINEE]);
+
+    for (const uid of [TRAINEE, PENDING]) {
+      const onNotify = vi.fn();
+      await expect(postAnnouncement(dbFor(uid), { uid, name: 'X' }, 'Nope', [ADMIN], onNotify)).rejects.toBeTruthy();
+      // A refused post writes no bell entry.
+      expect(onNotify).not.toHaveBeenCalled();
+    }
+  });
+
+  it('row 23 — each person says Got it for themselves only, and the poster sees it', async () => {
+    await expect(markGotIt(dbFor(TRAINEE), 'ann-1', TRAINEE)).resolves.toBeUndefined();
+    await expect(markGotIt(dbFor(ADMIN_FRESH), 'ann-1', ADMIN_FRESH)).resolves.toBeUndefined();
+    // Negative: another person's name, a second Got it, and an unapproved user.
+    await expect(markGotIt(dbFor(OTHER_TRAINEE), 'ann-1', TRAINEE)).rejects.toBeTruthy();
+    await expect(markGotIt(dbFor(TRAINEE), 'ann-1', TRAINEE)).rejects.toBeTruthy();
+    await expect(markGotIt(dbFor(PENDING), 'ann-1', PENDING)).rejects.toBeTruthy();
+
+    const seen = await awaitSnapshot<Announcement[]>(
+      (cb, onError) => subscribeAnnouncements(dbFor(ADMIN), cb, onError),
+      (list) => Object.keys(list.find((a) => a.id === 'ann-1')?.gotIt ?? {}).length === 2,
     );
-    expect(read.data().count).toBe(0);
-
-    // Negative: not a member of the room.
-    await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(OTHER_TRAINEE), 'room-team', mark)));
-    await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(TRAINEE), 'room-outside', mark)));
+    expect(seen.ok).toBe(true);
+    if (seen.ok) {
+      expect(Object.keys(seen.value.find((a) => a.id === 'ann-1')!.gotIt).sort()).toEqual([ADMIN_FRESH, TRAINEE]);
+    }
   });
 
   // ── #1828: Looking back counts the record, not the loaded page ─────────────

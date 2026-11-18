@@ -1,23 +1,16 @@
 // Mobile v2 — "Homes open to students". Where a Community member's "Open your
 // home" offer (MOBILE-V2.md) actually lands.
 //
-// Read-only on purpose, like every other FT widget: the power here is to
-// message the person, not to edit their offer. Matching a student to a table is
-// a conversation, not a button.
+// Read-only on purpose, like every other FT widget: it lists the offer, not a
+// way to edit it. Chats are cut, so there is no in-app message to send.
 import React from 'react';
 import { Text, View } from 'react-native';
 import { FT_WIDGET_ROWS, hospitalitySummary, type HospitalityOffer } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
-import { WidgetAction, WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
+import { WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
 
-export function HomesOpen({
-  offers,
-  onMessage,
-}: {
-  offers: HospitalityOffer[];
-  onMessage: (offer: HospitalityOffer) => void;
-}) {
+export function HomesOpen({ offers }: { offers: HospitalityOffer[] }) {
   const { c, font, fs } = useV2Theme();
   const shown = offers.slice(0, FT_WIDGET_ROWS);
   return (
@@ -62,7 +55,6 @@ export function HomesOpen({
                   “{o.note}”
                 </Text>
               )}
-              <WidgetAction label="Message them" onPress={() => onMessage(o)} />
             </View>
           </View>
         </WidgetRow>

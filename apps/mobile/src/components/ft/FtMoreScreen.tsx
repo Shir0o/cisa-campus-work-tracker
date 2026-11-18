@@ -1,6 +1,6 @@
 // Mobile v2 — the full-timer's "More" tab. The design's `FtMore`
 // (views/mobile/ft.jsx): the screens you sometimes want on the move, as a plain
-// list. People and Messages aren't here — they're tabs of their own.
+// list. People isn't here — it's a tab of its own.
 //
 // The list is exactly FT_MORE from @cisa/core and nothing else. The heavier
 // work (Board pages, gatherings, kinds) is read-mostly on the phone, which the

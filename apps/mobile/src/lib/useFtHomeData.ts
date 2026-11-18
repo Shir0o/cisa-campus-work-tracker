@@ -57,7 +57,6 @@ import { subscribeUserPreferences } from './data/userPreferences';
 import { subscribeUsers } from './data/users';
 import { setPrayerRequestStatus, subscribeOpenPrayerRequests } from './data/prayerRequests';
 import { subscribeHospitalityOffers } from './data/hospitality';
-import { getOrCreateDirectChat } from './data/chat';
 import { InboxReads, useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 
@@ -378,15 +377,5 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     /** Close out a member's ask — "the team prayed, and God answered". Unlike
      * "Prayed for {name}" this one is real and shared: the asker sees it. */
     markRequestAnswered: (requestId: string) => setPrayerRequestStatus(requestId, 'answered'),
-
-    /** Opens (or finds) the DM with someone — how "Homes open to students"
-     * turns an offer into a conversation. Returns the room id to route to. */
-    messageThem: (theirUid: string, theirName: string): Promise<string | null> =>
-      uid
-        ? getOrCreateDirectChat(
-            { uid, displayName: meName },
-            { uid: theirUid, displayName: theirName },
-          )
-        : Promise.resolve(null),
   };
 }

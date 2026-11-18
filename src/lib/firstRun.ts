@@ -134,7 +134,7 @@ export function computeFirstRunSteps(
       {
         id: 'ask',
         label: 'Ask the team something real',
-        to: '/messages',
+        to: '/directory',
         hint: "A question you don't have the answer to beats a tidy update.",
         done: (ctx.messagesCount ?? 0) > 0,
       },

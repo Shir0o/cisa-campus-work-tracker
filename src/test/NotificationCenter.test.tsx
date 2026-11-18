@@ -258,7 +258,7 @@ describe('NotificationCenter Component', () => {
         message: 'User One: hello',
         type: 'info',
         read: false,
-        link: '/messages/room_123',
+        link: '/prayer',
         createdAt: { toDate: () => new Date() },
       },
     ];
@@ -279,7 +279,7 @@ describe('NotificationCenter Component', () => {
 
     // Should call updateDoc and navigate to link
     expect(firestore.updateDoc).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/messages/room_123');
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
   });
 
   it('navigates to contact detail when contact notification with link is clicked', async () => {
@@ -844,7 +844,7 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/coordination');
   });
 
-  it('navigates to the message thread for a targetId without a link', () => {
+  it('lands on home for a targetId without a link or a person to open (chats are cut)', () => {
     triggerOnSnapshotCallbacks([
       { id: 'n1', userId: 'mock-user-id', title: 'New note', body: 'b', type: 'info', targetId: 'room_9', read: true, createdAt: { toDate: () => new Date() } },
     ]);
@@ -856,7 +856,7 @@ describe('NotificationCenter Component', () => {
 
     fireEvent.click(screen.getByLabelText(/notifications/i));
     fireEvent.click(screen.getByText('New note'));
-    expect(mockNavigate).toHaveBeenCalledWith('/messages/room_9');
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('no longer routes an unlinked question/answer title to /questions (cut-or-keep §5)', () => {

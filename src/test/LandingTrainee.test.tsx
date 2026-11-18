@@ -221,9 +221,22 @@ vi.mock('../lib/inboxReads', () => ({
   }),
 }));
 
+vi.mock('../components/announcements/AnnouncementCards', () => ({
+  default: () => <div data-testid="announcement-cards" />,
+}));
+
 describe('LandingTrainee component', () => {
   afterEach(() => {
     readIds = new Set();
+  });
+
+  it('mounts the announcement cards (cut-or-keep §20)', async () => {
+    render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+    expect(await screen.findByTestId('announcement-cards')).toBeInTheDocument();
   });
 
   it('renders trainee dashboard with waiting items, contacts, and personal prayers', async () => {

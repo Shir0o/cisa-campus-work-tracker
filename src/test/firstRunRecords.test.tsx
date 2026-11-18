@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') })),
@@ -7,11 +7,10 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn((...args: unknown[]) => args),
   where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   limit: vi.fn((n: number) => ({ limit: n })),
-  getDocs: vi.fn(() => Promise.resolve({ empty: true, docs: [] })),
 }));
 vi.mock('../lib/firebase', () => ({ db: {} }));
 
-import { onSnapshot, getDocs } from 'firebase/firestore';
+import { onSnapshot } from 'firebase/firestore';
 import {
   EMPTY_FIRST_RUN_RECORDS,
   existenceFlag,
@@ -27,16 +26,15 @@ const snapshotSub = (index: number) => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(onSnapshot).mockImplementation(() => vi.fn());
-  vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as never);
 });
 
 describe('firstRunRecordSources', () => {
   it('gates each source by the role whose checklist uses it', () => {
-    expect(firstRunRecordSources('admin')).toEqual({ docs: true, messages: false });
-    expect(firstRunRecordSources('ft')).toEqual({ docs: true, messages: false });
-    expect(firstRunRecordSources('trainee')).toEqual({ docs: false, messages: true });
-    expect(firstRunRecordSources('manager')).toEqual({ docs: false, messages: true });
-    expect(firstRunRecordSources(null)).toEqual({ docs: false, messages: true });
+    expect(firstRunRecordSources('admin')).toEqual({ docs: true });
+    expect(firstRunRecordSources('ft')).toEqual({ docs: true });
+    expect(firstRunRecordSources('trainee')).toEqual({ docs: false });
+    expect(firstRunRecordSources('manager')).toEqual({ docs: false });
+    expect(firstRunRecordSources(null)).toEqual({ docs: false });
   });
 });
 
@@ -74,49 +72,24 @@ describe('useFirstRunRecords', () => {
     expect(result.current.docsCount).toBe(0);
   });
 
-  it('reads a Trainee messages existence across their chat rooms', async () => {
-    vi.mocked(getDocs).mockResolvedValue({ empty: false, docs: [] } as never);
+  it('opens no listener for a Trainee, whose checklist reads no record existence', () => {
     const { result } = renderHook(() => useFirstRunRecords('trainee', 'u1'));
-    expect(onSnapshot).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      snapshotSub(0)[1]({ docs: [{ id: 'r1' }, { id: 'r2' }] });
-    });
-    await waitFor(() => expect(result.current.messagesCount).toBe(1));
-    expect(getDocs).toHaveBeenCalledTimes(2);
-
-    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as never);
-    act(() => {
-      snapshotSub(0)[1]({ docs: [{ id: 'r1' }] });
-    });
-    await waitFor(() => expect(result.current.messagesCount).toBe(0));
+    expect(result.current).toEqual(EMPTY_FIRST_RUN_RECORDS);
+    expect(onSnapshot).not.toHaveBeenCalled();
   });
 
-  it('leaves messages at zero when every room lookup fails', async () => {
-    vi.mocked(getDocs).mockRejectedValue(new Error('denied'));
-    const { result } = renderHook(() => useFirstRunRecords('trainee', 'u1'));
-
-    act(() => {
-      snapshotSub(0)[1]({ docs: [{ id: 'r1' }] });
-    });
-    await waitFor(() => expect(getDocs).toHaveBeenCalled());
-    expect(result.current.messagesCount).toBe(0);
-  });
-
-  it('resets to zero when the uid changes', async () => {
-    vi.mocked(getDocs).mockResolvedValue({ empty: false, docs: [] } as never);
+  it('resets to zero when the uid changes', () => {
     const { result, rerender } = renderHook(
-      ({ uid }: { uid: string }) => useFirstRunRecords('trainee', uid),
+      ({ uid }: { uid: string }) => useFirstRunRecords('admin', uid),
       { initialProps: { uid: 'u1' } },
     );
 
     act(() => {
-      snapshotSub(0)[1]({ docs: [{ id: 'r1' }] });
+      snapshotSub(0)[1]({ empty: false });
     });
-    await waitFor(() => expect(result.current.messagesCount).toBe(1));
+    expect(result.current.docsCount).toBe(1);
 
-    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as never);
     rerender({ uid: 'u2' });
-    await waitFor(() => expect(result.current.messagesCount).toBe(0));
+    expect(result.current.docsCount).toBe(0);
   });
 });

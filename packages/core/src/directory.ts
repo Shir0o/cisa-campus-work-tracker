@@ -173,22 +173,6 @@ export function stageToneKey(stages: { label: string }[], label?: string): Stage
   return i < 0 ? "note" : STAGE_TONES[i % STAGE_TONES.length];
 }
 
-/** The person behind a direct chat, if they are also someone we're walking with.
- *
- * The design's `M2Thread` offers "Open {first}'s page →" in a DM. A chat room is
- * user-to-user (`memberIds: uid[]`) and a `Contact` carries no uid, so email is
- * the only join the schema gives us — which means the button appears exactly
- * when the person you're messaging is also on the roster under the same address.
- */
-export function contactIdForEmail(
-  contacts: Pick<Contact, "id" | "email">[],
-  email: string | null | undefined,
-): string | null {
-  const needle = (email ?? "").trim().toLowerCase();
-  if (!needle) return null;
-  return contacts.find((c) => (c.email ?? "").trim().toLowerCase() === needle)?.id ?? null;
-}
-
 /** The kind of person, derived from `inChurchLife` and `isStudent` and never
  *  stored (#1152, ADR 0030). "Saint" is deliberately not a value: in this
  *  team's usage every believer is a saint, so belief distinguishes nobody —

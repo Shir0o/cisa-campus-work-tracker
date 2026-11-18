@@ -38,11 +38,10 @@ describe('tabsForRole', () => {
     expect(tabsForRole('manager')).toEqual([]);
   });
 
-  it('gives the full-timer Today · People · Messages · More', () => {
+  it('gives the full-timer Today · People · More', () => {
     expect(tabsForRole('admin')).toEqual([
       { name: 'index', title: 'Today' },
       { name: 'people', title: 'People' },
-      { name: 'messages', title: 'Messages' },
       { name: 'more', title: 'More' },
     ]);
   });
@@ -70,7 +69,6 @@ describe('the drawer and More lists', () => {
   it("matches the design's trainee drawer, in order", () => {
     expect(TRAINEE_DRAWER.map((l) => l.label)).toEqual([
       'People',
-      'Messages',
       'Sign-up form',
       'How this works',
       'Your app',

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  contactIdForEmail,
   contactKind,
   EVERYONE_PILL,
   filterAndSortDirectory,
@@ -321,30 +320,6 @@ describe('stageToneKey', () => {
     expect(stageToneKey(stages, 'Nowhere')).toBe('note');
     expect(stageToneKey(stages, undefined)).toBe('note');
     expect(stageToneKey([], 'Met')).toBe('note');
-  });
-});
-
-describe('contactIdForEmail', () => {
-  const roster = [
-    contact({ id: 'c1', email: 'Ana@Example.com' }),
-    contact({ id: 'c2', email: 'rio@example.com' }),
-  ];
-
-  it('matches an address case-insensitively, ignoring stray whitespace', () => {
-    expect(contactIdForEmail(roster, 'ana@example.com')).toBe('c1');
-    expect(contactIdForEmail(roster, '  RIO@EXAMPLE.COM ')).toBe('c2');
-  });
-
-  it('returns null when nobody on the roster uses that address', () => {
-    expect(contactIdForEmail(roster, 'kofi@example.com')).toBeNull();
-    expect(contactIdForEmail([], 'ana@example.com')).toBeNull();
-  });
-
-  it('returns null for a chat partner with no address to match on', () => {
-    // Contacts default to an empty email, so a blank needle must not match them.
-    expect(contactIdForEmail(roster, '')).toBeNull();
-    expect(contactIdForEmail(roster, null)).toBeNull();
-    expect(contactIdForEmail([contact({ id: 'c3' })], undefined)).toBeNull();
   });
 });
 

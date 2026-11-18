@@ -12,6 +12,13 @@ jest.mock('../../lib/useFtHomeData', () => ({ useFtHomeData: jest.fn() }));
 
 jest.mock('../log/LogSheet', () => ({ LogSheet: () => null }));
 
+// The panel owns its own subscription; this file only checks the home mounts it.
+jest.mock('../announcements/AnnouncementsPanel', () => {
+  const { Text } = jest.requireActual('react-native');
+  const ReactActual = jest.requireActual('react');
+  return { AnnouncementsPanel: (props: { isFullTimer: boolean }) => ReactActual.createElement(Text, null, `announcements:${props.isFullTimer}`) };
+});
+
 describe('FtHomeScreen', () => {
   it('shows the full-timer home skeleton while data is loading', async () => {
     (useFtHomeData as jest.Mock).mockReturnValue({ loading: true });
@@ -47,5 +54,31 @@ describe('FtHomeScreen', () => {
       </ThemeProvider>,
     );
     expect(queryByTestId('ft-home-skeleton')).toBeNull();
+  });
+
+  it('mounts the announcements panel (cut-or-keep §20)', async () => {
+    (useFtHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      contacts: [],
+      carrying: { count: 0, detail: '' },
+      nextGathering: null,
+      todos: { today: [], laterThisWeek: [], overdue: [] },
+      inboxRows: [],
+      quiet: [],
+      carryRows: [],
+      prayedToday: false,
+      homesOpen: [],
+      weekAhead: [],
+      assignees: [],
+      nameByUid: {},
+      summary: '',
+      error: null,
+    });
+    const { getByText } = await render(
+      <ThemeProvider>
+        <FtHomeScreen />
+      </ThemeProvider>,
+    );
+    expect(getByText(/^announcements:/)).toBeTruthy();
   });
 });

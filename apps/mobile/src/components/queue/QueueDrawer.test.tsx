@@ -36,7 +36,8 @@ describe('QueueDrawer', () => {
     expect(getByText('People')).toBeTruthy();
     // People is the one door; The Journey is its Step pills (ADR 0047).
     expect(queryByText('The Journey')).toBeNull();
-    expect(getByText('Messages')).toBeTruthy();
+    // Messages (chats) is cut (cut-or-keep §20).
+    expect(queryByText('Messages')).toBeNull();
     // Ask a Full-timer (Questions for the team) is cut (cut-or-keep §5).
     expect(queryByText('Ask a Full-timer')).toBeNull();
     expect(getByText('Sign-up form')).toBeTruthy();

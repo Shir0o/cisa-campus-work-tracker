@@ -44,7 +44,7 @@
  *
  * This file also absorbs the retired feature specs (the Full-timer is the widest
  * role, so the admin-driven surfaces live here): `settings-and-partners.spec.ts`,
- * `people-directory.spec.ts`, `prayer-carrying.spec.ts`, `announcements-flow.spec.ts`,
+ * `people-directory.spec.ts`, `prayer-carrying.spec.ts`, `announcements-flow.spec.ts` (rebuilt: Announcements, §20),
  * `feedback-submission.spec.ts`, and the
  * Full-timer halves of `cross-role-journey.spec.ts` and `quick-capture.spec.ts`.
  */
@@ -683,105 +683,92 @@ test.describe('Full-timer journey — Directory and On our hearts per role (#147
 });
 
 /**
- * Folded from `announcements-flow.spec.ts` (#743): the Full-timer's broadcast
- * wizard, the Trainee's acknowledgement and thread reply, and the author's read
- * receipts. Serial: each step builds on the announcement the one before it made.
+ * Announcements (cut-or-keep §20): a Full-timer posts from My Day, a Trainee sees
+ * a card until Got it, and the poster sees how many got it and who has not.
+ * Serial: each step builds on the announcement the one before it made.
  */
 test.describe('Full-timer journey — Announcements (#1477)', () => {
   test.describe.configure({ mode: 'serial' });
 
-  const suffix = Date.now();
-  const title = `Fall Campus Retreat ${suffix}`;
-  const body = `Pickup times and packing list for the retreat. ${suffix}`;
-  const reply = `Will there be van transport from the north gate? ${suffix}`;
+  const body = `Pickup times and packing list for the retreat. ${Date.now()}`;
+  const progress = /(\d+) of (\d+) got it/;
+  let gotBefore = 0;
+  let total = 0;
 
-  test('a Full-timer creates, pins, and broadcasts an announcement', async ({ page }) => {
+  const yours = (page: Page) => page.getByTestId('your-announcement').filter({ hasText: body });
+  const readProgress = async (page: Page) => {
+    const text = (await yours(page).getByText(progress).textContent()) ?? '';
+    const [, got, of] = text.match(progress)!;
+    return { got: Number(got), total: Number(of) };
+  };
+
+  test('a Full-timer posts an announcement and sees nobody has got it yet', async ({ page }) => {
     await signInAs(page, 'fulltimer');
-    await page.goto('/messages');
+    await page.goto('/');
     await waitForShell(page);
 
-    await page.getByRole('button', { name: /new/i }).first().click();
-    await page.getByRole('dialog').getByRole('button', { name: /^announcements$/i }).click();
-    await page.getByLabel(/channel name/i).fill(title);
-    await expect(page.getByRole('dialog').getByText('Everyone in the app', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /^next$/i }).click();
+    await page.getByLabel('Post an announcement').fill(body);
+    await page.getByRole('button', { name: 'Post', exact: true }).click();
 
-    await page.getByPlaceholder(/write your announcement/i).fill(body);
-    await page.getByRole('button', { name: /^pin it$/i }).click();
-    await page.getByRole('button', { name: /^review$/i }).click();
-    await expect(page.getByRole('heading', { name: /^review$/i })).toBeVisible();
-    // The review step names the channel twice (a chip and a summary row).
-    await expect(page.getByRole('dialog').getByText(title).first()).toBeVisible();
-    // Back preserves the draft.
-    await page.getByRole('button', { name: /^back$/i }).click();
-    await expect(page.getByPlaceholder(/write your announcement/i)).toHaveValue(body);
-    await page.getByRole('button', { name: /^review$/i }).click();
-    await page.getByRole('button', { name: /send to/i }).click();
-
-    await expect(page.locator('.msgs-thread-title')).toContainText(title, { timeout: 10_000 });
-    await expect(page.locator('.strm-pinstrip')).toContainText('Pinned', { timeout: 10_000 });
-    await expect(page.locator('.strm-flow').getByText(body)).toBeVisible();
-    await expect(page.getByPlaceholder(/write an announcement…/i)).toBeVisible();
+    await expect(yours(page)).toBeVisible({ timeout: 10_000 });
+    await expect(yours(page).getByText(progress)).toBeVisible({ timeout: 10_000 });
+    ({ got: gotBefore, total } = await readProgress(page));
+    expect(total).toBeGreaterThan(0);
+    expect(gotBefore).toBe(0);
+    await expect(yours(page).getByText(/Not yet: .*Zion Adeyemi/)).toBeVisible();
+    // The poster is never asked to acknowledge their own announcement.
+    await expect(page.getByTestId('announcement-card').filter({ hasText: body })).toHaveCount(0);
   });
 
-  test('a Trainee acknowledges the announcement and replies in the thread', async ({ page }) => {
+  test('a Trainee sees the card on Home until they say Got it', async ({ page }) => {
     await signInAs(page, 'trainee');
-    await page.goto('/messages');
+    await page.goto('/');
     await waitForShell(page);
 
-    await expect(page.locator('.sech').filter({ hasText: /announcements/i })).toBeVisible({ timeout: 10_000 });
-    const card = page.locator('.anrow', { hasText: title });
+    const card = page.getByTestId('announcement-card').filter({ hasText: body });
     await expect(card).toBeVisible({ timeout: 10_000 });
-    await card.click();
+    await expect(card).toContainText('Full-timer Test User');
+    // No reply box, no page of its own, and no composer for a Trainee.
+    await expect(page.getByLabel('Post an announcement')).toHaveCount(0);
 
-    const post = page.locator('.strm-flow [data-stream-row]', { hasText: body });
-    await expect(post).toBeVisible({ timeout: 10_000 });
-    await expect(post.locator('.strm-tag-role')).toContainText('Full-timer');
-    await expect(page.locator('.strm-pinstrip')).toContainText('Pinned');
-    // A non-author sees the guidance bar, not a composer.
-    await expect(page.getByRole('main').getByText(/only full-timers post here/i)).toBeVisible();
-    await expect(page.getByPlaceholder(/write an announcement/i)).toHaveCount(0);
+    await card.getByRole('button', { name: 'Got it' }).click();
+    await expect(card).toHaveCount(0, { timeout: 10_000 });
 
-    const ack = post.getByRole('button', { name: /got it/i });
-    await ack.click();
-    await expect(ack).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
-    await ack.click();
-    await expect(ack).toHaveAttribute('aria-pressed', 'false', { timeout: 5_000 });
-    await ack.click();
-    await expect(ack).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
-
-    await post.getByRole('button', { name: /reply in thread/i }).first().click();
-    const thread = page.getByRole('region', { name: 'Thread' });
-    await expect(thread).toBeVisible({ timeout: 5_000 });
-    const threadComposer = thread.locator('textarea');
-    await threadComposer.fill(reply);
-    await threadComposer.press('Meta+Enter');
-    await expect(thread.getByText(reply).first()).toBeVisible({ timeout: 10_000 });
-    await expect(post.getByText('1 reply')).toBeVisible({ timeout: 10_000 });
-  });
-
-  test('a Full-timer reads the reply and the receipts', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await page.goto('/messages');
+    // It stays gone after a reload.
+    await page.reload();
     await waitForShell(page);
-    await page.locator('.anrow', { hasText: title }).click();
-
-    const post = page.locator('.strm-flow [data-stream-row]', { hasText: body });
-    await expect(post).toBeVisible({ timeout: 10_000 });
-    await post.getByText('1 reply').click();
-    const thread = page.getByRole('region', { name: 'Thread' });
-    await expect(thread.getByText(reply)).toBeVisible({ timeout: 5_000 });
-
-    const receipts = post.getByRole('button', { name: /read by/i });
-    await expect(receipts).toContainText(/said got it/i);
-    await receipts.click();
-    await expect(page.locator('.pophead .poptitle')).toContainText('Read receipts', { timeout: 5_000 });
-    await expect(page.locator('.popsec').filter({ hasText: /^Read$/ })).toBeVisible();
-    await expect(page.locator('.popsec').filter({ hasText: /^Not yet$/ })).toBeVisible();
-    await expect(page.locator('.pop').getByText('Zion Adeyemi')).toBeVisible();
-    await page.getByRole('button', { name: /^close$/i }).click();
-    await expect(page.locator('.pophead')).not.toBeVisible();
+    await expect(page.getByTestId('announcement-card').filter({ hasText: body })).toHaveCount(0);
   });
+
+  test('the poster sees the count go up and the Trainee drop off the list', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await page.goto('/');
+    await waitForShell(page);
+
+    await expect(yours(page)).toBeVisible({ timeout: 10_000 });
+    await expect(yours(page).getByText(`${gotBefore + 1} of ${total} got it`)).toBeVisible({ timeout: 10_000 });
+    await expect(yours(page).getByText(/Not yet: .*Zion Adeyemi/)).toHaveCount(0);
+  });
+});
+
+/**
+ * Chats and the Messages page are cut (cut-or-keep §20). An old `/messages` or
+ * `/messages/:roomId` bookmark lands on My Day, not on a dead end.
+ */
+test.describe('Full-timer journey — Messages is cut', () => {
+  for (const [role, path] of [
+    ['fulltimer', '/messages'],
+    ['trainee', '/messages'],
+    ['fulltimer', '/messages/e2e-dm-check-in'],
+  ] as const) {
+    test(`an old ${path} bookmark lands a ${role} on My Day`, async ({ page }) => {
+      await signInAs(page, role);
+      await page.goto(path);
+      await waitForShell(page);
+      await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
+      await expect(page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: /^Messages$/ })).toHaveCount(0);
+    });
+  }
 });
 
 /**

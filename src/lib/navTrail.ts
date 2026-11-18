@@ -39,7 +39,6 @@ export interface Trail {
  */
 const LEAF_ROUTES: readonly { pattern: RegExp; section: string; leaf?: string }[] = [
   { pattern: /^\/people\/[^/]+$/, section: '/directory' },
-  { pattern: /^\/messages\/[^/]+$/, section: '/messages' },
   { pattern: /^\/coordination\/trash$/, section: '/coordination', leaf: 'Trash' },
   { pattern: /^\/admin\/feedback$/, section: '/settings', leaf: 'Feedback' },
 ];

@@ -26,11 +26,6 @@ export function routeForNotificationLink(link: unknown): string {
     if (q.get('tab') === 'thread') return `/contact/${id}?tab=conversation`;
     return `/contact/${id}`;
   }
-  if ((m = path.match(/^\/messages\/([^/]+)$/))) {
-    const parent = q.get('parent');
-    return parent ? `/messages/${m[1]}/thread?parent=${parent}` : `/messages/${m[1]}`;
-  }
-  if (path === '/messages') return '/messages';
   if ((m = path.match(/^\/coordination\/([^/]+)$/))) return `/coordination/${m[1]}`;
   if (path === '/directory') return '/people';
   if (path === '/feedback') return '/your-notes';

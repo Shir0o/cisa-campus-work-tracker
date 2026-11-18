@@ -31,7 +31,7 @@ export interface ShellTab {
  * The tabs a role sees, in the design's order. Empty for the trainee — that
  * shell has no bar at all, so the queue fills the screen — and for no role.
  *
- * `views/mobile/ft.jsx` `FT_TABS` (Today · People · Messages · More).
+ * `views/mobile/ft.jsx` `FT_TABS` (Today · People · More; Messages is cut).
  */
 export function tabsForRole(role: AppRole | string | null | undefined): ShellTab[] {
   const shell = shellForRole(role);
@@ -39,7 +39,6 @@ export function tabsForRole(role: AppRole | string | null | undefined): ShellTab
   return [
     { name: "index", title: "Today" },
     { name: "people", title: "People" },
-    { name: "messages", title: "Messages" },
     { name: "more", title: "More" },
   ];
 }
@@ -75,7 +74,6 @@ export interface ShellLink {
  */
 export const TRAINEE_DRAWER: ShellLink[] = [
   { key: "people", label: "People", href: "/people" },
-  { key: "messages", label: "Messages", href: "/messages" },
   // Not an app login — the form you hand to someone new so the team can keep
   // in touch (the design's navId "*": open to every role). See SIGNUP.md.
   { key: "signup", label: "Sign-up form", href: "/signup" },
@@ -86,8 +84,8 @@ export const TRAINEE_DRAWER: ShellLink[] = [
 
 export const TRAINEE_DRAWER_FOOT = "The queue is the app. Everything else lives here.";
 
-/** `FT_MORE` in `views/mobile/ft.jsx`, in order. People and Messages are
- *  tabs for this role, so they aren't repeated here; The Journey is People's
+/** `FT_MORE` in `views/mobile/ft.jsx`, in order. People is a
+ *  tab for this role, so it isn't repeated here; The Journey is People's
  *  Step pills (ADR 0047), so it has no row either. */
 export const FT_MORE: ShellLink[] = [
   { key: "gatherings", label: "Gatherings", href: "/attendance" },

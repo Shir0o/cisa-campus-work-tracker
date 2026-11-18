@@ -63,7 +63,6 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/prayer': 'manager',
   '/answered': 'manager',
   '/settings': 'manager',
-  '/messages': 'manager',
   // Around the team is Full-timer-only (#943): the team's activity is pastoral
   // detail, and the pointer card on My Day is the only door.
   '/around': 'admin',
@@ -109,7 +108,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
-  { href: '/messages', label: 'Messages', minRole: 'manager' },
   { href: '/settings', label: 'Settings', minRole: 'manager' },
 ];
 
@@ -119,7 +117,7 @@ export const NAV_ITEMS: NavItem[] = [
  * open is named here. Mirrors src/lib/permissions.ts (#1940); the reasoning
  * behind each absence lives there and in the route table above.
  */
-export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/feedback', '/settings', '/contact', '/bible-study/present'];
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/feedback', '/settings', '/contact', '/bible-study/present'];
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;

@@ -9,19 +9,9 @@ Unified activity stream components, timeline composers, and message thread adapt
 - `ThreadChip` (`Stream.tsx`)
 - `Stream` (`Stream.tsx`)
 - `StreamComposer` (`StreamComposer.tsx`)
-- `ChatStreamMessage` (`chatAdapter.ts`)
-- `toStreamMessage` (`chatAdapter.ts`)
-- `chatReadMark` (`chatAdapter.ts`)
-- `announcementReadMark` (`chatAdapter.ts`)
-- `chatAudienceNote` (`chatAdapter.ts`)
-- `chatRoomSubtitle` (`chatAdapter.ts`)
-- `ChatAdapterInput` (`chatAdapter.ts`)
-- `ChatStreamAdapter` (`chatAdapter.ts`)
-- `chatAdapter` (`chatAdapter.ts`)
 - `ContactWriteContext` (`contactWriter.ts`)
 
 ## Invariants
-- [chatAdapter.ts] if (!(await send(body, i.staged, null))) throw new Error("send failed");
 - [followUpAdapter.ts] const MAX_BODY = 5000;
 - [followUpAdapter.ts] if (!response.ok) throw new Error(`Server returned ${response.status} ${response.statusText}`);
 - [followUpAdapter.ts] maxLength: MAX_BODY,

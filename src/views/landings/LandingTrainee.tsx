@@ -35,6 +35,7 @@ import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
 import { subscribeTiedSubcollection } from "../../lib/contactQueries";
 import FirstRunCard from "../../components/landing/FirstRunCard";
+import AnnouncementCards from "../../components/announcements/AnnouncementCards";
 import { useLayout } from "../../App";
 import { useI18n } from "../../components/LanguageProvider";
 
@@ -383,6 +384,8 @@ export default function LandingTrainee() {
           }
         </p>
       </header>
+
+      <AnnouncementCards className="mt-8" />
 
       <FirstRunCard
         role="trainee"

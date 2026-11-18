@@ -38,9 +38,7 @@ export default function PageTrail({ className, leafOnly = false }: PageTrailProp
   const layout = useOptionalLayout();
   const { t } = useI18n();
 
-  // The only record name the shell already holds. A room title on
-  // `/messages/:roomId` isn't in layout state, so that route shows `‹ Messages`
-  // — still a way back, and better than a placeholder.
+  // The only record name the shell already holds.
   const leafName = pathname.startsWith('/people/') ? layout?.selectedContact?.name ?? null : null;
   // The place this route was opened from, filters and all — the trail points
   // back there rather than at the section the route nominally belongs to.

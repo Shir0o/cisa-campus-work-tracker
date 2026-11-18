@@ -24,6 +24,8 @@ import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/pr
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 import OnYouCard from '../components/landing/OnYouCard';
 import PointerCard from '../components/landing/PointerCard';
+import AnnouncementCards from '../components/announcements/AnnouncementCards';
+import AnnouncementComposer from '../components/announcements/AnnouncementComposer';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { greetingKey } from '../components/landing/helpers';
 import { useLanguage } from '../components/LanguageProvider';
@@ -295,6 +297,11 @@ export default function MyDayMobile({
         </div>
       )}
 
+      {/* ── Announcements not yet marked Got it: a card is what the team needs
+          seen, so it leads. The Full-timer's own box sits below On you, which
+          must start inside the first screen (issue 1859). ── */}
+      <AnnouncementCards className="px-5 mt-4" />
+
       {/* ── On you + the pointer cards (issue 943). Mobile gets the same On you
           and pointer cards as desktop and loses its inline team section; the
           bottom nav bar is unchanged, and each pointer card is the only door to
@@ -315,6 +322,9 @@ export default function MyDayMobile({
           )}
         </div>
       )}
+
+      {/* ── A Full-timer posts an announcement and sees who has not got it ── */}
+      <AnnouncementComposer className="px-5 mt-4" />
 
       {/* ── On the horizon checklist ── */}
       <section className="mt-8 px-5 dash-sec">

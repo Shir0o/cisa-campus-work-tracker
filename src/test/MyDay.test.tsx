@@ -165,6 +165,15 @@ const interactionDoc = (
   data: () => data,
 });
 
+// The announcement cards and the Full-timer's box own their own subscription;
+// these tests only check that the home mounts them.
+vi.mock('../components/announcements/AnnouncementCards', () => ({
+  default: () => <div data-testid="announcement-cards" />,
+}));
+vi.mock('../components/announcements/AnnouncementComposer', () => ({
+  default: () => <div data-testid="announcement-composer" />,
+}));
+
 describe('MyDay', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -197,6 +206,16 @@ describe('MyDay', () => {
     });
     render(<MyDay />);
     expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
+  it('mounts the announcement cards and the Full-timer’s box (cut-or-keep §20)', async () => {
+    render(
+      <MemoryRouter>
+        <MyDay />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('announcement-cards')).toBeInTheDocument();
+    expect(screen.getByTestId('announcement-composer')).toBeInTheDocument();
   });
 
   it('renders greeting, all sections and the quiet figures footer', async () => {

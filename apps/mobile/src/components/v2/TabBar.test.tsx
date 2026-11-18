@@ -9,10 +9,6 @@ jest.mock('../../lib/firebase', () => ({
   auth: { currentUser: null },
 }));
 
-jest.mock('../../lib/useMessagesData', () => ({
-  useMessagesData: () => ({ unreadCount: 0 }),
-}));
-
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { LanguageProvider } from '../../lib/LanguageProvider';
 import { V2TabBar, getMobileTabTitle } from '../../../app/(tabs)/_layout';
@@ -34,23 +30,23 @@ describe('V2TabBar and Tab Navigation', () => {
       navigate: jest.fn(),
     };
 
-    const createProps = (focusedIndex = 0, unreadBadge?: number) => ({
+    const createProps = (focusedIndex = 0) => ({
       state: {
         index: focusedIndex,
         routes: [
           { key: 'today-key', name: 'index' },
-          { key: 'messages-key', name: 'messages' },
+          { key: 'people-key', name: 'people' },
           { key: 'more-key', name: 'more' },
         ],
       } as any,
       descriptors: {
         'today-key': { options: { title: 'Today' } },
-        'messages-key': { options: { title: 'Messages', tabBarBadge: unreadBadge } },
+        'people-key': { options: { title: 'People' } },
         'more-key': { options: { title: 'You' } },
       } as any,
       navigation: mockNavigation,
       insets: { top: 0, bottom: 20, left: 0, right: 0 },
-      tabNames: ['index', 'messages', 'more'],
+      tabNames: ['index', 'people', 'more'],
     });
 
     it('renders container with accessibilityRole="tablist"', async () => {
@@ -118,19 +114,6 @@ describe('V2TabBar and Tab Navigation', () => {
           ]),
         );
       });
-    });
-
-    it('labels the Messages tab with its unread count', async () => {
-      const props = createProps(0, 3);
-      const enRender = await render(
-        <ThemeProvider>
-          <LanguageProvider>
-            <V2TabBar {...props} />
-          </LanguageProvider>
-        </ThemeProvider>,
-      );
-
-      expect(enRender.getByLabelText('Messages, 3 unread')).toBeTruthy();
     });
   });
 });

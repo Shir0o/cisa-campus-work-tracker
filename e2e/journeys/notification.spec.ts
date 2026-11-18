@@ -28,7 +28,6 @@ import { signInAs } from '../helpers/auth';
 import { DEFAULT_CREDENTIALS, type Role } from '../helpers/auth-defaults';
 
 const LILA = 'e2e-contact-lila';
-const CHAT_ROOM = 'e2e-dm-check-in';
 
 async function waitForShell(page: Page) {
   await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
@@ -166,22 +165,6 @@ test.describe('Notification journey (#1479)', () => {
     await expect(
       page.getByRole('region', { name: 'Conversation' }).getByText('Great first connection with Lila. Let us follow up this week.'),
     ).toBeVisible({ timeout: 10_000 });
-  });
-
-  test('the Messages rail opens a room URL that direct-links back', async ({ page }) => {
-    // Folded from `notification-bell-deep-linking.spec.ts` (#682).
-    await signInAs(page, 'fulltimer');
-    await page.goto('/messages');
-    await waitForShell(page);
-
-    const rail = page.locator('.msgs-list');
-    await rail.getByText('Zion Adeyemi').first().click();
-    await expect(page).toHaveURL(/\/messages\/[a-zA-Z0-9_-]+/);
-    const url = page.url();
-
-    // A direct link to the room URL reopens the same conversation.
-    await page.goto(url);
-    await expect(page.getByPlaceholder(/Write a message/)).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -351,15 +334,19 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
     await expectPushTo('trainee', /commented on Omar Around/);
   });
 
-  test('a chat message buzzes the other member', async ({ page }) => {
+  test('an announcement buzzes every other Full-timer and Trainee, and not the poster', async ({ page }) => {
     await signInAs(page, 'fulltimer');
-    await page.goto(`/messages/${CHAT_ROOM}`);
-    const box = page.getByPlaceholder(/Write a message/);
+    await page.goto('/');
+    await waitForShell(page);
+    const box = page.getByLabel('Post an announcement');
     await expect(box).toBeVisible({ timeout: 15_000 });
-    await box.fill('See you at the table at noon');
-    await box.press('Meta+Enter');
+    await box.fill(`Gathering starts at 7pm ${Date.now()}`);
+    await page.getByRole('button', { name: 'Post', exact: true }).click();
 
-    await expectPushTo('trainee', /New message/);
+    await expectPushTo('trainee', /posted an announcement/);
+    await expectPushTo('trainee2', /posted an announcement/);
+    // The poster already knows: the bell entries are for everyone else.
+    expect((await pushes()).filter((p) => p.uid === uid.fulltimer && /posted an announcement/.test(p.title))).toHaveLength(0);
   });
 
   test('a public sign-up reaches every full-timer device and no trainee', async ({ page, browser }) => {

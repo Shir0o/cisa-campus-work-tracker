@@ -7,7 +7,7 @@
 // desktop site, which is what the foot line says out loud.
 //
 // This is the "Today" tab of the design's four-tab full-timer shell
-// (Today · People · Messages · More — see app/(tabs)/_layout.tsx); the widget
+// (Today · People · More — see app/(tabs)/_layout.tsx); the widget
 // links route into the app's own screens.
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -35,6 +35,7 @@ import { FromTeam } from './FromTeam';
 import { GoneQuiet } from './GoneQuiet';
 import { PrayersToCarry } from './PrayersToCarry';
 import { HomesOpen } from './HomesOpen';
+import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
 import { FtTodoSheet } from './FtTodoSheet';
@@ -227,6 +228,9 @@ function FtHome() {
           <PersonMark name={user?.displayName || me} id={uid} size={44} radius={15} fontSize={14} />
         </View>
 
+        {/* ── what the team has said, and a box to say something to it ── */}
+        <AnnouncementsPanel uid={uid} name={user?.displayName || 'A Full-timer'} isFullTimer={role === 'admin'} />
+
         {/* ── the two things worth doing in twenty seconds ── */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <QuickTile title="Log a moment" sub="20 seconds" dark onPress={() => openLog(null)} />
@@ -280,14 +284,7 @@ function FtHome() {
           onOpenPrayers={() => router.push('/prayer-log')}
         />
 
-        <HomesOpen
-          offers={data.homesOpen}
-          onMessage={(offer) => {
-            void data.messageThem(offer.uid, offer.name).then((roomId) => {
-              if (roomId) router.push(`/messages/${roomId}`);
-            });
-          }}
-        />
+        <HomesOpen offers={data.homesOpen} />
 
         <WeekAhead chips={data.weekAhead} />
 

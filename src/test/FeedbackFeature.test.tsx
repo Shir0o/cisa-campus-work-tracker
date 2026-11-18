@@ -247,27 +247,7 @@ describe('User Feedback Feature', () => {
       main.remove();
     });
 
-    it('positions the FAB above the message composer on the messages page', () => {
-      const originalPathname = window.location.pathname;
-      Object.defineProperty(window, 'location', {
-        value: { ...window.location, pathname: '/messages' },
-        writable: true,
-      });
-
-      render(<FeedbackFAB />);
-      const fabBtn = document.querySelector('#feedback-fab-btn');
-      expect(fabBtn).toBeInTheDocument();
-      // FAB should have clearance from the bottom message composer / send button
-      expect(fabBtn?.className).toContain('bottom-28');
-      expect(fabBtn?.className).toContain('lg:bottom-28');
-
-      Object.defineProperty(window, 'location', {
-        value: { ...window.location, pathname: originalPathname },
-        writable: true,
-      });
-    });
-
-    it('positions the FAB at standard bottom offset on non-messages pages', () => {
+    it('positions the FAB at the standard bottom offset', () => {
       const originalPathname = window.location.pathname;
       Object.defineProperty(window, 'location', {
         value: { ...window.location, pathname: '/directory' },

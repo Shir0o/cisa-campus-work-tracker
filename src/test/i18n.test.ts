@@ -30,7 +30,6 @@ describe("i18n dictionary and helper", () => {
     // noun mid-sentence.
     const expected: Record<string, string> = {
       "attendance.rhythm_noun": "Discard this rhythm?",
-      "modals.chat_noun": "Discard this chat?",
       "modals.contact_noun": "Discard this contact?",
       "modals.gathering_noun": "Discard this gathering?",
       "modals.interaction_noun": "Discard this interaction?",
