@@ -1,31 +1,24 @@
 rules_version = '2';
 
-// Cloud Storage rules. The only files this project stores are photos — one
-// taken on a visit, or attached to a prayer answer — and everything else lives
-// in Firestore.
+// Cloud Storage rules. The only files this project stores are photos attached
+// to a prayer's answer, and everything else lives in Firestore. (Visit photos
+// were the other kind; the Visits page is gone, so `visits/` is closed like any
+// other path. The objects already stored stay in the bucket, unread.)
 //
 // Why there is no full-timer check here: Storage rules can only reach Firestore
 // through `firestore.get()` on the (default) database, and this project's
 // Firestore is a *named* database (see firestore.databaseId in
-// firebase-applet-config.json). So the role gate lives on the `visits` and
-// `prayers` docs in firestore.rules. A photo uploaded without a matching doc is
-// an orphan blob nobody can find, and the size and content-type caps below
-// bound what can be put there.
+// firebase-applet-config.json). So the role gate lives on the `prayers` docs in
+// firestore.rules. A photo uploaded without a matching doc is an orphan blob
+// nobody can find, and the size and content-type caps below bound what can be
+// put there.
 // Guest sign-ins (a custom token with `guest: true`, minted for the shared
-// guest pages) can reach neither photo path: they are signed in to Firebase
+// guest pages) cannot reach the photo path: they are signed in to Firebase
 // Auth but are not members, and Storage cannot see their Firestore role.
 service firebase.storage {
   match /b/{bucket}/o {
     function isMember() {
       return request.auth != null && request.auth.token.get('guest', false) != true;
-    }
-
-    match /visits/{visitId}/{photoId} {
-      allow read: if isMember();
-      allow write: if isMember()
-                   && request.resource.size < 8 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-      allow delete: if isMember();
     }
 
     // Photos attached to a prayer's "how it was answered" (#267). The writer

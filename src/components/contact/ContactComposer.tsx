@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Heart, Loader2, Send } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
+import ComposerWith from "./ComposerWith";
 import {
   INTERACTION_TYPES,
   timeChipFor,
@@ -15,6 +16,7 @@ const TYPE_LABEL: Record<InteractionType, string> = {
   call: "composer_type_call",
   meeting: "composer_type_meeting",
   email: "composer_type_email",
+  visit: "composer_type_visit",
   interaction: "composer_type_other",
 };
 
@@ -34,6 +36,7 @@ export default function ContactComposer({
   canLogOnBehalf = false,
   teamMembers = [],
   firstName,
+  contactId,
   variant = "compose",
 }: {
   open: boolean;
@@ -46,6 +49,8 @@ export default function ContactComposer({
   canLogOnBehalf?: boolean;
   teamMembers?: { id: string; name: string }[];
   firstName: string;
+  /** The person whose page this is, so a Visit's people picker leaves them out. */
+  contactId?: string;
   variant?: "compose" | "edit";
 }) {
   const { t } = useLanguage();
@@ -92,7 +97,9 @@ export default function ContactComposer({
   const isEdit = variant === "edit";
   const canSubmit = value.text.trim().length > 0;
 
-  const pickType = (type: InteractionType) => onChange((p) => ({ ...p, type }));
+  // Only a Visit has others with it; leaving Visit forgets who was added.
+  const pickType = (type: InteractionType) =>
+    onChange((p) => ({ ...p, type, withPeople: type === "visit" ? p.withPeople : [] }));
   // The native picker fires on every sub-field edit, so it writes the value
   // without dismissing the popover mid-selection (#1495).
   const setDateTime = (dateTime: string) => onChange((p) => ({ ...p, dateTime }));
@@ -244,6 +251,13 @@ export default function ContactComposer({
                 )}
               </span>
             </div>
+            {!isEdit && value.type === "visit" && (
+              <ComposerWith
+                people={value.withPeople}
+                onChange={(withPeople) => onChange((p) => ({ ...p, withPeople }))}
+                excludeId={contactId}
+              />
+            )}
           </div>
         )}
 

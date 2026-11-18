@@ -216,7 +216,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   const openRowThread = (row: StreamRow<ThreadMessage>) =>
     openThread({ parent: row.message.id, team: row.message.scope === 'team' });
   const canRemoveInteraction = (interaction: Interaction) =>
-    !interaction.id.startsWith('visit_') && (uid === interaction.userId || hasMinRole(role, 'manager'));
+    uid === interaction.userId || hasMinRole(role, 'manager');
 
   const handleRemoveInteraction = (interaction: Interaction) => {
     // Match the web gate: team-scoped discussion messages don't count toward

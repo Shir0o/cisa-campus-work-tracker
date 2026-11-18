@@ -1,7 +1,7 @@
 # 0031: Homes are households that outlive their address, and Visits gains a second reading
 
 ## Status
-Accepted
+Superseded: the Visits page, Homes and Who we haven't seen were removed (cut-or-keep audit, 2026-11-17). A Visit is now an interaction type logged on the person, for several people at once; stored `visits` and `homes` documents are left in Firestore, unread. Previously: Accepted
 
 ## Context
 

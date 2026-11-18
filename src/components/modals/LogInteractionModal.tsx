@@ -6,11 +6,11 @@
 // kind, when, what was said and any follow-ups — sits on the right. Each picked
 // person gets their own entry and their Last seen moves to today.
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Check, Coffee, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2 } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { AlertCircle, Check, Coffee, House, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2 } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
-import { applyContactActivityToBatch } from '../../lib/contactActivity';
+import { activityTypeFor, logInteraction } from '../../lib/logInteraction';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -27,7 +27,7 @@ interface LogInteractionModalProps {
   initialContactId?: string;
 }
 
-type InteractionKind = 'chat' | 'email' | 'call' | 'meeting';
+type InteractionKind = 'chat' | 'email' | 'call' | 'meeting' | 'visit';
 
 /** The form as it opened, so "dirty" means the person changed something rather
  *  than the popup merely being pre-selected from its entry point (#1449). */
@@ -150,56 +150,18 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
     setSaveError(null);
     setIsSubmitting(true);
     try {
-      const batch = writeBatch(db);
-
-      for (const contactId of selectedContactIds) {
-        const contact = contacts.find(c => c.id === contactId);
-        const interactionRef = doc(collection(db, `contacts/${contactId}/interactions`));
-
-        batch.set(interactionRef, {
-          type,
-          dateTime: date,
-          content: notes,
-          createdAt: serverTimestamp(),
-          userId: user?.uid,
-          userName: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
-          contactId,
-          contactName: contact?.name || 'Unknown'
-        });
-
-        // Update contact's derived activity fields (#329)
-        const contactRef = doc(db, 'contacts', contactId);
-        applyContactActivityToBatch(batch, contactRef, {
-          date,
-          by: {
-            uid: user?.uid || null,
-            name: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
-          },
-          type: 'interaction',
-        });
-
-        // Create tasks
-        if (tasks.length > 0) {
-          tasks.forEach(task => {
-            if (task.title?.trim()) {
-              const taskRef = doc(collection(db, 'tasks'));
-              batch.set(taskRef, {
-                title: task.title,
-                dueDate: task.dueDate || date,
-                priority: task.priority || 'medium',
-                contactId: contactId,
-                contactName: contact?.name || 'Unknown',
-                assigneeId: user?.uid || null,
-                status: 'pending',
-                sourceInteractionId: interactionRef.id,
-                createdAt: serverTimestamp()
-              });
-            }
-          });
-        }
-      }
-
-      await batch.commit();
+      await logInteraction({
+        contactIds: [...selectedContactIds],
+        contactNames: Object.fromEntries(contacts.map((c) => [c.id, c.name])),
+        type,
+        dateTime: date,
+        content: notes,
+        by: {
+          uid: user?.uid,
+          name: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
+        },
+        tasks,
+      });
 
       if (user?.uid) {
         UsageStats.record(user.uid, {
@@ -239,7 +201,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
             targetId: contact.id,
             targetName: contact.name,
             targetType: 'contact',
-            type: type === 'meeting' ? 'event' : type === 'chat' ? 'comment' : type,
+            type: activityTypeFor(type),
             description: notes
           });
         }
@@ -249,7 +211,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
           targetId: 'multiple',
           targetName: `${selectedContactIds.size} contacts`,
           targetType: 'interaction',
-          type: type === 'meeting' ? 'event' : type === 'chat' ? 'comment' : type,
+          type: activityTypeFor(type),
           description: notes
         });
       }
@@ -270,12 +232,13 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
     }
   };
 
-  // Design A · Log interaction: Message, Email, Call, Meeting, one tap each.
+  // Design A · Log interaction: Message, Email, Call, Meeting, Visit, one tap each.
   const interactionTypes = [
     { id: 'chat' as const, label: t('modals.text_dm'), icon: MessageSquare },
     { id: 'email' as const, label: t('directory.email'), icon: Mail },
     { id: 'call' as const, label: t('modals.call'), icon: Phone },
     { id: 'meeting' as const, label: t('modals.meeting'), icon: Coffee },
+    { id: 'visit' as const, label: t('modals.visit'), icon: House },
   ];
 
   const dirty =

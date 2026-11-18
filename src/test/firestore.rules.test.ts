@@ -2530,175 +2530,94 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('Visits', () => {
-    const validVisit = {
-      date: '2026-08-13',
-      contactIds: ['contact1'],
-      contactNames: ['Ama Osei'],
-      went: ['admin1'],
-      wentNames: ['Tony'],
-      where: 'Whitman Hall, room 214',
-      purpose: "She's been quiet since her dad's surgery",
-      how: 'Sat on the floor and talked for an hour.',
-      followUp: '',
-      followUpTaskId: null,
-      prayerId: null,
-      photos: [],
-    };
-
-    const seedRoles = async () => {
+  // ── Visits are an interaction type (cut-or-keep §5) ──
+  // The Visits page and the Homes it kept are gone, so nothing reads or writes
+  // `visits` or `homes`. The documents stay in Firestore, unread: with no match
+  // the default rule closes each path to everyone, a Full-timer included. What a
+  // Visit is now is an interaction on each person, one per person, sharing a
+  // `groupId` when it was logged for several.
+  describe('Visits as an interaction type', () => {
+    const seed = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        for (const id of ['ama', 'bo', 'cai']) {
+          await setDoc(doc(fs, `contacts/${id}`), { name: id, email: `${id}@example.com`, visibleTo: ['manager1'] });
+        }
+        await setDoc(doc(fs, 'contacts/dee'), { name: 'Dee', email: 'dee@example.com', visibleTo: ['manager2'] });
+        await setDoc(doc(fs, 'visits', 'v1'), { date: '2026-08-13', contactIds: ['ama'], went: ['admin1'] });
+        await setDoc(doc(fs, 'homes', 'home1'), { label: 'the Oseis', members: ['ama'], active: true });
       });
     };
-
-    it('VS1: Full-timer can log, edit and remove a visit', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(setDoc(doc(db, 'visits', 'v1'), validVisit));
-      await assertSucceeds(updateDoc(doc(db, 'visits', 'v1'), { how: 'A longer write-up.' }));
-      await assertSucceeds(deleteDoc(doc(db, 'visits', 'v1')));
+    const visit = (uid: string, over: Record<string, unknown> = {}) => ({
+      userId: uid, userName: uid, content: 'Dinner at the Oseis', dateTime: '2026-11-17',
+      type: 'visit', contactId: 'ama', contactName: 'Ama', createdAt: serverTimestamp(), ...over,
     });
 
-    it('VS2: Trainee and below can neither read nor write a visit', async () => {
-      await seedRoles();
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'visits', 'v1'), validVisit);
-      });
-      for (const uid of ['manager1', 'operator1', 'viewer1']) {
+    it('VS1: nobody reads or writes the old visits and homes, a Full-timer included', async () => {
+      await seed();
+      for (const uid of ['admin1', 'manager1']) {
         const db = getFirestore({ uid });
         await assertFails(getDoc(doc(db, 'visits', 'v1')));
-        await assertFails(setDoc(doc(db, 'visits', 'vX'), validVisit));
+        await assertFails(setDoc(doc(db, 'visits', 'vNew'), { date: '2026-11-17', contactIds: ['ama'], went: [uid] }));
         await assertFails(deleteDoc(doc(db, 'visits', 'v1')));
-      }
-    });
-
-    it('VS3: Rejects a visit with nobody on it', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertFails(setDoc(doc(db, 'visits', 'vBad'), { ...validVisit, contactIds: [] }));
-    });
-
-    it('VS4: Rejects an oversized write-up', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertFails(setDoc(doc(db, 'visits', 'vBig'), { ...validVisit, how: 'a'.repeat(5001) }));
-    });
-
-    it('VS5: Accepts a visit covering several people with no address noted', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(
-        setDoc(doc(db, 'visits', 'v2'), {
-          ...validVisit,
-          contactIds: ['contact1', 'contact2'],
-          contactNames: ['Ama Osei', 'Bo Chen'],
-          went: ['admin1', 'manager1'],
-          where: '',
-        }),
-      );
-    });
-
-    it('VS6: Accepts a visit that names its home', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(
-        setDoc(doc(db, 'visits', 'v3'), { ...validVisit, homeId: 'home1' }),
-      );
-      await assertSucceeds(
-        setDoc(doc(db, 'visits', 'v4'), { ...validVisit, homeId: null }),
-      );
-    });
-  });
-
-  describe('Homes (ADR 0031)', () => {
-    const validHome = {
-      label: 'the Oseis',
-      members: ['contact1', 'contact2'],
-      place: 'Whitman Hall, room 214',
-      notes: '',
-      active: true,
-    };
-
-    const seedRoles = async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
-      });
-    };
-
-    it('HS1: Full-timer can read and write a home', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(setDoc(doc(db, 'homes', 'home1'), validHome));
-      await assertSucceeds(
-        updateDoc(doc(db, 'homes', 'home1'), { label: 'Osei', active: true }),
-      );
-      await assertSucceeds(getDoc(doc(db, 'homes', 'home1')));
-    });
-
-    it('HS2: Trainee, operator and viewer can neither read nor write a home', async () => {
-      await seedRoles();
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
-      });
-      for (const uid of ['manager1', 'operator1', 'viewer1']) {
-        const db = getFirestore({ uid });
         await assertFails(getDoc(doc(db, 'homes', 'home1')));
-        await assertFails(setDoc(doc(db, 'homes', 'homeX'), validHome));
-        await assertFails(updateDoc(doc(db, 'homes', 'home1'), { label: 'renamed' }));
+        await assertFails(setDoc(doc(db, 'homes', 'homeNew'), { label: 'x', members: [], active: true }));
+        await assertFails(deleteDoc(doc(db, 'homes', 'home1')));
       }
     });
 
-    it('HS3: Rejects a home with no label, an empty label, or an invalid active flag', async () => {
-      await seedRoles();
+    it('VS2: a Full-timer logs one Visit per person, all sharing a groupId', async () => {
+      await seed();
       const db = getFirestore({ uid: 'admin1' });
-      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, label: '' }));
-      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, active: 'yes' }));
-      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, members: 'not-a-list' }));
-    });
-
-    it('HS4: A Full-timer can delete a home (ADR 0040)', async () => {
-      await seedRoles();
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
-      });
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(deleteDoc(doc(db, 'homes', 'home1')));
-    });
-
-    it('HS5: A non-admin cannot delete a home', async () => {
-      await seedRoles();
-      for (const uid of ['manager1', 'operator1', 'viewer1']) {
-        await testEnv.withSecurityRulesDisabled(async (context) => {
-          await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
-        });
-        await assertFails(deleteDoc(doc(getFirestore({ uid }), 'homes', 'home1')));
+      for (const id of ['ama', 'bo', 'cai']) {
+        await assertSucceeds(
+          setDoc(doc(db, `contacts/${id}/interactions/visit-${id}`), visit('admin1', { contactId: id, groupId: 'grp-1' })),
+        );
       }
     });
 
-    it('HS6: A home-targeted activity entry is accepted', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
+    it('VS3: a tied Trainee can log a Visit for the people they see, not for one they do not', async () => {
+      await seed();
+      const db = getFirestore({ uid: 'manager1' });
       await assertSucceeds(
-        setDoc(doc(db, 'activities', 'act_home'), {
-          userId: 'admin1',
-          userName: 'Admin',
-          action: 'deleted a home',
-          targetId: 'home1',
-          targetName: 'the Oseis',
-          targetType: 'home',
-          type: 'edit',
-          createdAt: '2026-01-01',
-        }),
+        setDoc(doc(db, 'contacts/ama/interactions/v'), visit('manager1', { groupId: 'grp-1' })),
+      );
+      await assertFails(
+        setDoc(doc(db, 'contacts/dee/interactions/v'), visit('manager1', { contactId: 'dee', groupId: 'grp-1' })),
       );
     });
+
+    it('VS4: a groupId is a short string — anything else is refused', async () => {
+      await seed();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(
+        setDoc(doc(db, 'contacts/ama/interactions/long'), visit('admin1', { groupId: 'g'.repeat(129) })),
+      );
+      await assertFails(
+        setDoc(doc(db, 'contacts/ama/interactions/num'), visit('admin1', { groupId: 42 })),
+      );
+      await assertFails(
+        setDoc(doc(db, 'contacts/ama/interactions/empty'), visit('admin1', { groupId: '' })),
+      );
+    });
+
+    it('VS5: a Visit entry can be edited and removed like any other, a groupId left as it was', async () => {
+      await seed();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts/ama/interactions/mine'), {
+          userId: 'manager1', userName: 'M1', content: 'Dinner', dateTime: '2026-11-17', type: 'visit',
+          groupId: 'grp-1', createdAt: '2026-11-17',
+        });
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts/ama/interactions/mine'), { content: 'Dinner, then dessert' }));
+      await assertFails(updateDoc(doc(db, 'contacts/ama/interactions/mine'), { groupId: 'grp-2' }));
+      await assertSucceeds(deleteDoc(doc(db, 'contacts/ama/interactions/mine')));
+    });
   });
+
 
   describe('My Day — user preferences, inbox state & personal prayers', () => {
     const seedUsers = async () => {

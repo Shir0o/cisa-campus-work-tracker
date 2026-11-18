@@ -35,7 +35,6 @@ describe("i18n dictionary and helper", () => {
       "modals.interaction_noun": "Discard this interaction?",
       "modals.rhythm_noun": "Discard this rhythm?",
       "modals.smartImport.import_noun": "Discard this import?",
-      "modals.visit_noun": "Discard this visit?",
       "todoComposer.noun": "Discard this task?",
     };
     const root = join(process.cwd(), "src/components");
@@ -78,24 +77,6 @@ describe("i18n dictionary and helper", () => {
 
     const unresolved = used.filter((key) => t(key, "en") === key);
     expect(unresolved, "contactDetails keys rendered with no translation").toEqual([]);
-  });
-
-  it("resolves every modals key LogVisitModal actually renders", () => {
-    const src = readFileSync(
-      join(process.cwd(), "src/components/modals/LogVisitModal.tsx"),
-      "utf8",
-    );
-    const used = [
-      ...new Set(
-        [...src.matchAll(/t\(\s*['"](modals\.[a-z0-9_]+)['"]/gi)].map(
-          (m) => m[1],
-        ),
-      ),
-    ].sort();
-    expect(used.length).toBeGreaterThan(15);
-
-    const unresolved = used.filter((key) => t(key, "en") === key);
-    expect(unresolved, "LogVisitModal keys rendered with no translation").toEqual([]);
   });
 
   it("resolves every modals key LogInteractionModal actually renders", () => {

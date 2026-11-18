@@ -242,7 +242,6 @@ export function usagePathLabel(path: string): string {
     '/board': 'The Journey',
     '/directory': 'People',
     '/history': 'History',
-    '/visits': 'Visits',
     '/prayer': 'On our hearts',
     '/answered': 'Answered',
     '/settings': 'Settings',

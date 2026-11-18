@@ -8,6 +8,7 @@ import {
   sendNotification,
 } from "../lib/firebase";
 import { buildContactActivityPatch } from "../lib/contactActivity";
+import { activityTypeFor } from "../lib/logInteraction";
 import {
   doc,
   updateDoc,
@@ -128,6 +129,8 @@ export interface NewContactInteraction {
   userName: string;
   userPhoto?: string;
   reacher?: { id: string; name: string } | null;
+  /** Ties the entries of one Visit to several people together (cut-or-keep §5). */
+  groupId?: string;
   t?: (key: string, fallback?: string) => string;
 }
 
@@ -148,6 +151,7 @@ export async function addContactInteraction(
     content: data.content,
     dateTime: data.dateTime || new Date().toISOString(),
     type: data.type || "interaction",
+    ...(data.groupId ? { groupId: data.groupId } : {}),
     createdAt: serverTimestamp(),
   });
 
@@ -179,12 +183,7 @@ export async function addContactInteraction(
     targetId: c.id,
     targetName: c.name,
     targetType: "contact",
-    type:
-      data.type === "meeting"
-        ? "event"
-        : data.type === "chat"
-          ? "comment"
-          : ((data.type || "interaction") as SystemActivity["type"]),
+    type: activityTypeFor(data.type || "interaction"),
     description: data.content,
   });
 }

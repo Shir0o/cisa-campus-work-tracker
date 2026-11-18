@@ -96,11 +96,11 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     expect(screen.getByText('Bob Jones')).toBeInTheDocument();
   });
 
-  it('offers Text / DM, Email, Call and Meeting as one-tap kinds, in that order', () => {
+  it('offers Text / DM, Email, Call, Meeting and Visit as one-tap kinds, in that order', () => {
     setupOnSnapshot(mockContacts);
     render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
 
-    const kinds = ['Text / DM', 'Email', 'Call', 'Meeting'];
+    const kinds = ['Text / DM', 'Email', 'Call', 'Meeting', 'Visit'];
     for (const kind of kinds) {
       expect(screen.getByRole('button', { name: kind })).toBeInTheDocument();
     }
@@ -126,6 +126,47 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
       expect.objectContaining({ type: 'email', content: 'Sent her the schedule.' }),
     );
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ type: 'email' }));
+  });
+
+  // Cut-or-keep §5: Visit is an interaction type, logged for several people at
+  // once, and the entries it writes name the moment they share.
+  it('logs a Visit for several people as one entry each, sharing a groupId', async () => {
+    setupOnSnapshot([...mockContacts, { id: 'c3', name: 'Cai Lin', email: 'cai@example.com' }]);
+    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+
+    fireEvent.click(await screen.findByText('Alice Smith'));
+    fireEvent.click(screen.getByText('Bob Jones'));
+    fireEvent.click(screen.getByText('Cai Lin'));
+    fireEvent.click(screen.getByRole('button', { name: 'Visit' }));
+    fireEvent.change(screen.getByLabelText('What was said'), { target: { value: 'Dinner with the family.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log for 3 people' }));
+
+    const batchMock = firestore.writeBatch(null as any) as any;
+    await waitFor(() => expect(batchMock.commit).toHaveBeenCalledTimes(1));
+    const visits = batchMock.set.mock.calls
+      .map(([, data]: any[]) => data)
+      .filter((d: any) => d.type === 'visit');
+    expect(visits.map((d: any) => d.contactId)).toEqual(['c1', 'c2', 'c3']);
+    expect(visits.every((d: any) => d.content === 'Dinner with the family.')).toBe(true);
+    const groupIds = new Set(visits.map((d: any) => d.groupId));
+    expect(groupIds.size).toBe(1);
+    expect([...groupIds][0]).toBeTruthy();
+  });
+
+  it('writes no groupId when the Visit is for one person', async () => {
+    setupOnSnapshot(mockContacts);
+    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+
+    fireEvent.click(await screen.findByText('Alice Smith'));
+    fireEvent.click(screen.getByRole('button', { name: 'Visit' }));
+    fireEvent.change(screen.getByLabelText('What was said'), { target: { value: 'Stopped by.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log for 1 person' }));
+
+    const batchMock = firestore.writeBatch(null as any) as any;
+    await waitFor(() => expect(batchMock.commit).toHaveBeenCalled());
+    const [, data] = batchMock.set.mock.calls[0];
+    expect(data).toMatchObject({ type: 'visit' });
+    expect('groupId' in data).toBe(false);
   });
 
   it('filters people on typing in the search query', async () => {

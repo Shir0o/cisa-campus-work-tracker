@@ -50,6 +50,10 @@ _Avoid_: Follow-up, comment, message
 The submitter's own side of the feedback loop: every Report they have sent, what came of it, and its Replies. It is not a place to submit — the note button is the only composer. The owner reads the loop raw here and switches to what a submitter sees through **owner view**.
 _Avoid_: Your notes, feedback page, my tickets
 
+**Visit**:
+A kind of **Interaction**: having gone to where someone lives. It is logged on a person's own page like any other, and when one visit was to several people (a household) they are all picked at once — each person's story gets its own entry, and the entries share a group id so they read as one moment. There is no Visits page, no list of visits and no reading of who has not been seen. A visit logged before this is the interaction each visited person already carried, and shows in their story unchanged; the old `visits` and `homes` documents are left in Firestore, unread.
+_Avoid_: Visitation, home visit, visit log
+
 **Remove an interaction**:
 Permanently deleting a logged Interaction from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer, and only on a person they can see (#1350); reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation, Remove conversation — **Conversation** is the staff stream, never an Interaction
@@ -247,7 +251,7 @@ Taking one message from a person's **Conversation** into **The story so far**, b
 _Avoid_: Pin, promote, save, bookmark
 
 **Not reached yet**:
-A person nobody has connected with since they were added: no **Interaction** has been logged with them and they have never been marked present at a **Gathering**. An Interaction **logged on behalf** of a teammate counts. It applies to **Contacts** (the kind): the My Day card and each tag's count show only Contacts added in the last 30 days, so the list stays one people can still act on, while the Directory filter reaches back to everyone. A Trainee's card shows the people they are tied to; a Full-timer can switch it to the whole team, each person shown with who is tied to them. Tapping Call or Text does not by itself, because nothing proves the call or text happened. Distinct from **Who we haven't seen**, which measures time since a visit and never declares anyone missed.
+A person nobody has connected with since they were added: no **Interaction** has been logged with them and they have never been marked present at a **Gathering**. An Interaction **logged on behalf** of a teammate counts. It applies to **Contacts** (the kind): the My Day card and each tag's count show only Contacts added in the last 30 days, so the list stays one people can still act on, while the Directory filter reaches back to everyone. A Trainee's card shows the people they are tied to; a Full-timer can switch it to the whole team, each person shown with who is tied to them. Tapping Call or Text does not by itself, because nothing proves the call or text happened. 
 _Avoid_: Not contacted, uncontacted, cold, new lead
 
 **Logged on behalf**:
@@ -370,10 +374,6 @@ _Avoid_: False positive, ignore, dismiss
 Reversing a past combine contacts or combine tags so the records it changed return to how they were, keeping anything added or edited since.
 _Avoid_: Revert, split, restore, unmerge
 
-**Combine homes**:
-Folding a **Home** that was entered twice into the one that is really that household. The kept Home keeps its own label and place (filling either from the combined-in Home only where it has none), takes in everyone who lived there, keeps both sets of notes, and becomes the Home of every visit logged against the combined-in Home, which is then removed. Shown as a preview of what moves before it happens. Full-timers only, as Homes are (ADR 0040).
-_Avoid_: Merge homes, dedupe homes, survivor, duplicate
-
 **Combine tags**:
 A Full-timer rewriting variant spellings of a tag across all contacts into one tag (e.g. `bfa table` → `BFA`), choosing from guesses or building their own, after a dry-run preview. It can be undone (ADR 0036, ADR 0039).
 _Avoid_: Merge tags, dedupe tags, auto-fix tags
@@ -401,7 +401,7 @@ Meeting regularly with the church, not merely believing. It is the axis that tel
 _Avoid_: Saved, believer, saint, churched, active, engaged, committed, member
 
 **Local saint**:
-Someone in **the church life** who is not a student — the people whose **Home** we go round to, including anyone who was **Our own** and has since graduated or left school. They stand on **The Journey** like everyone else, but are never counted toward **The Day's Goal**: the Goal measures outreach, and a local saint is not being reached.
+Someone in **the church life** who is not a student — the people we go round to see, including anyone who was **Our own** and has since graduated or left school. They stand on **The Journey** like everyone else, but are never counted toward **The Day's Goal**: the Goal measures outreach, and a local saint is not being reached.
 _Avoid_: Saint, member, church family, brother, sister, non-student
 
 **Our own**:
@@ -419,14 +419,6 @@ _Avoid_: Stage board, pipeline, funnel, the board (**The Board** is the coordina
 **Step**:
 One place on **The Journey**. Everyone is on exactly one Step at a time, or none yet, and moving them is its own deliberate act, never part of editing who they are. `stage` is the code's word for it.
 _Avoid_: Stage, column, phase, status
-
-**Home**:
-A household we visit, usually labelled by the family's last name ("the Peinados") — the label is free text, because a house sharing no one surname needs a name only the team would think of — and tied to the people in **the church life** who live there, usually **Local saints**, sometimes **Our own** living with family. Several may share one home, and someone may have none yet. The Home carries the place, because the person no longer does: `location` was retired from the contact form and survives only on older documents. When logging a visit for a Home's members, the visit's location defaults quietly to the Home's place without requiring typing or review unless an explicit override is made (ADR 0031, ADR 0043). A Home outlives its household: when the last person leaves it goes inactive, keeping its visits. Only a Home made by mistake — one no visit was ever logged against — is removed outright, and a Home entered twice is folded into the real one with **Combine homes** (ADR 0040).
-_Avoid_: House, address, residence, location, venue
-
-**Who we haven't seen**:
-The second reading of **Visits**: how long it has been since we last sat with each person, grouped under the **Home** they live in. Someone never visited reads as a gap, not as missing data, and being in a Home is what puts a person here at all. It runs continuously rather than against a year or a term — nothing resets on a date, so a faithful December never reads as a wall of gaps in January — and it carries no target interval: the gap is shown and a Full-timer decides, rather than the app declaring a visit overdue on a cadence nobody maintains. Coverage is the wrong word for it, because there is no whole to be complete against.
-_Avoid_: Visitation coverage, coverage, visit schedule, rotation, cadence, visit quota
 
 **Not sorted yet**:
 The people whose kind nobody has decided — no one has said whether they are in **the church life** or a student. It is the absence of a stamp, not a value: the default and the migration seed both leave a person unsorted, and only a Full-timer's own decision marks them sorted. The count falls only as someone works through them, which makes it a measure of work remaining rather than of what the app guessed.

@@ -4,8 +4,14 @@ import { format } from "date-fns";
 export type ComposerMode = "interaction" | "prayer";
 
 /** The interaction kinds the chip row offers. "interaction" is the Other chip. */
-export const INTERACTION_TYPES = ["chat", "call", "meeting", "email", "interaction"] as const;
+export const INTERACTION_TYPES = ["chat", "call", "meeting", "email", "visit", "interaction"] as const;
 export type InteractionType = (typeof INTERACTION_TYPES)[number];
+
+/** Someone else seen in the same visit. */
+export interface ComposerPerson {
+  id: string;
+  name: string;
+}
 
 export interface ComposerValue {
   mode: ComposerMode;
@@ -19,6 +25,9 @@ export interface ComposerValue {
   /** A teammate who reached the person, when a Full-timer logs it on their
    *  behalf (#1288). Empty string means "me". */
   reachedById: string;
+  /** The other people seen in the same Visit, besides the one whose page it is
+   *  (cut-or-keep §5). Only a Visit carries any. */
+  withPeople: ComposerPerson[];
 }
 
 export function formatDateTime(date: Date): string {
@@ -33,6 +42,7 @@ export function emptyComposer(now: Date = new Date()): ComposerValue {
     type: "chat",
     dateTime: formatDateTime(now),
     reachedById: "",
+    withPeople: [],
   };
 }
 
@@ -125,5 +135,6 @@ export function interactionEditValue(interaction: {
     type,
     dateTime: parsed ? formatDateTime(parsed) : interaction.dateTime,
     reachedById: "",
+    withPeople: [],
   };
 }

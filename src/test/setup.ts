@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
-// jsdom implements no object URLs, and the visit modal previews picked photos
+// jsdom implements no object URLs, and the prayer answer form previews picked photos
 // with them.
 URL.createObjectURL = vi.fn(() => 'blob:preview');
 URL.revokeObjectURL = vi.fn();

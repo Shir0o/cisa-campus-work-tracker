@@ -1,7 +1,7 @@
 # 0040: A Home made by mistake can be removed, and one entered twice combined
 
 ## Status
-Accepted — amends ADR 0031 §1
+Superseded: the Visits page, Homes and Who we haven't seen were removed (cut-or-keep audit, 2026-11-17). A Visit is now an interaction type logged on the person, for several people at once; stored `visits` and `homes` documents are left in Firestore, unread. Previously: Accepted — amends ADR 0031 §1
 
 ## Context
 

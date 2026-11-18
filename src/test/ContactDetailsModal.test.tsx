@@ -187,6 +187,10 @@ describe('ContactDetailsModal Component', () => {
     (firestore.getDocs as any).mockResolvedValue({ size: 0, docs: [] });
     (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
     (firestore.updateDoc as any).mockResolvedValue(true);
+    (firestore.doc as any).mockImplementation((_db: any, ...parts: string[]) => ({
+      path: parts.join('/'),
+      id: parts[parts.length - 1],
+    }));
   });
 
   const setupOnSnapshotMocks = (dataMap: Record<string, any[]>) => {
@@ -525,6 +529,70 @@ describe('ContactDetailsModal Component', () => {
           type: 'meeting',
         })
       );
+    });
+  });
+
+  // Cut-or-keep §5: a Visit logged on the person's page can name the others seen
+  // in the same visit, and each person's story gets its own entry.
+  it('logs a Visit for several people, one entry each sharing a groupId', async () => {
+    // `doc(collectionRef)` is how a fresh auto id is minted; the shared mock only
+    // knows the `doc(db, ...path)` form.
+    (firestore.doc as any).mockImplementation((first: any, ...parts: string[]) =>
+      parts.length === 0
+        ? { path: `${first.path}/auto`, id: 'auto-group-1' }
+        : { path: parts.join('/'), id: parts[parts.length - 1] },
+    );
+    (firestore.onSnapshot as any).mockImplementation((q: any, callback: any) => {
+      if (typeof callback === 'function') {
+        callback(
+          q?.path === 'contacts'
+            ? { docs: [{ id: 'contact-bo', data: () => ({ name: 'Bo Chen', email: '' }) }] }
+            : { docs: [] },
+        );
+      }
+      return () => {};
+    });
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    clickLogInteractionMenu();
+    fireEvent.change(screen.getByPlaceholderText(/What happened with John/i), {
+      target: { value: 'Dinner with the family.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Visit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Add people' })).getByRole('button', { name: /Bo Chen/ }),
+    );
+    fireEvent.mouseDown(document.body);
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+
+    await waitFor(() => {
+      const visits = (firestore.addDoc as any).mock.calls.filter(([, d]: any[]) => d?.type === 'visit');
+      expect(visits).toHaveLength(2);
+      expect(visits.map(([ref]: any[]) => ref.path)).toEqual([
+        'contacts/contact-abc/interactions',
+        'contacts/contact-bo/interactions',
+      ]);
+      const [[, first], [, second]] = visits;
+      expect(first.groupId).toBeTruthy();
+      expect(second.groupId).toBe(first.groupId);
+      expect(first.content).toBe('Dinner with the family.');
+    });
+  });
+
+  it('writes no groupId for a Visit to one person', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    clickLogInteractionMenu();
+    fireEvent.change(screen.getByPlaceholderText(/What happened with John/i), {
+      target: { value: 'Stopped by.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Visit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+
+    await waitFor(() => {
+      const [, data] = (firestore.addDoc as any).mock.calls.find(([, d]: any[]) => d?.type === 'visit');
+      expect('groupId' in data).toBe(false);
     });
   });
 
@@ -2766,10 +2834,12 @@ describe('removing interactions (#650)', () => {
     vi.useRealTimers();
   });
 
-  it('hides the remove affordance for visit-mirror interactions', async () => {
+  // The Visits page is gone, so a visit already logged is just an interaction on
+  // the person: nothing else holds its record, and it removes like any other.
+  it('lets a legacy visit’s interaction be removed like any other', async () => {
     renderWithInteractions(interactionDoc('visit_abc'));
     await screen.findByText('Coffee chat');
-    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Remove$/ })).toBeInTheDocument();
   });
 
   it('removes the row immediately, then commits the delete and audit entry after the undo window', async () => {

@@ -12,7 +12,7 @@ import { getUserInitials } from "./utils";
 import type { NewContactInput } from "./data/contacts";
 import type { Contact } from "./types";
 
-export type QuickCaptureKindId = "gospel" | "appointment" | "gathering" | "phone" | "text" | "meet";
+export type QuickCaptureKindId = "gospel" | "appointment" | "gathering" | "phone" | "text" | "meet" | "visit";
 
 export interface QuickCaptureKind {
   id: QuickCaptureKindId;
@@ -26,6 +26,7 @@ export const QUICK_CAPTURE_KINDS: QuickCaptureKind[] = [
   { id: "phone", label: "Phone call" },
   { id: "text", label: "Text" },
   { id: "meet", label: "Ran into" },
+  { id: "visit", label: "Visit" },
 ];
 
 // `M2_TYPE_TITLE` in the design's views/mobile/m2.jsx. The design writes this
@@ -39,6 +40,7 @@ const KIND_TITLES: Record<string, string> = {
   phone: "Phone call",
   text: "Texted",
   meet: "Ran into each other",
+  visit: "Visit",
   coffee: "Coffee",
   meal: "Shared a meal",
   "small-group": "Small group",

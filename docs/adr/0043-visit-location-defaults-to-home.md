@@ -1,7 +1,7 @@
 # 0043: Visit location defaults to Home, retiring manual entry for households
 
 ## Status
-Accepted
+Superseded: the Visits page, Homes and Who we haven't seen were removed (cut-or-keep audit, 2026-11-17). A Visit is now an interaction type logged on the person, for several people at once; stored `visits` and `homes` documents are left in Firestore, unread. Previously: Accepted
 
 ## Context
 When logging a visit in `LogVisitModal`, the form previously presented a prominent "Where" text input alongside the date. While `where` auto-filled from the matched `Home.place` (per ADR 0031), presenting an active text field placed an unnecessary data-entry burden on users when the vast majority of visits occur at the family's home. Furthermore, when visits were saved without an explicit address, `VisitCard` displayed a sterile `"No address noted"` fallback label.

@@ -580,7 +580,8 @@ service cloud.firestore {
                  data.userName is string && data.userName.size() <= 128 &&
                  data.content is string && data.content.size() <= 5000 &&
                  (!('reachedById' in data) || (data.reachedById is string && data.reachedById.size() > 0 && data.reachedById.size() <= 128)) &&
-                 (!('reachedByName' in data) || (data.reachedByName is string && data.reachedByName.size() <= 128));
+                 (!('reachedByName' in data) || (data.reachedByName is string && data.reachedByName.size() <= 128)) &&
+                 (!('groupId' in data) || (data.groupId is string && data.groupId.size() > 0 && data.groupId.size() <= 128));
         }
 
         // "Reached by" (#1288) names the teammate who actually connected with the
@@ -990,7 +991,7 @@ service cloud.firestore {
         return data.userId == request.auth.uid &&
                data.userName is string && data.userName.size() <= 128 &&
                data.action is string && data.action.size() <= 256 &&
-               data.targetType in ['contact', 'event', 'comment', 'interaction', 'home'] &&
+               data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
                data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'];
       }
       // An entry is data about its target (targetName, a stage change in
@@ -1134,58 +1135,6 @@ service cloud.firestore {
       allow list, get: if isApprovedUser();
       allow create, update: if isApprovedUser() && isManager() && isValidTask(incoming());
       allow delete: if isManager() || isSuperAdmin();
-    }
-
-    // 10b. Visits Collection — a record of having gone to where someone lives.
-    // Full-timers only, on both sides: what's written in a visit ("she's been
-    // quiet since her dad's surgery") is pastoral detail that shouldn't be a
-    // team-wide read. The photos live in Cloud Storage; only their metadata is
-    // here. Optional keys use the `!('x' in data)` guard for the same reason
-    // isValidContact does — a partial update merges to a doc that may omit them.
-    match /visits/{visitId} {
-      function isValidVisit(data) {
-        return data.keys().hasAll(['date', 'contactIds', 'went']) &&
-               data.date is string && data.date.size() <= 20 &&
-               data.contactIds is list && data.contactIds.size() > 0 && data.contactIds.size() <= 20 &&
-               data.went is list && data.went.size() <= 20 &&
-               (!('contactNames' in data) || data.contactNames is list) &&
-               (!('wentNames' in data) || data.wentNames is list) &&
-               (!('where' in data) || data.where == null || (data.where is string && data.where.size() <= 200)) &&
-               (!('purpose' in data) || data.purpose == null || (data.purpose is string && data.purpose.size() <= 500)) &&
-               (!('how' in data) || data.how == null || (data.how is string && data.how.size() <= 5000)) &&
-               (!('followUp' in data) || data.followUp == null || (data.followUp is string && data.followUp.size() <= 500)) &&
-               (!('followUpTaskId' in data) || data.followUpTaskId == null || (data.followUpTaskId is string && data.followUpTaskId.size() <= 128)) &&
-               (!('prayerId' in data) || data.prayerId == null || (data.prayerId is string && data.prayerId.size() <= 128)) &&
-               (!('prayerBurden' in data) || data.prayerBurden == null || (data.prayerBurden is string && data.prayerBurden.size() <= 500)) &&
-               (!('homeId' in data) || data.homeId == null || (data.homeId is string && data.homeId.size() <= 128)) &&
-               (!('photos' in data) || data.photos is list && data.photos.size() <= 12);
-      }
-
-      allow list, get: if isApprovedUser() && isAdmin();
-      allow create, update: if isValidId(visitId) && isApprovedUser() && isAdmin() && isValidVisit(incoming());
-      allow delete: if isValidId(visitId) && isAdmin();
-    }
-
-    // 10c. Homes Collection — a household we go round to (ADR 0031). A Home is
-    // a household, not an address: it keeps its identity (and its visits) when
-    // it moves, and goes inactive rather than being deleted when the last
-    // person leaves. Being in a Home is what puts a person in the "Who we
-    // haven't seen" reading at all. Full-timers only on both sides — the
-    // roster of who we visit is pastoral detail, and it gets its own block so
-    // it spends none of the contacts ruleset's expression budget.
-    match /homes/{homeId} {
-      function isValidHome(data) {
-        return data.keys().hasAll(['label', 'members', 'active']) &&
-               data.label is string && data.label.size() > 0 && data.label.size() <= 120 &&
-               data.members is list && data.members.size() <= 50 &&
-               data.active is bool &&
-               (!('place' in data) || data.place == null || (data.place is string && data.place.size() <= 200)) &&
-               (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000));
-      }
-
-      allow list, get: if isApprovedUser() && isAdmin();
-      allow create, update: if isValidId(homeId) && isApprovedUser() && isAdmin() && isValidHome(incoming());
-      allow delete: if isApprovedUser() && isAdmin();
     }
 
     // 11. Feedback Collection
