@@ -6,8 +6,6 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { useCommand } from '../lib/commands';
 import { useAuth } from './AuthProvider';
 import { useLanguage } from './LanguageProvider';
-import { Translate } from './Translate';
-import { useTranslate } from '../hooks/useTranslate';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { capturePageScreenshot } from '../lib/feedbackScreenshot';
@@ -257,7 +255,6 @@ export default function FeedbackFAB() {
   const firstName = (user.displayName || '').trim().split(/\s+/)[0] || 'friend';
   const activeMeta = kindMeta(kind);
   const { t } = useLanguage();
-  const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
   // Never tucked while the panel it owns is open, and never hidden from the
   // tab order: opacity + pointer-events keep it reachable, and focusing it
   // (see onFocus) brings it straight back.
@@ -376,7 +373,7 @@ export default function FeedbackFAB() {
                               : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
                           }`}
                         >
-                          <Translate text={k.label} />
+                          {k.label}
                         </button>
                       );
                     })}
@@ -389,14 +386,14 @@ export default function FeedbackFAB() {
                     onChange={(e) => setMessage(e.target.value)}
                     rows={4}
                     maxLength={600}
-                    placeholder={activePlaceholder}
+                    placeholder={activeMeta.placeholder}
                     aria-label={t('feedback.your_note')}
                     className="w-full resize-none bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
                   />
 
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-on-surface-variant truncate min-w-0">
-                      {user.displayName || t('common.you')} · <Translate text={roleLabel(role)} />
+                      {user.displayName || t('common.you')} · {roleLabel(role)}
                     </span>
                     <button
                       type="button"

@@ -37,7 +37,6 @@ import { PersonMark } from '../queue/atoms';
 import { Snackbar, Sheet } from '../ui';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { KeyboardScrollView } from '../ui/KeyboardField';
-import { useTranslate } from '../Translate';
 import { StreamList, Divider } from '../stream/StreamList';
 import { StreamRowView, ThreadChip, type StreamRowProps } from '../stream/StreamRow';
 import { StreamComposer } from '../stream/StreamComposer';
@@ -432,7 +431,7 @@ export function ChatStreamPane({
   );
 }
 
-/** A message's words — translated — and what it carries. */
+/** A message's words, and what it carries. */
 function Body({
   row,
   style,
@@ -445,11 +444,10 @@ function Body({
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const { message } = row;
-  const { translatedText } = useTranslate(message.body);
   return (
     <>
       <Text style={style}>
-        {mentionParts(translatedText, names).map((part, i) =>
+        {mentionParts(message.body, names).map((part, i) =>
           part.mention ? (
             <Text key={i} style={{ fontFamily: font.bold, color: c.card.link }}>
               {part.text}

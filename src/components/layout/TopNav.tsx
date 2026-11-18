@@ -44,7 +44,6 @@ import GlobalSearch from './GlobalSearch';
 import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { useI18n } from '../LanguageProvider';
-import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 import { sectionHrefFor } from '../../lib/navTrail';
@@ -200,7 +199,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   )}
                 >
                   <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
-                  <Translate as="span" className="text-sm whitespace-nowrap" text={label} />
+                  <span className="text-sm whitespace-nowrap">{label}</span>
                   {/* 16×4 active bar (design B) */}
                   <span
                     className={cn(
@@ -267,7 +266,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                             )}
                           >
                             <NavGlyph href={href} size={18} className={pathname === href || (href !== '/' && pathname.startsWith(href)) ? 'text-on-primary' : ''} />
-                            <Translate as="span" className="min-w-0 flex-1" text={label} />
+                            <span className="min-w-0 flex-1">{label}</span>
                             {href === '/questions' && waitingAsks > 0 && (
                               <span className="shrink-0 text-[11px] font-semibold tabular-nums text-on-primary bg-on-primary/20 rounded-full px-1.5 py-0.5">
                                 {waitingAsks}
@@ -288,7 +287,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                               className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
                             >
                               <CalendarDays className="w-[18px] h-[18px] shrink-0" />
-                              <Translate as="span" className="min-w-0 flex-1" text={item.label} />
+                              <span className="min-w-0 flex-1">{item.label}</span>
                               <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
                             </a>
                           ))}
@@ -302,7 +301,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
                         >
                           <FileText className="w-[18px] h-[18px] shrink-0" />
-                          <Translate as="span" className="min-w-0 flex-1" text={SIGNUP_TITLE} />
+                          <span className="min-w-0 flex-1">{SIGNUP_TITLE}</span>
                           <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
                         </button>
                       </div>
@@ -491,7 +490,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   )}
                 >
                   <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
-                  <Translate as="span" text={label} />
+                  <span>{label}</span>
                 </Link>
               );
             })}
@@ -509,7 +508,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                   >
                     <CalendarDays className="w-[18px] h-[18px] shrink-0" />
-                    <Translate as="span" text={item.label} />
+                    <span>{item.label}</span>
                     <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-auto" />
                   </a>
                 ))}

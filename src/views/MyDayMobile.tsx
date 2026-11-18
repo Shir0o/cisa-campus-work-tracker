@@ -28,7 +28,6 @@ import QuestionsPointerCard from '../components/landing/QuestionsPointerCard';
 import BnpbReviewCard from '../components/landing/BnpbReviewCard';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { greetingKey } from '../components/landing/helpers';
-import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import KindChip from "../components/ui/KindChip";
 // A Gathering in the coming week — no calendar merge anymore (ADR 0016
@@ -113,7 +112,7 @@ function DuePresetPills({
               : "border-outline-variant text-on-surface hover:bg-surface-variant",
           )}
         >
-          <Translate text={p.label} />
+          {p.label}
         </button>
       ))}
     </div>
@@ -366,11 +365,7 @@ export default function MyDayMobile({
                   {done && <Check className="w-3 h-3" />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <Translate
-                    as="div"
-                    className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}
-                    text={todo.title}
-                  />
+                  <div className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}>{todo.title}</div>
                   {todo.sourceDocTitle && (
                     <div className="text-xs text-on-surface-variant mt-1">
                       {t('myDay.from')} {todo.sourceDocTitle}
@@ -447,11 +442,7 @@ export default function MyDayMobile({
                       {done && <Check className="w-3 h-3" />}
                     </button>
                     <div className="min-w-0 flex-1">
-                      <Translate
-                        as="div"
-                        className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}
-                        text={todo.title}
-                      />
+                      <div className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}>{todo.title}</div>
                       {todo.dueDate && (
                         <div className="text-xs text-on-surface-variant mt-1">
                           {t('myDay.due_colon')} {format(new Date(todo.dueDate), "MMM d")}

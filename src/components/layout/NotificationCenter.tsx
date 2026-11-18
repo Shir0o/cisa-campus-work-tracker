@@ -15,7 +15,6 @@ import { useMediaQuery } from '../../lib/useMediaQuery';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useLanguage } from '../LanguageProvider';
-import { Translate } from '../Translate';
 import { PopupFrame } from '../ui/PopupFrame';
 
 type Tone = 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
@@ -567,7 +566,7 @@ function NtfStack({
               'text-[14px] leading-[1.35]',
               anyUnread ? 'font-semibold text-on-surface' : 'font-medium text-on-surface-variant'
             )}>
-              <Translate text={latest.title} />
+              {latest.title}
             </span>
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-accent-soft text-accent leading-none">
               {count} updates
@@ -679,13 +678,13 @@ function NtfItem({
               ? 'font-medium text-on-surface-variant'
               : 'font-semibold text-on-surface',
           )}>
-            <Translate text={notif.title} />
+            {notif.title}
           </div>
           <div className={cn(
             'text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]',
             isChild ? 'text-[12px]' : 'text-[13px]',
           )}>
-            <Translate text={notif.message || (notif as any).body} />
+            {notif.message || (notif as any).body}
           </div>
           <div className="text-[11.5px] text-on-surface-variant mt-1.5">
             {ntfWhen(notif.createdAt)}

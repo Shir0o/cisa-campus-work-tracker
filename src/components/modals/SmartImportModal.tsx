@@ -18,7 +18,6 @@ import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/fires
 import { db, logActivity, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
-import { Translate } from '../Translate';
 import { PopupFrame } from '../ui/PopupFrame';
 import {
   ParsedContactItem,
@@ -470,7 +469,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
                                 {contact.notes && (
                                   <p className="text-xs text-on-surface-variant/80 mt-1 italic line-clamp-2">
-                                    "<Translate text={contact.notes} />"
+                                    "{contact.notes}"
                                   </p>
                                 )}
                               </div>
@@ -627,7 +626,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 </div>
 
                                 <p className="text-xs text-on-surface mt-1 leading-relaxed whitespace-pre-wrap">
-                                  <Translate text={interaction.content} />
+                                  {interaction.content}
                                 </p>
                               </div>
                             </div>
@@ -763,7 +762,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 </div>
 
                                 <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-3 font-mono">
-                                  <Translate text={discussion.content} />
+                                  {discussion.content}
                                 </p>
                               </div>
                             </div>

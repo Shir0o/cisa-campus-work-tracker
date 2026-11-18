@@ -15,7 +15,6 @@ import { BOARD_AUDIENCE, audienceOf, dateLabelOf, firstName, weekdayOf, type Boa
 import { useAuth } from '../../lib/AuthProvider';
 import { useBoardDocData } from '../../lib/useBoardDocData';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { useTranslate, useTranslateMarkdown } from '../Translate';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
 import { AudiencePill } from './BoardScreen';
@@ -39,9 +38,8 @@ export function BoardDocScreen({ docId }: { docId: string }) {
 function DocBody({ doc }: { doc: BoardDoc }) {
   const { c, mode } = useV2Theme();
   const { t } = useLanguage();
-  const { translatedText: translatedMarkdown } = useTranslateMarkdown(doc.md?.trim() ? doc.md : '');
   const emptyText = t('coordination.this_page_empty', '_This page is empty._');
-  const markdownToRender = doc.md?.trim() ? translatedMarkdown : emptyText;
+  const markdownToRender = doc.md?.trim() ? doc.md : emptyText;
 
   const elements = useMarkdown(markdownToRender, {
     colorScheme: mode,
@@ -65,9 +63,7 @@ function BoardDoc({ docId }: { docId: string }) {
   const data = useBoardDocData(docId);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/coordination'));
 
-  const rawTitle = data.doc ? (weekdayOf(data.doc.date) || data.doc.title) : t('mobile.board.title', 'The Board');
-  const { translatedText: translatedTitle } = useTranslate(rawTitle);
-  const title = translatedTitle || rawTitle;
+  const title = data.doc ? (weekdayOf(data.doc.date) || data.doc.title) : t('mobile.board.title', 'The Board');
 
   const audience = data.doc ? audienceOf(data.doc) : 'team';
   const audienceSub = t(`mobile.board.audience_${audience}_sub`, BOARD_AUDIENCE[audience].sub);

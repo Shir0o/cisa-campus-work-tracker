@@ -3,7 +3,6 @@ import { Mail, MessageSquare, PenLine } from "lucide-react";
 import { Contact, Stage } from "../../types";
 import { Avatar, StageChip } from "./primitives";
 import { connectedLabel } from "./helpers";
-import { Translate } from "../Translate";
 import KindChip from '../ui/KindChip';
 import { useLanguage } from "../LanguageProvider";
 
@@ -56,11 +55,7 @@ export function ReachCard({
           </div>
           {statusNode && <div className="mt-1.5">{statusNode}</div>}
           {note && (
-            <Translate
-              as="p"
-              className="text-sm text-on-surface-variant leading-relaxed mt-2 whitespace-pre-line"
-              text={note}
-            />
+            <p className="text-sm text-on-surface-variant leading-relaxed mt-2 whitespace-pre-line">{note}</p>
           )}
         </div>
       </div>

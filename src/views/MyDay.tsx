@@ -42,7 +42,6 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import PageContainer from "../components/layout/PageContainer";
-import { Translate } from "../components/Translate";
 import { useLanguage } from "../components/LanguageProvider";
 import { useCalendarSync, calStartOfDay, calAddDays } from "../lib/calendar/calendarSync";
 import {
@@ -208,14 +207,14 @@ function AssignedTaskRow({
       <div className="flex items-start gap-3.5">
         <CheckButton done={done} onClick={() => onToggle(todo)} />
         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpen((o) => !o)}>
-          <Translate
-            as="div"
+          <div
             className={cn(
               "text-on-surface font-medium leading-snug",
               done && "line-through text-on-surface-variant",
             )}
-            text={todo.title}
-          />
+          >
+            {todo.title}
+          </div>
 
           {!open && todo.sourceDocId && todo.sourceDocTitle && (
             <button
@@ -338,14 +337,14 @@ function PersonalTaskRow({
           className={cn("min-w-0 flex-1", !done && !open && "cursor-pointer")}
           onClick={() => !done && !open && openEdit()}
         >
-          <Translate
-            as="div"
+          <div
             className={cn(
               "text-on-surface font-medium leading-snug",
               done && "line-through text-on-surface-variant",
             )}
-            text={todo.title}
-          />
+          >
+            {todo.title}
+          </div>
 
           {open && (
             <div className="mt-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>

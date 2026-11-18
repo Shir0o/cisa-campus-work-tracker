@@ -3,7 +3,6 @@ import { Eye, RotateCcw, Users } from 'lucide-react';
 import { ImpersonateTarget } from '../../types';
 import { impScope } from '../../lib/impersonate';
 import { useLanguage } from '../LanguageProvider';
-import { Translate } from '../Translate';
 
 interface ImpersonateBarProps {
   target: ImpersonateTarget;
@@ -21,9 +20,9 @@ export default function ImpersonateBar({ target, onSwitch, onExit }: Impersonate
           <Eye className="w-3.5 h-3.5" />
         </span>
         <span className="text-on-surface truncate">
-          {t('impersonate.seeing_as')} <strong>{target.name}</strong> — <Translate text={target.sub} />.
+          {t('impersonate.seeing_as')} <strong>{target.name}</strong> — {target.sub}.
           <span className="hidden md:inline text-on-surface-variant ml-1.5">
-            {sc.people ? <><Translate text={sc.people} />. </> : ''}{sc.pages ? <><Translate text={sc.pages} />. </> : ''}{t('impersonate.saved_as_them')}
+            {sc.people ? <>{sc.people}. </> : ''}{sc.pages ? <>{sc.pages}. </> : ''}{t('impersonate.saved_as_them')}
           </span>
         </span>
       </div>

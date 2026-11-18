@@ -7,7 +7,6 @@ import type { PersonalPrayer, PersonalPrayerStatus } from "../../lib/personalPra
 import { StatusPills, PillTone } from "./primitives";
 import { agoLabel, editInputClass, dueLabelClass } from "./helpers";
 import { useLanguage } from "../LanguageProvider";
-import { Translate } from "../Translate";
 
 export function TeamPrayerRow({
   prayer,
@@ -79,7 +78,7 @@ export function TeamPrayerRow({
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-on-surface font-medium leading-snug">
-            <Translate text={prayer.burden} />
+            {prayer.burden}
           </div>
           {contact && (
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
@@ -123,7 +122,7 @@ export function TeamPrayerRow({
               </div>
               {prayer.answer && (
                 <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-                  "<Translate text={prayer.answer} />"
+                  "{prayer.answer}"
                 </p>
               )}
             </div>
@@ -179,7 +178,7 @@ export function TeamPrayerRow({
                 </button>
               </div>
               <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-                "<Translate text={prayer.archiveReason} />"
+                "{prayer.archiveReason}"
               </p>
             </div>
           )}
@@ -322,7 +321,7 @@ export function PersonalPrayerRow({
           onClick={() => !open && openEdit()}
         >
           <div className="text-on-surface font-medium leading-snug">
-            <Translate text={prayer.title} />
+            {prayer.title}
           </div>
           {linked ? (
             <button
@@ -360,7 +359,7 @@ export function PersonalPrayerRow({
               </div>
               {prayer.answeredBody && (
                 <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-                  "<Translate text={prayer.answeredBody} />"
+                  "{prayer.answeredBody}"
                 </p>
               )}
             </div>

@@ -1077,7 +1077,6 @@ export default function Messages() {
               onMakeTodo={(m) => setTodoFor(m.source)}
               renderExtra={renderAttachments}
               renderActions={activeRoom.type === 'announcement' ? renderPostActions : undefined}
-              translate
               initialThreadId={initialThreadId}
               footer={adapter.readOnlyNote && <div className="msgs-postnote">{adapter.readOnlyNote}</div>}
               header={

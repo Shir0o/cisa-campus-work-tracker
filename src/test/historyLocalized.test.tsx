@@ -69,17 +69,6 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: vi.fn(),
 }));
 
-// The reading-translation path is stubbed to pass text through, so these tests
-// read the sentence the app itself composed: the Spanish frame must come from
-// the dictionary, and the person's words must arrive untouched. (Translate
-// still wraps the detail — see the view.)
-vi.mock('../hooks/useTranslate', () => ({
-  useTranslate: (text: string | null | undefined) => {
-    const value = text ?? '';
-    return { translatedText: value, originalText: value, isPending: false };
-  },
-}));
-
 const row = (action: string, over: Record<string, unknown> = {}) =>
   ({
     id: 'a1',

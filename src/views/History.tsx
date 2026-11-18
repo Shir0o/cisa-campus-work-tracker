@@ -34,7 +34,6 @@ import PageContainer from "../components/layout/PageContainer";
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
-import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { t as resolveKey } from '../lib/i18n';
 import { dayMark, historyRows } from './historyTime';
@@ -740,7 +739,7 @@ export default function History() {
                     </div>
                     {h.detail && (
                       <div className="text-[13.5px] text-on-surface-variant/90 leading-relaxed mt-1">
-                        <Translate text={h.detail} />
+                        {h.detail}
                       </div>
                     )}
                   </div>

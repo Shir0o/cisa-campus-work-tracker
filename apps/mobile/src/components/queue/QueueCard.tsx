@@ -20,7 +20,6 @@ import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { FocusCard } from './FocusCard';
-import { Translate, useTranslate } from '../Translate';
 import {
   AboutChip,
   Ask,
@@ -75,7 +74,6 @@ export function QueueCard({
   const c = card.contact;
   const first = c ? firstName(c.name) : '';
   const later = () => api.later(card.id);
-  const { translatedText: translatedNotes } = useTranslate(c?.notes);
   // The sheet mounts on first open and stays, so closing it can animate.
   const [reading, setReading] = React.useState(false);
   const [opened, setOpened] = React.useState(false);
@@ -111,7 +109,7 @@ export function QueueCard({
     !!c?.notes && (
       <>
         <NoteBlock label={tr('mobile.queue.what_you_wrote_down')} lines={full ? undefined : 3}>
-          {translatedNotes}
+          {c.notes}
         </NoteBlock>
         {!full && (
           <Pressable onPress={read} accessibilityRole="link" hitSlop={8} style={{ minHeight: 44, justifyContent: 'center' }}>
@@ -193,7 +191,7 @@ export function QueueCard({
         ],
         body: () => (
           <>
-            <Lead><Translate text={t.title} /></Lead>
+            <Lead>{t.title}</Lead>
             <Why>
               {t.createdByName
                 ? `${firstName(t.createdByName)} put this on the page and put your name on it.`

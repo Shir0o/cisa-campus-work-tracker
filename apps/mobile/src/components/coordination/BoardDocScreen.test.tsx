@@ -5,7 +5,6 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { LanguageProvider } from '../../lib/LanguageProvider';
 import { BoardDocScreen } from './BoardDocScreen';
 import { useBoardDocData } from '../../lib/useBoardDocData';
-import { clearTranslationCache } from '../../lib/translator';
 import type { BoardDoc } from '@cisa/core';
 
 jest.mock('../../lib/AuthProvider', () => ({
@@ -46,19 +45,8 @@ jest.mock('expo-router', () => ({
 }));
 
 describe('BoardDocScreen', () => {
-  let fetchSpy: jest.SpyInstance;
-
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    await clearTranslationCache();
-    fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => ({
-      ok: true,
-      json: async () => ({ success: true, targetLang: 'es', translations: [] }),
-    } as any));
-  });
-
-  afterEach(() => {
-    fetchSpy.mockRestore();
   });
 
   it('renders doc markdown and title in English by default', async () => {

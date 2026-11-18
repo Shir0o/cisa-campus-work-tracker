@@ -5,7 +5,6 @@ import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup, type DocSaveState, type D
 import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 import { useLanguage } from '../components/LanguageProvider';
-import { Translate } from '../components/Translate';
 
 interface TeamMember {
   uid: string;
@@ -277,10 +276,10 @@ export default function CoordinationNotesMobile({
                     )}
                   </div>
                   <h3 className="font-serif text-lg text-on-surface font-semibold truncate bdm-card-title">
-                    <Translate text={d.title} />
+                    {d.title}
                   </h3>
                   <p className="text-[13px] text-on-surface-variant truncate mt-1 bdm-card-preview">
-                    <Translate text={d.summary || mdSummary(d.md)} />
+                    {d.summary || mdSummary(d.md)}
                   </p>
                   {openTasksCount > 0 && canEdit && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-accent font-semibold bdm-card-todo">

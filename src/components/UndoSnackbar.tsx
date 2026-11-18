@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { UndoSnack } from "../hooks/useUndoSnack";
 import { useLanguage } from "./LanguageProvider";
-import { Translate } from "./Translate";
 
 export function UndoSnackbar({
   undoSnack,
@@ -27,7 +26,7 @@ export function UndoSnackbar({
             className="pointer-events-auto bg-surface-container-highest/95 backdrop-blur-xl border border-outline-variant rounded-2xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4 w-full ring-1 ring-white/10"
           >
             <span className="text-sm font-medium text-on-surface">
-              <Translate text={undoSnack.message} />
+              {undoSnack.message}
             </span>
             <div className="flex items-center gap-3 shrink-0">
               {undoSnack.onUndo && (

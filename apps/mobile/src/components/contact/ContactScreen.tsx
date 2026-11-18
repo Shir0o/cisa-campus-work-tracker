@@ -53,7 +53,6 @@ import {
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { Translate } from '../Translate';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
 import { addTodo } from '../../lib/data/todos';
@@ -1090,10 +1089,9 @@ function Details({
       {!!contact.notes && (
         <View style={{ backgroundColor: c.card.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
           <Kicker>{t('mobile.contact.first_impression')}</Kicker>
-          <Translate
-            text={contact.notes}
-            style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}
-          />
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}>
+            {contact.notes}
+          </Text>
         </View>
       )}
 

@@ -4,7 +4,6 @@ import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../AuthProvider';
 import { useOptionalLayout } from '../../App';
 import { useI18n } from '../LanguageProvider';
-import { Translate } from '../Translate';
 import { navTrailFor } from '../../lib/navTrail';
 import { cn } from '../../lib/utils';
 
@@ -63,11 +62,7 @@ export default function PageTrail({ className, leafOnly = false }: PageTrailProp
           className="flex items-center gap-1.5 shrink-0 text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm"
         >
           <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <Translate
-            as="span"
-            className="text-[13px] font-medium underline decoration-outline-variant underline-offset-[3px] whitespace-nowrap"
-            text={section.label}
-          />
+          <span className="text-[13px] font-medium underline decoration-outline-variant underline-offset-[3px] whitespace-nowrap">{section.label}</span>
         </Link>
       )}
 
@@ -79,7 +74,7 @@ export default function PageTrail({ className, leafOnly = false }: PageTrailProp
 
       {current && (
         <span className="text-[13px] font-medium text-on-surface truncate" aria-current="page">
-          {currentIsLabel ? <Translate as="span" text={current} /> : current}
+          {currentIsLabel ? <span>{current}</span> : current}
         </span>
       )}
     </nav>

@@ -4,7 +4,6 @@ import { useSeason, SEASON_ORDER, SEASONS } from '../../lib/seasons';
 import { useAuth } from '../AuthProvider';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../LanguageProvider';
-import { Translate } from '../Translate';
 import { Switch } from '../ui/Switch';
 
 // The "Spring · '26" strip under the brand. Shows the active season everywhere;
@@ -42,7 +41,7 @@ export default function SeasonChip({
   const chip = (
     <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
       <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-      <Translate text={season.label} />
+      {season.label}
       {season.clubRush && <span className="text-accent font-medium">{t('season.club_rush')}</span>}
     </span>
   );
@@ -89,7 +88,7 @@ export default function SeasonChip({
                       : 'border-outline-variant text-on-surface hover:bg-surface-variant',
                   )}
                 >
-                  <Translate text={SEASONS[id].label} />
+                  {SEASONS[id].label}
                   {id === season.autoId ? t('season.now_suffix') : ''}
                 </button>
               ))}

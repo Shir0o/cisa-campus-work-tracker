@@ -26,7 +26,6 @@ import {
 import { Skeleton } from '../components/ui/Skeleton';
 import PageContainer from '../components/layout/PageContainer';
 import { useLanguage } from '../components/LanguageProvider';
-import { Translate } from '../components/Translate';
 
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
@@ -620,7 +619,7 @@ export default function FeedbackList() {
 
                 {/* Feedback Message Content */}
                 <div className="bg-surface/50 border border-outline-variant/40 rounded-xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
-                  <Translate text={item.message} />
+                  {item.message}
                 </div>
 
                 {/* Captured Diagnostics metadata */}

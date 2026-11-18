@@ -159,10 +159,7 @@ import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
 import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
 import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
-import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import { useTranslate, useTranslateMarkdown } from '../hooks/useTranslate';
-import { shouldShowAsIs } from '../lib/translator';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 export interface TeamMember {
@@ -532,11 +529,9 @@ function ReadOnlyDoc({
   canNativeFs?: boolean;
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
-  const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
   const { t, language } = useLanguage();
-  const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const markdownToRender = d.md
-    ? bodyMarkdownForDisplay(translatedMarkdown, translatedTitle)
+    ? bodyMarkdownForDisplay(d.md, d.title || '')
     : t('coordination.this_page_empty');
   return (
     <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
@@ -607,7 +602,7 @@ function ReadOnlyDoc({
       </div>
 
       <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
-        {translatedTitle}
+        {d.title}
       </h1>
 
       <div className="bdoc-fs-canvas px-5 lg:px-8 pb-6 bdoc-prose-viewer">
@@ -1082,11 +1077,6 @@ export default function CoordinationNotes() {
   }, [docs]);
 
   const active = docs.find((d) => d.id === activeId) || null;
-  const { translatedText: translatedActiveTitle } = useTranslate(active?.title);
-  const { translatedText: translatedActiveMarkdown } = useTranslateMarkdown(active?.md);
-  const displayActive = active
-    ? { ...active, title: translatedActiveTitle, md: translatedActiveMarkdown }
-    : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1251,10 +1241,7 @@ export default function CoordinationNotes() {
   // Session 4 — "Keep as a note": promote the open page into Notes & learnings,
   // prefilling the form with its title, an excerpt, and a guessed series.
   const promoteDoc = (d: BoardDoc) => {
-    const titleToUse = d.id === activeId ? translatedActiveTitle : d.title;
-    const md = d.id === activeId ? liveActiveMd ?? d.md : d.md;
-    const mdToUse = d.id === activeId ? translatedActiveMarkdown : md;
-    setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
+    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(d.md) });
     document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
@@ -1771,7 +1758,7 @@ export default function CoordinationNotes() {
           canEdit={canEdit}
           canSeeNotes={canSeeNotes}
           docs={docs}
-          active={displayActive || active}
+          active={active}
           activeId={activeId}
           setActiveId={setActiveId}
           newDoc={createDoc}
@@ -1984,7 +1971,7 @@ export default function CoordinationNotes() {
               {canEdit ? (
                 <DocEditor
                   key={`${active.id}-${language}`}
-                  doc={displayActive || active}
+                  doc={active}
                   pages={docs}
                   meUid={uid}
                   meName={meName}
@@ -2011,7 +1998,7 @@ export default function CoordinationNotes() {
               ) : (
                 <ReadOnlyDoc
                   key={`${active.id}-${language}`}
-                  doc={displayActive || active}
+                  doc={active}
                   pagesCollapsed={pagesCollapsed}
                   onTogglePages={togglePages}
                   isFullscreen={isFullscreen}
@@ -2264,10 +2251,10 @@ function DocRow({
         </span>
         <span className="min-w-0 flex flex-col gap-0.5">
           <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-12">
-            <Translate text={d.title} />
+            {d.title}
           </span>
           <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">
-            <Translate as="span" text={d.summary || mdSummary(md)} />
+            <span>{d.summary || mdSummary(md)}</span>
           </span>
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
@@ -3687,7 +3674,7 @@ function NoteCard({
           {isLearning ? t('coordination.learning') : t('coordination.record')}
         </span>
         <span className="inline-flex items-center gap-1 text-on-surface-variant">
-          <Tag className="w-3 h-3" /> <Translate as="span" text={n.series} />
+          <Tag className="w-3 h-3" /> <span>{n.series}</span>
         </span>
         {n.archivedAt != null && (
           <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold  ">
@@ -3767,7 +3754,7 @@ function NoteCard({
       </div>
 
       <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">
-        <Translate text={n.title} />
+        {n.title}
       </h4>
 
       {n.body && (
@@ -3786,7 +3773,7 @@ function NoteCard({
                     className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
                   />
                   <span className={cn('leading-normal', isChecked && 'line-through opacity-60')}>
-                    <Translate text={cleanText} />
+                    {cleanText}
                   </span>
                 </label>
               );
@@ -3794,7 +3781,7 @@ function NoteCard({
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">
-            <Translate text={n.body} />
+            {n.body}
           </p>
         )
       )}
@@ -3826,29 +3813,11 @@ export function NoteForm({
   onSave: (f: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => void;
 }) {
   const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
   const [displayMode, setDisplayMode] = useState<'text' | 'list'>(initial?.displayMode ?? 'text');
-
-  const { translatedText: trInitialTitle } = useTranslate(initial?.title);
-  const { translatedText: trInitialBody } = useTranslateMarkdown(initial?.body);
-  const translateInitialTitle =
-    !!initial?.title && !shouldShowAsIs(initial.title, language);
-  const translateInitialBody = !!initial?.body && !shouldShowAsIs(initial.body, language);
-
-  useEffect(() => {
-    if (translateInitialTitle && trInitialTitle && (title === initial.title || !title)) {
-      setTitle(trInitialTitle);
-    }
-  }, [translateInitialTitle, initial?.title, trInitialTitle]);
-
-  useEffect(() => {
-    if (translateInitialBody && trInitialBody && (body === initial.body || !body)) {
-      setBody(trInitialBody);
-    }
-  }, [translateInitialBody, initial?.body, trInitialBody]);
 
   const toggleMode = () => {
     if (displayMode === 'text') {
@@ -3970,15 +3939,7 @@ export function SuggestedTaskCard({
   }) => Promise<void>;
 }) {
   const [title, setTitle] = useState(task.title);
-  const { t, language } = useLanguage();
-  const { translatedText: trTaskTitle } = useTranslate(task.title);
-  const translateTaskTitle = !!task.title && !shouldShowAsIs(task.title, language);
-
-  useEffect(() => {
-    if (translateTaskTitle && trTaskTitle && (title === task.title || !title)) {
-      setTitle(trTaskTitle);
-    }
-  }, [translateTaskTitle, task.title, trTaskTitle]);
+  const { t } = useLanguage();
 
   const [dueDate, setDueDate] = useState(task.dueDate || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');

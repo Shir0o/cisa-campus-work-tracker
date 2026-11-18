@@ -30,7 +30,6 @@ import { canLogOutreach, visibleToOf } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import { Translate } from '../components/Translate';
 import { Contact } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -311,7 +310,7 @@ function PendingRow({
           </div>
           <p className="text-sm text-on-surface-variant mt-0.5">
             {n.contact || t('outreach.no_number_written')} · {t('outreach.met_at').replace('{where}', o.where)}
-            {n.note && <> · <Translate text={n.note} /></>}
+            {n.note && <> · {n.note}</>}
           </p>
           <p className="text-xs text-on-surface-variant mt-0.5">
             {(who?.displayName || n.spokeWith) && <>{who?.displayName || n.spokeWith} {t('outreach.spoke_with').replace('{name}', otFirst(n.name))}</>}
@@ -433,7 +432,7 @@ function OutreachCard({
                 </span>
               ))}
           </div>
-          {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2"><Translate text={item.how.split('\n')[0]} /></p>}
+          {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2">{item.how.split('\n')[0]}</p>}
         </div>
         {/* On a phone the faces and counts drop to their own row: sharing the
             header row with the title squeezed "Cedar Park" into a 22px column,
@@ -476,7 +475,7 @@ function OutreachCard({
             {item.how ? (
               item.how.split('\n').filter(Boolean).map((p, i) => (
                 <p key={i} className="text-[15px] leading-relaxed text-on-surface">
-                  <Translate text={p} />
+                  {p}
                 </p>
               ))
             ) : (
@@ -536,7 +535,7 @@ function OutreachCard({
                         <span className="block text-sm font-medium text-on-surface">{n.name}</span>
                         <span className="block text-xs text-on-surface-variant truncate">
                           {n.contact}
-                          {n.note && <> · <Translate text={n.note} /></>}
+                          {n.note && <> · {n.note}</>}
                         </span>
                       </span>
                       <span className={cn('text-xs shrink-0 inline-flex items-center gap-1', done ? 'text-success' : 'text-on-surface-variant')}>

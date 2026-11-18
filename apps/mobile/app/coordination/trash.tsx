@@ -7,7 +7,6 @@ import { Screen, AppText, Card } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useLanguage } from '../../src/lib/LanguageProvider';
-import { Translate } from '../../src/components/Translate';
 import { handleFirestoreError, OperationType } from '../../src/lib/firebase';
 import { deleteBoardDoc, purgeExpiredTrash, restoreBoardDoc, subscribeTrashedBoardDocs } from '../../src/lib/data/board';
 
@@ -109,7 +108,7 @@ export default function CoordinationTrash() {
                   </View>
                   <View style={{ flex: 1, gap: 6 }}>
                     <AppText variant="heading" numberOfLines={1}>
-                      <Translate text={doc.title} />
+                      {doc.title}
                     </AppText>
                     <View style={{ flexDirection: 'row', gap: 16 }}>
                       <Pressable onPress={() => restoreBoardDoc(doc)}>

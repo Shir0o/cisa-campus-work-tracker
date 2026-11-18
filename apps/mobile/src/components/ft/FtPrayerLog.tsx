@@ -15,7 +15,6 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
-import { Translate } from '../Translate';
 import { Room, V2PersonRow, V2Screen } from '../v2/Widget';
 import { SkeletonList } from '../skeleton/SkeletonList';
 
@@ -93,7 +92,7 @@ function FtPrayerLog() {
             key={row.id}
             name={row.who ?? t('mobile.prayer.someone')}
             colorSeed={row.contactId ?? row.id}
-            sub={<Translate text={row.burden} />}
+            sub={row.burden}
             note={[row.asked ? t('mobile.prayer.they_asked_the_team') : null, row.heavy ? t('mobile.prayer.weighs_heavy') : null]
               .filter(Boolean)
               .join(' · ')}

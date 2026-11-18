@@ -16,7 +16,6 @@ import { FT_WIDGET_ROWS, type FtCarryRow } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
-import { Translate } from '../Translate';
 
 export function PrayersToCarry({
   rows,
@@ -50,15 +49,16 @@ export function PrayersToCarry({
         const prayed = prayedToday(row.id);
         return (
           <WidgetRow key={row.id} first={i === 0}>
-            <Translate
+            <Text
               style={{
                 fontFamily: font.bold,
                 fontSize: fs(15.5),
                 lineHeight: fs(21),
                 color: c.widget.onDeep,
               }}
-              text={row.burden}
-            />
+            >
+              {row.burden}
+            </Text>
             <Text
               style={{
                 fontFamily: font.medium,

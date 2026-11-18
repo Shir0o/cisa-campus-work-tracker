@@ -138,7 +138,7 @@ describe('TeamPrayerRow', () => {
         onOpenPrayerLog={vi.fn()}
       />
     );
-    expect(screen.getByText('Old reason')).toBeInTheDocument();
+    expect(screen.getByText('"Old reason"')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Edit Reason'));
     const textarea = screen.getByPlaceholderText(/A note on why this is archived/);
     fireEvent.change(textarea, { target: { value: 'New archive reason' } });

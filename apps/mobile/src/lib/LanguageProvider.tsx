@@ -1,15 +1,14 @@
 import React, { createContext, useContext } from 'react';
 import { translate } from './i18n';
-import type { AppLanguage } from './translator';
 
 export type TranslateFunction = (key: string, fallback?: string) => string;
 
 interface LanguageContextType {
-  language: AppLanguage;
+  language: 'en';
   t: TranslateFunction;
 }
 
-const LANGUAGE: AppLanguage = 'en';
+const LANGUAGE = 'en' as const;
 
 const t: TranslateFunction = (key, fallback) => translate(key, LANGUAGE, fallback);
 
