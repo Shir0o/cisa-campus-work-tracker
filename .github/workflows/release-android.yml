@@ -145,18 +145,8 @@ jobs:
       - name: Compile Play release notes
         run: |
           set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          OUT=apps/mobile/artifacts/play-release-notes.txt
-          # A patch release often has no authored whats-new manifest of its
-          # own (1.4.1 was CI fixes only, so there was nothing to announce).
-          # Notes must never block a release: try the exact version first so a
-          # mismatch is still visible, then fall back to the most recent
-          # manifest. See ADR 0008.
-          if npx tsx scripts/store-release-notes.ts --platform play --version "$VERSION" --out "$OUT"; then
-            exit 0
-          fi
-          echo "::warning::No whats-new manifest declares $VERSION; using the most recent."
-          npx tsx scripts/store-release-notes.ts --platform play --out "$OUT"
+          mkdir -p apps/mobile/artifacts
+          echo "Bug fixes and improvements." > apps/mobile/artifacts/play-release-notes.txt
         working-directory: .
 
       - name: Submit AAB to the Play internal track

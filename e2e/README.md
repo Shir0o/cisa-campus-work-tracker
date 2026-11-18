@@ -93,10 +93,11 @@ emulator.
 | Full-timer   | `admin`       | All of the above, plus My Day (the home item), Around the team, and the Bible-study index |
 
 Every approved role lands on `/`; a guarded route (`/directory`, `/history`,
-`/coordination`, `/admin/feedback`) redirects a denied role back to `/`. An old
-`/board` bookmark redirects to `/directory`, where the Journey board's steps now
-live as People's Step filter. The matrix mirrors `src/lib/permissions.ts` (and
-its unit test, `src/test/permissions.test.tsx`).
+`/coordination`) redirects a denied role back to `/`. An old `/board` bookmark
+redirects to `/directory`, where the Journey board's steps now live as People's
+Step filter, and an old `/admin/feedback` bookmark — like every other removed
+page — lands on `/`. The matrix mirrors `src/lib/permissions.ts` (and its unit
+test, `src/test/permissions.test.tsx`).
 
 ## How sign-in works
 

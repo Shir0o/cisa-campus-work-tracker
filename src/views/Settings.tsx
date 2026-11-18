@@ -3,7 +3,6 @@ import type { User } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import {
   collection,
-  getDocs,
   doc,
   updateDoc,
   onSnapshot,
@@ -32,17 +31,13 @@ import {
   Moon,
   Sun,
   Monitor,
-  Sparkles,
   Zap,
-  Smartphone,
   Copy,
   Check,
-  MessageSquare,
   MoreHorizontal,
   Pencil,
   ChevronDown,
   KeyRound,
-  Command,
   LogOut,
   Minus,
   Plus,
@@ -53,7 +48,6 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  Video,
   BookOpen,
   ChevronUp,
 } from 'lucide-react';
@@ -64,15 +58,10 @@ import { Switch } from '../components/ui/Switch';
 import { useTheme } from '../components/ThemeProvider';
 import { useNavShell, type NavShellPreference } from '../components/NavShellProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import TestAccountPurgeModal from '../components/settings/TestAccountPurgeModal';
-import WhatsNewModal from '../components/WhatsNewModal';
 import { Select } from '../components/ui/Select';
 import { PopupFrame } from '../components/ui/PopupFrame';
-import whatsNewManifest from '../generated/whats-new.json';
-import type { WhatsNewManifest } from '../scripts/compile-whats-new';
-import { useWhatsNewSettings } from '../lib/whatsNew';
 import {
   subscribePartners,
   updatePartners,
@@ -209,47 +198,6 @@ const ROLE_OPTIONS: { value: AppRole }[] = [
   { value: 'admin' },
 ];
 
-// The access chips reuse the nav labels so a Spanish reader sees the same
-// destination names the rail uses (plus "Today", which only this card calls
-// the home surface).
-const ROLE_SECTIONS: Record<string, [key: string, label: string]> = {
-  today: ['settings.access_today', 'Today'],
-  people: ['nav.directory', 'People'],
-  gatherings: ['nav.gatherings', 'Gatherings'],
-  prayer: ['nav.prayer', 'Prayer'],
-  history: ['nav.history', 'History'],
-  settings: ['nav.settings', 'Settings'],
-};
-
-const ROLE_CARDS: {
-  key: AppRole;
-  labelKey: string;
-  label: string;
-  descKey: string;
-  initials: string;
-  description: string;
-  access: string[];
-}[] = [
-  {
-    key: 'admin',
-    labelKey: 'settings.roles.full_timer',
-    label: 'Full-timer',
-    descKey: 'settings.roles.full_timer_desc',
-    initials: 'FT',
-    description: 'Full-time staff. Sees the whole work — every person, the team board, and all admin tools.',
-    access: ['today', 'people', 'gatherings', 'prayer', 'history', 'settings'],
-  },
-  {
-    key: 'manager',
-    labelKey: 'settings.roles.trainee',
-    label: 'Trainee',
-    descKey: 'settings.roles.trainee_desc',
-    initials: 'TR',
-    description: 'Cares for the people they are tied to, narrows People by step, and keeps their own preferences.',
-    access: ['today', 'people', 'settings'],
-  },
-];
-
 // ── small shared pieces ────────────────────────────────────────────────
 
 function SectionHeader({ title, sub }: { title: string; sub?: string }) {
@@ -284,64 +232,6 @@ function Avatar({
       ) : (
         getUserInitials(name)
       )}
-    </div>
-  );
-}
-
-// ── Roles & access (RBAC reference cards — reskin only, never removed) ──
-
-function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
-  const { t } = useLanguage();
-  return (
-    <div className="flex flex-col gap-2.5 max-w-2xl">
-      {ROLE_CARDS.map((card) => {
-        const isActive = card.key === currentRole;
-        return (
-          <div
-            key={card.key}
-            className={cn(
-              'flex gap-4 items-start p-4 rounded-xl border transition-colors',
-              isActive ? 'border-primary/40 bg-primary/5' : 'bg-surface-container border-outline-variant/40',
-            )}
-          >
-            <div
-              className={cn(
-                'flex-none w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold shrink-0',
-                isActive ? 'bg-primary/15 text-accent' : 'bg-accent-soft text-stage-accent',
-              )}
-            >
-              {card.initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="font-serif text-[17px] text-on-surface leading-tight">{t(card.labelKey, card.label)}</span>
-                {isActive && (
-                  <span className="text-[11px] font-medium text-accent border border-accent-line bg-surface rounded-full px-2 py-0.5 leading-none">
-                    {t('settings.your_role', 'your role')}
-                  </span>
-                )}
-              </div>
-              <p className="text-[13px] text-on-surface-variant mt-0.5 leading-none">
-                {t('settings.sections_accessible', '{n} sections accessible').replace('{n}', String(card.access.length))}
-              </p>
-              <p className="text-[13.5px] text-on-surface/75 leading-relaxed mt-2 max-w-prose">{t(card.descKey, card.description)}</p>
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {card.access.map((section) => {
-                  const [key, label] = ROLE_SECTIONS[section];
-                  return (
-                    <span
-                      key={section}
-                      className="text-[12px] text-on-surface-variant bg-surface-container-high border border-outline-variant/40 rounded-full px-2.5 py-0.5"
-                    >
-                      {t(key, label)}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1238,167 +1128,6 @@ function ReminderScheduleSection() {
   );
 }
 
-// ── What's New ─────────────────────────────────────────────────────────
-
-function WhatsNewSection({
-  onOpen,
-  isAdmin,
-  userEmail,
-}: {
-  onOpen: () => void;
-  isAdmin?: boolean;
-  userEmail?: string | null;
-}) {
-  const { t } = useLanguage();
-  const { videoUrl: savedVideoUrl, videoRoles: savedVideoRoles, setVideoSettings } = useWhatsNewSettings();
-
-  const [inputUrl, setInputUrl] = useState<string | null>(null);
-  const [targetAudience, setTargetAudience] = useState<'everyone' | 'admin' | 'staff' | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const effectiveInputUrl = inputUrl ?? (savedVideoUrl || '');
-  const effectiveTargetAudience: 'everyone' | 'admin' | 'staff' =
-    targetAudience ??
-    (!savedVideoRoles || savedVideoRoles.length === 0
-      ? 'everyone'
-      : savedVideoRoles.length === 2 &&
-          savedVideoRoles.includes('admin') &&
-          savedVideoRoles.includes('manager')
-        ? 'staff'
-        : savedVideoRoles.length === 1 && savedVideoRoles.includes('admin')
-          ? 'admin'
-          : 'everyone');
-
-  const handleSaveVideo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSaveSuccess(false);
-
-    let rolesToSave: string[] | null = null;
-    if (effectiveTargetAudience === 'admin') {
-      rolesToSave = ['admin'];
-    } else if (effectiveTargetAudience === 'staff') {
-      rolesToSave = ['admin', 'manager'];
-    }
-
-    try {
-      await setVideoSettings(
-        {
-          videoUrl: effectiveInputUrl.trim() || null,
-          videoRoles: rolesToSave,
-        },
-        userEmail || null,
-      );
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
-    } catch (err: any) {
-      setError(err?.message || t('settings.whats_new_save_failed', 'Failed to save What’s New video settings'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <section className="mt-10">
-      <SectionHeader
-        title={t('settings.whats_new', "What's New")}
-        sub={t('settings.whats_new_sub', 'See the latest updates, features, and improvements added to CISA.')}
-      />
-      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center text-accent shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-serif text-base text-on-surface leading-tight">
-                {whatsNewManifest.latestReleaseId ? `v${(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? 'Latest'}` : t('settings.whats_new', "What's New")}
-              </h3>
-              <p className="text-[13px] text-on-surface-variant mt-0.5">
-                {(whatsNewManifest as WhatsNewManifest).releases[0]?.title ?? t('settings.whats_new_sub', 'Latest release notes')}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onOpen}
-            className="px-5 py-2.5 rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
-          >
-            {t('settings.whats_new_button', 'View latest release notes')}
-          </button>
-        </div>
-
-        {isAdmin && (
-          <form
-            onSubmit={handleSaveVideo}
-            className="pt-5 border-t border-outline-variant/30 flex flex-col gap-3"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-on-surface">
-              <Video className="w-4 h-4 text-primary" />
-              <span>{t('settings.whats_new_video_title', 'Video Walkthrough Companion')}</span>
-            </div>
-            <p className="text-xs text-on-surface-variant">
-              {t(
-                'settings.whats_new_video_help',
-                'Paste a shared Google Drive video link to accompany the latest release notes, and restrict visibility if the video covers restricted workflows.',
-              )}
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="url"
-                placeholder="https://drive.google.com/file/d/.../view"
-                aria-label={t('settings.whats_new_video_url', 'Video link')}
-                value={effectiveInputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-sm bg-surface rounded-sm pointer-coarse:min-h-11 border border-outline-variant focus:border-primary outline-none text-on-surface"
-              />
-              <div className="w-full sm:w-56">
-                <Select
-                  value={effectiveTargetAudience}
-                  onChange={(e) =>
-                    setTargetAudience(e.target.value as 'everyone' | 'admin' | 'staff')
-                  }
-                  aria-label={t('settings.whats_new_audience', 'Video audience')}
-                  className="rounded-sm pointer-coarse:min-h-11"
-                >
-                  <option value="everyone">{t('settings.audience_everyone', 'Everyone')}</option>
-                  <option value="staff">{t('settings.audience_staff', 'Full-timers & Trainees')}</option>
-                  <option value="admin">{t('settings.audience_admin', 'Full-timers only')}</option>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 mt-1">
-              <div className="text-xs">
-                {saveSuccess && (
-                  <span className="text-success font-medium inline-flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" />
-                    {t('settings.whats_new_saved', 'Video settings saved')}
-                  </span>
-                )}
-                {error && <span className="text-error">{error}</span>}
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 text-xs font-medium rounded-[14px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
-              >
-                {saving ? t('settings.saving', 'Saving...') : t('settings.save_video', 'Save video settings')}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </section>
-  );
-}
-
-
-
 // ── The day's goal (#544) ──────────────────────────────────────────────
 
 function DayGoalSection() {
@@ -1469,7 +1198,7 @@ onClick={() => setCount(goal.count - 1)}
   );
 }
 
-// ── Integrations: "Quick add by text" (dev) ────────────────────────────
+// ── Attendance Tracker card pieces (dev) ───────────────────────────────
 
 function CodeBlock({ code, label }: { code: string; label?: string }) {
   const { t } = useLanguage();
@@ -1506,7 +1235,7 @@ function ChannelCard({
   defaultOpen,
   children,
 }: {
-  Icon: typeof Command;
+  Icon: React.ComponentType<{ className?: string }>;
   title: string;
   blurb: string;
   defaultOpen?: boolean;
@@ -1549,414 +1278,22 @@ function Steps({ items }: { items: string[] }) {
   );
 }
 
-function IntegrationsSection({
-  currentUser,
-}: {
-  currentUser: User | null;
-}) {
+// ── Attendance Tracker sync (kept: the sync token, §26) ─────────────────
+
+function AttendanceSyncSection({ currentUser }: { currentUser: User | null }) {
   const { t } = useLanguage();
-  const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [result, setResult] = useState<QuickAddResult | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [geminiStatus, setGeminiStatus] = useState<'checking' | 'ready' | 'missing'>('checking');
-
-  type QuickAddResult = {
-    name?: string;
-    role?: string;
-    location?: string;
-    stage?: string;
-    notes?: string;
-  };
-  // Live backend diagnostic: `/api/quick-add/status` reports whether the Gemini
-  // API key is configured on the Cloud Run side. Surfaced in the UI so admins
-  // can self-verify without curling — and so a missing key is visible the
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/quick-add/status')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: unknown) => {
-        if (cancelled) return;
-        const configured =
-          typeof data === 'object' && data !== null && 'geminiConfigured' in data &&
-          (data as { geminiConfigured: unknown }).geminiConfigured === true;
-        setGeminiStatus(configured ? 'ready' : 'missing');
-      })
-      .catch(() => {
-        if (!cancelled) setGeminiStatus('missing');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cisa-campus-work-tracker.pages.dev';
-  const curlCommand = `curl -X POST "${appUrl}/api/quick-add" \\
-  -H "Content-Type: application/json" \\
-  -d '{"text": "Met Sarah Doe yesterday at Campus Coffee. She is a freshman majoring in biology and can be reached at sarah12@campus.edu or (555) 789-0123. Interested in study group."}'`;
-  const smsWebhookUrl = `${appUrl}/api/webhook/sms`;
-  const groupMeWebhookUrl = `${appUrl}/api/webhook/groupme`;
-
-  const handleQuickAdd = async () => {
-    if (!text.trim()) return;
-    setStatus('loading');
-    setResult(null);
-    setErrorMsg('');
-
-    try {
-      let token: string | null = null;
-      try {
-        if (currentUser && typeof currentUser.getIdToken === 'function') {
-          token = await currentUser.getIdToken();
-        }
-      } catch (tokenErr) {
-        console.error('Failed to get Firebase ID token:', tokenErr);
-      }
-
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch('/api/quick-add', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setStatus('success');
-        setResult(data.contact);
-        setText('');
-      } else {
-        setStatus('error');
-        setErrorMsg(data.error || t('settings.quick_add_error', 'Failed to process description.'));
-      }
-    } catch (err: any) {
-      setStatus('error');
-      setErrorMsg(err.message || t('settings.quick_add_connection_error', 'An error occurred connecting to the server.'));
-    }
-  };
 
   return (
     <section className="mt-10">
       <SectionHeader
-        title={t('settings.quick_add_title', 'Quick add by text')}
+        title={t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)')}
         sub={t(
-          'settings.quick_add_sub',
-          'Bring people in the way you actually meet them — a text, a voice note, a quick line in a group chat.',
+          'attendanceSync.attd_integration_blurb',
+          'Rotate the sync token (stored as a hash) and copy the intake endpoint for the attendance app.',
         )}
       />
       <div className="space-y-3 max-w-2xl">
-        {/* Natural-language playground */}
-        <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5">
-          <div className="flex items-start gap-3 mb-3">
-            <span className="w-9 h-9 rounded-full bg-stage-violet-soft text-stage-violet flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif text-base text-on-surface leading-tight">
-                  {t('settings.playground_title', 'Natural-language playground')}
-                </h3>
-                {geminiStatus === 'ready' && (
-                  <span
-                    data-testid="gemini-status-badge"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success border border-success/20"
-                    title={t(
-                      'settings.gemini_ready_help',
-                      'Gemini API key is configured on the backend (Cloud Run). Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups will all parse with AI.',
-                    )}
-                  >
-                    <CheckCircle2 className="w-3 h-3" /> {t('settings.gemini_ready', 'Gemini AI ready')}
-                  </span>
-                )}
-                {geminiStatus === 'missing' && (
-                  <span
-                    data-testid="gemini-status-badge"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-on-surface border border-warning/30"
-                    title={t(
-                      'settings.gemini_missing_help',
-                      'The backend reports GEMINI_API_KEY is not configured. Set it on the campus-hub-backend Cloud Run service to re-enable Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups.',
-                    )}
-                  >
-                    <XCircle className="w-3 h-3" /> {t('settings.gemini_missing', 'Gemini AI not configured')}
-                  </span>
-                )}
-                {geminiStatus === 'checking' && (
-                  <span
-                    data-testid="gemini-status-badge"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-container-high text-on-surface-variant border border-outline-variant/40"
-                  >
-                    <Loader2 className="w-3 h-3 animate-spin" /> {t('settings.gemini_checking', 'Checking Gemini…')}
-                  </span>
-                )}
-              </div>
-              <p className="text-[13px] text-on-surface-variant mt-0.5 leading-relaxed">
-                {t(
-                  'settings.quick_add_intro',
-                  "Type or paste a note about someone you met — the way you'd text it or say it out loud. It's parsed and turned into a contact, ready to keep.",
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2.5">
-
-            <input
-              type="text"
-              placeholder={t(
-                'settings.quick_add_placeholder',
-                'e.g. Met John Doe at Miller Hall. Sophomore philosophy student, phone 555-1234.',
-              )}
-              aria-label={t('settings.quick_add_label', 'A description to parse into a contact')}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              disabled={status === 'loading'}
-              className="flex-1 px-4 py-3 bg-surface rounded-sm border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
-            />
-            <button
-              onClick={handleQuickAdd}
-              disabled={status === 'loading' || !text.trim()}
-              className="px-5 py-3 bg-primary text-on-primary font-medium rounded-[14px] hover:bg-primary/90 transition-colors text-sm shrink-0 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {status === 'loading' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t('settings.quick_add_reading', 'Reading…')}</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  <span>{t('settings.quick_add_try', 'Try it')}</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <AnimatePresence>
-            {status === 'success' && result && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="mt-4 p-4 bg-success/10 border border-success/30 rounded-lg text-sm"
-              >
-                <div className="flex items-center gap-2 text-success font-medium mb-3">
-                  <CheckCircle2 className="w-4 h-4" /> {t('settings.quick_add_parsed', 'Parsed into a contact')}
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                  <div>
-                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_name', 'Name')}</span>
-                    <span className="font-medium text-on-surface">{result.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-on-surface-variant block text-[11px]">
-                      {t('settings.field_role_group', 'Role / Group')}
-                    </span>
-                    <span className="text-on-surface">{result.role}</span>
-                  </div>
-                  <div>
-                    <span className="text-on-surface-variant block text-[11px]">
-                      {t('settings.field_location', 'Location')}
-                    </span>
-                    <span className="text-on-surface">{result.location || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_stage', 'Stage')}</span>
-                    <span className="font-medium text-accent">{result.stage}</span>
-                  </div>
-                </div>
-                {result.notes && (
-                  <div className="mt-3 text-xs">
-                    <span className="text-on-surface-variant block text-[11px]">{t('settings.field_notes', 'Notes')}</span>
-                    <p className="text-on-surface mt-0.5">{result.notes}</p>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {status === 'error' && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="mt-4 p-4 bg-error/10 border border-error/30 rounded-lg text-sm flex items-start gap-2 text-error"
-              >
-                <XCircle className="w-5 h-5 shrink-0" />
-                <div>
-                  <span className="font-medium">{t('settings.quick_add_failed', 'Something went wrong')}</span>
-                  <p className="mt-1 text-xs opacity-90">{errorMsg}</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Channels */}
-        <ChannelCard
-          Icon={Command}
-          title={t('settings.channel_siri_title', 'Siri & iOS Shortcuts / Home Widget')}
-          blurb={t(
-            'settings.channel_siri_blurb',
-            'Add contacts from iOS Shortcuts, Home Screen widgets, Siri voice, or your own automations.',
-          )}
-          defaultOpen
-        >
-          <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            {t(
-              'settings.channel_siri_body',
-              'Say “Hey Siri, Quick Add…” or tap an iOS Home Screen Quick-Add widget to pass a raw voice note or text description directly into the tracker.',
-            )}
-          </p>
-          <Steps
-            items={[
-              t(
-                'settings.channel_siri_step1',
-                'In the Apple Shortcuts app, create a new Shortcut named "Quick Add".',
-              ),
-              t(
-                'settings.channel_siri_step2',
-                'Add "Dictate Text" (for Siri voice) or "Ask for Input" (for Home Screen widget).',
-              ),
-              t(
-                'settings.channel_siri_step3',
-                'Add "Get Contents of URL" pointing to this POST endpoint with JSON body {"text": "<Input/Dictated Text>"}.',
-              ),
-              t(
-                'settings.channel_siri_step4',
-                'Add the shortcut to your iPhone Home Screen as a widget or trigger it hands-free with Siri.',
-              ),
-            ]}
-          />
-          <CodeBlock
-            label={t('settings.curl_label', 'POST · curl request template')}
-            code={curlCommand}
-          />
-        </ChannelCard>
-
-        <ChannelCard
-          Icon={Smartphone}
-          title={t('settings.channel_sms_title', 'SMS & WhatsApp')}
-          blurb={t(
-            'settings.channel_sms_blurb',
-            'Text a new contact straight in from a single Twilio number.',
-          )}
-        >
-          <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            {t(
-              'settings.channel_sms_body',
-              "Point your Twilio number's inbound webhook here. Standard SMS and official WhatsApp messages both arrive at the same place.",
-            )}
-          </p>
-          <CodeBlock
-            label={t('settings.sms_webhook_label', 'Twilio inbound webhook URL')}
-            code={smsWebhookUrl}
-          />
-          <Steps
-            items={[
-              t('settings.channel_sms_step1', 'In Twilio, choose your phone or sandbox number.'),
-              t('settings.channel_sms_step2', 'Under the messaging webhook settings, paste this URL.'),
-              t('settings.channel_sms_step3', 'Set the method to HTTP POST and save.'),
-            ]}
-          />
-        </ChannelCard>
-
-        <ChannelCard
-          Icon={MessageSquare}
-          title={t('settings.channel_groupme_title', 'GroupMe bot')}
-          blurb={t(
-            'settings.channel_groupme_blurb',
-            'Let the whole group chat add contacts with a quick !add line.',
-          )}
-        >
-          <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            {t(
-              'settings.channel_groupme_body',
-              'Everyone in the group can text new contacts using a trigger prefix. The bot reads the message, parses it, and files it for the team.',
-            )}
-          </p>
-          <CodeBlock
-            label={t('settings.groupme_webhook_label', 'GroupMe bot callback URL')}
-            code={groupMeWebhookUrl}
-          />
-          <Steps
-            items={[
-              t('settings.channel_groupme_step1', 'Go to dev.groupme.com and open the Bots menu.'),
-              t('settings.channel_groupme_step2', 'Click Create Bot and link your group chat.'),
-              t('settings.channel_groupme_step3', 'Paste this callback URL and submit.'),
-            ]}
-          />
-
-          <div className="pt-1">
-            <div className="text-sm font-medium text-on-surface mb-1">
-              {t('settings.prefix_triggers', 'Prefix triggers')}
-            </div>
-            <p className="text-[13px] text-on-surface-variant leading-relaxed mb-2">
-              {t(
-                'settings.prefix_triggers_body',
-                'Start a message with any of these so the bot knows to parse it:',
-              )}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {['!add', '/add', 'add:'].map((p) => (
-                <code
-                  key={p}
-                  className="font-code text-[12px] px-2 py-0.5 rounded-md bg-surface-container-high border border-outline-variant/40 text-on-surface"
-                >
-                  {p}
-                </code>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-1">
-            <div className="text-sm font-medium text-on-surface mb-1">
-              {t('settings.parsing_options', 'Parsing options')}
-            </div>
-            <p className="text-[13px] text-on-surface-variant leading-relaxed mb-2">
-              {t(
-                'settings.parsing_options_body',
-                'Add an optional keyword right after the prefix to steer the parser:',
-              )}
-            </p>
-
-            <div className="space-y-3">
-              <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <code className="font-code text-[11px] px-1.5 py-0.5 rounded bg-stage-accent-soft text-stage-accent">
-                    contact
-                  </code>
-                  <span className="text-[12px] text-on-surface-variant italic">
-                    {t('settings.parsing_default', 'default')}
-                  </span>
-                </div>
-                <p className="text-[13px] text-on-surface leading-relaxed">
-                  {t(
-                    'settings.parsing_contact_body',
-                    'Parses name, role, details and contact info, then creates a card or merges with an existing one.',
-                  )}
-                </p>
-                <CodeBlock code="!add contact Jerry Doe is a sophomore majoring in history, phone 555-0192, met at cafeteria." />
-              </div>
-
-              <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <code className="font-code text-[11px] px-1.5 py-0.5 rounded bg-stage-teal-soft text-stage-teal">
-                    interaction
-                  </code>
-                </div>
-                <p className="text-[13px] text-on-surface leading-relaxed">
-                  {t(
-                    'settings.parsing_interaction_body',
-                    'Logs a follow-up conversation or prayer update in the history of an existing contact.',
-                  )}
-                </p>
-                <CodeBlock code="!add interaction Jerry Doe and I studied Romans today, shared about exams and prayed together." />
-              </div>
-            </div>
-          </div>
-        </ChannelCard>
-
         <AttdIntegrationCard appUrl={appUrl} currentUser={currentUser} />
       </div>
     </section>
@@ -2224,191 +1561,6 @@ function AttdIntegrationCard({
         ]}
       />
     </ChannelCard>
-  );
-}
-
-// ── API & webhook console (dev) ────────────────────────────────────────
-
-function WebhookConsoleSection() {
-  const { t } = useLanguage();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(true);
-  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
-  const [isClearing, setIsClearing] = useState(false);
-
-  useEffect(() => {
-    const q = query(collection(db, 'webhook_logs'), orderBy('timestamp', 'desc'));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setLogs(snapshot.docs.map((d) => ({ dbId: d.id, ...d.data() })));
-        setLoadingLogs(false);
-      },
-      (error) => {
-        console.error('Error setting up webhook_logs listener:', error);
-        setLoadingLogs(false);
-        handleFirestoreError(error, OperationType.LIST, 'webhook_logs');
-      },
-    );
-    return () => unsubscribe();
-  }, []);
-
-  const handleClearLogs = async () => {
-    if (!confirm(t('settings.webhook_clear_confirm', 'Clear all webhook debugging logs?'))) return;
-    setIsClearing(true);
-    try {
-      const snapshot = await getDocs(collection(db, 'webhook_logs'));
-      await Promise.all(snapshot.docs.map((d) => deleteDoc(d.ref)));
-    } catch (err) {
-      console.error('Failed to clear webhook logs:', err);
-      handleFirestoreError(err, OperationType.DELETE, 'webhook_logs');
-    } finally {
-      setIsClearing(false);
-    }
-  };
-
-  const toggleExpand = (id: string) => setExpandedLogId(expandedLogId === id ? null : id);
-
-  return (
-    <section className="mt-10">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h2 className="font-serif text-2xl text-on-surface">
-            {t('settings.webhook_title', 'API & webhook console')}
-          </h2>
-          <p className="text-sm text-on-surface-variant mt-1 max-w-2xl leading-relaxed">
-            {t(
-              'settings.webhook_sub',
-              "A developer's view of every contact arriving by API, SMS, WhatsApp, or GroupMe — with the raw payloads.",
-            )}
-          </p>
-        </div>
-        {logs.length > 0 && (
-          <button
-            onClick={handleClearLogs}
-            disabled={isClearing}
-            className="shrink-0 px-3 py-1.5 text-xs text-error hover:bg-error/10 font-medium rounded-[14px] pointer-coarse:min-h-11 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            {t('settings.webhook_clear', 'Clear')}
-          </button>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
-        {loadingLogs ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
-            <Loader2 className="w-7 h-7 animate-spin text-accent" />
-            <p className="text-xs">{t('settings.webhook_listening', 'Listening for incoming requests…')}</p>
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="py-12 text-center">
-            <Sparkles className="w-7 h-7 text-on-surface-variant/40 mx-auto mb-2" />
-            <p className="text-sm font-medium text-on-surface-variant">
-              {t('settings.webhook_empty_title', 'No activity yet')}
-            </p>
-            <p className="text-xs text-on-surface-variant mt-1">
-              {t(
-                'settings.webhook_empty_body',
-                'Send a message to your GroupMe bot or try Quick Add to see webhooks here.',
-              )}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
-            {logs.map((log) => {
-              const isSelected = expandedLogId === log.dbId;
-              const ok = log.status === 'success';
-              const nodeTone = ok
-                ? 'bg-stage-teal-soft text-stage-teal'
-                : log.status === 'error'
-                  ? 'bg-error/10 text-error'
-                  : 'bg-stage-amber-soft text-stage-amber';
-              return (
-                <div
-                  key={log.dbId}
-                  className={cn(
-                    'rounded-lg border bg-surface-container-low transition-colors overflow-hidden',
-                    isSelected ? 'border-primary/40' : 'border-outline-variant/40 hover:bg-surface-container-high',
-                  )}
-                >
-                  <div
-                    onClick={() => toggleExpand(log.dbId)}
-                    className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-2 cursor-pointer select-none"
-                  >
-                    <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-                      <span className={cn('px-2 py-0.5 text-[11px] font-medium rounded-full shrink-0', nodeTone)}>
-                        {log.source || 'Callback'}
-                      </span>
-                      <span className="text-sm text-on-surface truncate">{log.result}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-on-surface-variant text-[12px] shrink-0">
-                      <span>
-                        {new Date(log.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      <ChevronDown className={cn('w-4 h-4 transition-transform', isSelected && 'rotate-180')} />
-                    </div>
-                  </div>
-
-                  <AnimatePresence>
-                    {isSelected && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-outline-variant/30"
-                      >
-                        <div className="p-3.5 space-y-3">
-                          {log.error && (
-                            <div className="p-3 bg-error/10 border border-error/20 rounded-md text-error text-xs">
-                              <span className="font-medium block mb-1">
-                                {t('settings.webhook_failure_detail', 'Failure detail')}
-                              </span>
-                              {log.error}
-                            </div>
-                          )}
-                          <div>
-                            <span className="text-[11px]   text-on-surface-variant block mb-1">
-                              {t('settings.webhook_raw_payload', 'Raw payload (POST body)')}
-                            </span>
-                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
-                              {(() => {
-                                try {
-                                  return JSON.stringify(JSON.parse(log.payload), null, 2);
-                                } catch {
-                                  return log.payload;
-                                }
-                              })()}
-                            </pre>
-                          </div>
-                          <div>
-                            <span className="text-[11px]   text-on-surface-variant block mb-1">
-                              {t('settings.webhook_headers', 'Request headers')}
-                            </span>
-                            <pre className="bg-surface border border-outline-variant/40 p-3 rounded-md overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
-                              {(() => {
-                                try {
-                                  return JSON.stringify(JSON.parse(log.headers), null, 2);
-                                } catch {
-                                  return log.headers || '{}';
-                                }
-                              })()}
-                            </pre>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </section>
   );
 }
 
@@ -3980,8 +3132,6 @@ export default function Settings() {
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<AppUser | null>(null);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
-  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
-  const { videoUrl: currentVideoUrl, videoRoles: currentVideoRoles } = useWhatsNewSettings();
 
   useEffect(() => {
     if (!isManager) return;
@@ -4292,36 +3442,10 @@ export default function Settings() {
       node: <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />,
     },
     {
-      id: 'settings-whats-new',
-      label: t('settings.whats_new', "What's New"),
-      visible: true,
-      node: (
-        <WhatsNewSection
-          onOpen={() => setWhatsNewOpen(true)}
-          isAdmin={isAdmin}
-          userEmail={currentUser?.email}
-        />
-      ),
-    },
-    {
       id: 'settings-getting-started',
       label: t('settings.getting_started', 'Getting started'),
       visible: true,
       node: <GettingStartedSection />,
-    },
-    {
-      id: 'settings-roles',
-      label: t('settings.roles_access', 'Roles & access'),
-      visible: true,
-      node: (
-        <section className="mt-10">
-          <SectionHeader
-            title={t('settings.roles_access', 'Roles & access')}
-            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
-          />
-          <RolesReference currentRole={myRole} />
-        </section>
-      ),
     },
     {
       id: 'settings-team',
@@ -4372,16 +3496,10 @@ export default function Settings() {
       node: <DangerZoneSection onOpenPurgeModal={() => setShowPurgeModal(true)} />,
     },
     {
-      id: 'settings-quick-add',
-      label: t('settings.quick_add_title', 'Quick add by text'),
+      id: 'settings-attendance-sync',
+      label: t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)'),
       visible: isDev && devUnlocked,
-      node: <IntegrationsSection currentUser={currentUser} />,
-    },
-    {
-      id: 'settings-webhooks',
-      label: t('settings.webhook_title', 'API & webhook console'),
-      visible: isDev && devUnlocked,
-      node: <WebhookConsoleSection />,
+      node: <AttendanceSyncSection currentUser={currentUser} />,
     },
     {
       id: 'settings-cost',
@@ -4394,20 +3512,6 @@ export default function Settings() {
       label: t('settings.developer_options', 'Developer options'),
       visible: isDev && devUnlocked,
       node: <DeveloperOptionsFooter onLock={lockDevOptions} />,
-    },
-    {
-      id: 'settings-feedback',
-      label: t('settings.what_people_telling_us', 'What people are telling us'),
-      visible: isOwner,
-      node: (
-        <section className="mt-10">
-          <SectionHeader
-            title={t('settings.what_people_telling_us', 'What people are telling us')}
-            sub={t('settings.what_people_telling_us_sub', 'Feedback from the team and the community. Read it like notes from friends.')}
-          />
-          <FeedbackList />
-        </section>
-      ),
     },
   ];
   const visibleManagerSections = managerSections.filter((section) => section.visible);
@@ -4423,34 +3527,11 @@ export default function Settings() {
         <AccountSection />
         <SecuritySection />
 
-        <section className="mt-10">
-          <SectionHeader
-            title={t('settings.roles_access', 'Roles & access')}
-            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who each person carries what, and what sees.')}
-          />
-          <RolesReference currentRole={myRole} />
-        </section>
-
         <AppearanceSection theme={theme} setTheme={setTheme} />
         <NavigationSection />
         <NotificationsSection />
         <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />
-        <WhatsNewSection
-          onOpen={() => setWhatsNewOpen(true)}
-          isAdmin={isAdmin}
-          userEmail={currentUser?.email}
-        />
         <GettingStartedSection />
-
-        <WhatsNewModal
-          isOpen={whatsNewOpen}
-          onClose={() => setWhatsNewOpen(false)}
-          manifest={whatsNewManifest as WhatsNewManifest}
-          platform="web"
-          currentRole={role}
-          videoUrlOverride={currentVideoUrl}
-          videoRolesOverride={currentVideoRoles}
-        />
       </div>
     );
   }
@@ -4496,8 +3577,7 @@ export default function Settings() {
 
       {/* About, Android-style: the build row is the developer unlock target.
           Seven taps reveal the integration sections above; `?dev=1` does the
-          same for anyone who cannot tap. Version and build come from the same
-          built manifest the What's New row reads, so they track releases. */}
+          same for anyone who cannot tap. */}
       <section
         className="mt-12 border-t border-outline-variant/30 pt-6"
         data-testid="settings-about"
@@ -4509,17 +3589,13 @@ export default function Settings() {
           {t('settings.about_product', 'CISA Campus Work Tracker')}
         </p>
         <div className="mt-1.5 flex flex-col items-start gap-0.5 text-[12px] text-on-surface-variant">
-          <span>
-            {t('settings.about_version', 'Version')}{' '}
-            {(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? ''}
-          </span>
           <button
             type="button"
             data-testid="settings-build"
             onClick={handleBuildTap}
             className="text-left text-[12px] text-on-surface-variant/80 hover:text-on-surface transition-colors"
           >
-            {t('settings.about_build', 'Build')} {whatsNewManifest.latestReleaseId}
+            {t('settings.about_build', 'Build')}
           </button>
         </div>
         {devNotice && (
@@ -4572,15 +3648,6 @@ export default function Settings() {
             onClose={() => setShowPurgeModal(false)}
           />
         )}
-        <WhatsNewModal
-          isOpen={whatsNewOpen}
-          onClose={() => setWhatsNewOpen(false)}
-          manifest={whatsNewManifest as WhatsNewManifest}
-          platform="web"
-          currentRole={role}
-          videoUrlOverride={currentVideoUrl}
-          videoRolesOverride={currentVideoRoles}
-        />
       </AnimatePresence>
     </PageContainer>
   );

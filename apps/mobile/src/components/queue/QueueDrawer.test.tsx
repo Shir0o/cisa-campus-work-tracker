@@ -41,7 +41,8 @@ describe('QueueDrawer', () => {
     // Ask a Full-timer (Questions for the team) is cut (cut-or-keep §5).
     expect(queryByText('Ask a Full-timer')).toBeNull();
     expect(getByText('Sign-up form')).toBeTruthy();
-    expect(getByText('How this works')).toBeTruthy();
+    // "How this works" is cut (cut-or-keep §16); the report row stays.
+    expect(queryByText('How this works')).toBeNull();
     expect(getByText("Report a problem or idea")).toBeTruthy();
     expect(getByText('Your app')).toBeTruthy();
   });

@@ -26,7 +26,6 @@ import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
 import { LogSheet } from '../log/LogSheet';
 import { Snackbar } from '../ui';
-import { M2Release } from '../release/M2Release';
 import { PersonMark } from '../queue/atoms';
 import { Room } from '../v2/Widget';
 import { FtGlance } from './FtGlance';
@@ -345,9 +344,6 @@ function FtHome() {
         }}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
-      {/* What changed since you last opened this (#546). Full-timers have no
-          on-campus window of their own, so nothing is passed to the gate. */}
-      <M2Release role={role} />
     </SafeAreaView>
   );
 }

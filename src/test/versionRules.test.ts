@@ -100,8 +100,6 @@ describe("evaluateVersionConsistency", () => {
   it("fails when a version literal is committed back into the app config", () => {
     const withVersion = evaluateVersionConsistency({
       staticConfig: { expo: { version: "1.0.1" } },
-      manifestVersions: [],
-      latestTag: "v1.5.0",
     });
     expect(withVersion.failures).toHaveLength(1);
     expect(withVersion.failures[0]).toMatch(/expo\.version/);
@@ -109,47 +107,19 @@ describe("evaluateVersionConsistency", () => {
     expect(
       evaluateVersionConsistency({
         staticConfig: { expo: { ios: { buildNumber: "1" } } },
-        manifestVersions: [],
       }).failures[0],
     ).toMatch(/ios\.buildNumber/);
 
     expect(
       evaluateVersionConsistency({
         staticConfig: { expo: { android: { versionCode: 1 } } },
-        manifestVersions: [],
       }).failures[0],
     ).toMatch(/android\.versionCode/);
   });
 
   it("passes a clean static config", () => {
-    expect(
-      evaluateVersionConsistency({ staticConfig: clean, manifestVersions: [], latestTag: "v1.5.0" }),
-    ).toEqual({ failures: [], warnings: [] });
-  });
-
-  it("warns, without failing, when the newest notes lag the tag", () => {
-    const result = evaluateVersionConsistency({
-      staticConfig: clean,
-      manifestVersions: ["1.4.0"],
-      latestTag: "v1.5.0",
+    expect(evaluateVersionConsistency({ staticConfig: clean })).toEqual({
+      failures: [],
     });
-    expect(result.failures).toEqual([]);
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0]).toMatch(/1\.4\.0/);
-  });
-
-  it("is clean when notes are equal, ahead, absent, or the tag is unknown", () => {
-    const cases = [
-      { manifestVersions: ["1.5.0"], latestTag: "v1.5.0" },
-      { manifestVersions: ["1.6.0"], latestTag: "v1.5.0" },
-      { manifestVersions: [], latestTag: "v1.5.0" },
-      { manifestVersions: ["1.6.0"], latestTag: undefined },
-    ];
-    for (const c of cases) {
-      expect(evaluateVersionConsistency({ staticConfig: clean, ...c })).toEqual({
-        failures: [],
-        warnings: [],
-      });
-    }
   });
 });

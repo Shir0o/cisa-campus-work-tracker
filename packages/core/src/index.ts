@@ -9,7 +9,6 @@ export * from './reminders';
 export * from './aroundTeam';
 export * from './toAsk';
 export * from './goal';
-export * from './whatsNew';
 export * from './inbox';
 export * from './board';
 export * from './seasons';

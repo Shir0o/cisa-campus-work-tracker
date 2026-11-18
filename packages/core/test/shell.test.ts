@@ -67,10 +67,10 @@ describe('isPushedScreen', () => {
 
 describe('the drawer and More lists', () => {
   it("matches the design's trainee drawer, in order", () => {
+    // "How this works" is cut (cut-or-keep §16).
     expect(TRAINEE_DRAWER.map((l) => l.label)).toEqual([
       'People',
       'Sign-up form',
-      'How this works',
       'Your app',
     ]);
   });
@@ -87,13 +87,13 @@ describe('the drawer and More lists', () => {
   });
 
   it("matches the design's full-timer More, in order", () => {
-    // Outreach (the monthly park outing log) is cut (cut-or-keep §2).
+    // Outreach (the monthly park outing log) is cut (cut-or-keep §2), and
+    // "How this works" is cut (cut-or-keep §16).
     expect(FT_MORE.map((l) => l.label)).toEqual([
       'Gatherings',
       'Prayer log',
       'The Board',
       'Sign-up form',
-      'How this works',
       'Settings',
     ]);
   });

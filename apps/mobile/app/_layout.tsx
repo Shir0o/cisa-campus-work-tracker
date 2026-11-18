@@ -21,7 +21,6 @@ import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { useNotificationTapRouting } from '../src/lib/notificationRouting';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 import { AccessGate } from '../src/components/auth/AccessGate';
-import { initReleaseStore } from '../src/lib/releases';
 import { initSentry, wrapRootLayout } from '../src/lib/sentry';
 import { MobileNotificationPermissionBanner } from '../src/components/notifications/MobileNotificationPermissionBanner';
 
@@ -42,11 +41,6 @@ function RootNavigator() {
   const [tint] = useRoomTint(uid);
   const pathname = usePathname();
   usePushRegistration();
-  // Stamp the last-seen release version before any release sheet mounts, so the
-  // gate reads from a hydrated store (issue #546).
-  useEffect(() => {
-    void initReleaseStore();
-  }, []);
   const [fontsLoaded, fontError] = useFonts({
     // Bento — Lexend only: 400 body / 500 label / 600 structural.
     Lexend_400Regular,

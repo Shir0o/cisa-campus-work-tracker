@@ -75,7 +75,7 @@ export default function PrivacyPolicy() {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-on-surface">{t('privacy.roles_title')}</h2>
             <p>
-              {t('privacy.roles_intro')} <strong className="text-on-surface">{t('privacy.roles_full_timer')}</strong>, <strong className="text-on-surface">{t('privacy.roles_manager')}</strong>, <strong className="text-on-surface">{t('privacy.roles_operator')}</strong>, {t('privacy.roles_and')} <strong className="text-on-surface">{t('privacy.roles_viewer')}</strong>. {t('privacy.roles_footer')}
+              {t('privacy.roles_intro')} <strong className="text-on-surface">{t('privacy.roles_full_timer')}</strong> {t('privacy.roles_and')} <strong className="text-on-surface">{t('privacy.roles_manager')}</strong>. {t('privacy.roles_footer')}
             </p>
           </section>
 

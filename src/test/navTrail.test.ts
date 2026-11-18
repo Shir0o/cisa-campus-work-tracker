@@ -15,7 +15,7 @@ describe('sectionHrefFor (#803)', () => {
 
   it('resolves the other declared leaf routes', () => {
     expect(sectionHrefFor('/coordination/trash')).toBe('/coordination');
-    expect(sectionHrefFor('/admin/feedback')).toBe('/settings');
+    expect(sectionHrefFor('/settings')).toBe('/settings');
   });
 
   it('falls back to the deepest destination an undeclared child sits under', () => {

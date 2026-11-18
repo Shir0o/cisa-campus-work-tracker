@@ -295,16 +295,6 @@ export interface SeasonSettings {
   bfa?: boolean;
 }
 
-// Team-wide What's New video override settings (one doc: settings/whats_new).
-// Allows full-timers to specify or update the Google Drive video link shown
-// in the What's New dialog.
-export interface WhatsNewSettings {
-  videoUrl?: string | null;
-  videoRoles?: string[] | null;
-  updatedAt?: unknown;
-  updatedBy?: string | null;
-}
-
 
 // Team-wide gospel partners (one doc: settings/partners). The map is keyed by
 // term ("Fall 2026") and values are groups of trainee uids who go out as one.
@@ -407,27 +397,10 @@ export interface Feedback {
   kind?: FeedbackKind;
   outcome?: FeedbackOutcome;
   /**
-   * What the submitter actually reads (ADR 0019). Written at close from the
-   * linked PR when there is one; absent means fall back to the canned sentence
-   * for `outcome`, which is the guarantee that something always arrives.
-   */
-  outcomeMessage?: string;
-  /**
    * The outcome the submitter was last notified about. Survives the reopen
    * clear of `outcome` so a re-close only pings when the answer changed.
    */
   notifiedOutcome?: FeedbackOutcome;
-  /** A Follow-up from the submitter is waiting on the team. */
-  awaitingReply?: boolean;
-  /**
-   * How many Follow-ups the Note holds, written by the server as each one
-   * lands so a collapsed card can count without subscribing to the thread.
-   * Absent on Notes written before the field existed — not known, not zero.
-   */
-  replyCount?: number;
-  /** When the last Follow-up landed, and whose it was. */
-  lastReplyAt?: string;
-  lastReplyRole?: 'submitter' | 'team';
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;
@@ -437,33 +410,6 @@ export interface Feedback {
   userAgent?: string;
   viewport?: string;
   archived?: boolean;
-}
-
-/**
- * A Follow-up on a Feedback Note (ADR 0019) — `feedback/{id}/replies`.
- * Always server-written, so that every one mirrors to the linked GitHub issue
- * and every comment relayed down from it has been laundered first.
- */
-export interface FeedbackReply {
-  id: string;
-  /** The Note's author, or the team (in-app or relayed from the issue). */
-  authorRole: 'submitter' | 'team';
-  /** Firebase uid when typed in-app; absent for a comment relayed from GitHub. */
-  authorId?: string;
-  authorName?: string;
-  body: string;
-  createdAt: string;
-  /**
-   * The laundered restatement, stored beside a raw `body` only on the owner's
-   * own Notes so "see it as they do" has something to show.
-   */
-  launderedBody?: string;
-  /** True when this came from a GitHub comment rather than being typed here. */
-  relayed?: boolean;
-  /** GitHub comment id — the mirror's dedupe key. */
-  githubCommentId?: number;
-  /** When the author last rewrote it; absent on a reply never edited. */
-  editedAt?: string;
 }
 
 export interface ImpersonateTarget {
@@ -490,31 +436,8 @@ export interface ParsedContactItem {
   selected?: boolean;
 }
 
-export interface ParsedInteractionItem {
-  tempId: string;
-  contactRef?: string;
-  contactId?: string | null;
-  contactName?: string;
-  dateTime?: string;
-  type?: string;
-  content: string;
-  selected?: boolean;
-}
-
-export interface ParsedDiscussionItem {
-  tempId: string;
-  title: string;
-  audience?: 'team' | 'trainees' | 'everyone';
-  content: string;
-  tags?: string[];
-  mentionedContactNames?: string[];
-  selected?: boolean;
-}
-
 export interface SmartImportParsedData {
   contacts: ParsedContactItem[];
-  interactions: ParsedInteractionItem[];
-  discussions: ParsedDiscussionItem[];
 }
 
 

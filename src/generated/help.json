@@ -7,62 +7,7 @@
       "content": {
         "en": {
           "title": "Getting Started",
-          "body": "# Getting Started\n\nCISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gatherings in one place.\n\n## What the app is for\n\n- **People** records every contact you meet on campus.\n- **Interactions** capture how each follow-up went.\n- **Gatherings** and **Prayer** keep the team aligned week to week.\n\n## Your role\n\nWhat you can see and do follows your role: Full-timer, Trainee, Student, or Community. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.\n\n> This is a seed page. The full Help corpus is authored separately."
-        }
-      }
-    },
-    {
-      "slug": "roles",
-      "order": 2,
-      "category": "Orientation",
-      "content": {
-        "en": {
-          "title": "Roles and What You Can Do",
-          "body": "# Roles and What You Can Do\n\nAccess and visibility in CISA Campus Work Tracker reflect your role on campus. Pages throughout this Help section note when a topic applies only to specific roles.\n\n## Full-timer (`admin`)\nFull-timers carry administrative and team-wide oversight:\n- Configure campus-wide settings, terms, and the Day's Goal.\n- Pair Gospel Partners and manage team assignments.\n- View team-wide metrics and unassigned contacts across the campus.\n- Manage administrative data and system configurations.\n\n## Trainee (`manager`)\nTrainees are field workers active in day-to-day campus outreach:\n- Manage assigned contacts and log interactions.\n- Work together with a designated Gospel Partner for term outreach.\n- Participate in The Journey board, follow-up queues, and team gatherings."
-        }
-      }
-    },
-    {
-      "slug": "attention-feed",
-      "order": 3,
-      "category": "Navigation",
-      "content": {
-        "en": {
-          "title": "The Attention Feed and Bell",
-          "body": "# The Attention Feed and Bell\n\nThe Attention Feed (on My Day) and the notification bell keep you grounded in what needs attention right now without forcing you to dig through lists.\n\n## \"On you\" vs. \"Around the team\"\n\nThe Attention Feed partitions updates into two distinct streams:\n\n- **On you**: Items requiring your direct action or response. This includes questions waiting for your reply, assigned follow-up asks, and contacts in your care who have not been reached.\n- **Around the team**: Important milestones, notes, and activity from teammates across the campus work. This gives you situational awareness of what others are experiencing without cluttering your personal to-do stack.\n\nWhen \"On you\" says *\"Nothing's waiting on you\"*, your personal queue is clear. That is the ideal state—not a missing widget or broken layout.\n\n## The Notification Bell\n\nThe bell icon in the navigation bar highlights new items requiring your attention since your last check:\n\n- Unread mentions and direct follow-up requests.\n- New answers to questions or updates on notes you authored.\n- Important team announcements.\n\nClicking an item in the bell tray takes you directly to the relevant conversation, thread, or contact story."
-        }
-      }
-    },
-    {
-      "slug": "gatherings-and-attendance",
-      "order": 4,
-      "category": "Gatherings",
-      "content": {
-        "en": {
-          "title": "Gatherings and Attendance",
-          "body": "# Gatherings and Attendance\n\nGatherings track team meetings, Bible studies, and campus fellowship events.\n\n## RSVPs and Attendance Flow\n\n1. **Scheduled Gatherings**: Events appear on the Gatherings calendar with their target audience, location, and time.\n2. **RSVPs**: Team members and invited students can indicate whether they plan to attend, helping organizers prepare materials and venue logistics.\n3. **Live Check-in & Walk-ins**:\n   - During the gathering, designated organizers or helpers check in attendees from the expected roster.\n   - Walk-in guests can be added directly to attendance on the spot, creating a new contact or linking an existing record.\n4. **Post-Gathering Wrap-up**:\n   - Attendance logs feed into the contact's historical story, showing how consistently they participate.\n   - The team can review who attended and reach out to those who were missed."
-        }
-      }
-    },
-    {
-      "slug": "notifications",
-      "order": 5,
-      "category": "Settings",
-      "content": {
-        "en": {
-          "title": "Notification Preferences",
-          "body": "# Notification Preferences\n\nConfigure how and when you receive alerts from CISA Campus Work Tracker to match your daily workflow.\n\n## Notification Channels\n\n1. **In-App Bell**: Displays active mentions, replies, and urgent follow-up items right inside the web navigation bar.\n2. **Push Notifications**: Receive timely alerts on mobile for @mentions, team announcements, urgent follow-up assignments, and scheduled reminders.\n\n## Customizing Your Preferences\n\nYou can manage your notification subscriptions in **Settings > Notifications**:\n- **Mentions & Threads**: Get notified whenever someone tags you (`@name`) or responds in an interaction thread you follow.\n- **Assigned Follow-ups**: Receive alerts when you are assigned a contact or requested for follow-up care.\n- **Weekly Reminders**: Choose whether to receive the weekly summary highlighting contacts not yet reached and upcoming team gatherings."
-        }
-      }
-    },
-    {
-      "slug": "bible-study",
-      "order": 6,
-      "category": "Bible Study",
-      "content": {
-        "en": {
-          "title": "Bible Study Reading Flow",
-          "body": "# Bible Study Reading Flow\n\nThe Bible Study tools help teams read scriptures, share outlines, and conduct studies together smoothly.\n\n## Reading Deck and Document Index\n\n- **Document Index**: Browse available reading schedules, series outlines, and study documents organized by term and topic.\n- **Reading Deck**: Open a reading deck to follow along with the passage, footnotes, and discussion questions laid out for the session.\n- **Bilingual Readings**: Passages and reading outlines support two-way English and Spanish views, allowing bilingual groups to read side by side.\n\n## Present Mode\n\nWhen presenting a Bible study in person or over a call:\n- Enter **Present Mode** for a distraction-free, high-readability presentation screen.\n- Move through verses, companion notes, and discussion points with simple keyboard shortcuts or click navigation."
+          "body": "# Getting Started\n\nCISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gatherings in one place.\n\n## What the app is for\n\n- **People** records every contact you meet on campus.\n- **Interactions** capture how each follow-up went.\n- **Gatherings** and **Prayer** keep the team aligned week to week.\n\n## Your role\n\nWhat you can see and do follows your role: Full-timer or Trainee. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.\n\n> This is a seed page. The full Help corpus is authored separately."
         }
       }
     },

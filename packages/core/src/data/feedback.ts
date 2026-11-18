@@ -1,49 +1,12 @@
-// Feedback — Firestore reads/writes behind an injected `db`. Mirrors the
-// admin-review parts of web's src/views/FeedbackList.tsx and the write shape
-// of src/views/SubmitFeedback.tsx — but written directly against Firestore
-// (the existing `feedback` rules already permit everything below) rather
-// than through the web app's Express /api/feedback server routes, which
-// exist only to support browser-only screenshot capture and best-effort
-// GitHub issue creation (out of scope for mobile — see MIGRATION.md).
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  type Firestore,
-} from "firebase/firestore";
-import type { Feedback, FeedbackKind } from "../types";
-import { kindToType, type FeedbackStatus } from "../feedback";
-
-/** Live subscription to every feedback doc, newest first (admin-only per rules). */
-export function subscribeFeedback(
-  db: Firestore,
-  cb: (list: Feedback[]) => void,
-  onError?: (e: unknown) => void,
-): () => void {
-  const q = query(collection(db, "feedback"), orderBy("createdAt", "desc"));
-  return onSnapshot(
-    q,
-    (snap) => {
-      cb(
-        snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            ...data,
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          } as Feedback;
-        }),
-      );
-    },
-    onError,
-  );
-}
+// Feedback — the write path behind an injected `db`. Mirrors the write shape
+// of src/views/SubmitFeedback.tsx, written directly against Firestore (the
+// existing `feedback` rules permit it) rather than through the web app's
+// Express /api/feedback server route, which supports browser-only screenshot
+// capture and best-effort GitHub issue creation (out of scope for mobile — see
+// MIGRATION.md).
+import { addDoc, collection, serverTimestamp, type Firestore } from "firebase/firestore";
+import type { FeedbackKind } from "../types";
+import { kindToType } from "../feedback";
 
 export interface NewFeedbackInput {
   userId: string;
@@ -74,16 +37,4 @@ export async function submitFeedback(db: Firestore, input: NewFeedbackInput): Pr
     ...(input.screenshot ? { screenshot: input.screenshot } : {}),
   });
   return docRef.id;
-}
-
-export async function updateFeedbackStatus(db: Firestore, id: string, status: FeedbackStatus): Promise<void> {
-  await updateDoc(doc(db, "feedback", id), { status });
-}
-
-export async function toggleFeedbackArchive(db: Firestore, id: string, archived: boolean): Promise<void> {
-  await updateDoc(doc(db, "feedback", id), { archived });
-}
-
-export async function deleteFeedback(db: Firestore, id: string): Promise<void> {
-  await deleteDoc(doc(db, "feedback", id));
 }

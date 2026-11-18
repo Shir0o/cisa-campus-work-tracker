@@ -35,10 +35,6 @@ import SmartImportModal from "./components/modals/SmartImportModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
-import WhatsNewModal from "./components/WhatsNewModal";
-import whatsNewManifest from "./generated/whats-new.json";
-import { shouldShowAnnouncement, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
-import type { WhatsNewManifest } from "./scripts/compile-whats-new";
 import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
@@ -65,7 +61,6 @@ const SignUp = lazyWithRetry(() => import("./views/SignUp"));
 const PrivacyPolicy = lazyWithRetry(() => import("./views/PrivacyPolicy"));
 const Support = lazyWithRetry(() => import("./views/Support"));
 const Help = lazyWithRetry(() => import("./views/Help"));
-const FeedbackList = lazyWithRetry(() => import("./views/FeedbackList"));
 const MyNotes = lazyWithRetry(() => import("./views/MyNotes"));
 /* v8 ignore stop */
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
@@ -436,14 +431,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
-  const [isWhatsNewOpen, setIsWhatsNewOpen] = React.useState(() => {
-    try {
-      const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(WHATS_NEW_STORAGE_KEY) : null;
-      return shouldShowAnnouncement(whatsNewManifest as WhatsNewManifest, lastSeen, 'web');
-    } catch {
-      return false;
-    }
-  });
   const previousIdentityKey = React.useRef(effectiveIdentityKey);
 
   // Contact detail is now a real URL route (`/people/:contactId`), so the
@@ -701,15 +688,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
 
         <FeedbackFAB />
-        {isWhatsNewOpen && (
-          <WhatsNewModal
-            isOpen={isWhatsNewOpen}
-            onClose={() => setIsWhatsNewOpen(false)}
-            manifest={whatsNewManifest as WhatsNewManifest}
-            platform="web"
-            currentRole={role}
-          />
-        )}
         <NotificationPermissionBanner />
         <Toaster />
       </div>
@@ -1104,19 +1082,6 @@ export default function App() {
                       <DashboardLayout>
                         <MyNotes />
                       </DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-
-                <Route
-                  path="/admin/feedback"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="admin">
-                        <DashboardLayout>
-                          <FeedbackList />
-                        </DashboardLayout>
-                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />

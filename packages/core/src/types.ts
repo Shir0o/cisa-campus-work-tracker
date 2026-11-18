@@ -369,8 +369,6 @@ export interface Feedback {
   type: 'bug' | 'enhancement';
   kind?: FeedbackKind;
   outcome?: FeedbackOutcome;
-  /** The written-at-close message, when a ship/close produced one. */
-  outcomeMessage?: string;
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;
@@ -380,26 +378,6 @@ export interface Feedback {
   userAgent?: string;
   viewport?: string;
   archived?: boolean;
-}
-
-export interface FeedbackReply {
-  id: string;
-  /** The Note's author, or the team (in-app or relayed from the issue). */
-  authorRole: 'submitter' | 'team';
-  /** Firebase uid when typed in-app; absent for a comment relayed from GitHub. */
-  authorId?: string;
-  authorName?: string;
-  body: string;
-  createdAt: string;
-  /**
-   * The laundered restatement, stored beside a raw `body` only on the owner's
-   * own Notes so "see it as they do" has something to show.
-   */
-  launderedBody?: string;
-  /** True when this came from a GitHub comment rather than being typed here. */
-  relayed?: boolean;
-  /** GitHub comment id — the mirror's dedupe key. */
-  githubCommentId?: number;
 }
 
 // A member asking the team to pray for them (MOBILE-V2.md, the member app's

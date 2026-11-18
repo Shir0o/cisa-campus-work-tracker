@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { setDoc, addDoc } from 'firebase/firestore';
 import SmartImportModal from '../components/modals/SmartImportModal';
 import { useAuth } from '../components/AuthProvider';
 import React from 'react';
@@ -68,20 +67,15 @@ describe('SmartImportModal', () => {
     });
   });
 
-  it('renders modal when isOpen is true and loads sample text', async () => {
+  it('renders modal when isOpen is true, with no sample-text shortcut', () => {
     render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
 
     expect(screen.getByText('Smart Text Import')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Paste roster lists/i)).toBeInTheDocument();
-
-    const sampleBtn = screen.getByText(/Load sample text/i);
-    await userEvent.click(sampleBtn);
-
-    const textarea = screen.getByPlaceholderText(/Paste roster lists/i) as HTMLTextAreaElement;
-    expect(textarea.value).toContain('Jane Smith');
+    expect(screen.queryByText(/Load sample text/i)).not.toBeInTheDocument();
   });
 
-  it('handles parsing via API and transitions to dry run preview', async () => {
+  it('previews contacts only — no interactions or discussions sections', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -94,67 +88,39 @@ describe('SmartImportModal', () => {
               email: 'jane@example.com',
               phone: '555-0123',
               stage: 'lead',
-              role: 'Student',
               notes: 'Met at welcome booth',
               tags: ['freshman'],
               matchedContactId: null,
               matchedContactName: null,
             },
-            {
-              tempId: 'c2',
-              name: 'John Doe',
-              email: 'john@example.com',
-              phone: '555-9999',
-              stage: 'contact',
-              role: 'Student',
-              notes: 'Existing student',
-              tags: [],
-              matchedContactId: 'existing-john-id',
-              matchedContactName: 'John Doe',
-            },
           ],
+          // A legacy server response may still carry these; the modal must not
+          // render them (cut-or-keep §14).
           interactions: [
-            {
-              tempId: 'i1',
-              contactRef: 'c1',
-              contactName: 'Jane Smith',
-              dateTime: '2026-08-03',
-              type: 'coffee',
-              content: 'Discussed campus transition.',
-            },
+            { tempId: 'i1', contactRef: 'c1', contactName: 'Jane Smith', type: 'coffee', content: 'Coffee chat' },
           ],
-          discussions: [
-            {
-              tempId: 'd1',
-              title: 'Welcome Strategy',
-              audience: 'team',
-              content: '# Plan\nOutreach goals...',
-              tags: ['strategy'],
-            },
-          ],
+          discussions: [{ tempId: 'd1', title: 'Welcome Strategy', audience: 'team', content: '# Plan' }],
         },
       }),
     });
 
     render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
 
-    const textarea = screen.getByPlaceholderText(/Paste roster lists/i);
-    await userEvent.type(textarea, 'Met Jane Smith and John Doe');
-
-    const parseBtn = screen.getByRole('button', { name: /Parse with Gemini AI/i });
-    await userEvent.click(parseBtn);
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Met Jane Smith');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Jane Smith')[0]).toBeInTheDocument();
     });
 
     expect(screen.getByText('New Contact')).toBeInTheDocument();
-    expect(screen.getByText(/Matches existing: John Doe/i)).toBeInTheDocument();
-    expect(screen.getByText('Discussed campus transition.')).toBeInTheDocument();
-    expect(screen.getByText('Welcome Strategy')).toBeInTheDocument();
+    expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
+    expect(screen.queryByText('Welcome Strategy')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Interactions/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Discussions/i })).not.toBeInTheDocument();
   });
 
-  it('allows editing fields and confirming import into Firestore', async () => {
+  it('allows editing contact fields and confirms import into Firestore', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -169,24 +135,12 @@ describe('SmartImportModal', () => {
               matchedContactId: null,
             },
           ],
-          interactions: [],
-          discussions: [
-            {
-              tempId: 'd1',
-              title: 'Team Notes',
-              audience: 'team',
-              content: 'Meeting notes content',
-            },
-          ],
         },
       }),
     });
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        success: true,
-        summary: { contactsCount: 1, interactionsCount: 0, discussionsCount: 1 },
-      }),
+      json: async () => ({ success: true, summary: { contactsCount: 1 } }),
     });
 
     const onImportComplete = vi.fn();
@@ -199,19 +153,13 @@ describe('SmartImportModal', () => {
       expect(screen.getByText('Alice Brown')).toBeInTheDocument();
     });
 
-    // Confirm import
-    const confirmBtn = screen.getByRole('button', { name: /Confirm & Import/i });
-    await userEvent.click(confirmBtn);
+    await userEvent.click(screen.getByRole('button', { name: /Confirm & Import/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Import Completed!')).toBeInTheDocument();
     });
 
-    expect(onImportComplete).toHaveBeenCalledWith({
-      contactsCount: 1,
-      interactionsCount: 0,
-      discussionsCount: 1,
-    });
+    expect(onImportComplete).toHaveBeenCalledWith({ contactsCount: 1 });
   });
 
   it('does not render when isOpen is false', () => {
@@ -291,38 +239,7 @@ describe('SmartImportModal', () => {
     });
   });
 
-  it('allows deleting parsed items during dry run preview step', async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          contacts: [{ tempId: 'c1', name: 'John Doe', stage: 'lead' }],
-          interactions: [],
-          discussions: [{ tempId: 'd1', title: 'Weekly Meeting', content: 'Notes', audience: 'team' }],
-        },
-      }),
-    });
-
-    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
-
-    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Sample input');
-    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-      expect(screen.getByText('Weekly Meeting')).toBeInTheDocument();
-    });
-
-    // Delete discussion item
-    const deleteButtons = screen.getAllByTitle('Delete item');
-    await userEvent.click(deleteButtons[1]);
-
-    expect(screen.queryByText('Weekly Meeting')).not.toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-  });
-
-  it('supports tabs, select/deselect all, individual toggling, editing fields, and back button', async () => {
+  it('supports select/deselect all, individual toggling, editing and back', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -335,27 +252,8 @@ describe('SmartImportModal', () => {
               email: 'carol@example.com',
               phone: '123-456-7890',
               stage: 'lead',
-              role: 'Student',
               notes: 'Notes for Carol',
               matchedContactId: null,
-            },
-          ],
-          interactions: [
-            {
-              tempId: 'i1',
-              contactRef: 'c1',
-              contactName: 'Carol White',
-              dateTime: '2026-08-04',
-              type: 'coffee',
-              content: 'Coffee chat with Carol',
-            },
-          ],
-          discussions: [
-            {
-              tempId: 'd1',
-              title: 'Fall Planning',
-              audience: 'team',
-              content: 'Planning meeting content',
             },
           ],
         },
@@ -371,212 +269,56 @@ describe('SmartImportModal', () => {
       expect(screen.getAllByText('Carol White')[0]).toBeInTheDocument();
     });
 
-    // Test tab filtering
-    const contactsTab = screen.getByRole('button', { name: /Contacts \(1\)/i });
-    await userEvent.click(contactsTab);
-    expect(screen.getAllByText('Carol White')[0]).toBeInTheDocument();
-    expect(screen.queryByText('Fall Planning')).not.toBeInTheDocument();
-
-    const interactionsTab = screen.getByRole('button', { name: /Interactions \(1\)/i });
-    await userEvent.click(interactionsTab);
-    expect(screen.getByText('Coffee chat with Carol')).toBeInTheDocument();
-    expect(screen.queryByText('Fall Planning')).not.toBeInTheDocument();
-
-    const discussionsTab = screen.getByRole('button', { name: /Discussions \(1\)/i });
-    await userEvent.click(discussionsTab);
-    expect(screen.getByText('Fall Planning')).toBeInTheDocument();
-    expect(screen.queryByText('Coffee chat with Carol')).not.toBeInTheDocument();
-
-    const allTab = screen.getByRole('button', { name: /All Items \(3\)/i });
-    await userEvent.click(allTab);
-
-    // Test Deselect All & Select All
     const deselectAllBtn = screen.getByRole('button', { name: /Deselect All/i });
     await userEvent.click(deselectAllBtn);
     expect(screen.getByRole('button', { name: /Confirm & Import \(0 Selected\)/i })).toBeDisabled();
 
     const selectAllBtn = screen.getByRole('button', { name: /^Select All$/i });
     await userEvent.click(selectAllBtn);
-    expect(screen.getByRole('button', { name: /Confirm & Import \(3 Selected\)/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /Confirm & Import \(1 Selected\)/i })).not.toBeDisabled();
 
-    // Test editing items
-    const editBtns = screen.getAllByTitle('Edit item details');
-    // Open edit for contact (first item)
-    await userEvent.click(editBtns[0]);
+    const editBtn = screen.getAllByTitle('Edit item details')[0];
+    await userEvent.click(editBtn);
     const nameInput = screen.getByDisplayValue('Carol White');
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, 'Carol Vance');
     expect(screen.getAllByDisplayValue('Carol Vance')[0]).toBeInTheDocument();
-    await userEvent.click(editBtns[0]); // close edit
+    await userEvent.click(editBtn);
 
-    // Test Back to text button
-    const backBtn = screen.getByRole('button', { name: /Back to text/i });
-    await userEvent.click(backBtn);
+    await userEvent.click(screen.getByRole('button', { name: /Back to text/i }));
     expect(screen.getByPlaceholderText(/Paste roster lists/i)).toBeInTheDocument();
   });
 
-  it('imports matched contact, unlinked interaction, and custom audience discussion', async () => {
+  it('deletes a parsed contact during the preview', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
         data: {
-          contacts: [
-            {
-              tempId: 'c1',
-              name: 'Dave Miller',
-              email: 'dave@example.com',
-              stage: 'active',
-              matchedContactId: 'existing-dave-id',
-              matchedContactName: 'Dave Miller',
-            },
-          ],
-          interactions: [
-            {
-              tempId: 'i1',
-              contactId: 'existing-dave-id',
-              contactName: 'Dave Miller',
-              type: 'call',
-              content: 'Phone call catchup',
-            },
-          ],
-          discussions: [
-            {
-              tempId: 'd1',
-              title: 'Student Roster',
-              audience: 'trainees',
-              content: 'Trainees list',
-            },
-          ],
-        },
-      }),
-    });
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        summary: { contactsCount: 1, interactionsCount: 1, discussionsCount: 1 },
-      }),
-    });
-
-    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
-
-    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Dave Miller call');
-    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Dave Miller')[0]).toBeInTheDocument();
-    });
-
-    const confirmBtn = screen.getByRole('button', { name: /Confirm & Import/i });
-    await userEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Import Completed!')).toBeInTheDocument();
-    });
-
-    const doneBtn = screen.getByRole('button', { name: /Done/i });
-    await userEvent.click(doneBtn);
-  });
-
-  it('allows editing all fields of contacts, interactions, and discussions', async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          contacts: [
-            { tempId: 'c1', name: 'Original Name', email: 'old@example.com', phone: '111-222', stage: 'lead' },
-          ],
-          interactions: [
-            { tempId: 'i1', contactName: 'Original Name', type: 'coffee', content: 'Old content' },
-          ],
-          discussions: [
-            { tempId: 'd1', title: 'Old Title', audience: 'team', content: 'Old md' },
-          ],
+          contacts: [{ tempId: 'c1', name: 'John Doe', stage: 'lead' }],
         },
       }),
     });
 
     render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
 
-    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Text content');
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Sample input');
     await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Original Name')[0]).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
-    const editBtns = screen.getAllByTitle('Edit item details');
-    expect(editBtns).toHaveLength(3);
-
-    // Edit contact fields
-    await userEvent.click(editBtns[0]);
-    await userEvent.type(screen.getByDisplayValue('old@example.com'), 'new@example.com');
-    await userEvent.type(screen.getByDisplayValue('111-222'), '-333');
-    await userEvent.selectOptions(screen.getByDisplayValue('Lead'), 'active');
-
-    // Edit interaction fields
-    await userEvent.click(editBtns[1]);
-    const contactNameInput = screen.getByDisplayValue('Original Name');
-    await userEvent.clear(contactNameInput);
-    await userEvent.type(contactNameInput, 'New Interaction Name');
-    await userEvent.selectOptions(screen.getByDisplayValue('Coffee'), 'call');
-    const contentTextarea = screen.getByDisplayValue('Old content');
-    await userEvent.clear(contentTextarea);
-    await userEvent.type(contentTextarea, 'Updated interaction content');
-
-    // Edit discussion fields
-    await userEvent.click(editBtns[2]);
-    const titleInput = screen.getByDisplayValue('Old Title');
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, 'Updated Discussion Title');
-    await userEvent.selectOptions(screen.getByDisplayValue('Team (Full-timers)'), 'everyone');
-    const audienceSelect = screen.getByDisplayValue('Everyone') as HTMLSelectElement;
-    expect(Array.from(audienceSelect.options).map((o) => o.value)).toEqual(['team', 'everyone']);
-    const discussionMdTextarea = screen.getByDisplayValue('Old md');
-    await userEvent.clear(discussionMdTextarea);
-    await userEvent.type(discussionMdTextarea, 'Updated markdown');
-
-    expect(screen.getByDisplayValue('Updated Discussion Title')).toBeInTheDocument();
+    await userEvent.click(screen.getAllByTitle('Delete item')[0]);
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 
-  it('maps a parsed Trainees audience to Team, since that tier is no longer offered (#1849)', async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          contacts: [],
-          interactions: [],
-          discussions: [
-            { tempId: 'd1', title: 'Old huddle', audience: 'trainees', content: 'Old md' },
-          ],
-        },
-      }),
-    });
-
-    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
-
-    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Huddle notes');
-    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Old huddle')[0]).toBeInTheDocument();
-    });
-
-    await userEvent.click(screen.getAllByTitle('Edit item details')[0]);
-
-    const audienceSelect = screen.getByDisplayValue('Team (Full-timers)') as HTMLSelectElement;
-    expect(Array.from(audienceSelect.options).map((o) => o.value)).toEqual(['team', 'everyone']);
-  });
-
-  it('disables Parse until text is entered', async () => {
+  it('disables Parse until text is entered', () => {
     render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Parse with Gemini AI/i })).toBeDisabled();
   });
 
-  it('toggles individual items and disables confirm with none selected', async () => {
+  it('disables confirm with no contacts selected', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -586,8 +328,6 @@ describe('SmartImportModal', () => {
             { tempId: 'c1', name: 'Solo Contact', stage: 'lead', matchedContactId: null },
             { tempId: 'c2', name: 'Other Contact', stage: 'lead', matchedContactId: null },
           ],
-          interactions: [],
-          discussions: [],
         },
       }),
     });
@@ -600,18 +340,13 @@ describe('SmartImportModal', () => {
       expect(screen.getAllByText('Solo Contact')[0]).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: /Contacts \(2\)/i }));
-
-    // Individual toggle: uncheck just "Solo Contact" (first button in its row).
     const soloRow = screen.getAllByText('Solo Contact')[0].closest('.p-4')!;
     await userEvent.click(soloRow.querySelectorAll('button')[0]);
     expect(screen.getByRole('button', { name: /Confirm & Import \(1 Selected\)/i })).not.toBeDisabled();
 
-    // Uncheck the last one too — confirm is disabled and cannot be submitted.
     const otherRow = screen.getAllByText('Other Contact')[0].closest('.p-4')!;
     await userEvent.click(otherRow.querySelectorAll('button')[0]);
-    const confirmBtn = screen.getByRole('button', { name: /Confirm & Import \(0 Selected\)/i });
-    expect(confirmBtn).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Confirm & Import \(0 Selected\)/i })).toBeDisabled();
   });
 
   it('shows the server error message when the commit request fails', async () => {
@@ -619,11 +354,7 @@ describe('SmartImportModal', () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: {
-          contacts: [{ tempId: 'c1', name: 'Failing Commit', stage: 'lead' }],
-          interactions: [],
-          discussions: [],
-        },
+        data: { contacts: [{ tempId: 'c1', name: 'Failing Commit', stage: 'lead' }] },
       }),
     });
     fetchMock.mockResolvedValueOnce({
@@ -644,7 +375,6 @@ describe('SmartImportModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Commit rejected by server')).toBeInTheDocument();
     });
-    // Back on the preview step, not success.
     expect(screen.getByRole('button', { name: /Confirm & Import/i })).toBeInTheDocument();
   });
 
@@ -653,11 +383,7 @@ describe('SmartImportModal', () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: {
-          contacts: [{ tempId: 'c1', name: 'Unsuccessful Commit', stage: 'lead' }],
-          interactions: [],
-          discussions: [],
-        },
+        data: { contacts: [{ tempId: 'c1', name: 'Unsuccessful Commit', stage: 'lead' }] },
       }),
     });
     fetchMock.mockResolvedValueOnce({
@@ -687,4 +413,3 @@ describe('SmartImportModal', () => {
     expect(screen.getByRole('button', { name: /Parse with Gemini AI/i })).toBeInTheDocument();
   });
 });
-
