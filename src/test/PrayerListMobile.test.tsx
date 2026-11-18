@@ -221,7 +221,7 @@ describe('PrayerListMobile', () => {
     const p = prayer({ status: 'unanswered', archiveReason: 'Graduated' });
     renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
 
-    expect(screen.getByText('Graduated')).toBeInTheDocument();
+    expect(screen.getByText('"Graduated"')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Edit Reason'));
     const textarea = await screen.findByPlaceholderText(/A note on why this is archived/i);
     fireEvent.change(textarea, { target: { value: 'Graduated and relocated' } });

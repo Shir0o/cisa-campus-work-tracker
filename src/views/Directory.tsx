@@ -52,7 +52,6 @@ import { DEFAULT_DIRECTORY_FILTERS, DIRECTORY_SORTS, readDirectoryFilters, write
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
-import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, isKindSorted, type ContactKind } from '../lib/contactKind';
 import { yearsToConfirm } from '../lib/movingUpAYear';
@@ -1633,14 +1632,14 @@ export default function Directory() {
                         overdue ? "text-stage-amber font-medium" : "text-on-surface-variant"
                       )}>
                         {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0" aria-hidden />}
-                        <Translate text={connectedLabel(days)} />
+                        {connectedLabel(days)}
                       </div>
                     ) : (
                       <div className="text-sm text-on-surface-variant italic mt-1">{t('directory.no_contact_logged')}</div>
                     )}
                     {note && (
                       <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-                        <span className="text-on-surface-variant">{t('directory.lately')}</span> <Translate text={truncate(note, 120)} />
+                        <span className="text-on-surface-variant">{t('directory.lately')}</span> {truncate(note, 120)}
                       </p>
                     )}
                     {tags.length > 0 && (

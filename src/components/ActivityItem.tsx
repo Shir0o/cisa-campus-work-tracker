@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { cn } from "../lib/utils";
 import { Activity, Contact } from "../types";
 import { useLanguage } from "./LanguageProvider";
-import { Translate } from "./Translate";
-import { useTranslate } from "../hooks/useTranslate";
 import {
   Phone,
   Mail,
@@ -27,7 +25,6 @@ export function ActivityItem({
   onOpenContact,
 }: ActivityItemProps) {
   const { t } = useLanguage();
-  const { translatedText: translatedDescription } = useTranslate(activity.description || '');
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -119,7 +116,7 @@ export function ActivityItem({
 
         {activity.description && activity.type !== "edit" && (
           <div className="mt-2 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/30 text-[13px] leading-relaxed text-on-surface-variant italic">
-            "{translatedDescription}"
+            "{activity.description}"
           </div>
         )}
       </div>

@@ -31,7 +31,6 @@ import {
 import { teamLabelKey } from "../../lib/teams";
 import { useLanguage } from "../LanguageProvider";
 import { InboxState } from "../../lib/inboxState";
-import { Translate } from "../Translate";
 import {
   addThreadMessage,
   closeFollowUpAsk,
@@ -153,11 +152,7 @@ function AttentionSubItem({ item }: { item: AttentionItem }) {
       <div className="min-w-0 text-sm">
         <div className="font-medium text-on-surface">{item.title || fallback}</div>
         {item.body && (
-          <Translate
-            as="p"
-            className="text-xs text-on-surface-variant line-clamp-2 mt-0.5"
-            text={item.body}
-          />
+          <p className="text-xs text-on-surface-variant line-clamp-2 mt-0.5">{item.body}</p>
         )}
         <span className="text-[11px] text-on-surface-variant/70 mt-1 block">
           {relTime(item.at)}
@@ -447,8 +442,7 @@ export function WorklistCard({
              * which is the long interaction note that used to cost the
              * reader their filters (#965). Readers can also click the note
              * directly to expand/collapse it without opening the strip. */
-            <Translate
-              as="p"
+            <p
               onClick={() => setNoteExpanded((v) => !v)}
               className={cn(
                 "text-xs text-on-surface-variant/90 mt-1 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2 cursor-pointer hover:bg-surface-variant/60 transition-colors",
@@ -458,8 +452,9 @@ export function WorklistCard({
                 // has to read to answer it (issue 1776).
                 !mobile && !stripOpen && !noteExpanded && "line-clamp-2",
               )}
-              text={latestText}
-            />
+            >
+              {latestText}
+            </p>
           )}
 
           {completed ? (

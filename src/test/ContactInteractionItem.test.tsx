@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import ContactInteractionItem from '../components/contact/ContactInteractionItem';
 import { interactionAdapter } from '../components/stream/interactionAdapter';
 import type { Interaction } from '../types';
@@ -124,5 +124,32 @@ describe('ContactInteractionItem — the on-behalf avatar (#1669)', () => {
     const avatar = screen.getByTestId('story-avatar');
     expect(avatar).toHaveAttribute('data-avatar-name', 'Anna');
     expect(avatar.querySelector('img')).toHaveAttribute('src', 'https://example.com/anna.jpg');
+  });
+});
+
+describe('ContactInteractionItem — stored words render as written', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('shows the stored text untouched, with no translation request and no show-original toggle', async () => {
+    const stored = 'Oración por mi familia esta semana';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          translations: [{ original: stored, translated: 'Prayer for my family this week', cached: false }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    renderItem({ ...base, content: stored });
+    // Longer than the old translator's 50 ms batching window.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(screen.getByText(stored)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show original|show translation/i })).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

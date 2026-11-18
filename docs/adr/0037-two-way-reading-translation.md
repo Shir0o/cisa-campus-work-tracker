@@ -4,7 +4,7 @@ Date: 2026-10-06
 
 ## Status
 
-Accepted. Supersedes ADR 0027.
+Superseded: reading translation was removed with Spanish (cut-or-keep audit, 2026-11-17). Supersedes ADR 0027.
 
 ## Context
 

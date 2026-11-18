@@ -6,7 +6,6 @@ type InteractionStreamAdapter = ReturnType<typeof interactionAdapter>;
 import { ThreadChip } from "../stream/Stream";
 import type { StreamViewer } from "../../lib/stream";
 import type { Interaction } from "../../types";
-import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import ContactComposer from "./ContactComposer";
 import type { ComposerValue } from "../../lib/contactComposer";
@@ -146,7 +145,7 @@ export default function ContactInteractionItem({
               </div>
             </div>
             <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
-              <Translate showOriginalToggle text={interaction.content} />
+              {interaction.content}
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="text-[11px] font-semibold text-on-surface-variant  ">

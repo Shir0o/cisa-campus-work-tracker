@@ -1,4 +1,3 @@
-import { Translate } from "../../Translate";
 import { useLanguage } from "../../LanguageProvider";
 
 export default function WhatWeKnow({ notes }: { notes?: string }) {
@@ -11,7 +10,7 @@ export default function WhatWeKnow({ notes }: { notes?: string }) {
       </div>
       <div className="cd-prose">
         {notes ? (
-          <Translate showOriginalToggle text={notes} />
+          notes
         ) : (
           t('modals.contactDetails.no_notes')
         )}

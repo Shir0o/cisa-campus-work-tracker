@@ -18,7 +18,6 @@ import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import { useTranslate, useTranslateMarkdown } from '../hooks/useTranslate';
 import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type NoteFormInitial } from './CoordinationNotes';
 import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
 import { Contact } from '../types';
@@ -44,13 +43,6 @@ export default function EmbedCoordinationDoc() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
-
-  const { translatedText: translatedDocTitle } = useTranslate(activeDoc?.title);
-  const { translatedText: translatedDocMd } = useTranslateMarkdown(activeDoc?.md);
-
-  const displayDoc = activeDoc
-    ? { ...activeDoc, title: translatedDocTitle, md: translatedDocMd }
-    : activeDoc;
 
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
@@ -158,10 +150,8 @@ export default function EmbedCoordinationDoc() {
   // happens when the user confirms via addNote below. Mirrors
   // CoordinationNotes.tsx's promoteDoc, minus the live-editing-preview branch
   // (this embed always shows exactly one, already-active doc).
-  const onPromote = (_d: BoardDoc) => {
-    const titleToUse = translatedDocTitle;
-    const mdToUse = translatedDocMd;
-    setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
+  const onPromote = (d: BoardDoc) => {
+    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(d.md) });
   };
 
   const addNote = async (fields: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => {
@@ -234,8 +224,8 @@ export default function EmbedCoordinationDoc() {
   return (
     <div style={{ height: '100vh', overflow: 'hidden' }}>
       <DocEditor
-        key={`${displayDoc.id}-${language}`}
-        doc={displayDoc}
+        key={`${activeDoc.id}-${language}`}
+        doc={activeDoc}
         pages={[]}
         meUid={user.uid}
         meName={meName}

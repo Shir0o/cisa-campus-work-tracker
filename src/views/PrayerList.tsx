@@ -45,7 +45,6 @@ import PickHeldModal from '../components/modals/PickHeldModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
-import { Translate } from '../components/Translate';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import {
@@ -1354,7 +1353,7 @@ function PrayerItem({
         </div>
       ) : (
         <p className={cn('text-sm leading-relaxed mt-1.5 whitespace-pre-wrap', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
-          <Translate text={prayer.burden} />
+          {prayer.burden}
         </p>
       )}
 
@@ -1376,7 +1375,7 @@ function PrayerItem({
           </div>
           {prayer.answer && (
             <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-              "<Translate text={prayer.answer} />"
+              "{prayer.answer}"
             </p>
           )}
           {(prayer.answeredPhotos || []).length > 0 && (
@@ -1421,7 +1420,7 @@ function PrayerItem({
             )}
           </div>
           <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-            "<Translate text={prayer.archiveReason} />"
+            "{prayer.archiveReason}"
           </p>
         </div>
       )}

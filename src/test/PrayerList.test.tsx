@@ -412,7 +412,7 @@ describe('PrayerList', () => {
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Graduation prayers')).toBeInTheDocument());
 
-    expect(screen.getByText('No longer on campus')).toBeInTheDocument();
+    expect(screen.getByText('"No longer on campus"')).toBeInTheDocument();
     const editReasonBtn = screen.getByText('Edit Reason');
     fireEvent.click(editReasonBtn);
 

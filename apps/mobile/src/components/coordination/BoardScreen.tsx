@@ -20,7 +20,6 @@ import {
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { Translate } from '../Translate';
 import { boardLeaderName, useBoardListData } from '../../lib/useBoardListData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker } from '../queue/atoms';
@@ -99,7 +98,7 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.card.ink }} numberOfLines={2}>
-          <Translate text={doc.title} />
+          {doc.title}
         </Text>
         {!!line && (
           <Text

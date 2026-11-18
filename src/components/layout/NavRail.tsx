@@ -32,7 +32,6 @@ import {
 } from '../../lib/permissions';
 import { useNavShell } from '../NavShellProvider';
 import { sectionHrefFor } from '../../lib/navTrail';
-import { Translate } from '../Translate';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 import { SIGNUP_TITLE } from './SignupInvite';
 
@@ -275,7 +274,7 @@ export default function NavRail(_props: NavRailProps = {}) {
                   style={{ width: collapsed ? 20 : 18, height: collapsed ? 20 : 18 }}
                 />
                 {!collapsed && (
-                  <Translate as="span" className="text-sm whitespace-nowrap truncate flex-1" text={SIGNUP_TITLE} />
+                  <span className="text-sm whitespace-nowrap truncate flex-1">{SIGNUP_TITLE}</span>
                 )}
                 {collapsed && <span className="sr-only">{SIGNUP_TITLE}</span>}
               </NavLink>
@@ -358,7 +357,7 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
       />
       {!collapsed && (
         <>
-          <Translate as="span" className="text-sm whitespace-nowrap truncate flex-1" text={label} />
+          <span className="text-sm whitespace-nowrap truncate flex-1">{label}</span>
           {unread > 0 && (
             <span
               data-testid={unreadTestId(item.href)}
@@ -410,7 +409,7 @@ function RailExternalItem({ link, collapsed }: { link: ExternalNavItem; collapse
       <CalendarDays className="w-[18px] h-[18px] shrink-0" />
       {!collapsed && (
         <>
-          <Translate as="span" className="text-sm whitespace-nowrap truncate flex-1" text={link.label} />
+          <span className="text-sm whitespace-nowrap truncate flex-1">{link.label}</span>
           <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
         </>
       )}

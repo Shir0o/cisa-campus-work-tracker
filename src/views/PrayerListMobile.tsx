@@ -5,7 +5,6 @@ import { ChevronRight, Clock, MessageSquare, Plus, Trash2, X } from 'lucide-reac
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction, prayerCarrySummary, isPlaceholderPrayerBurden } from '../lib/prayers';
-import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
 import { useCommand } from '../lib/commands';
@@ -729,7 +728,7 @@ function PrayerItemMobile({
           </div>
         ) : (
           <p className={cn('text-sm leading-relaxed mt-1 whitespace-pre-wrap prt-prayer-text', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
-            <Translate text={prayer.burden} />
+            {prayer.burden}
           </p>
         )}
 
@@ -754,7 +753,7 @@ function PrayerItemMobile({
             </div>
             {prayer.answer && (
               <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
-                "<Translate text={prayer.answer} />"
+                "{prayer.answer}"
               </p>
             )}
           </div>
@@ -823,7 +822,7 @@ function PrayerItemMobile({
               )}
             </div>
             <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
-              "<Translate text={prayer.archiveReason} />"
+              "{prayer.archiveReason}"
             </p>
           </div>
         )}

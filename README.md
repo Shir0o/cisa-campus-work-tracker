@@ -16,7 +16,7 @@ This repository is structured as a monorepo containing the web client, native mo
 - **Native Mobile App**: Cross-platform iOS and Android application built with React Native and Expo SDK (`apps/mobile`).
 - **Shared Core**: Pure platform-agnostic business logic, domain models, and permission rules (`packages/core`).
 - **Edge Functions**: Cloudflare Pages reverse-proxy routes resolving browser third-party storage partitioning (`functions`).
-- **Background Cloud Functions**: Firebase Cloud Functions v2 handling push notification delivery, translation sweeps, and staff reminders (`firebase-functions`).
+- **Background Cloud Functions**: Firebase Cloud Functions v2 handling push notification delivery and staff reminders (`firebase-functions`).
 - **Repository Automation**: Verification guards, database seeding routines, and autonomous maintenance scripts (`scripts`).
 
 ---
@@ -35,7 +35,7 @@ Access and capabilities within CISA Campus Work Tracker are partitioned into fou
 ## Local Interface & Invariants
 
 - `createApp`: Express backend application factory initializing rate limits, Gemini AI integrations, and Firebase Admin SDK (`server.ts`).
-- Endpoints: REST API routes for quick-add parsing, contact deduplication (`/api/combine-contacts`), tag merging, feedback synchronization, translation, and guest doc access (`server.ts`).
+- Endpoints: REST API routes for quick-add parsing, contact deduplication (`/api/combine-contacts`), tag merging, feedback synchronization, and guest doc access (`server.ts`).
 - Rate Limiting: Standard rate limiter enforces 100 requests per 5-minute window; write endpoints enforce stricter limits (`server.ts`).
 - Payload Limits: Express body parser strictly caps incoming JSON and URL-encoded payloads at 50MB (`server.ts`).
 - Local Side Effects: Reads and writes to Google Cloud Firestore via Firebase Admin SDK, verifies Twilio webhook signatures, proxies GitHub issues, and queries Gemini generative AI endpoints (`server.ts`).
@@ -48,7 +48,7 @@ Access and capabilities within CISA Campus Work Tracker are partitioned into fou
 - [src](./src/README.md): Primary web Single Page Application, user interface components, views, and browser state management.
 - [packages](./packages/README.md): Platform-agnostic business logic, permissions, domain types, and data adapters (`@cisa/core`).
 - [functions](./functions/README.md): Cloudflare Pages edge functions for `/api/*` reverse proxying and same-origin Firebase authentication.
-- [firebase-functions](./firebase-functions/README.md): Firebase Cloud Functions background triggers, push notification delivery (Expo/WebPush), translation sweeps, and staff reminders.
+- [firebase-functions](./firebase-functions/README.md): Firebase Cloud Functions background triggers, push notification delivery (Expo/WebPush), and staff reminders.
 - [scripts](./scripts/README.md): Repository automation, database seeding, verification guards, and weekly maintenance runners.
 
 ---
@@ -67,7 +67,7 @@ Access and capabilities within CISA Campus Work Tracker are partitioned into fou
 - **Google Cloud Firestore**: Primary persistent data store across `prod` and `qa-db` databases for contacts, interactions, prayers, and tasks.
 - **Firebase Realtime Database**: Low-latency collaborative document synchronization for The Board.
 - **Push Notification Services**: Outbound push dispatch to Expo Push Notification API and Web Push endpoints.
-- **Google Gemini Generative AI**: Server-side multimodal parsing for quick-add audio/images and scheduled bilingual translations.
+- **Google Gemini Generative AI**: Server-side multimodal parsing for quick-add audio/images.
 - **GitHub API**: Two-way issue tracker synchronization and weekly maintenance pull request generation.
 
 ---

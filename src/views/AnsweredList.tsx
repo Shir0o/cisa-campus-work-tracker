@@ -9,7 +9,6 @@ import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { useLanguage } from '../components/LanguageProvider';
 import { currentHref } from '../lib/navTrail';
-import { Translate } from '../components/Translate';
 
 const TONES: ('accent' | 'violet' | 'amber' | 'sage')[] = ['accent', 'violet', 'amber', 'sage'];
 function getToneForId(id: string): 'accent' | 'violet' | 'amber' | 'sage' {
@@ -118,7 +117,7 @@ function AnsweredCard({ row, contact, locale, t, onOpen }: AnsweredCardProps) {
       )}
       <div className="ans-card-body">
         <div className="ans-who">{name}</div>
-        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
+        <p className="ans-how">{p.answer || p.burden}</p>
         {(p.answeredPhotos || []).length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {p.answeredPhotos!.map((ph) =>
@@ -142,7 +141,7 @@ function AnsweredCard({ row, contact, locale, t, onOpen }: AnsweredCardProps) {
           </div>
         )}
         <div className="ans-arc">
-          <Translate as="span" className="ans-item" text={p.burden} />
+          <span className="ans-item">{p.burden}</span>
           <span className="ans-dates">
             <span>
               {t('answered.asked')} {askedLabel}

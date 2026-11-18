@@ -39,7 +39,6 @@ import { Contact, Stage } from '../types';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import { Translate } from '../components/Translate';
 import { journeyContacts, seesAllPeople } from '../lib/permissions';
 import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../lib/contactQueries';
 import {
@@ -1339,7 +1338,7 @@ function InternalKanbanCard({
       {/* Last note */}
       {note && (
         <p className="text-[12.5px] text-on-surface-variant leading-relaxed">
-          <span className="text-on-surface-variant/70">{t('outreachBoard.last')}</span> <Translate text={truncate(note, 100)} />
+          <span className="text-on-surface-variant/70">{t('outreachBoard.last')}</span> {truncate(note, 100)}
         </p>
       )}
 

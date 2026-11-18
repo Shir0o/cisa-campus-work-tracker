@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Pin, Quote, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
-import { useTranslate } from "../../hooks/useTranslate";
 import { buildStream, buildThread, type StreamRow, type StreamViewer, type ThreadSummary } from "../../lib/stream";
 import type { MentionUser } from "../../lib/mentions";
 import { joinNames } from "../../../packages/core/src/mentions";
@@ -47,8 +46,6 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   /** What the surface draws beside a message's Thread chip — an
    *  announcement's Got it and read receipts. */
   renderActions?: (message: M, ctx: { openThread: () => void; replies: number }) => React.ReactNode;
-  /** Show bodies in the reader's language, as chat always has. */
-  translate?: boolean;
   /** A deep link onto one message's Thread (a notification, #1303): the stream
    *  opens with that Thread already showing. */
   initialThreadId?: string | null;
@@ -101,17 +98,14 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** The body, with each @mention of a candidate picked out — the viewer's own
  *  name brighter than the rest. */
 function Body({
-  text: raw,
+  text,
   candidates,
-  translate,
   me,
 }: {
   text: string;
   candidates: MentionUser[];
-  translate?: boolean;
   me?: string;
 }) {
-  const { translatedText: text } = useTranslate(raw, { enabled: !!translate });
   // A picked mention carries the full name; one typed by hand is often just
   // the first name, in any case (as chat always highlighted it). Display
   // only: who is notified is settled by the picked mentions (ADR 0007).
@@ -231,7 +225,6 @@ interface RowProps<M extends StreamSourceMessage> {
   moreActions?: StreamMenuAction[];
   extra?: React.ReactNode;
   actions?: React.ReactNode;
-  translate?: boolean;
 }
 
 function Row<M extends StreamSourceMessage>({
@@ -264,7 +257,6 @@ function Row<M extends StreamSourceMessage>({
   moreActions,
   extra,
   actions,
-  translate,
 }: RowProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
@@ -374,7 +366,7 @@ function Row<M extends StreamSourceMessage>({
           <>
             {m.body && (
               <p className="strm-tx">
-                <Body text={m.body} candidates={candidates} translate={translate} me={me} />
+                <Body text={m.body} candidates={candidates} me={me} />
               </p>
             )}
             {extra}
@@ -614,7 +606,6 @@ export default function Stream<M extends StreamSourceMessage>({
   highlightIds,
   renderExtra,
   renderActions,
-  translate,
   initialThreadId,
 }: StreamProps<M>) {
   const { t } = useLanguage();
@@ -716,7 +707,6 @@ export default function Stream<M extends StreamSourceMessage>({
     deleteConfirm: adapter.deleteConfirm,
     moreActions: adapter.moreActions?.(row.message),
     extra: renderExtra?.(row.message),
-    translate,
   });
 
   /** A row of the stream itself: its badge, its Thread, the surface's actions. */

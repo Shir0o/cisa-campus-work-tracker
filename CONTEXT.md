@@ -415,14 +415,6 @@ _Avoid_: Anchor, suggested tag, canonical tag
 The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag; its language is judged at read time, never recorded at write time. Content may be English, Spanish, or a mix of the two.
 _Avoid_: Source language, input language, locale
 
-**Reading translation**:
-The read-time transform that shows user-authored content in the reader's app language, in both directions: a Spanish-mode reader sees English-authored content in Spanish, and an English-mode reader sees Spanish-authored content in English. Content already confidently in the reader's language is shown as-is with no translation; anything else — including mixed-language content — is translated whole into the reader's language (ADR 0037, superseding ADR 0027).
-_Avoid_: Auto-translate, localization, on-the-fly translation
-
-**Background translation**:
-The scheduled off-peak sweep (ADR 0032) that pre-populates Firestore's translation cache for user-authored content across collections (prayers, interactions, contacts, todos, coordination notes) using a persistent cursor. Pre-warms translations into the `translations` collection so readers in either language see immediate text without client-side loading delay, while preserving on-demand reading translation as a fallback.
-_Avoid_: Real-time sync translation, inline translation mutation
-
 **App Check**:
 Firebase's request attestation mechanism that verifies traffic originates from legitimate instances of CISA Campus Work Tracker (native iOS/Android app or official web domains) rather than unauthorized scripts or abusive API clients.
 _Avoid_: Device verification, API gatekeeper, bot blocker

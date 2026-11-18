@@ -18,7 +18,6 @@ import GlobalSearch from './GlobalSearch';
 import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { UserAvatar } from '../ui/UserAvatar';
-import { Translate } from '../Translate';
 import { useI18n } from '../LanguageProvider';
 import { cn } from '../../lib/utils';
 

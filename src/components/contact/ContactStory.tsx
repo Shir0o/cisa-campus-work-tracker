@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { cn } from "../../lib/utils";
 import { Skeleton } from "../ui/Skeleton";
-import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import type { StoryChange, StoryEntry } from "../../lib/contactStory";
 import type { Interaction, PrayerRecord } from "../../types";
@@ -152,7 +151,7 @@ export default function ContactStory({
                     <span>{(entry.prayer.burden || "").split("\n\n")[0]}</span>
                     {entry.prayer.answer && (
                       <p className="cd-prose">
-                        <Translate showOriginalToggle text={entry.prayer.answer} />
+                        {entry.prayer.answer}
                       </p>
                     )}
                   </div>

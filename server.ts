@@ -22,11 +22,6 @@ import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testA
 import { failsClosed, rateLimitKey, secretMatches } from "./src/server/requestGuards";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
-import {
-  TranslationEngine,
-  GeminiAIPort,
-  FirestoreTranslationCachePort,
-} from "./src/server/translationEngine";
 
 dotenv.config();
 
@@ -2759,68 +2754,6 @@ ${JSON.stringify(contactsList)}`;
     } catch (error) {
       console.error('POST /api/bnpb/sync error:', error);
       return res.status(500).json({ success: false, error: 'Could not process the sync.' });
-    }
-  });
-
-  // Translation Endpoint: translates batched text strings to targetLang with Firestore L3 caching
-  app.post("/api/translate", standardRateLimiter, async (req, res) => {
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authenticateFirebaseUser(req);
-        } catch (authErr: any) {
-          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
-        }
-      }
-
-      const { texts, targetLang = "es", sourceLang = "en" } = req.body;
-
-      if (!texts || !Array.isArray(texts) || texts.length === 0) {
-        return res.status(400).json({ error: "Missing or invalid 'texts' parameter. Must be a non-empty array of strings." });
-      }
-
-      if (texts.length > 100) {
-        return res.status(400).json({ error: "Batch size exceeds maximum limit of 100 items." });
-      }
-
-      if (typeof targetLang !== "string" || !/^[a-z]{2,5}(-[a-zA-Z0-9]+)?$/i.test(targetLang.trim())) {
-        return res.status(400).json({ error: "Invalid 'targetLang' parameter." });
-      }
-
-      const normalizedTargetLang = targetLang.trim().toLowerCase();
-
-      let totalChars = 0;
-      for (const t of texts) {
-        if (typeof t !== "string") {
-          return res.status(400).json({ error: "All elements in 'texts' must be strings." });
-        }
-        totalChars += t.length;
-      }
-
-      if (totalChars > 50000) {
-        return res.status(400).json({ error: "Total character length exceeds maximum limit of 50000 characters." });
-      }
-
-      const engine = new TranslationEngine({
-        aiPort: new GeminiAIPort({
-          aiClient: getAiClient(),
-          model: "gemini-3.5-flash",
-        }),
-        cachePort: new FirestoreTranslationCachePort(getAdminDb(), () => new Date().toISOString()),
-      });
-
-      const dailyLimitRaw = parseInt(process.env.TRANSLATION_DAILY_LIMIT || "", 10);
-      const dailyLimit = Number.isFinite(dailyLimitRaw) && dailyLimitRaw > 0 ? dailyLimitRaw : 2000;
-
-      const result = await engine.translateTexts(texts, normalizedTargetLang, {
-        sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
-        dailyLimit,
-      });
-
-      res.status(200).json(result);
-    } catch (error: any) {
-      console.error("Translation API Error: ", error);
-      res.status(500).json({ error: error.message || "Failed to translate texts." });
     }
   });
 
