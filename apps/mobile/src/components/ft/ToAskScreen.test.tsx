@@ -160,6 +160,23 @@ describe('ToAskScreen', () => {
     expect(getByText(/Nothing to ask yet/)).toBeTruthy();
   });
 
+  it('still offers a way to start the notepad when it is empty', async () => {
+    mockData(view({ groups: [], openCount: 0 }));
+    const { getByLabelText } = await renderScreen();
+
+    // An empty page has no General group to hold the row, so the empty card
+    // carries it — and the button stays inert until there is something to add.
+    await fireEvent.press(getByLabelText('Add line'));
+    expect(saveToAskNotepad).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(getByLabelText('Add a line for everyone…'), 'Ask about the retreat');
+    await fireEvent.press(getByLabelText('Add line'));
+
+    expect(saveToAskNotepad).toHaveBeenCalledWith('ft-1', {
+      lines: [expect.objectContaining({ text: 'Ask about the retreat', group: 'general' })],
+    });
+  });
+
   it('ticks a line asked, and unticks it again', async () => {
     const { getByLabelText, rerender } = await renderScreen();
 

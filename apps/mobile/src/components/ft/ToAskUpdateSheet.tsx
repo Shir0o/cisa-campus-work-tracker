@@ -224,7 +224,11 @@ function UpdateSheetBody({ visible, target, onClose, onPost }: Props) {
               </Text>
               <Switch
                 value={alsoAsked}
-                onValueChange={setAlsoAsked}
+                // The row owns the toggle; letting the native switch handle the
+                // same touch would flip it twice and leave it where it was.
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
                 trackColor={{ false: c.card.border, true: c.card.primary }}
                 thumbColor={c.card.onPrimary}
               />

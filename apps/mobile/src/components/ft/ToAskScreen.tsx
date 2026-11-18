@@ -26,7 +26,7 @@ import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { SkeletonList } from '../skeleton/SkeletonList';
 import { PersonMark } from '../queue/atoms';
-import { Room, V2Empty, V2Hint, V2Screen, V2Seg } from '../v2/Widget';
+import { Room, V2Hint, V2Screen, V2Seg } from '../v2/Widget';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useToAskData } from '../../lib/useToAskData';
@@ -160,7 +160,7 @@ function ToAsk() {
     else quiet(setToAskRewording(uid, line.key, text));
   };
 
-  const addLine = (group: ToAskGroup, text: string) => {
+  const addLine = (group: Pick<ToAskGroup, 'id' | 'kind'>, text: string) => {
     const trimmed = text.trim();
     if (!uid || !trimmed) return;
     const line: AskNoteLine = {
@@ -643,10 +643,14 @@ function ToAsk() {
             <Pressable
               accessibilityRole="button"
               onPress={() => uid && quiet(saveToAskNotepad(uid, { clearedBefore: nowIso() }))}
+              hitSlop={8}
               style={({ pressed }) => ({
                 alignSelf: 'flex-end',
-                minHeight: 44,
+                minHeight: 40,
                 justifyContent: 'center',
+                paddingHorizontal: 14,
+                borderRadius: radius.chip,
+                backgroundColor: c.room.chip,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
@@ -667,7 +671,51 @@ function ToAsk() {
           ) : (
             <>
               {view.groups.length === 0 ? (
-                <V2Empty>{`${t('mobile.toAsk.empty_title')}\n${t('mobile.toAsk.empty_sub')}`}</V2Empty>
+                // Nothing to ask yet still needs a door in: the General group
+                // only exists once it has a line, so this card carries the same
+                // "Add a line for everyone" row the group would.
+                <View
+                  style={{
+                    marginTop: 12,
+                    borderRadius: radius.card,
+                    borderWidth: 1,
+                    borderColor: c.card.border,
+                    backgroundColor: c.card.bg,
+                    paddingTop: 26,
+                  }}
+                >
+                  <Text
+                    accessibilityRole="header"
+                    style={{
+                      paddingHorizontal: 20,
+                      textAlign: 'center',
+                      fontFamily: font.extra,
+                      fontSize: fs(19),
+                      lineHeight: fs(25),
+                      letterSpacing: -0.3,
+                      color: c.card.ink,
+                    }}
+                  >
+                    {t('mobile.toAsk.empty_title')}
+                  </Text>
+                  <Text
+                    style={{
+                      paddingHorizontal: 20,
+                      marginTop: 6,
+                      textAlign: 'center',
+                      fontFamily: font.medium,
+                      fontSize: fs(13.5),
+                      lineHeight: fs(19),
+                      color: c.card.ink3,
+                    }}
+                  >
+                    {t('mobile.toAsk.empty_sub')}
+                  </Text>
+                  <AddLine
+                    label={t('mobile.toAsk.add_line_general')}
+                    onAdd={(text) => addLine({ id: GENERAL_GROUP, kind: 'general' }, text)}
+                  />
+                </View>
               ) : (
                 view.groups.map(renderGroup)
               )}
@@ -795,9 +843,11 @@ function SheetAction({ label, sub, onPress }: { label: string; sub?: string; onP
 /** The dashed "Add a line for {name}…" row at the foot of a group. */
 function AddLine({ label, onAdd }: { label: string; onAdd: (text: string) => void }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const [text, setText] = React.useState('');
+  const canAdd = text.trim().length > 0;
   const submit = () => {
-    if (!text.trim()) return;
+    if (!canAdd) return;
     onAdd(text);
     setText('');
   };
@@ -807,16 +857,16 @@ function AddLine({ label, onAdd }: { label: string; onAdd: (text: string) => voi
         minHeight: 48,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 6,
         margin: 12,
-        paddingHorizontal: 14,
+        paddingLeft: 14,
+        paddingRight: 4,
         borderRadius: radius.row,
         borderWidth: 1.5,
         borderStyle: 'dashed',
         borderColor: c.card.border,
       }}
     >
-      <Ionicons name="add" size={18} color={c.card.ink2} />
       <BufferedTextInput
         accessibilityLabel={label}
         placeholder={label}
@@ -827,6 +877,24 @@ function AddLine({ label, onAdd }: { label: string; onAdd: (text: string) => voi
         returnKeyType="done"
         style={{ flex: 1, minHeight: 44, fontFamily: font.medium, fontSize: fs(14), color: c.card.ink }}
       />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('mobile.toAsk.add_line_submit')}
+        accessibilityState={{ disabled: !canAdd }}
+        onPress={submit}
+        hitSlop={4}
+        style={({ pressed }) => ({
+          width: 44,
+          height: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 22,
+          backgroundColor: canAdd ? c.card.primary : 'transparent',
+          opacity: canAdd ? (pressed ? 0.8 : 1) : 0.4,
+        })}
+      >
+        <Ionicons name="add" size={20} color={canAdd ? c.card.onPrimary : c.card.ink2} />
+      </Pressable>
     </View>
   );
 }
