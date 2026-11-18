@@ -39,7 +39,7 @@ appId: com.cisa.campus
 - assertVisible: "Gatherings"
 - assertVisible: "Prayer log"
 - assertVisible: "The Board"
-- assertVisible: "Outreach"
+- assertNotVisible: "Outreach"
 - assertVisible: "Sign-up form"
 - assertVisible: "How this works"
 - assertNotVisible: "The Journey"

@@ -43,7 +43,6 @@ export interface CombineReferences {
   gatherings: { id: string; data: Record<string, unknown> }[];
   rhythms: { id: string; data: Record<string, unknown> }[];
   homes: { id: string; data: Record<string, unknown> }[];
-  outreach: { id: string; data: Record<string, unknown> }[];
   attendeeAliases: { id: string; data: Record<string, unknown> }[];
   pendingImports: { id: string; data: Record<string, unknown> }[];
   /** Personal prayers, each under the user who keeps it. */
@@ -112,7 +111,6 @@ export type CombineMoveKind =
   | 'gatherings'
   | 'rhythms'
   | 'homes'
-  | 'outreach'
   | 'attendeeAliases'
   | 'pendingImports'
   | 'personalPrayers'
@@ -891,24 +889,6 @@ export function buildCombinePlan(
   }
   moves.push(moveGroup('homes', homeItems));
 
-  // Outreach name entries: re-point the contact and refresh the typed name.
-  const outreachItems: CombineMoveItem[] = [];
-  for (const record of refs.outreach) {
-    const names = Array.isArray(record.data.names) ? (record.data.names as Record<string, unknown>[]) : [];
-    if (!names.some((entry) => entry?.contactId === id)) continue;
-    rewrittenReferences.push({
-      collection: 'outreach',
-      document: record.id,
-      field: 'names',
-      before: names,
-      after: names.map((entry) =>
-        entry?.contactId === id ? { ...entry, contactId: keptId, name: combined.name } : entry,
-      ),
-    });
-    outreachItems.push({ id: record.id, label: itemLabel(record.data, record.id) });
-  }
-  moves.push(moveGroup('outreach', outreachItems));
-
   // Attendance-sheet aliases.
   const aliasItems: CombineMoveItem[] = [];
   for (const alias of refs.attendeeAliases) {
@@ -1269,39 +1249,6 @@ function restoreReferenceEntries(
     const next: Dict = { ...currentMap, [combinedInKey]: before[combinedInKey] };
     if (!(keptKey in before)) delete next[keptKey];
     return { value: next, failed: [] };
-  }
-
-  if (kind === 'outreach/names') {
-    const before = Array.isArray(ref.before) ? (ref.before as Dict[]) : [];
-    const after = Array.isArray(ref.after) ? (ref.after as Dict[]) : [];
-    const next = Array.isArray(currentValue) ? [...(currentValue as Dict[])] : [];
-    const claimed = new Set<number>();
-    const failed: string[] = [];
-    let anyRestored = false;
-    before.forEach((original, i) => {
-      if (original?.contactId !== combinedInId) return;
-      const written = after[i] ?? {};
-      // The entry the combine wrote: still the kept contact under the written
-      // name, and the same outreach entry when entries carry an id.
-      const at = next.findIndex(
-        (entry, j) =>
-          !claimed.has(j) &&
-          entry?.contactId === written.contactId &&
-          entry?.name === written.name &&
-          (written.id === undefined || entry?.id === written.id),
-      );
-      if (at === -1) {
-        failed.push(label);
-        return;
-      }
-      claimed.add(at);
-      const restored: Dict = { ...next[at], contactId: original.contactId };
-      if ('name' in original) restored.name = original.name;
-      else delete restored.name;
-      next[at] = restored;
-      anyRestored = true;
-    });
-    return anyRestored ? { value: next, failed } : { failed };
   }
 
   return { failed: [label] };

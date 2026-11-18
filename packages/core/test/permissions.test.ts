@@ -8,8 +8,6 @@ import {
   defaultRouteForRole,
   pickLandingForRole,
   effectiveRole,
-  canSeeOutreach,
-  canLogOutreach,
   NAV_ITEMS,
   isAppOwner,
   canSimulateRole,
@@ -20,6 +18,7 @@ import {
   canSeeContact,
   visibleToOf,
 } from '../src/permissions';
+import * as permissions from '../src/permissions';
 import { applyPartners } from '../src/data/partners';
 
 describe('permissions', () => {
@@ -82,15 +81,12 @@ describe('permissions', () => {
     expect(effectiveRole(null)).toBeNull();
   });
 
-  it('keeps Outreach a Full-timer\'s alone', () => {
-    expect(canAccessRoute('admin', '/outreach')).toBe(true);
-    expect(canAccessRoute('manager', '/outreach')).toBe(false);
-    expect(canSeeOutreach('admin')).toBe(true);
-    expect(canLogOutreach('admin')).toBe(true);
-    for (const role of ['manager', 'viewer', null]) {
-      expect(canSeeOutreach(role), String(role)).toBe(false);
-      expect(canLogOutreach(role), String(role)).toBe(false);
-    }
+  // The monthly park outing log is cut (cut-or-keep §2): no nav entry, no
+  // seeing/logging predicates.
+  it('has no Outreach destination', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/outreach')).toBe(false);
+    expect('canSeeOutreach' in permissions).toBe(false);
+    expect('canLogOutreach' in permissions).toBe(false);
   });
 
   it('closes the signed-in study reader to a Trainee', () => {

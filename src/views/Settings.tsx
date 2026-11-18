@@ -1975,7 +1975,7 @@ function AttdIntegrationCard({
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   // Replacing the token revokes the one already pasted into ~/attd, so the
   // control arms on the first tap and only writes on the second. Same
-  // two-tap shape as a Gospel outing's Remove (Outreach.tsx).
+  // two-tap shape as other destructive removes.
   const [confirmingToken, setConfirmingToken] = useState(false);
   const confirmTokenRef = useRef<HTMLButtonElement>(null);
 

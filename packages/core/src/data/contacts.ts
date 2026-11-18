@@ -217,7 +217,7 @@ export function subscribeTouches(
 export interface NewContactInput {
   name: string;
   /** Address used by Visits. Optional: the web new-contact form no longer
-   * sends it (#730); the outreach log sheet records where the outing was. */
+   * sends it (#730). */
   location?: string;
   email: string;
   phone: string;

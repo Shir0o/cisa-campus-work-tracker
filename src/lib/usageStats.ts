@@ -239,7 +239,6 @@ export function usagePathLabel(path: string): string {
   const map: Record<string, string> = {
     '/': 'Home / My Day',
     '/attendance': 'Gatherings',
-    '/outreach': 'Gospel',
     '/board': 'The Journey',
     '/directory': 'People',
     '/history': 'History',

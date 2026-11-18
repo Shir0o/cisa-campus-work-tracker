@@ -21,7 +21,7 @@
  *   • the design's to-dos (Board "what we're holding" + contact follow-ups)
  *   • the design's 7 Board pages + 8 notes & learnings
  *   • the design's 5 conversations (team prayer group, two broadcasts, two DMs)
- *   • the design's 7 visits (with mirrored card interactions) + 3 outreaches
+ *   • the design's 7 visits (with mirrored card interactions)
  *   • the design's edit log (as the activity feed), 3 notifications and the
  *     5 webhook-console entries from the design's API log
  *
@@ -233,7 +233,6 @@ async function seed() {
     board_docs: ['qa-board-'],
     board_notes: ['qa-note-'],
     chatRooms: ['qa-room-'],
-    outreach: ['qa-outreach-'],
     activities: ['qa-act-'],
   };
   const matchesAny = (id: string, prefixes: string[]) => prefixes.some((p) => id.startsWith(p));
@@ -910,55 +909,6 @@ Set the rhythm for the week. Quieter outreach week with midterms landing — lea
     }
   }
   console.log(`  ✓ ${visits.length} visits (+mirrored interactions)`);
-
-  // --- Outreach records (design park log) ---
-  const outreaches = [
-    {
-      id: 'OT-4001', daysAgo: 5, where: 'Cedar Park — the north lawn', went: ['u1', 'u2', 'u3', 'community'], others: 8,
-      handed: { bibles: 34, tracts: 120, booklets: 26 },
-      how: 'Warmest afternoon we\'ve had out there. We set the table up by the path rather than the bandstand and it made all the difference — people walked into us instead of past us. Philip preached twice, about twenty minutes each, and both times a handful stayed afterwards to argue and ask.\n\nThe Bibles went faster than we expected; we were out by four. Two of the students who stopped had been given a booklet at the org fair in the spring and recognised us.',
-      names: [
-        { id: 'ON-1', name: 'Duy Pham', contact: '+1 (614) 555-0601', spokeWith: 'community', note: 'Wants a Bible in Vietnamese for his mum.', contactId: 'C-0601' },
-        { id: 'ON-2', name: 'Chloe Baptiste', contact: '+1 (614) 555-0602', spokeWith: 'u3', note: 'Took the booklet on suffering. Lost a friend in the spring.', contactId: 'C-0602' },
-        { id: 'ON-3', name: 'Sam Ortiz', contact: '+1 (614) 555-0603', spokeWith: 'community', note: 'Said to catch him on the loop rather than text.', contactId: 'C-0603' },
-        { id: 'ON-4', name: 'Aisha Nur', contact: 'aisha.nur@umail.edu', spokeWith: 'u2', note: 'Asked for a Bible in Somali.', contactId: 'C-0604' },
-      ],
-    },
-    {
-      id: 'OT-4002', daysAgo: 34, where: 'Cedar Park — by the bandstand', went: ['u1', 'u5', 'community'], others: 11,
-      handed: { bibles: 22, tracts: 90, booklets: 15 },
-      how: 'Quieter month. The bandstand looks like the right spot and isn\'t — nobody has a reason to come near it. We stayed two hours and gave out less than half of what we brought.\n\nOne long conversation made the afternoon: a groundskeeper who has watched us come back every month and finally asked why.',
-      names: [
-        { id: 'ON-5', name: 'Grace Wanjiru', contact: '+1 (614) 555-0605', spokeWith: 'u1', note: 'Asked when the Friday thing is.', contactId: 'C-0605' },
-        { id: 'ON-6', name: 'Tomas Reyes', contact: '+1 (614) 555-0606', spokeWith: 'community', note: 'Gave his number without being asked.', contactId: 'C-0606' },
-      ],
-    },
-    {
-      id: 'OT-4003', daysAgo: 63, where: 'Riverside Park — the west gate', went: ['u5', 'u4', 'community'], others: 6,
-      handed: { bibles: 9, tracts: 40, booklets: 8 },
-      how: 'Rain from one o\'clock. We handed out what we could keep dry, prayed under the shelter with the six of us who\'d come, and went home early. Worth writing down that it happened.',
-      names: [
-        { id: 'ON-7', name: 'Nadia Halim', contact: '+1 (614) 555-0607', spokeWith: 'u5', note: 'Sat under the shelter with us for an hour.', contactId: 'C-0607' },
-      ],
-    },
-  ];
-  for (const o of outreaches) {
-    const { id, daysAgo, went, names, ...data } = o;
-    await db.collection('outreach').doc(id).set(
-      {
-        ...data,
-        date: isoDate(-daysAgo),
-        went: went.map(uidOf),
-        photoCount: 0,
-        names: names.map((n) => ({ ...n, spokeWith: uidOf(n.spokeWith), takenBy: null })),
-        createdById: ft,
-        createdByName: staffName('u1'),
-        createdAt: iso(daysAgo),
-      },
-      { merge: true },
-    );
-  }
-  console.log(`  ✓ ${outreaches.length} outreach records`);
 
   // --- Activity feed (the design's edit log) ---
   const activities = [

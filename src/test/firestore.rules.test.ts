@@ -354,13 +354,16 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('a Community account no longer reads or logs Outreach', async () => {
+    // Cut-or-keep §2: the outing log is gone, so nothing reads or writes the
+    // `outreach` collection. The documents stay in Firestore, unread.
+    it('nobody reads or writes the outreach collection, a Full-timer included', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'community1' });
-      await assertFails(getDoc(doc(db, 'outreach', 'o1')));
-      await assertFails(getDocs(collection(db, 'outreach')));
-      await assertFails(setDoc(doc(db, 'outreach', 'o2'), { date: '2026-10-02', where: 'Park', went: [], others: 0, handed: {}, how: '', photoCount: 0, names: [] }));
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'admin1' }), 'outreach', 'o1')));
+      for (const uid of ['admin1', 'community1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'outreach', 'o1')));
+        await assertFails(getDocs(collection(db, 'outreach')));
+        await assertFails(setDoc(doc(db, 'outreach', 'o2'), { date: '2026-10-02', where: 'Park', went: [], others: 0, handed: {}, how: '', photoCount: 0, names: [] }));
+      }
     });
 
     it('nobody RSVPs to an event any more', async () => {

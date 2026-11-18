@@ -54,7 +54,6 @@ import { wrapRoutesWithSentry } from "./lib/sentry";
 const SentryRoutes = wrapRoutesWithSentry(Routes);
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
-const Outreach = lazyWithRetry(() => import("./views/Outreach"));
 const OutreachBoard = lazyWithRetry(() => import("./views/OutreachBoard"));
 const Directory = lazyWithRetry(() => import("./views/Directory"));
 const CombineContacts = lazyWithRetry(() => import("./views/CombineContacts"));
@@ -924,19 +923,6 @@ export default function App() {
                           >
                             <BibleStudyEditor />
                           </React.Suspense>
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
-
-                <Route
-                  path="/outreach"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="admin">
-                        <DashboardLayout>
-                          <Outreach />
                         </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>

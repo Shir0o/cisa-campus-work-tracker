@@ -90,13 +90,11 @@ describe('the drawer and More lists', () => {
   });
 
   it("matches the design's full-timer More, in order", () => {
-    // Outreach sits right after The Board — the other going-out record — and
-    // is full-timer-only (a deliberate change from the design). Sign-up form is enabled for full-timers.
+    // Outreach (the monthly park outing log) is cut (cut-or-keep §2).
     expect(FT_MORE.map((l) => l.label)).toEqual([
       'Gatherings',
       'Prayer log',
       'The Board',
-      'Outreach',
       'Sign-up form',
       'How this works',
       'Settings',

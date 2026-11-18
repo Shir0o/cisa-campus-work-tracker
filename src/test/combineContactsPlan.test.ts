@@ -38,7 +38,6 @@ const EMPTY_REFS: CombineReferences = {
   gatherings: [],
   rhythms: [],
   homes: [],
-  outreach: [],
   attendeeAliases: [],
   pendingImports: [],
   personalPrayers: [],
@@ -286,9 +285,6 @@ describe('buildCombinePlan', () => {
             data: { contactNames: ['Old Spelling', 'Other'] },
           },
         ],
-        outreach: [
-          { id: 'o1', data: { names: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }] } },
-        ],
         activities: [
           {
             id: 'ac1',
@@ -305,9 +301,6 @@ describe('buildCombinePlan', () => {
       plan.rewrittenReferences.find((r) => r.collection === collection && r.field === field)?.after;
     expect(after('tasks', 'contactName')).toBe('Combined In');
     expect(after('visits', 'contactNames')).toEqual(['Combined In', 'Other']);
-    expect(after('outreach', 'names')).toEqual([
-      { id: 'ON-1', name: 'Combined In', contactId: 's1' },
-    ]);
     expect(after('activities', 'targetName')).toBe('Combined In');
   });
 
@@ -407,9 +400,6 @@ describe('buildCombinePlan', () => {
       ],
       rhythms: [{ id: 'r1', data: { name: 'Wed', roster: ['d1', 'other'] } }],
       homes: [{ id: 'h1', data: { label: 'Peinados', members: ['d1'] } }],
-      outreach: [
-        { id: 'o1', data: { names: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }] } },
-      ],
       attendeeAliases: [{ id: 'a1', data: { contactId: 'd1' } }],
       pendingImports: [
         {
@@ -461,13 +451,6 @@ describe('buildCombinePlan', () => {
       field: 'members',
       before: ['d1'],
       after: ['s1'],
-    });
-    expect(plan.rewrittenReferences).toContainEqual({
-      collection: 'outreach',
-      document: 'o1',
-      field: 'names',
-      before: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }],
-      after: [{ id: 'ON-1', name: 'Kept', contactId: 's1' }],
     });
     expect(plan.rewrittenReferences).toContainEqual({
       collection: 'attendee_aliases',
@@ -545,7 +528,6 @@ describe('buildCombinePlan', () => {
       'gatherings',
       'rhythms',
       'homes',
-      'outreach',
       'attendeeAliases',
       'pendingImports',
       'personalPrayers',
@@ -1097,7 +1079,10 @@ describe('buildCombineUndoPlan', () => {
       expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'events.attendance.absent' });
     });
 
-    it('restores the rewritten outreach entry and leaves entries added since', () => {
+    // The outing log is cut (cut-or-keep §2): a combine no longer rewrites
+    // `outreach`, so an old record whose entry has changed since is listed as
+    // not restored rather than merged entry by entry.
+    it('lists an old outreach reference as not restored once the entry has changed', () => {
       const plan = planFor(
         [
           {
@@ -1116,10 +1101,8 @@ describe('buildCombineUndoPlan', () => {
         },
       );
 
-      expect(plan.referenceRestores[0]?.value).toEqual([
-        { id: 'ON-2', name: 'New', contactId: 'n2' },
-        { id: 'ON-1', name: 'In', contactId: 'd1', note: 'later' },
-      ]);
+      expect(plan.referenceRestores).toEqual([]);
+      expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'outreach.names' });
     });
   });
 

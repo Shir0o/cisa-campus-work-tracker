@@ -42,7 +42,6 @@ function FtMore() {
       gatherings: t('nav.gatherings'),
       prayers: t('mobile.nav.prayer_log'),
       board: t('mobile.nav.the_board'),
-      outreach: t('nav.outreach'),
       signup: t('mobile.nav.sign_up_form'),
       tutorial: t('mobile.nav.how_this_works'),
       settings: t('mobile.nav.settings'),

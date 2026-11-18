@@ -3575,9 +3575,10 @@ describe("POST /api/combine-contacts", () => {
     expect(event.attendance).toEqual({ present: ["s1"], absent: ["s1"] });
     expect(getCollection("rhythms")["r1"].roster).toEqual(["s1", "other"]);
     expect(getCollection("homes")["h1"].members).toEqual(["s1"]);
+    // The outing log is cut (cut-or-keep §2): a combine leaves it alone.
     expect(getCollection("outreach")["o1"].names[0]).toMatchObject({
-      contactId: "s1",
-      name: "Kept Name",
+      contactId: "d1",
+      name: "In Name",
     });
     expect(getCollection("attendee_aliases")["a1"].contactId).toBe("s1");
     expect(getCollection("pending_attendance_imports")["pi1"].preview.attendees[0].contactId).toBe(
@@ -3627,7 +3628,6 @@ describe("POST /api/combine-contacts", () => {
         "gatherings",
         "rhythms",
         "homes",
-        "outreach",
         "attendeeAliases",
         "pendingImports",
         "personalPrayers",
@@ -3915,10 +3915,6 @@ describe("POST /api/combine-contacts/undo", () => {
     });
     seedDoc("rhythms", "r1", { name: "Wednesday", roster: ["d1", "other"] });
     seedDoc("homes", "h1", { label: "the Peinados", members: ["d1"] });
-    seedDoc("outreach", "o1", {
-      date: "2026-02-03",
-      names: [{ id: "ON-1", name: "In Name", contactId: "d1" }],
-    });
     seedDoc("attendee_aliases", "a1", { attdName: "In", contactId: "d1" });
     seedDoc("pending_attendance_imports", "pi1", {
       status: "pending",
@@ -3997,7 +3993,6 @@ describe("POST /api/combine-contacts/undo", () => {
       events: structuredClone(getCollection("events")),
       rhythms: structuredClone(getCollection("rhythms")),
       homes: structuredClone(getCollection("homes")),
-      outreach: structuredClone(getCollection("outreach")),
       aliases: structuredClone(getCollection("attendee_aliases")),
       imports: structuredClone(getCollection("pending_attendance_imports")),
       personalPrayers: structuredClone(getCollection("users/u2/personalPrayers")),
@@ -4031,7 +4026,6 @@ describe("POST /api/combine-contacts/undo", () => {
     expect(getCollection("events")).toEqual(before.events);
     expect(getCollection("rhythms")).toEqual(before.rhythms);
     expect(getCollection("homes")).toEqual(before.homes);
-    expect(getCollection("outreach")).toEqual(before.outreach);
     expect(getCollection("attendee_aliases")).toEqual(before.aliases);
     expect(getCollection("pending_attendance_imports")).toEqual(before.imports);
     expect(getCollection("users/u2/personalPrayers")).toEqual(before.personalPrayers);

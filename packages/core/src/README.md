@@ -19,7 +19,7 @@ Pure, platform-agnostic business logic, domain models, permission evaluation, ro
 - [data](./data/README.md): Firestore and Realtime Database reactive data-access adapters
 
 ## Invariants
-- `canAccessRoute`: Trainees (`manager`) operate via explicit allowlist (`TRAINEE_ROUTES`), not ladder rungs; `/outreach` is restricted to admin and viewer exclusively (`permissions.ts`).
+- `canAccessRoute`: Trainees (`manager`) operate via explicit allowlist (`TRAINEE_ROUTES`), not ladder rungs.
 - `canRemoveContactMember`: A founder (`founders`) can only ever be removed by a Full-timer (`admin`); collaborators cannot remove founders (`permissions.ts`).
 - `seesAllPeople`: Trainees are strictly scoped to their tied contacts; Full-timers, Students, and Community see all non-private contacts within their access levels (`permissions.ts`).
 - `applyRoster`: Full-timers stand over all trainees team-wide; 1:1 mentor/trainee silos are prohibited (`walking.ts`).

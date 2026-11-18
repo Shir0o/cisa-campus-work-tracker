@@ -118,7 +118,6 @@ const MOVE_KIND_LABELS: Record<CombineMoveGroup['kind'], string> = {
   gatherings: 'Gathering rosters and attendance',
   rhythms: 'Rhythm rosters',
   homes: 'Home members',
-  outreach: 'Outreach name entries',
   attendeeAliases: 'Attendance-sheet aliases',
   pendingImports: 'Pending attendance imports',
   personalPrayers: 'Personal prayers',

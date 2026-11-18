@@ -452,6 +452,19 @@ describe('App Component', () => {
     expect(window.location.pathname).toBe('/');
   });
 
+  // The monthly park outing log is cut (cut-or-keep §2). A bookmark lands home.
+  it('sends a Full-timer who opens /outreach home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/outreach');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
   it.each(['/prayer', '/answered', '/attendance'])(
     'redirects trainee away from %s (page not in their allowed set) to home',
     async (path) => {
