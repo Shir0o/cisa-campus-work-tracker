@@ -408,7 +408,7 @@ export default function Questions() {
       const all = (snap?.docs || []).map((d) => ({ uid: d.id, ...d.data() }) as AppUser);
       setTrainees(
         all.filter(
-          (u) => (u.role === 'manager' || u.role === 'operator') && !(u.email || '').startsWith('cisa-') && u.approved,
+          (u) => u.role === 'manager' && !(u.email || '').startsWith('cisa-') && u.approved,
         ),
       );
     });

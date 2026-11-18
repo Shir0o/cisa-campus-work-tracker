@@ -26,8 +26,8 @@ function mapDoc(d: { id: string; data: () => Record<string, any> }): BoardDoc {
  * matches the `board_docs` rules' admin read bypass), else only docs whose
  * audience the role can see. Always newest-first, sorted client-side so both
  * branches agree (the web-mobile view historically skipped this for the
- * non-admin branch). A role with no visible audience tier at all (e.g.
- * 'viewer' — boardAudiencesForRole's default case) never has board access
+ * non-admin branch). A role with no visible audience tier at all (any role
+ * but admin or manager — boardAudiencesForRole's default case) never has board access
  * (see canViewBoard), so this skips querying rather than sending an empty
  * `where('audience','in',[])`, which Firestore rejects client-side, or an
  * unconstrained query, which the rules would reject as permission-denied. */

@@ -54,7 +54,7 @@ const matchesHistoryQuery = (a: Hist, q: string): boolean =>
   (a.description || "").toLowerCase().includes(q) ||
   (a.target || "").toLowerCase().includes(q);
 
-/** Trainee+ only (mirrors web's `isStaff` gate) — a viewer/operator query
+/** Trainee+ only (mirrors web's `isStaff` gate) — any other role's query
  * always returns no History results, regardless of match. */
 export function searchHistory(activities: Hist[], q: string, role: AppRole | string | null, max: number = GS_MAX): Hist[] {
   const needle = q.trim().toLowerCase();
@@ -77,7 +77,7 @@ export interface QuickAction {
  */
 export function quickActionsFor(role: AppRole | string | null): QuickAction[] {
   const actions: QuickAction[] = [];
-  if (hasMinRole(role, "operator")) {
+  if (hasMinRole(role, "manager")) {
     actions.push({ key: "new-contact", label: "New contact", sub: "Add a new person" });
   }
   actions.push({ key: "signup", label: "Open sign-up form", sub: "Welcome someone new" });

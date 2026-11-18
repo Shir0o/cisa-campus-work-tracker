@@ -126,7 +126,7 @@ import {
   TOTP_FACTOR_ID,
 } from '../lib/mfa';
 
-type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
+type AppRole = 'admin' | 'manager';
 
 const OWNER_EMAIL = 'yilongwang05@gmail.com';
 
@@ -184,12 +184,10 @@ function DeveloperOptionsFooter({ onLock }: { onLock: () => void }) {
 const ROLE_LABEL_KEY: Record<AppRole, [key: string, fallback: string]> = {
   admin: ['settings.roles.full_timer', 'Full-timer'],
   manager: ['settings.roles.trainee', 'Trainee'],
-  operator: ['settings.roles.student', 'Student'],
-  viewer: ['settings.roles.community', 'Community'],
 };
 
 function roleLabel(t: (key: string, fallback?: string) => string, role: AppRole | string | null | undefined): string {
-  const [key, fallback] = ROLE_LABEL_KEY[(role as AppRole)] ?? ROLE_LABEL_KEY.viewer;
+  const [key, fallback] = ROLE_LABEL_KEY[(role as AppRole)] ?? ROLE_LABEL_KEY.manager;
   return t(key, fallback);
 }
 
@@ -198,8 +196,6 @@ function roleLabel(t: (key: string, fallback?: string) => string, role: AppRole 
 // labels are not stored here: both pickers resolve `roleLabel()` so a Spanish
 // session never reads a literal English constant (#1818).
 const ROLE_OPTIONS: { value: AppRole }[] = [
-  { value: 'viewer' },
-  { value: 'operator' },
   { value: 'manager' },
   { value: 'admin' },
 ];
@@ -243,24 +239,6 @@ const ROLE_CARDS: {
     initials: 'TR',
     description: 'Cares for the people they are tied to, joins The Journey board, and keeps their own preferences.',
     access: ['today', 'people', 'journey', 'settings'],
-  },
-  {
-    key: 'operator',
-    labelKey: 'settings.roles.student',
-    label: 'Student',
-    descKey: 'settings.roles.student_desc',
-    initials: 'ST',
-    description: 'Can add and update people, log interactions, and mark attendance.',
-    access: ['today', 'people', 'gatherings', 'prayer'],
-  },
-  {
-    key: 'viewer',
-    labelKey: 'settings.roles.community',
-    label: 'Community',
-    descKey: 'settings.roles.community_desc',
-    initials: 'CM',
-    description: 'A read-only window — can see gatherings and prayers, nothing else.',
-    access: ['gatherings', 'prayer'],
   },
 ];
 
@@ -2648,7 +2626,7 @@ function EditMemberModal({
   onSave: (uid: string, updates: { displayName: string; role: AppRole }) => void;
 }) {
   const [displayName, setDisplayName] = useState(user.displayName || '');
-  const [role, setRole] = useState<AppRole>(user.role || 'viewer');
+  const [role, setRole] = useState<AppRole>(user.role || 'manager');
   const { t } = useLanguage();
   // RBAC: only an admin can grant the Full-timer (admin) role.
   const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
@@ -3696,7 +3674,7 @@ export default function Settings() {
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<AppRole>('operator');
+  const [inviteRole, setInviteRole] = useState<AppRole>('manager');
   const [isInviting, setIsInviting] = useState(false);
 
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
@@ -3770,7 +3748,7 @@ export default function Settings() {
       }
 
       setInviteEmail('');
-      setInviteRole('operator');
+      setInviteRole('manager');
     } catch (error) {
       console.error('Error adding member:', error);
       alert(t('settings.invite_failed', 'Failed to add member. Please try again.'));
@@ -4162,9 +4140,7 @@ export default function Settings() {
         <AppearanceSection theme={theme} setTheme={setTheme} />
         <NavigationSection />
         <NotificationsSection />
-        {/* Only staff and Trainees get a weekly reminder, so the Student and
-            Community profile pages leave the switch out. */}
-        {isManager && <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />}
+        <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />
         <LanguageSection />
         <WhatsNewSection
           onOpen={() => setWhatsNewOpen(true)}

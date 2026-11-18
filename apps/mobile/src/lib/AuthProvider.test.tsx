@@ -111,6 +111,31 @@ describe('AuthProvider (Mobile)', () => {
     });
   });
 
+  // Student and Community are cut: a stored legacy role reads as no role, and
+  // no role has nothing to be approved for.
+  it.each(['operator', 'viewer'])('reads a stored legacy %s role as no role, unapproved', async (legacy) => {
+    const { getByText } = await render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await act(() => {
+      mockAuthStateCallback?.({ uid: 'u-legacy', email: 'legacy@example.org' });
+    });
+
+    await act(() => {
+      mockOnSnapshotCallback?.({
+        data: () => ({ role: legacy, approved: true, displayName: 'Legacy' }),
+      });
+    });
+
+    await waitFor(() => {
+      expect(getByText('No Role')).toBeTruthy();
+      expect(getByText('Not Approved')).toBeTruthy();
+    });
+  });
+
   it('calls GoogleSignin.signIn on signInWithGoogle', async () => {
     (GoogleSignin.signIn as jest.Mock).mockResolvedValueOnce({
       type: 'success',

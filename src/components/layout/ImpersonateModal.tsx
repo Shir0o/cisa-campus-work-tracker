@@ -19,8 +19,6 @@ interface ImpersonateModalProps {
 const ROLES: { key: AppRole; label: string; note: string }[] = [
   { key: 'admin', label: 'Full-timer', note: 'Full workspace' },
   { key: 'manager', label: 'Trainee', note: 'Trainee view' },
-  { key: 'operator', label: 'Student', note: 'Student view' },
-  { key: 'viewer', label: 'Community', note: 'Community view' },
 ];
 
 export default function ImpersonateModal({

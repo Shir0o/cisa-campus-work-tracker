@@ -1,9 +1,9 @@
 // A chat room's written stream on the phone (ADR 0033): the body of a DM, a
 // group or an announcement, and of one of its Threads. Rows, not bubbles — left
 // aligned, your own under your own name — over the core stream model, with the
-// composer pinned at the foot. The staff screen and the member screen each own
-// their header and hand this the room's live data; a Thread is the same pane
-// given the `parentId` it hangs off.
+// composer pinned at the foot. The room screen owns its header and hands this
+// the room's live data; a Thread is the same pane given the `parentId` it
+// hangs off.
 //
 // What chat adds to the shared row (the web's chat adapter, in spirit): an
 // announcement's pinned post first under its strip, a neutral Full-timer badge,
@@ -14,7 +14,7 @@ import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { announcementAudienceNote, buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatAttachment, type ChatUserSummary, type StreamRow } from '@cisa/core';
+import { announcementAudienceNote, buildStream, buildThread, canPostToRoom, ftAssignees, firstName, type ChatAttachment, type ChatUserSummary, type StreamRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import type { useChatThreadData } from '../../lib/useChatThreadData';
@@ -95,7 +95,6 @@ export function ChatStreamPane({
   });
 
   const me = uid ?? '';
-  const staff = !memberRoleOf(role);
   const { room } = data;
   const inThread = parentId !== null;
   // A stream opens on its newest message (G4), but its first frame lays out at
@@ -205,7 +204,7 @@ export function ChatStreamPane({
     badge: (m) => (isAnnouncement && !m.parentId && m.source.type !== 'system' ? t('mobile.messages.full_timer_badge') : null),
     goneLabel: (m) => goneLabelOf(m, who),
     notice: (m) => m.source.type === 'system',
-    renderBody: (row, style) => <Body row={row} style={style} staff={staff} names={mentionNames} />,
+    renderBody: (row, style) => <Body row={row} style={style} names={mentionNames} />,
     renderFooter: isAnnouncement ? postActions : undefined,
   };
 
@@ -345,9 +344,7 @@ export function ChatStreamPane({
             placeholder={
               isAnnouncement
                 ? t('mobile.messages.placeholder_announcement')
-                : staff
-                  ? t('mobile.messages.write_a_message')
-                  : t('mobile.messages.say_it_out_loud')
+                : t('mobile.messages.write_a_message')
             }
             label={t('mobile.messages.compose_label')}
             candidates={mentionCandidates}
@@ -378,7 +375,7 @@ export function ChatStreamPane({
         visible={!!held}
         onClose={() => setHeld(null)}
         onReply={canReply && !inThread && !held?.message.parentId ? openThread : undefined}
-        onMakeTodo={staff ? (row) => setTodoFrom(row.message.body) : undefined}
+        onMakeTodo={(row) => setTodoFrom(row.message.body)}
         onCopy={copy}
         onDelete={(row) => setTakeBack(row)}
         onPin={pinnable ? (row) => void data.pin(row.message.id, !row.message.source.pinned) : undefined}
@@ -409,50 +406,46 @@ export function ChatStreamPane({
         onAttach={(attachment) => setStaged((prev) => [...prev, attachment])}
       />
 
-      {staff && (
-        <FtTodoSheet
-          key={todoFrom ?? 'none'}
-          visible={todoFrom !== null}
-          contact={null}
-          initialTitle={todoFrom ?? undefined}
-          me={me}
-          assignees={ftAssignees(data.users, uid)}
-          onClose={() => setTodoFrom(null)}
-          onSave={(input) => {
-            setTodoFrom(null);
-            void addTodo(input, { uid: me, name: user?.displayName || 'Someone' });
-            setToast(
-              input.assigneeId === uid
-                ? t('mobile.stream.todo_mine')
-                : t('mobile.stream.todo_theirs').replace(
-                    '{name}',
-                    firstName(data.users.find((m) => m.uid === input.assigneeId)?.displayName ?? ''),
-                  ),
-            );
-          }}
-        />
-      )}
+      <FtTodoSheet
+        key={todoFrom ?? 'none'}
+        visible={todoFrom !== null}
+        contact={null}
+        initialTitle={todoFrom ?? undefined}
+        me={me}
+        assignees={ftAssignees(data.users, uid)}
+        onClose={() => setTodoFrom(null)}
+        onSave={(input) => {
+          setTodoFrom(null);
+          void addTodo(input, { uid: me, name: user?.displayName || 'Someone' });
+          setToast(
+            input.assigneeId === uid
+              ? t('mobile.stream.todo_mine')
+              : t('mobile.stream.todo_theirs').replace(
+                  '{name}',
+                  firstName(data.users.find((m) => m.uid === input.assigneeId)?.displayName ?? ''),
+                ),
+          );
+        }}
+      />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </>
   );
 }
 
-/** A message's words — translated for staff, who can — and what it carries. */
+/** A message's words — translated — and what it carries. */
 function Body({
   row,
   style,
-  staff,
   names,
 }: {
   row: ChatRow;
   style: React.ComponentProps<typeof Text>['style'];
-  staff: boolean;
   names: string[];
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const { message } = row;
-  const { translatedText } = useTranslate(message.body, { enabled: staff });
+  const { translatedText } = useTranslate(message.body);
   return (
     <>
       <Text style={style}>

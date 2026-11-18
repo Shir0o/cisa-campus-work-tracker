@@ -19,7 +19,7 @@ const manifest: WhatsNewManifest = {
       title: 'September Platform & Mobile Updates',
       date: '2026-09-03',
       platforms: ['web', 'mobile'],
-      roles: ['admin', 'manager', 'operator', 'viewer'],
+      roles: ['admin', 'manager'],
       lines: ['A personal line.', 'Another personal line.'],
       overview: 'Overview',
       items: [
@@ -99,7 +99,7 @@ describe('nudgeFor', () => {
       latestReleaseId: 'x',
       releases: [{ ...manifest.releases[0], id: 'x', roles: ['admin'] }, manifest.releases[1]],
     };
-    expect(nudgeFor(restricted, 'viewer', null)).toBeNull();
+    expect(nudgeFor(restricted, 'manager', null)).toBeNull();
   });
 
   it('treats an omitted roles list as everyone', () => {
@@ -107,7 +107,7 @@ describe('nudgeFor', () => {
       latestReleaseId: 'x',
       releases: [{ ...manifest.releases[0], id: 'x', roles: undefined }, manifest.releases[1]],
     };
-    expect(nudgeFor(open, 'viewer', null)?.id).toBe('x');
+    expect(nudgeFor(open, 'manager', null)?.id).toBe('x');
   });
 
   it('never falls back to an older release when the latest is quiet', () => {

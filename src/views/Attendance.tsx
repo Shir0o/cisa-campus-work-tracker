@@ -6,7 +6,6 @@ import {
   Trash2,
   CalendarDays,
   ChevronDown,
-  Users,
   Pencil,
   Settings2,
   Ban,
@@ -16,7 +15,6 @@ import {
 import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { subscribeEventRsvps } from '../lib/rsvp';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
 import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, hydrateGatherings, heldGatherings, averageAttendance, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
 import { subscribeRhythms, uncancelGatheringDoc, cancelGatheringForRhythm } from '../lib/rhythms';
@@ -63,18 +61,6 @@ const isFutureEventDate = (s?: string | null): boolean => {
   const ms = evtMs(s);
   return ms != null && ms > Date.now();
 };
-
-// Read-only "who's coming" count for an upcoming event, fed by member RSVPs.
-function RsvpCount({ eventId }: { eventId: string }) {
-  const [count, setCount] = useState(0);
-  useEffect(() => subscribeEventRsvps(eventId, (rsvps) => setCount(rsvps.length)), [eventId]);
-  if (count === 0) return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant whitespace-nowrap shrink-0">
-      <Users className="w-3.5 h-3.5" /> {count} going
-    </span>
-  );
-}
 
 // ── shared warm bits (mirror Dashboard.tsx) ──
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
@@ -647,7 +633,6 @@ export default function Attendance() {
           cycleAttendance={cycleAttendance}
           setAttendanceStatus={setAttendanceStatus}
           here={here}
-          RsvpCountComponent={RsvpCount}
           team={team}
           onOpenTodo={openTodoFor}
           resolvedRosterFor={resolvedRosterFor}

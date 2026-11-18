@@ -298,17 +298,6 @@ describe('NewContactModal', () => {
     applyPartners({});
   });
 
-  // ── Viewer role guard ──────────────────────────────────────────────
-
-  it('returns null for viewer role', () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-id', displayName: 'Test User' },
-      role: 'viewer',
-    });
-    const { container } = render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
-    expect(container.innerHTML).toBe('');
-  });
-
   // ── Escape key closes modal ────────────────────────────────────────
 
   it('closes modal on Escape key press', async () => {

@@ -7,7 +7,6 @@ vi.mock('../lib/messaging', () => ({
 }));
 import { openMessage } from '../lib/messaging';
 
-const RsvpStub = ({ eventId }: any) => <span data-testid={`rsvp-${eventId}`}>rsvp</span>;
 
 const contact = (over: any = {}) => ({
   id: 'c1',
@@ -48,7 +47,6 @@ const baseProps = {
   onDeleteSession: vi.fn().mockResolvedValue(undefined),
   cycleAttendance: vi.fn().mockResolvedValue(undefined),
   here: vi.fn(() => false),
-  RsvpCountComponent: RsvpStub,
 };
 
 describe('AttendanceMobile', () => {
@@ -353,7 +351,7 @@ describe('AttendanceMobile', () => {
     expect(onDeleteSession).toHaveBeenCalledWith('s1', 'Bible Study');
   });
 
-  it('renders upcoming events with the RsvpCount component', () => {
+  it('renders upcoming events', () => {
     render(
       <AttendanceMobile
         {...baseProps}
@@ -361,7 +359,6 @@ describe('AttendanceMobile', () => {
       />
     );
     expect(screen.getByText('Worship Night')).toBeInTheDocument();
-    expect(screen.getByTestId('rsvp-e1')).toBeInTheDocument();
     expect(screen.queryByText('Nothing on the calendar this week.')).not.toBeInTheDocument();
   });
 

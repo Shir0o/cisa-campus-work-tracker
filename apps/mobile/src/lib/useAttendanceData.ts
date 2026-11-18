@@ -61,11 +61,9 @@ export function useAttendanceData(uid: string | null, displayName: string | null
   const missed = useMemo(() => whoWeMissed(contacts, sessions), [contacts, sessions]);
   const upcoming = useMemo(() => upcomingEventsForRsvp(events), [events]);
 
-  // The web UI exposes the roster tap targets to every role that can reach
-  // this screen (min role viewer), but Firestore rules require operator+ to
-  // write the Gathering record, so a Community (viewer) tap would silently
-  // fail. Gate the interaction client-side instead of reproducing that gap.
-  const canTakeAttendance = hasMinRole(role, 'operator');
+  // Firestore rules require a Trainee or above to write the Gathering record,
+  // so gate the interaction client-side rather than letting a tap fail.
+  const canTakeAttendance = hasMinRole(role, 'manager');
 
   const shownLoading = useMinLoading(loading);
 

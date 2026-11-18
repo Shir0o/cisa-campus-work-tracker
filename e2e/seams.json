@@ -63,7 +63,7 @@
         "packages/core/src/shell.ts"
       ],
       "guards": [
-        "e2e/journeys/student-community.spec.ts",
+        "e2e/journeys/impersonation.spec.ts",
         "src/test/permissionsRouteParity.test.ts"
       ]
     },
@@ -74,7 +74,6 @@
         "packages/core/src/myday.ts",
         "packages/core/src/landing.ts",
         "packages/core/src/ftHome.ts",
-        "packages/core/src/memberHome.ts",
         "packages/core/src/queue.ts",
         "packages/core/src/queueDay.ts",
         "src/views/AroundTheTeam.tsx",
@@ -111,8 +110,7 @@
         "src/components/landing/PrayerRows.tsx",
         "packages/core/src/prayerThread.ts",
         "packages/core/src/data/prayers.ts",
-        "apps/mobile/src/lib/data/prayers.ts",
-        "apps/mobile/src/lib/useMemberPrayerData.ts"
+        "apps/mobile/src/lib/data/prayers.ts"
       ],
       "guards": ["e2e/journeys/full-timer.spec.ts"]
     },

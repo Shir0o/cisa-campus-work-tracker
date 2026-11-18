@@ -103,8 +103,8 @@ const mockAuthValue = {
   user: null as any,
   isApproved: false,
   loading: false,
-  role: 'viewer' as any,
-  effectiveIdentityKey: 'viewer' as string | null,
+  role: 'manager' as any,
+  effectiveIdentityKey: 'manager' as string | null,
   signIn: mockSignIn,
   logOut: mockLogOut,
   signInWithEmail: mockSignInWithEmail,
@@ -173,8 +173,8 @@ describe('App Component', () => {
     mockAuthValue.user = null;
     mockAuthValue.isApproved = false;
     mockAuthValue.loading = false;
-    mockAuthValue.role = 'viewer';
-    mockAuthValue.effectiveIdentityKey = 'viewer';
+    mockAuthValue.role = 'manager';
+    mockAuthValue.effectiveIdentityKey = 'manager';
     mockAuthValue.pendingMfa = null;
     contactState.exists = true;
     window.location.hash = '';
@@ -361,7 +361,7 @@ describe('App Component', () => {
   it('renders app dashboard when authenticated and approved', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
     
     render(<App />);
     await waitFor(() => {
@@ -372,7 +372,7 @@ describe('App Component', () => {
   it('pins the shell to the viewport on phones so the document never scrolls behind the bottom bar (#1795)', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
 
     const { container } = render(<App />);
     await waitFor(() => {
@@ -405,7 +405,7 @@ describe('App Component', () => {
   it('does not render the legacy ReleaseSheet with Carry on button', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
 
     render(<App />);
     await waitFor(() => {
@@ -425,16 +425,31 @@ describe('App Component', () => {
     consoleSpy.mockRestore();
   });
 
-  it('redirects viewer away from an admin-only route to their home', async () => {
+  it('redirects a Trainee away from an admin-only route to their home', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'viewer';
+    mockAuthValue.role = 'manager';
     window.history.replaceState(null, '', '/coordination');
 
     render(<App />);
     await waitFor(() => {
       expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
     });
+  });
+
+  // The signed-in reader ("This week's study") is cut; the public QR reader is
+  // the week. An old bookmark lands home rather than on a page that is gone.
+  it('sends a Trainee who opens /bible-study/read home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'trainee@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'manager';
+    window.history.replaceState(null, '', '/bible-study/read');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+    expect(window.location.pathname).toBe('/');
   });
 
   it.each(['/prayer', '/answered', '/attendance'])(
@@ -483,7 +498,7 @@ describe('App Component', () => {
   it('renders the top navigation bar', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
 
     localStorage.clear();
     render(<App />);
@@ -513,7 +528,7 @@ describe('App Component', () => {
   it('redirects unknown route to dashboard', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
     window.history.replaceState(null, '', '/unknown-path-xyz');
     
     render(<App />);
@@ -525,7 +540,7 @@ describe('App Component', () => {
   it('toggles modals via layout context', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
     
     render(<App />);
     
@@ -566,7 +581,7 @@ describe('App Component', () => {
   it('clears the open contact detail when navigating to another page (#257)', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
     window.history.replaceState(null, '', '/');
 
     render(<App />);
@@ -597,7 +612,7 @@ describe('App Component', () => {
     contactState.exists = false;
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
-    mockAuthValue.role = 'operator';
+    mockAuthValue.role = 'manager';
     window.history.replaceState(null, '', '/people/someone-else');
 
     render(<App />);
@@ -624,10 +639,10 @@ describe('App Component', () => {
     });
     expect(landingState.mounts).toBe(1);
 
-    // Step into a student's view: the same route must not keep the previous
+    // Step into a trainee's view: the same route must not keep the previous
     // viewer's content mounted — the "See it as they do" stale-content flash.
     act(() => {
-      mockAuthValue.effectiveIdentityKey = 'student';
+      mockAuthValue.effectiveIdentityKey = 'cisa-trainee';
       rerender(<App />);
     });
     await waitFor(() => {
@@ -663,7 +678,7 @@ describe('App Component', () => {
     // The open person reads the previous viewer's scope — an identity switch
     // must drop it rather than leave it on screen.
     act(() => {
-      mockAuthValue.effectiveIdentityKey = 'student';
+      mockAuthValue.effectiveIdentityKey = 'cisa-trainee';
       rerender(<App />);
     });
 

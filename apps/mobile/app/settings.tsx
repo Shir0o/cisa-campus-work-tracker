@@ -1,16 +1,13 @@
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { canSeePrefs, memberRoleOf } from '@cisa/core';
+import { canSeePrefs } from '@cisa/core';
 import { Screen, AppText } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useAuth } from '../src/lib/AuthProvider';
-import { MemberYouScreen } from '../src/components/member/MemberYouScreen';
 import { SettingsScreen } from '../src/components/settings/SettingsScreen';
 
-// Settings — two v2 screens, one per shape of app. Members land on "You" (the
-// design gives them a much shorter page); trainee and full-timer get the
-// design's `M2Settings`, which also absorbed the old separate "Your queue"
-// screen.
+// Settings — trainee and full-timer get the design's `M2Settings`, which also
+// absorbed the old separate "Your queue" screen.
 //
 // Gated on `canSeePrefs`, NOT `canAccessRoute('/settings')`: that one answers
 // whether a role may open the web page, and since #1819 it lets every approved
@@ -25,8 +22,6 @@ import { SettingsScreen } from '../src/components/settings/SettingsScreen';
 export default function SettingsRoute() {
   const { colors, spacing } = useTheme();
   const { role } = useAuth();
-  const memberRole = memberRoleOf(role);
-  if (memberRole) return <MemberYouScreen role={memberRole} showBack />;
 
   if (!canSeePrefs(role)) {
     return (

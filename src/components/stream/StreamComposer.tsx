@@ -168,7 +168,7 @@ export default function StreamComposer({
     scope: "compose",
     description: submitLabel,
     shortcut: { key: "Enter", mod: true },
-    minRole: "operator",
+    minRole: "manager",
     when: (e) => e.target === taRef.current,
     available: () => !choosing,
     handler: submit,

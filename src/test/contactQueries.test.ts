@@ -15,10 +15,14 @@ describe('contactVisibilityConstraints', () => {
     expect(c._field.canonicalString()).toBe('visibleTo');
   });
 
-  it('leaves readers who see the whole roster unconstrained', () => {
+  it('leaves a Full-timer, the one reader who sees the whole roster, unconstrained', () => {
     expect(contactVisibilityConstraints('admin', 'u1')).toEqual([]);
-    expect(contactVisibilityConstraints('operator', 'u1')).toEqual([]);
-    expect(contactVisibilityConstraints('viewer', 'u1')).toEqual([]);
+  });
+
+  // Only a Full-timer reads everyone now, matching the rules' seesAllContacts().
+  it('scopes a legacy Student or Community role like anyone else', () => {
+    expect(contactVisibilityConstraints('operator', 'u1')).toHaveLength(1);
+    expect(contactVisibilityConstraints('viewer', 'u1')).toHaveLength(1);
   });
 
   it('does not constrain when there is no staff id to scope by', () => {

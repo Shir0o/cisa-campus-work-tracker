@@ -409,7 +409,7 @@ export interface AppUser {
   displayName: string;
   photoURL: string;
   approved: boolean;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   /** Which team they're on — a `TEAMS` id from `lib/teams` (#727). The division
    *  above the pairs; absent means unassigned. Set by a full-timer in Settings,
    *  read by the news feed's filter. Never trusted without `isKnownTeam`. */
@@ -422,7 +422,7 @@ export interface AppUser {
 
 export interface Invitation {
   email: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   approved: boolean;
   invitedBy: string;
   createdAt: any;

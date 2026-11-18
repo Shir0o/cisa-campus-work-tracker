@@ -40,7 +40,7 @@ import whatsNewManifest from "./generated/whats-new.json";
 import { shouldShowAnnouncement, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
 import type { WhatsNewManifest } from "./scripts/compile-whats-new";
 import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
-import { canAccessRoute, defaultRouteForRole, fallbackRouteFor, AppRole } from "./lib/permissions";
+import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { StandardTagsProvider } from "./lib/standardTags";
@@ -85,7 +85,6 @@ const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"
 const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
 const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
 const BibleStudyIndex = lazyWithRetry(() => import("./views/BibleStudyIndex"));
-const BibleStudyRead = lazyWithRetry(() => import("./views/BibleStudyRead"));
 
 
 interface LayoutContextType {
@@ -410,10 +409,7 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
   const { role } = useAuth();
   const { pathname } = useLocation();
   if (!canAccessRoute(role, pathname)) {
-    // A sibling first, the role's default only if there isn't one: a Trainee
-    // who followed a bookmark to the Weeks index means the week, and landing
-    // them on their dashboard reads as the app losing the page (#946).
-    return <Navigate to={fallbackRouteFor(role, pathname) ?? defaultRouteForRole(role)} replace />;
+    return <Navigate to={defaultRouteForRole(role)} replace />;
   }
   return <>{children}</>;
 }
@@ -853,7 +849,7 @@ export default function App() {
                   path="/"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <Landing />
                         </DashboardLayout>
@@ -866,7 +862,7 @@ export default function App() {
                   path="/attendance"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="operator">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <Attendance />
                         </DashboardLayout>
@@ -897,37 +893,13 @@ export default function App() {
                   }
                 />
 
-                {/* This week's study (#946) — every role, inside the app's
-                    own shell. Declared before `/bible-study/:meetingId` so the
-                    param route cannot swallow "read". */}
-                <Route
-                  path="/bible-study/read"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
-                        <DashboardLayout>
-                          <React.Suspense
-                            fallback={
-                              <div className="p-8 space-y-6">
-                                <Skeleton className="h-96 w-full rounded-xl" />
-                              </div>
-                            }
-                          >
-                            <BibleStudyRead />
-                          </React.Suspense>
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
-
                 {/* Present mode — full-screen, any signed-in user: the person
                     holding the phone is often not a Full-timer. */}
                 <Route
                   path="/bible-study/present"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <React.Suspense fallback={null}>
                           <BibleStudyPresent />
                         </React.Suspense>
@@ -988,7 +960,7 @@ export default function App() {
                   path="/directory"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="operator">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <Directory />
                         </DashboardLayout>
@@ -1027,7 +999,7 @@ export default function App() {
                   path="/people/:contactId"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           {null}
                         </DashboardLayout>
@@ -1067,7 +1039,7 @@ export default function App() {
                   path="/prayer"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <PrayerList />
                         </DashboardLayout>
@@ -1080,7 +1052,7 @@ export default function App() {
                   path="/answered"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <AnsweredList />
                         </DashboardLayout>
@@ -1093,7 +1065,7 @@ export default function App() {
                   path="/settings"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <Settings />
                         </DashboardLayout>
@@ -1257,7 +1229,7 @@ export default function App() {
                   path="/coordination"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="operator">
+                      <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <React.Suspense
                             fallback={

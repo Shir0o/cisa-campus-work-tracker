@@ -245,7 +245,7 @@ describe('ContactDetailsModal Component', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'trainee-1', displayName: 'Trainee' },
       isAdmin: false,
-      role: 'trainee',
+      role: 'manager',
       effectiveUserId: 'trainee-1',
     });
     render(
@@ -254,6 +254,7 @@ describe('ContactDetailsModal Component', () => {
         onClose={mockOnClose}
         contact={{
           ...mockContact,
+          createdBy: 'trainee-1',
           combinedFrom: {
             name: 'Jane Duplicate',
             at: '2026-10-01T10:00:00.000Z',
@@ -383,20 +384,6 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.getAllByRole('button', { name: 'Edit details' })).toHaveLength(1);
     });
 
-    it('keeps Edit out of the head and the menu for a viewer', () => {
-      (useAuth as any).mockReturnValue({
-        user: { uid: 'viewer_1', displayName: 'Viewer Val' },
-        isAdmin: false,
-        role: 'viewer',
-        effectiveUserId: 'viewer_1',
-      });
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-
-      expect(screen.queryByRole('button', { name: 'Edit details' })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-      const menu = menuContaining('Log interaction');
-      expect(within(menu).queryByText('Edit details')).not.toBeInTheDocument();
-    });
   });
 
   it('an empty tab renders without a forced min-height (#780)', () => {
@@ -1620,7 +1607,7 @@ describe('ContactDetailsModal Component', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Owner Tony' },
       isAdmin: false,
-      role: 'operator',
+      role: 'manager',
     });
 
     const contactWithOwnerOnly = {
@@ -1761,7 +1748,7 @@ describe('ContactDetailsModal Component', () => {
     expect(within(story).getAllByText('Bad date prayer').length).toBeGreaterThan(0);
   });
 
-  it('lets an operator mark a prayer answered or archived from the Prayer tab (#463)', async () => {
+  it('lets a teammate mark a prayer answered or archived from the Prayer tab (#463)', async () => {
     (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
       if (q?.path === 'prayers') {
         s({
@@ -1794,7 +1781,7 @@ describe('ContactDetailsModal Component', () => {
   });
 
 
-  it('lets an operator edit a logged prayer in place on the story (#1674)', async () => {
+  it('lets a teammate edit a logged prayer in place on the story (#1674)', async () => {
     (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
       if (q?.path === 'prayers') {
         s({
@@ -2779,13 +2766,6 @@ describe('removing interactions (#650)', () => {
     vi.useRealTimers();
   });
 
-  it('hides the remove affordance for a non-owner non-manager', async () => {
-    (useAuth as any).mockReturnValue({ user: { uid: 'other-user' }, isAdmin: false, role: 'operator' });
-    renderWithInteractions(interactionDoc('int-1', 'user-123'));
-    await screen.findByText('Coffee chat');
-    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
-  });
-
   it('hides the remove affordance for visit-mirror interactions', async () => {
     renderWithInteractions(interactionDoc('visit_abc'));
     await screen.findByText('Coffee chat');
@@ -2917,42 +2897,6 @@ describe('removing interactions (#650)', () => {
       }
     });
 
-    it('hides Edit button in mobile viewport header for viewer role', () => {
-      const reset = setMobileViewport();
-      try {
-        (useAuth as any).mockReturnValue({
-          user: { uid: 'viewer_1', displayName: 'Viewer Val' },
-          isAdmin: false,
-          role: 'viewer',
-          effectiveUserId: 'viewer_1',
-        });
-
-        render(
-          <ContactDetailsModal
-            isOpen={true}
-            onClose={vi.fn()}
-            contact={{
-              id: 'c1',
-              name: 'Jordan Lee',
-              initials: 'JL',
-              role: 'Student',
-              location: 'Dorm A',
-              email: 'jordan@college.edu',
-              phone: '555-1234',
-              stage: 'Interested',
-              lastSeen: new Date().toISOString(),
-              tags: ['Freshman'],
-              createdBy: 'trainee_1',
-            } as any}
-          />
-        );
-
-        expect(screen.queryByRole('button', { name: /^Edit$/i })).toBeNull();
-      } finally {
-        reset();
-      }
-    });
-
     it('switches to mobile edit form and saves changes on submit for trainee', async () => {
       const reset = setMobileViewport();
       try {
@@ -3005,8 +2949,7 @@ describe('removing interactions (#650)', () => {
     });
   });
 
-  // #1367: Firestore's delete rule requires isManager (Full-timer or Trainee),
-  // so a Student is offered Edit but never Delete.
+  // #1367: Firestore's delete rule requires isManager (Full-timer or Trainee).
   describe('Delete is manager-only (#1367)', () => {
     const mockOnClose = vi.fn();
 
@@ -3041,34 +2984,6 @@ describe('removing interactions (#650)', () => {
         <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={tiedContact} />,
       );
     };
-
-    it('shows a Student Edit in the header but no Delete in the More menu', async () => {
-      renderFor('operator');
-      await screen.findByText('John Doe');
-
-      expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-      expect(screen.getByText('Log interaction').parentElement).not.toHaveTextContent('Edit details');
-      expect(screen.queryByText('Delete Contact')).not.toBeInTheDocument();
-    });
-
-    it('shows a Student Edit but no Delete in the mobile edit form', async () => {
-      (useAuth as any).mockReturnValue({
-        user: { uid: 'student_1', displayName: 'Student Sam' },
-        isAdmin: false,
-        role: 'operator',
-      });
-      const { restore } = renderOnPhone(
-        <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
-      );
-      try {
-        fireEvent.click(await screen.findByRole('button', { name: /^Edit$/i }));
-        expect(await screen.findByText(/edit details/i)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Delete Contact/i })).not.toBeInTheDocument();
-      } finally {
-        restore();
-      }
-    });
 
     it.each(['manager', 'admin'])('keeps Delete for %s in the More menu', async (role) => {
       renderFor(role);
@@ -3134,7 +3049,7 @@ describe('stage move (#677)', () => {
   });
 
   it('opens the step menu from the header pill and moves the contact', async () => {
-    await renderWithRole('operator');
+    await renderWithRole('admin');
 
     fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
@@ -3147,24 +3062,8 @@ describe('stage move (#677)', () => {
     });
   });
 
-  it('keeps the page read-only for viewers', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Read Only' },
-      isAdmin: false,
-      role: 'viewer',
-    });
-    render(
-      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
-    );
-
-    // #1290: the journey band is gone; the head carries the step control, and
-    // for a viewer it is just a read-only pill.
-    expect(screen.queryByRole('button', { name: /Move to a step/i })).not.toBeInTheDocument();
-    expect(screen.getByText('Regular')).toBeInTheDocument();
-  });
-
   it('records the move in history the way the edit form does', async () => {
-    await renderWithRole('operator');
+    await renderWithRole('admin');
 
     fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
@@ -3181,7 +3080,7 @@ describe('stage move (#677)', () => {
   });
 
   it('offers an undo that puts the contact back', async () => {
-    await renderWithRole('operator');
+    await renderWithRole('admin');
 
     fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
@@ -3199,8 +3098,8 @@ describe('stage move (#677)', () => {
     });
   });
 
-  it('lets an operator place a contact that has no stage yet', async () => {
-    await renderWithRole('operator', { ...mockContact, stage: '' });
+  it('lets a teammate place a contact that has no stage yet', async () => {
+    await renderWithRole('admin', { ...mockContact, stage: '' });
 
     const trigger = screen.getByRole('button', { name: /Move to a step/i });
     expect(trigger).toHaveTextContent(/Not in a step yet/i);
@@ -3446,13 +3345,6 @@ describe('desktop story layout (design D)', () => {
     expect(reopenBtn).toBeInTheDocument();
     fireEvent.click(reopenBtn);
     expect(reopenFollowUpAsk).toHaveBeenCalledWith('contact-abc', 'ask-1');
-  });
-
-  it('a read-only viewer reads the Conversation but gets no composer', () => {
-    asRole('viewer');
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, createdBy: 'user-123' }} initialTab="thread" />);
-    const drawer = screen.getByRole('region', { name: 'Conversation' });
-    expect(within(drawer).queryByRole('button', { name: 'Post' })).toBeNull();
   });
 
   it('makes a to-do from a Conversation message', () => {
@@ -4497,15 +4389,4 @@ describe('Remind me from the contact page (#1802)', () => {
     expect(firestore.addDoc).not.toHaveBeenCalled();
   });
 
-  it('hides Remind me from a viewer', () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-viewer', displayName: 'Community Pat' },
-      isAdmin: false,
-      role: 'viewer',
-    });
-    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]);
-    expect(screen.queryByRole('button', { name: 'Remind me' })).toBeNull();
-  });
 });

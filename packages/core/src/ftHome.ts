@@ -17,7 +17,7 @@
 //      LABEL string, so a row renders `contact.stage` with no lookup.
 import { format } from "date-fns";
 import type { InboxItem } from "./inbox";
-import { DAY_MS, parseMs, toLocalDate, type Leader } from "./myday";
+import { DAY_MS, daysSince, parseMs, toLocalDate, type Leader } from "./myday";
 import { dueInDays } from "./queue";
 import { firstName } from "./history";
 import { isTestAccount } from "./settings";
@@ -185,6 +185,18 @@ export function ftLastHeard(days: number): string {
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
   return `${days} days ago`;
+}
+
+/** "today" · "yesterday" · "3 days ago" from a timestamp.
+ *
+ * A conversation row carries an ISO date, not a day count, and `agoLabel`
+ * prints "0 days ago" for something that happened an hour ago — which reads as
+ * a bug on a message you just sent. The phrasing is `ftLastHeard`'s, reused
+ * rather than restated so the two say the same words for the same gap. */
+export function memberAgo(iso: string | null | undefined, now: number = Date.now()): string {
+  const ms = parseMs(iso);
+  if (ms == null) return "a while ago";
+  return ftLastHeard(daysSince(ms, now));
 }
 
 // ── "Prayers to carry" + the Carrying tile ─────────────────────────────────
@@ -356,14 +368,13 @@ export function ftWeekAhead(events: Event[], now: number = Date.now()): FtWeekCh
     }));
 }
 
-/** The team roster a to-do can be handed to: approved non-viewer staff, excluding test accounts and the current user. */
+/** The team roster a to-do can be handed to: approved staff, excluding test accounts and the current user. */
 export function ftAssignees(team: AppUser[], currentUid: string | null | undefined): AppUser[] {
   return team
     .filter(
       (u) =>
         !isTestAccount(u) &&
         u.approved !== false &&
-        u.role !== "viewer" &&
         u.uid !== currentUid,
     )
     .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));

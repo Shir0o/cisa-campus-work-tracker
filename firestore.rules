@@ -38,23 +38,23 @@ service cloud.firestore {
     }
 
     function isAdmin() { return hasRole('admin') || isSuperAdmin(); }
-    function isManager() { return isAdmin() || hasRole('manager'); }
-    function isOperator() { return isManager() || hasRole('operator'); }
-    function isViewer() { return isOperator() || hasRole('viewer'); }
+    // An unapproved Trainee — self-registered, revoked, or a downgraded legacy
+    // Student/Community account — passes no Trainee gate until approved.
+    function isManager() { return isAdmin() || (hasRole('manager') && getStoredUser().approved == true); }
 
-    // Approved AND operator-or-above, resolved from one user-document read.
-    // Composing isApprovedUser() && isOperator() re-walks isSuperAdmin, exists
+    // Approved AND manager-or-above, resolved from one user-document read.
+    // Composing isApprovedUser() && isManager() re-walks isSuperAdmin, exists
     // and getStoredUser up to eight times between them; that preamble consumed
     // almost the entire 1000-expression budget the rules engine allows per
     // request, leaving the contact tie branches unable to evaluate at all — a
     // legitimate collaborator removal was denied in production, not merely in
     // the emulator (#1052 follow-up).
-    function isApprovedOperator() {
+    function isApprovedManager() {
       return isSuperAdmin() || (
         isSignedIn() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         getStoredUser().approved == true &&
-        getStoredUser().role in ['admin', 'manager', 'operator']
+        getStoredUser().role in ['admin', 'manager']
       );
     }
 
@@ -66,12 +66,11 @@ service cloud.firestore {
     }
 
     // Contact visibility (#1024 phase 4). Mirrors the client's `seesAllPeople`:
-    // Full-timers, Students and Community read the whole roster; only Trainees
-    // are scoped to the denormalised access list on the contact. `visibleTo`
-    // holds every persisted tie -- creator, adder, collaborators, founders,
-    // and carers.
+    // Full-timers read the whole roster; everyone else is scoped to the
+    // denormalised access list on the contact. `visibleTo` holds every
+    // persisted tie -- creator, adder, collaborators, founders, and carers.
     function seesAllContacts() {
-      return isAdmin() || hasRole('operator') || hasRole('viewer');
+      return isAdmin();
     }
     function contactVisibleTo(data) {
       return data.get('visibleTo', []);
@@ -94,7 +93,7 @@ service cloud.firestore {
                data.email is string && data.email.size() <= 128 &&
                data.displayName is string && data.displayName.size() <= 128 &&
                (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 512)) &&
-               data.role in ['admin', 'manager', 'operator', 'viewer'] &&
+               data.role in ['admin', 'manager'] &&
                data.approved is bool &&
                (!('weeklyRemindersOff' in data) || data.weeklyRemindersOff is bool) &&
                hasValidTeam(data);
@@ -115,9 +114,9 @@ service cloud.firestore {
         return existing().get('team', null) == incoming().get('team', null);
       }
 
-      // A Trainee manages Students and Community, never Full-timers: they may
-      // not grant or remove the Full-timer role, nor change their own role or
-      // approval. Only a Full-timer changes those (security audit, Nov 2026).
+      // A Trainee never manages Full-timers: they may not grant or remove the
+      // Full-timer role, nor change their own role or approval. Only a
+      // Full-timer changes those (security audit, Nov 2026).
       function managerRoleChangeAllowed(userId) {
         return incoming().role != 'admin' && existing().role != 'admin' &&
                (!isOwner(userId) ||
@@ -137,9 +136,9 @@ service cloud.firestore {
                       isValidUser(incoming()) &&
                       // Nobody signs themselves onto a team on the way in.
                       (isAdmin() || incoming().get('team', null) == null) &&
-                      // Self-registration defaults: unapproved viewer OR check invitation
+                      // Self-registration defaults: unapproved Trainee OR check invitation
                       (
-                        (incoming().approved == false && incoming().role == 'viewer') || 
+                        (incoming().approved == false && incoming().role == 'manager') || 
                         isAdmin() ||
                         (
                           // The invitation must be for the signed-in, verified
@@ -285,7 +284,7 @@ service cloud.firestore {
       function isValidInvitation(data) {
         return data.keys().hasAll(['email', 'role', 'approved']) &&
                data.email is string && data.email.size() <= 128 &&
-               data.role in ['admin', 'manager', 'operator', 'viewer'] &&
+               data.role in ['admin', 'manager'] &&
                data.approved is bool;
       }
 
@@ -376,7 +375,7 @@ service cloud.firestore {
                       !('prayerListRemoved' in incoming()) &&
                       reachSafeOnCreate(incoming()) &&
                       tiesSafeOnCreate(incoming());
-      // Operators edit the typed profile fields; unknown keys are rejected
+      // Staff edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
       // the edit itself touches only known fields. Creation-audit fields
@@ -462,7 +461,7 @@ service cloud.firestore {
         let exSeen = ex.get('visibleTo', []).toSet();
         let incSeen = incoming().get('visibleTo', []).toSet();
         return
-          // #1692: "On our hearts" is the team's list. Any approved operator
+          // #1692: "On our hearts" is the team's list. Any approved teammate
           // who can see the person may put someone back (the clear names
           // nobody), while setting the removal must name the caller, so the
           // flag cannot be pinned on someone else. First so this small write
@@ -493,7 +492,7 @@ service cloud.firestore {
            (!keys.hasAny(['coCreators']) || dropsOnlySelf('coCreators')) &&
            (!keys.hasAny(['founders']) || dropsOnlySelf('founders'))) ||
 
-          // Operators edit the typed profile fields; unknown keys are rejected
+          // Staff edit the typed profile fields; unknown keys are rejected
           // (ghost-field injection). affectedKeys() only inspects the changed
           // keys, so a contact carrying legacy/extra fields stays editable as
           // long as the edit itself touches only known fields. Creation-audit
@@ -594,19 +593,18 @@ service cloud.firestore {
       // #1350: who can see a person is who can change them. This is
       // canReadContact asked of the contact as it stands before the write, so
       // a tie the write removes (giving someone up, leaving a share) still
-      // counts and a tie it would add never does. Full-timers and Students see
-      // everyone; a Trainee must be on the access list.
-      // isApprovedOperator() has already proved approval, so the gate skips
+      // counts and a tie it would add never does. Full-timers see everyone; a
+      // Trainee must be on the access list.
+      // isApprovedManager() has already proved approval, so the gate skips
       // canReadContact's isApprovedUser() and tests the tie first. Calling
       // canReadContact whole re-walks the role lookups for every writer, and
       // the sheep and collaborator-removal writes were then denied, the
       // 1000-expression ceiling again (#1052).
-      allow update: if isValidId(contactId) && isApprovedOperator() &&
+      allow update: if isValidId(contactId) && isApprovedManager() &&
                       (request.auth.uid in contactVisibleTo(existing()) || seesAllContacts()) &&
                       isValidContact(incoming()) && canUpdateContact();
       // #1350: deleting a person asks the same question — a Trainee may delete
-      // only someone they are tied to; a Full-timer anyone. Students and
-      // Community still cannot delete (isManager()).
+      // only someone they are tied to; a Full-timer anyone.
       allow delete: if isValidId(contactId) && isManager() &&
                       (request.auth.uid in contactVisibleTo(existing()) || seesAllContacts());
 
@@ -625,7 +623,7 @@ service cloud.firestore {
       // closing an ask, and a Trainee removing someone else's. Like the contact
       // update gate it leaves approval to the rule that calls it and tests the
       // tie first, so a tied Trainee pays one get() and an `in`; Full-timers
-      // and Students fall through to seesAllContacts().
+      // fall through to seesAllContacts().
       function seesParentContact() {
         return request.auth.uid in contactVisibleTo(get(/databases/$(database)/documents/contacts/$(contactId)).data) ||
                seesAllContacts();
@@ -650,12 +648,12 @@ service cloud.firestore {
 
         allow list: if canReadParentContact();
         allow get: if isValidId(interactionId) && canReadParentContact();
-        allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow create: if isValidId(interactionId) && isApprovedUser() && isManager() && seesParentContact() &&
                         isValidInteraction(incoming()) && 
                         incoming().userId == request.auth.uid && 
                         isReachedByAllowed(incoming()) &&
                         incoming().createdAt == request.time;
-        allow update: if isValidId(interactionId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow update: if isValidId(interactionId) && isApprovedUser() && isManager() && seesParentContact() &&
                         isValidInteraction(incoming()) && 
                         incoming().userId == existing().userId &&
                         (existing().userId == request.auth.uid || isAdmin()) &&
@@ -673,11 +671,11 @@ service cloud.firestore {
         }
 
         allow read: if canReadParentContact();
-        allow create: if isValidId(commentId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow create: if isValidId(commentId) && isApprovedUser() && isManager() && seesParentContact() &&
                         isValidComment(incoming()) && 
                         incoming().userId == request.auth.uid && 
                         incoming().createdAt == request.time;
-        allow update: if isValidId(commentId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow update: if isValidId(commentId) && isApprovedUser() && isManager() && seesParentContact() &&
                         isValidComment(incoming()) && 
                         incoming().userId == existing().userId &&
                         (existing().userId == request.auth.uid || isAdmin()) &&
@@ -734,14 +732,14 @@ service cloud.firestore {
         // person. The collection-group rule above still governs the inbox read.
         allow read: if canReadContact(get(/databases/$(database)/documents/contacts/$(contactId)).data) &&
                        (resource.data.get('scope', '') != 'team' || isAdmin());
-        allow create: if isValidId(threadId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow create: if isValidId(threadId) && isApprovedUser() && isManager() && seesParentContact() &&
                         isValidThread(incoming()) &&
                         incoming().get('scope', null) == null &&
                         incoming().from == request.auth.uid;
         // Reactions have been removed. Body edits: author only, and the edit
         // stamps `editedAt` (kind/from/at are immutable). Closing a follow-up
         // ask (#813) or an @mention: see isCloseOfAsk above.
-        allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && seesParentContact() &&
+        allow update: if isValidId(threadId) && isApprovedUser() && isManager() && seesParentContact() &&
                         (resource.data.get('scope', '') != 'team' || isAdmin()) && (
                         (
                           incoming().diff(existing()).affectedKeys().hasOnly(['body', 'editedAt']) &&
@@ -798,15 +796,8 @@ service cloud.firestore {
       }
 
       allow read: if isApprovedUser();
-      allow create, update: if isValidId(eventId) && isOperator() && isValidEvent(incoming());
+      allow create, update: if isValidId(eventId) && isManager() && isValidEvent(incoming());
       allow delete: if isValidId(eventId) && isManager();
-
-      // RSVPs — one doc per attendee, keyed by uid. Any approved user may read
-      // (staff see who's coming); a user may only create/delete their own.
-      match /rsvps/{uid} {
-        allow read: if isApprovedUser();
-        allow create, delete: if isApprovedUser() && isOwner(uid);
-      }
     }
 
     // 6b. Rhythms — a recurring gathering's own record (name/cadence/location/
@@ -830,7 +821,7 @@ service cloud.firestore {
       }
 
       allow read: if isApprovedUser();
-      allow create, update: if isValidId(rhythmId) && isOperator() && isValidRhythm(incoming());
+      allow create, update: if isValidId(rhythmId) && isManager() && isValidRhythm(incoming());
       allow delete: if isValidId(rhythmId) && isManager();
     }
 
@@ -1068,7 +1059,7 @@ service cloud.firestore {
                     seesAllContacts() ||
                     request.auth.uid in get(/databases/$(database)/documents/contacts/$(resource.data.targetId)).data.get('visibleTo', [])
                   );
-      allow create: if isValidId(activityId) && isApprovedUser() && isOperator() && isValidActivity(incoming());
+      allow create: if isValidId(activityId) && isApprovedUser() && isManager() && isValidActivity(incoming());
       allow update, delete: if isValidId(activityId) && isManager();
     }
 
@@ -1093,7 +1084,7 @@ service cloud.firestore {
       // form's ALL_ADMINS alert is written by the server (/api/signup-notify),
       // so a stranger cannot push arbitrary alerts to every Full-timer.
       allow create: if isValidId(notificationId) && isValidNotification(incoming()) &&
-                      isApprovedUser() && isOperator();
+                      isApprovedUser() && isManager();
       
       // Full-timers' blanket access covers marking read / dismissing ALL_ADMINS broadcasts.
       allow update: if isValidId(notificationId) && isSignedIn() && (
@@ -1125,7 +1116,7 @@ service cloud.firestore {
 
       allow get: if isApprovedUser();
       allow list: if isApprovedUser();
-      allow create, update: if isApprovedUser() && isOperator() && isValidPrayer(incoming());
+      allow create, update: if isApprovedUser() && isManager() && isValidPrayer(incoming());
       allow delete: if isManager();
     }
 
@@ -1240,16 +1231,14 @@ service cloud.firestore {
                (data.get('sourceDocTitle', null) == null || (data.get('sourceDocTitle', null) is string && data.get('sourceDocTitle', null).size() <= 256));
       }
       allow list, get: if isApprovedUser();
-      allow create, update: if isApprovedUser() && isOperator() && isValidTask(incoming());
+      allow create, update: if isApprovedUser() && isManager() && isValidTask(incoming());
       allow delete: if isManager() || isSuperAdmin();
     }
 
-    // 10a. Outreach — monthly park outings. Full-timers + the community folk
-    // who go out (they log the names; full-timers oversee). Trainees and
-    // students don't see it. The record's NAMES are the point: logging creates
-    // the contacts (open to any approved user) alongside, via the contacts
-    // rules; the follow-up to-dos ride the tasks rules (operator+, so a
-    // community logger's names just don't get auto-to-dos).
+    // 10a. Outreach — monthly park outings. Full-timers only. The record's
+    // NAMES are the point: logging creates the contacts (open to any approved
+    // user) alongside, via the contacts rules; the follow-up to-dos ride the
+    // tasks rules.
     match /outreach/{outreachId} {
       function isValidOutreach(data) {
         return data.date is string && data.date.size() <= 20 &&
@@ -1261,8 +1250,8 @@ service cloud.firestore {
                data.photoCount is int && data.photoCount >= 0 &&
                data.names is list;
       }
-      allow list, get: if isAdmin() || hasRole('viewer');
-      allow create: if (isAdmin() || hasRole('viewer')) && isValidOutreach(incoming());
+      allow list, get: if isAdmin();
+      allow create: if isAdmin() && isValidOutreach(incoming());
       allow update: if isAdmin() && isValidOutreach(incoming());
       allow delete: if isAdmin();
     }
@@ -1448,10 +1437,10 @@ service cloud.firestore {
       }
 
       // Read by audience: Full-timers see all (incl. legacy pages with no
-      // audience); Trainees see 'trainees' + 'everyone'; Students see 'everyone'.
+      // audience); Trainees see 'trainees' + 'everyone'.
       // Non-admins must scope their query by audience so each returned doc passes.
       allow get, list: if isAdmin()
-                          || ('audience' in existing() && existing().audience == 'everyone' && isOperator())
+                          || ('audience' in existing() && existing().audience == 'everyone' && isManager())
                           || ('audience' in existing() && existing().audience == 'trainees' && isManager());
       allow create: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
       allow update: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
@@ -1653,13 +1642,6 @@ service cloud.firestore {
     // Full-timers Discussion across every contact, for a Full-timer's feed.
     match /{path=**}/teamThreads/{threadId} {
       allow list: if isApprovedUser() && isAdmin();
-    }
-    // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
-    // Scoped to the requester's own RSVPs: the query filters on the `uid` field,
-    // so listing other people's RSVPs across events is denied. (Staff still read
-    // a single event's RSVP list via the nested events/{id}/rsvps read rule.)
-    match /{path=**}/rsvps/{rsvpId} {
-      allow list: if isApprovedUser() && (resource.data.uid == request.auth.uid || isManager());
     }
   }
 }

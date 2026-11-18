@@ -162,10 +162,9 @@ describe('BibleStudyPresent', () => {
     expect(screen.getByText('Weeks index')).toBeInTheDocument();
   });
 
-  it('a Trainee leaves back to the week they were reading, never the index (#946)', async () => {
-    // The Weeks index is Full-timers only, so falling back to it bounced a
-    // non-admin to their dashboard — breaking the very invariant the fallback
-    // exists to hold ("leaving never lands on the home page").
+  it('a Trainee leaves for home, never the index', async () => {
+    // The Weeks index is Full-timers only, and the signed-in reader a Trainee
+    // used to go back to is cut.
     signInAs(false);
     mockChain([MEETING]);
 
@@ -174,14 +173,13 @@ describe('BibleStudyPresent', () => {
         <Routes>
           <Route path="/" element={<div>Home</div>} />
           <Route path="/bible-study" element={<div>Weeks index</div>} />
-          <Route path="/bible-study/read" element={<div>This week's study</div>} />
           <Route path="/bible-study/present" element={<BibleStudyPresent />} />
         </Routes>
       </MemoryRouter>,
     );
 
     fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
-    expect(screen.getByText("This week's study")).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
   });
 
   it('offers a Full-timer the week\'s editor from the code, and nobody else (#946)', async () => {

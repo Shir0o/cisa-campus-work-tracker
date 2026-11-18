@@ -32,14 +32,11 @@ beforeEach(() => {
 
 describe('firstRunRecordSources', () => {
   it('gates each source by the role whose checklist uses it', () => {
-    expect(firstRunRecordSources('admin')).toEqual({ docs: true, messages: false, feedback: false });
-    expect(firstRunRecordSources('ft')).toEqual({ docs: true, messages: false, feedback: false });
-    expect(firstRunRecordSources('trainee')).toEqual({ docs: false, messages: true, feedback: false });
-    expect(firstRunRecordSources('manager')).toEqual({ docs: false, messages: true, feedback: false });
-    expect(firstRunRecordSources('operator')).toEqual({ docs: false, messages: true, feedback: true });
-    expect(firstRunRecordSources('student')).toEqual({ docs: false, messages: true, feedback: true });
-    expect(firstRunRecordSources('community')).toEqual({ docs: false, messages: true, feedback: true });
-    expect(firstRunRecordSources(null)).toEqual({ docs: false, messages: true, feedback: false });
+    expect(firstRunRecordSources('admin')).toEqual({ docs: true, messages: false });
+    expect(firstRunRecordSources('ft')).toEqual({ docs: true, messages: false });
+    expect(firstRunRecordSources('trainee')).toEqual({ docs: false, messages: true });
+    expect(firstRunRecordSources('manager')).toEqual({ docs: false, messages: true });
+    expect(firstRunRecordSources(null)).toEqual({ docs: false, messages: true });
   });
 });
 
@@ -104,21 +101,6 @@ describe('useFirstRunRecords', () => {
     });
     await waitFor(() => expect(getDocs).toHaveBeenCalled());
     expect(result.current.messagesCount).toBe(0);
-  });
-
-  it('reads Student feedback and messages existence', async () => {
-    const { result } = renderHook(() => useFirstRunRecords('student', 'u1'));
-    expect(onSnapshot).toHaveBeenCalledTimes(2);
-
-    act(() => {
-      snapshotSub(0)[1]({ empty: false });
-    });
-    expect(result.current.feedbackCount).toBe(1);
-
-    act(() => {
-      snapshotSub(1)[1]({ docs: [] });
-    });
-    await waitFor(() => expect(result.current.messagesCount).toBe(0));
   });
 
   it('resets to zero when the uid changes', async () => {

@@ -4,8 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   Impersonation,
   impStaffTarget,
-  impPersonaTarget,
-  impContactTarget,
   impFirst,
   impInits,
   cleanCisaName,
@@ -53,7 +51,6 @@ describe('Impersonation Data & Helpers', () => {
     expect(impFirst('')).toBe('');
     expect(impInits('')).toBe('');
     expect(impInits('  ')).toBe('');
-    expect(impPersonaTarget('invalid')).toBeNull();
     expect(cleanCisaName('cisa-admin (Test Full-timer)')).toBe('cisa-admin');
     expect(cleanCisaName('cisa-trainee')).toBe('cisa-trainee');
     expect(cleanCisaName('John Doe')).toBe('John Doe');
@@ -74,17 +71,14 @@ describe('Impersonation Data & Helpers', () => {
     expect(Impersonation.resolve('staff:nonexistent')).toBeNull();
   });
 
-  it('strips (Test *) suffixes from cisa-* names in impStaffTarget and impContactTarget', () => {
+  it('strips (Test *) suffixes from cisa-* names in impStaffTarget', () => {
     const staffTarget = impStaffTarget({ id: 'cisa-admin', name: 'cisa-admin (Test Full-timer)' });
     expect(staffTarget.name).toBe('cisa-admin');
-
-    const contactTarget = impContactTarget({ id: 'cisa-student', name: 'cisa-student (Test Student)' });
-    expect(contactTarget.name).toBe('cisa-student');
   });
 
   it('resolves custom user targets correctly when passed users array', () => {
     const mockUsers = [{ uid: 'u99', displayName: 'Jane Doe', email: 'jane@example.com', role: 'admin' }];
-    const target = Impersonation.resolve('staff:u99', [], mockUsers);
+    const target = Impersonation.resolve('staff:u99', mockUsers);
     expect(target).not.toBeNull();
     expect(target?.name).toBe('Jane Doe');
     expect(target?.role).toBe('admin');
@@ -95,10 +89,6 @@ describe('Impersonation Data & Helpers', () => {
     expect(emailOnly.name).toBe('user100');
     expect(emailOnly.role).toBe('manager');
 
-    const viewerTarget = impStaffTarget({ id: 'u101', name: 'Bob Smith', role: 'viewer' });
-    expect(viewerTarget.role).toBe('viewer');
-    expect(viewerTarget.sub).toBe('Community');
-
     const unknownRoleTarget = impStaffTarget({ id: 'u102', name: 'Unknown Role', role: 'custom' });
     expect(unknownRoleTarget.role).toBe('admin');
 
@@ -106,38 +96,13 @@ describe('Impersonation Data & Helpers', () => {
     expect(fallbackNoName.name).toBe('Team Member');
   });
 
-  it('handles impContactTarget without year or major', () => {
-    const contactNoDetails = impContactTarget({ id: 'c999', name: 'No Details Contact' });
-    expect(contactNoDetails.sub).toBe('Student');
-    expect(contactNoDetails.role).toBe('operator');
-  });
-
-  it('resolves persona targets correctly', () => {
-    const student = Impersonation.resolve('persona:student');
-    expect(student?.name).toContain('Student');
-    expect(student?.role).toBe('operator');
-
-    const community = Impersonation.resolve('persona:community');
-    expect(community?.name).toContain('Community');
-    expect(community?.role).toBe('viewer');
-
-    expect(Impersonation.resolve('persona:nonexistent')).toBeNull();
-  });
-
-  it('resolves contact targets correctly when passed contacts roster', () => {
-    const mockContacts = [{ id: 'c123', name: 'Sam Taylor', year: 'Senior', major: 'Math' }];
-    const target = Impersonation.resolve('contact:c123', mockContacts);
-    expect(target?.name).toBe('Sam Taylor');
-    expect(target?.sub).toBe('Senior · Math');
-    expect(target?.role).toBe('operator');
-
-    expect(Impersonation.resolve('contact:nonexistent', mockContacts)).toBeNull();
-  });
-
   it('handles null, empty, or invalid key resolution', () => {
     expect(Impersonation.resolve(null)).toBeNull();
     expect(Impersonation.resolve('')).toBeNull();
     expect(Impersonation.resolve('invalidkey')).toBeNull();
+    // The Student and Community personas, and viewing as a contact, are cut.
+    expect(Impersonation.resolve('persona:student')).toBeNull();
+    expect(Impersonation.resolve('contact:c123')).toBeNull();
   });
 
   it('persists impersonation target key in localStorage', () => {
@@ -152,13 +117,14 @@ describe('Impersonation Data & Helpers', () => {
 });
 
 describe('ImpersonatePicker Component', () => {
-  it('renders team, personas, and cisa-* test accounts and filters by search query', () => {
+  it('renders the team and cisa-* test accounts and filters by search query', () => {
     const onPick = vi.fn();
     const mockUsers = [{ uid: 'u1', displayName: 'Alex Chen', email: 'alex@example.com', role: 'admin' }];
     render(<ImpersonatePicker currentKey={null} onPick={onPick} users={mockUsers} autoFocus />);
 
     expect(screen.getByText(/The team & test accounts/i)).toBeInTheDocument();
-    expect(screen.getByText('Students & friends')).toBeInTheDocument();
+    expect(screen.queryByText('Students & friends')).not.toBeInTheDocument();
+    expect(screen.queryByText('cisa-student')).not.toBeInTheDocument();
     expect(screen.getByText('Alex Chen')).toBeInTheDocument();
     expect(screen.getAllByText(/cisa-admin/i).length).toBeGreaterThan(0);
 
@@ -179,22 +145,6 @@ describe('ImpersonatePicker Component', () => {
     expect(onPick.mock.calls[0][0].key).toBe('staff:u1');
   });
 
-  it('handles custom contacts and expands roster list', () => {
-    const customContacts = Array.from({ length: 10 }, (_, i) => ({
-      id: `custom-${i}`,
-      name: `Person ${i}`,
-      year: 'Junior',
-      major: 'Bio',
-    }));
-
-    render(<ImpersonatePicker currentKey={null} onPick={vi.fn()} contacts={customContacts} />);
-
-    expect(screen.getByText('Person 0')).toBeInTheDocument();
-    const moreBtn = screen.getByText(/Show the rest of the roster/i);
-    fireEvent.click(moreBtn);
-
-    expect(screen.getByText('Person 9')).toBeInTheDocument();
-  });
 });
 
 describe('ImpersonateBar Component', () => {
@@ -265,10 +215,9 @@ describe('ImpersonateModal Component', () => {
       <ImpersonateModal isOpen={true} currentKey={null} onPick={onPick} onClose={onClose} />,
     );
 
-    // Click Student role preview button
-    const studentRoleBtn = screen.getByRole('button', { name: 'Student' });
-    fireEvent.click(studentRoleBtn);
-    expect(mockSetOwnerViewRole).toHaveBeenCalledWith('operator');
+    // Only the two roles are offered.
+    expect(screen.queryByRole('button', { name: 'Student' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Community' })).not.toBeInTheDocument();
 
     // Click Trainee role preview button
     const traineeRoleBtn = screen.getByRole('button', { name: 'Trainee' });
@@ -281,7 +230,7 @@ describe('ImpersonateModal Component', () => {
     const onPick = vi.fn();
 
     // Re-mock useAuth with active ownerViewRole
-    mockOwnerViewRole = 'operator';
+    mockOwnerViewRole = 'manager';
     mockImpersonateTarget = { key: 'staff:cisa-admin', name: 'cisa-admin', sub: 'Full-timer', note: 'Full workspace', role: 'admin' };
 
     render(

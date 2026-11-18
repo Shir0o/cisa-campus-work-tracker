@@ -15,26 +15,9 @@ export interface StaffItem {
 export const DEFAULT_TEST_ACCOUNTS: StaffItem[] = [
   { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
   { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
-  { id: 'cisa-student', name: 'cisa-student', email: 'cisa-student@cisa.campus', role: 'Student', isTrainee: false },
-  { id: 'cisa-community', name: 'cisa-community', email: 'cisa-community@cisa.campus', role: 'Community', isTrainee: false },
 ];
 
 export const DEFAULT_STAFF: StaffItem[] = DEFAULT_TEST_ACCOUNTS;
-
-export const PERSONAS: Record<string, { name: string; initials: string; subtitle: string; role: AppRole }> = {
-  student: {
-    name: 'Student View Persona',
-    initials: 'ST',
-    subtitle: 'Student window',
-    role: 'operator',
-  },
-  community: {
-    name: 'Community View Persona',
-    initials: 'CM',
-    subtitle: 'Friend of CISA',
-    role: 'viewer',
-  },
-};
 
 export function impFirst(name: string): string {
   return (name || '').split(' ')[0];
@@ -69,7 +52,7 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const roleStr = s.role || 'admin';
   const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
 
-  const validRoles: AppRole[] = ['admin', 'manager', 'operator', 'viewer'];
+  const validRoles: AppRole[] = ['admin', 'manager'];
   const roleKey: AppRole = validRoles.includes(roleStr as AppRole)
     ? (roleStr as AppRole)
     : isTrainee
@@ -79,8 +62,6 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const roleLabelMap: Record<AppRole, string> = {
     admin: 'Full-timer',
     manager: 'Trainee',
-    operator: 'Student',
-    viewer: 'Community',
   };
   const roleLabel = roleLabelMap[roleKey] || 'Full-timer';
 
@@ -103,45 +84,6 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
       roleShort: isTrainee ? 'In training' : 'Full-time',
       subtitle: s.email || roleLabel,
       staffId: id,
-    },
-  };
-}
-
-export function impPersonaTarget(k: string): ImpersonateTarget | null {
-  const p = PERSONAS[k];
-  if (!p) return null;
-  return {
-    key: `persona:${k}`,
-    name: p.name,
-    initials: p.initials,
-    sub: p.subtitle,
-    note: k === 'student' ? "A student's own window" : 'A friend of the work',
-    role: p.role,
-    persona: { id: k, ...p },
-  };
-}
-
-export function impContactTarget(c: { id: string; name: string; year?: string; major?: string }): ImpersonateTarget {
-  const cleanName = cleanCisaName(c.name);
-  const sub = [c.year, c.major].filter(Boolean).join(' · ');
-  const initials = impInits(cleanName);
-  return {
-    key: `contact:${c.id}`,
-    name: cleanName,
-    initials,
-    sub: sub || 'Student',
-    note: "A student's own window",
-    role: 'operator',
-    persona: {
-      id: 'student',
-      name: cleanName,
-      first: impFirst(cleanName),
-      initials,
-      role: 'Student',
-      roleShort: 'Student',
-      subtitle: sub || 'Student',
-      caredById: 'u1',
-      contactId: c.id,
     },
   };
 }
@@ -183,20 +125,14 @@ export function impScope(
   let people: string;
   if (role === 'admin') {
     people = totalContacts > 0 ? `Everyone — all ${totalContacts} people` : 'Everyone — all roster people';
-  } else if (role === 'manager') {
+  } else {
     const n = visibleCount !== undefined ? visibleCount : 0;
     people = n === 1 ? '1 person — the one they added' : `${n} people they added or were named on`;
-  } else {
-    people = 'No roster — just their own window';
   }
 
   const missingKeys: string[] = [];
   if (role === 'manager') {
     missingKeys.push('history', 'attendance', 'prayer', 'answered', 'coordination', 'settings');
-  } else if (role === 'operator') {
-    missingKeys.push('board', 'history');
-  } else if (role === 'viewer') {
-    missingKeys.push('board', 'contacts', 'history', 'coordination');
   }
 
   const missingLabels = missingKeys.map((k) => IMP_SCOPE_LABEL[k] || k);
@@ -216,11 +152,9 @@ export interface ImpGroup {
   items: ImpersonateTarget[];
 }
 
-// The four groups an admin thinks in, in that order — mirrors the design's
-// `impGroups` (views/impersonate.jsx). Student/community carry a `persona`
-// fallback because most teams have no such logins yet; full-timers and
-// trainees never do, since impersonating "nobody" isn't a thing to offer.
-const IMP_GROUP_DEFS: { id: string; label: string; note: string; role: AppRole; persona?: string }[] = [
+// The two groups an admin thinks in, in that order — mirrors the design's
+// `impGroups` (views/impersonate.jsx).
+const IMP_GROUP_DEFS: { id: string; label: string; note: string; role: AppRole }[] = [
   { id: 'ft', label: 'Full-timers', note: 'The whole workspace, as they read it.', role: 'admin' },
   {
     id: 'trainee',
@@ -228,37 +162,17 @@ const IMP_GROUP_DEFS: { id: string; label: string; note: string; role: AppRole; 
     note: 'In training — a smaller window, and only the people they brought in.',
     role: 'manager',
   },
-  {
-    id: 'student',
-    label: 'Students',
-    note: "Club members and officers — what's on, prayer, messages.",
-    role: 'operator',
-    persona: 'student',
-  },
-  {
-    id: 'community',
-    label: 'Community',
-    note: 'Friends of the work — host families, alumni, supporters.',
-    role: 'viewer',
-    persona: 'community',
-  },
 ];
 
 /** The mobile "See it as they do" picker's groups: the approved team roster,
  * bucketed by role, excluding the caller and anyone unapproved. `query`
- * filters every group's rows on name + sub. Empty groups are dropped, except
- * student/community, which fall back to a synthetic persona when no real
- * account exists yet. */
+ * filters every group's rows on name + sub. Empty groups are dropped. */
 export function impGroups(users: AppUser[], meUid: string | null | undefined, query?: string): ImpGroup[] {
   const needle = (query || '').trim().toLowerCase();
   const eligible = users.filter((u) => u.uid !== meUid && u.approved !== false);
 
   return IMP_GROUP_DEFS.map((def) => {
     let items = eligible.filter((u) => u.role === def.role).map((u) => impStaffTarget(u));
-    if (!items.length && def.persona) {
-      const persona = impPersonaTarget(def.persona);
-      if (persona) items = [persona];
-    }
     if (needle) {
       items = items.filter((t) => (t.name + ' ' + t.sub).toLowerCase().includes(needle));
     }
@@ -266,7 +180,7 @@ export function impGroups(users: AppUser[], meUid: string | null | undefined, qu
   }).filter((g) => g.items.length > 0);
 }
 
-export function resolveImpersonateTarget(k: string | null, contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {
+export function resolveImpersonateTarget(k: string | null, users: any[] = []): ImpersonateTarget | null {
   if (!k) return null;
   const i = k.indexOf(':');
   if (i === -1) return null;
@@ -278,11 +192,6 @@ export function resolveImpersonateTarget(k: string | null, contacts: any[] = [],
     if (u) return impStaffTarget(u);
     const s = DEFAULT_TEST_ACCOUNTS.find((x) => x.id === id);
     return s ? impStaffTarget(s) : null;
-  }
-  if (kind === 'persona') return impPersonaTarget(id);
-  if (kind === 'contact') {
-    const c = contacts.find((x) => x.id === id);
-    return c ? impContactTarget(c) : null;
   }
   return null;
 }

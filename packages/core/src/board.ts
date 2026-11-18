@@ -224,16 +224,14 @@ export const AUDIENCE_TONE_KEY: Record<Audience, StageToneKey> = {
 // A page with no audience defaults to the most private tier.
 export const audienceOf = (doc: Pick<BoardDoc, 'audience'>): Audience => doc.audience ?? 'team';
 
-// How far up the audience hierarchy a role can see. Community (viewer) has no
-// Board access at all (the nav item stops at Student).
+// How far up the audience hierarchy a role can see. Any other role has no
+// Board access at all.
 export const boardLevelForRole = (role: AppRole | string | null): number => {
   switch (role) {
     case 'admin':
       return 2;
     case 'manager':
       return 1;
-    case 'operator':
-      return 0;
     default:
       return -1;
   }
@@ -254,14 +252,12 @@ export const boardAudiencesForRole = (role: AppRole | string | null): Audience[]
       return [];
     case 'manager':
       return ['trainees', 'everyone'];
-    case 'operator':
-      return ['everyone'];
     default:
       return [];
   }
 };
 
-// Who can reach the Board at all (Student and up) vs. who can edit (Full-timers).
+// Who can reach the Board at all (Trainee and up) vs. who can edit (Full-timers).
 export const canViewBoard = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 0;
 // The Notes & learnings archive is shared by Full-timers + Trainees only.
 export const canViewBoardNotes = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 1;

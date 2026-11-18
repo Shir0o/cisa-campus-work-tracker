@@ -129,6 +129,7 @@ describe('Directory', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -708,6 +709,7 @@ describe('Directory', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
       isManager: true,
     });
 
@@ -732,6 +734,7 @@ describe('Directory', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
       isManager: true,
     });
 
@@ -748,27 +751,6 @@ describe('Directory', () => {
 
     expect(window.confirm).toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
-  });
-
-  // #1368: Firestore's delete rule requires isManager (Full-timer or Trainee),
-  // so a Student is never offered the Directory's bulk Remove.
-  it('hides bulk Remove from a Student with people selected (#1368)', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'u-student', displayName: 'Student User' },
-      effectiveUserId: 'u-student',
-      role: 'operator',
-      isAdmin: false,
-      isManager: false,
-    });
-
-    render(<Directory />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getAllByTitle('Select')[0]);
-    expect(screen.getByText('1 selected')).toBeInTheDocument();
-    expect(screen.queryByTitle('Remove selected')).not.toBeInTheDocument();
   });
 
   it('keeps bulk Remove for a Trainee with people selected (#1368)', async () => {
@@ -1130,19 +1112,20 @@ describe('Directory', () => {
 
   it('does not offer Combine these two to non-admins (#1433)', async () => {
     (useAuth as any).mockReturnValue({
-      user: { uid: 'u-test', displayName: 'Operator User' },
-      role: 'operator',
+      user: { uid: 'trainee-123', displayName: 'Trainee User' },
+      role: 'manager',
       isAdmin: false,
-      isManager: false,
-      effectiveUserId: 'u-test',
+      isManager: true,
+      effectiveUserId: 'trainee-123',
     });
 
     render(<Directory />);
     await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
 
-    const select = screen.getAllByTitle('Select');
-    fireEvent.click(select[0]);
-    fireEvent.click(screen.getAllByTitle('Select')[1]);
+    // A Trainee sees the two people tied to them; select both.
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
 
     expect(screen.queryByTestId('combine-two')).not.toBeInTheDocument();
   });
@@ -1522,6 +1505,7 @@ describe('Directory — search by relationship fields (#1176)', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -1978,6 +1962,7 @@ describe('Directory — the phone list (#1762)', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -2120,6 +2105,7 @@ describe('Directory — the order of the list (#1783)', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       effectiveUserId: 'u-test',
+      role: 'admin',
     });
     (useLayout as any).mockReturnValue({
       openNewContact: vi.fn(),

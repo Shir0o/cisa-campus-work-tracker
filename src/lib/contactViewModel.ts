@@ -69,7 +69,7 @@ export function computeContactDerivedModel({
   const stageIdx = currentContact.stage
     ? sortedStages.findIndex((s) => s.label === currentContact.stage)
     : -1;
-  const canMoveStage = (isAdmin || hasMinRole(role, "operator")) && sortedStages.length > 0;
+  const canMoveStage = (isAdmin || hasMinRole(role, "manager")) && sortedStages.length > 0;
   const canDelete = isAdmin || hasMinRole(role, "manager");
   const currentStageIndex = stageIdx === -1 ? 0 : stageIdx;
   const currentStageInfo = stageIdx === -1 ? undefined : sortedStages[stageIdx];

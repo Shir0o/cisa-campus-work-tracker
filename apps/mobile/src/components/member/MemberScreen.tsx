@@ -1,25 +1,15 @@
-// Mobile v2 — the member app's screen shell and its small shared pieces.
-//
-// Members stand in the SAME room as the trainee (the design's `.m2 deck mem`
-// carries no `blue`; only the full-timer app forces navy), so there is no new
-// palette here — every screen wraps itself in `Room room="queue"` and reads the
-// green one. What differs is the shape: a member scrolls, they don't queue.
+// Mobile v2 — a single-scroll screen shell and its small shared pieces. Built
+// for the member app (cut with the Student and Community roles); "Your
+// reports" (MyNotesScreen) still scrolls in it.
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useV2Theme } from '../../theme/v2';
-import { Room } from '../v2/Widget';
 import { MemberHomeSkeleton } from '../skeleton/MemberHomeSkeleton';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { KeyboardScrollView } from '../ui/KeyboardField';
-
-/** Every member screen is two components — the provider has to sit ABOVE
- * anything calling useV2Theme(). See Room's own note. */
-export function MemberRoom({ children }: { children: React.ReactNode }) {
-  return <Room room="queue">{children}</Room>;
-}
 
 /** The one scroll a member screen is. `head` rides at the top on the room
  * itself, not on a card. */
@@ -152,23 +142,5 @@ export function MemberHead({
         </Text>
       )}
     </View>
-  );
-}
-
-/** The quiet italic-ish line that closes a member screen. */
-export function MemberFoot({ children }: { children: string }) {
-  const { c, font, fs } = useV2Theme();
-  return (
-    <Text
-      style={{
-        fontFamily: font.medium,
-        fontSize: fs(12.5),
-        lineHeight: fs(18),
-        color: c.room.faint,
-        marginTop: 2,
-      }}
-    >
-      {children}
-    </Text>
   );
 }

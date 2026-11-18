@@ -40,23 +40,11 @@ export const FRN_COPY: Record<string, FirstRunCopy> = {
     sub: 'The few habits the rest of the app hangs off. Ticks read your own work, not a tour.',
     foot: 'Read off the record, so undoing the work un-ticks the row.',
   },
-  operator: {
-    title: 'Getting started',
-    sub: 'Three small things, and then you can mostly forget the app exists.',
-    foot: "That's all we'd ask of you here.",
-  },
-  viewer: {
-    title: 'Getting started',
-    sub: 'Three small things, and then you can mostly forget the app exists.',
-    foot: "That's all we'd ask of you here.",
-  },
 };
 
 // Aliases for convenience
 FRN_COPY.ft = FRN_COPY.admin;
 FRN_COPY.manager = FRN_COPY.trainee;
-FRN_COPY.student = FRN_COPY.operator;
-FRN_COPY.community = FRN_COPY.viewer;
 
 export function getFrnCopy(role?: string | null): FirstRunCopy {
   const norm = (role || 'trainee').toLowerCase();
@@ -118,7 +106,6 @@ export interface FirstRunPredicateContext {
   todosCreatedCount?: number;
   todosCompletedCount?: number;
   docsCount?: number;
-  feedbackCount?: number;
 }
 
 export function computeFirstRunSteps(
@@ -208,29 +195,7 @@ export function computeFirstRunSteps(
     ];
   }
 
-  // Student (operator) & Community (viewer)
-  return [
-    {
-      id: 'hello',
-      label: 'Say hello to the team',
-      to: '/messages',
-      hint: 'One line is plenty. Someone asked because they meant it.',
-      done: (ctx.messagesCount ?? 0) > 0,
-    },
-    {
-      id: 'pray',
-      label: 'Pray for one person by name',
-      to: '/prayer',
-      hint: "Tap once when you've prayed. Nobody is told; it's just kept.",
-      done: (ctx.prayersCount ?? 0) > 0,
-    },
-    {
-      id: 'say',
-      label: 'Tell the team how this is going',
-      hint: "Something off, something missing, something you'd love — all welcome.",
-      done: (ctx.feedbackCount ?? 0) > 0,
-    },
-  ];
+  return [];
 }
 
 export function evaluateFirstRun(

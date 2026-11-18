@@ -6,8 +6,6 @@ import {
   meIdFor,
   identityKey,
   impStaffTarget,
-  impContactTarget,
-  impPersonaTarget,
 } from '../lib/impersonate';
 import { ImpRow } from '../components/layout/ImpersonatePicker';
 
@@ -34,21 +32,10 @@ vi.mock('../components/AuthProvider', () => ({
 }));
 
 describe('Impersonation Scope & Identity Utilities', () => {
-  it('computes meIdFor and identityKey accurately for staff, contact, and persona', () => {
+  it('computes meIdFor and identityKey accurately for staff', () => {
     const staffTarget = impStaffTarget({ id: 'staff-123', name: 'Alex Trainee', role: 'Trainee', isTrainee: true });
     expect(meIdFor(staffTarget.persona)).toBe('staff-123');
     expect(identityKey(staffTarget.persona, 'manager')).toBe('staff-123');
-
-    const contactTarget = impContactTarget({ id: 'c-456', name: 'Jordan Student', year: 'Freshman', major: 'CS' });
-    expect(meIdFor(contactTarget.persona)).toBe('c-456');
-    expect(identityKey(contactTarget.persona, 'operator')).toBe('c-456');
-
-    const personaTarget = impPersonaTarget('student');
-    expect(personaTarget).not.toBeNull();
-    if (personaTarget) {
-      expect(meIdFor(personaTarget.persona)).toBe('student');
-      expect(identityKey(personaTarget.persona, 'operator')).toBe('student');
-    }
   });
 
   it('computes impScope plain-words scope for Full-timer target', () => {
@@ -63,13 +50,6 @@ describe('Impersonation Scope & Identity Utilities', () => {
     const sc = impScope(traineeTarget, 19, 3);
     expect(sc.people).toContain('3 people they added or were named on');
     expect(sc.pages).toContain('No History');
-  });
-
-  it('computes impScope plain-words scope for Student target', () => {
-    const studentTarget = impPersonaTarget('student');
-    const sc = impScope(studentTarget, 19);
-    expect(sc.people).toBe('No roster — just their own window');
-    expect(sc.pages).toContain('No Board');
   });
 
   it('renders ImpRow with impScope people and pages text (Fixes Issue #216)', () => {
@@ -97,17 +77,11 @@ describe('Impersonation Scope & Identity Utilities', () => {
         ? (target.persona?.staffId || target.persona?.contactId || target.persona?.id || null)
         : (role === 'manager'
             ? 'cisa-trainee'
-            : role === 'operator'
-            ? 'cisa-student'
-            : role === 'viewer'
-            ? 'cisa-community'
             : userUid);
     };
 
     expect(resolve(null, null, 'u1_admin')).toBe('u1_admin');
     expect(resolve(null, 'manager', 'u1_admin')).toBe('cisa-trainee');
-    expect(resolve(null, 'operator', 'u1_admin')).toBe('cisa-student');
-    expect(resolve(null, 'viewer', 'u1_admin')).toBe('cisa-community');
 
     const customTrainee = impStaffTarget({ id: 'trainee_99', name: 'Custom Trainee', role: 'Trainee', isTrainee: true });
     expect(resolve(customTrainee, 'manager', 'u1_admin')).toBe('trainee_99');

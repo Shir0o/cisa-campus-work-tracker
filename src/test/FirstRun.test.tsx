@@ -66,16 +66,8 @@ describe('FirstRun logic (#335)', () => {
       expect(steps.find((s) => s.id === 'convo')?.helpSlug).toBe('getting-started');
     });
 
-    it('returns student/community steps with correct completion states', () => {
-      const studentSteps = computeFirstRunSteps('student', {
-        messagesCount: 1,
-        prayersCount: 2,
-        feedbackCount: 0,
-      });
-      expect(studentSteps).toHaveLength(3);
-      expect(studentSteps.find((s) => s.id === 'hello')?.done).toBe(true);
-      expect(studentSteps.find((s) => s.id === 'pray')?.done).toBe(true);
-      expect(studentSteps.find((s) => s.id === 'say')?.done).toBe(false);
+    it('has no checklist for a role that is not Full-timer or Trainee', () => {
+      expect(computeFirstRunSteps('student', { messagesCount: 1, prayersCount: 2 })).toEqual([]);
     });
   });
 
@@ -97,24 +89,22 @@ describe('FirstRun logic (#335)', () => {
     it('returns correct copy per role', () => {
       expect(getFrnCopy('trainee').title).toBe('Your first week');
       expect(getFrnCopy('admin').title).toBe('Finding your feet');
-      expect(getFrnCopy('student').title).toBe('Getting started');
-      expect(getFrnCopy('community').title).toBe('Getting started');
     });
 
     it('evaluates visibility correctly (hidden when all done or dismissed)', () => {
-      const allDone = evaluateFirstRun('student', 'u1', {
+      const allDone = evaluateFirstRun('trainee', 'u1', {
+        contactsCount: 1,
+        interactionsCount: 1,
         messagesCount: 1,
         prayersCount: 1,
-        feedbackCount: 1,
+        todosCompletedCount: 1,
       });
       expect(allDone.isVisible).toBe(false);
-      expect(allDone.doneCount).toBe(3);
-      expect(allDone.totalCount).toBe(3);
+      expect(allDone.doneCount).toBe(5);
+      expect(allDone.totalCount).toBe(5);
 
-      const inProgress = evaluateFirstRun('student', 'u1', {
+      const inProgress = evaluateFirstRun('trainee', 'u1', {
         messagesCount: 1,
-        prayersCount: 0,
-        feedbackCount: 0,
       });
       expect(inProgress.isVisible).toBe(true);
       expect(inProgress.doneCount).toBe(1);
@@ -243,12 +233,14 @@ describe('FirstRun logic (#335)', () => {
       const { container } = render(
         <MemoryRouter>
           <FirstRunCard
-            role="student"
-            userId="student-1"
+            role="trainee"
+            userId="trainee-1"
             context={{
+              contactsCount: 1,
+              interactionsCount: 1,
               messagesCount: 1,
               prayersCount: 1,
-              feedbackCount: 1,
+              todosCompletedCount: 1,
             }}
           />
         </MemoryRouter>,

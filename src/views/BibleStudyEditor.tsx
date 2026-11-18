@@ -465,23 +465,6 @@ export default function BibleStudyEditor() {
               All weeks
             </Link>
             <span aria-hidden="true">·</span>
-            {/* #946: always present, not threaded through a return param. It
-                closes the fix-during-study loop from whichever direction you
-                came — the reader's Edit chip, Present mode's pencil, the index,
-                a bookmark — and it targets This week's study rather than the
-                raw `/s/` URL so there is a way back out again. The entry point
-                is the one already resolved for the Present card. */}
-            {entryPoint && (
-              <>
-                <Link
-                  to={`/bible-study/read?ep=${entryPoint.slug}`}
-                  className="font-semibold text-primary hover:underline shrink-0 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
-                >
-                  Open the study
-                </Link>
-                <span aria-hidden="true">·</span>
-              </>
-            )}
             <span className="truncate">Study: {meeting.studyId}</span>
             <span aria-hidden="true">·</span>
             <span className="shrink-0">{published ? 'Published' : 'Draft'}</span>

@@ -7,6 +7,9 @@ import {
   hasMinRole,
   defaultRouteForRole,
   pickLandingForRole,
+  effectiveRole,
+  canSeeOutreach,
+  canLogOutreach,
   NAV_ITEMS,
   isAppOwner,
   canSimulateRole,
@@ -23,24 +26,19 @@ describe('permissions', () => {
   it('maps internal roles to display labels', () => {
     expect(roleLabel('admin')).toBe('Full-timer');
     expect(roleLabel('manager')).toBe('Trainee');
-    expect(roleLabel('operator')).toBe('Student');
-    expect(roleLabel('viewer')).toBe('Community');
     expect(roleLabel(null)).toBe('Guest');
   });
 
   it('gates routes by minimum role', () => {
-    // viewer (Community) cannot reach The Journey (manager+)
-    expect(canAccessRoute('viewer', '/board')).toBe(false);
     expect(canAccessRoute('manager', '/board')).toBe(true);
     // only admin reaches admin feedback
     expect(canAccessRoute('manager', '/admin/feedback')).toBe(false);
     expect(canAccessRoute('admin', '/admin/feedback')).toBe(true);
     // contact details accessible across all approved roles
-    expect(canAccessRoute('viewer', '/contact')).toBe(true);
     expect(canAccessRoute('manager', '/contact')).toBe(true);
     expect(canAccessRoute('manager', '/contact/c1')).toBe(true);
     // unknown routes default to admin-only
-    expect(canAccessRoute('viewer', '/nonexistent')).toBe(false);
+    expect(canAccessRoute('manager', '/nonexistent')).toBe(false);
     expect(canAccessRoute('admin', '/nonexistent')).toBe(true);
     // null role is never allowed
     expect(canAccessRoute(null, '/')).toBe(false);
@@ -54,32 +52,61 @@ describe('permissions', () => {
     expect(canAccessRoute('manager', '/attendance')).toBe(false);
     expect(canAccessRoute('manager', '/coordination')).toBe(false);
     expect(canAccessRoute('admin', '/attendance')).toBe(true);
-    // Community does NOT pass this gate either (#1940). Gatherings shares
-    // People's floor (#1834): a Community member has no People page, so the
-    // room is not a sideways door into the directory. The contact read rule does
-    // admit them, which is why the phone must refuse the route rather than
-    // letting the screen load and the attendance write fail.
-    expect(canAccessRoute('viewer', '/attendance')).toBe(false);
     expect(canSeePrefs('manager')).toBe(true);
-    expect(canSeePrefs('viewer')).toBe(false);
   });
 
-  it('hasMinRole respects the level ladder', () => {
-    expect(hasMinRole('operator', 'viewer')).toBe(true);
-    expect(hasMinRole('viewer', 'operator')).toBe(false);
+  it('hasMinRole respects the two-rung ladder', () => {
+    expect(hasMinRole('admin', 'manager')).toBe(true);
+    expect(hasMinRole('manager', 'admin')).toBe(false);
     expect(hasMinRole('admin', 'admin')).toBe(true);
-    expect(hasMinRole(null, 'viewer')).toBe(false);
+    expect(hasMinRole(null, 'manager')).toBe(false);
+  });
+
+  // Student and Community are gone (cut-or-keep §1). A stored legacy role is
+  // read as no role: no rung, no route, no home of its own.
+  it('gives a legacy Student or Community role no access', () => {
+    for (const legacy of ['operator', 'viewer', 'student', 'community']) {
+      expect(hasMinRole(legacy, 'manager'), legacy).toBe(false);
+      for (const route of ['/', '/contact', '/directory', '/attendance', '/prayer', '/messages', '/outreach', '/settings']) {
+        expect(canAccessRoute(legacy, route), `${legacy} ${route}`).toBe(false);
+      }
+    }
+  });
+
+  it('effectiveRole passes the two roles through and maps everything else to null', () => {
+    expect(effectiveRole('admin')).toBe('admin');
+    expect(effectiveRole('manager')).toBe('manager');
+    for (const legacy of ['operator', 'viewer', 'student', 'community', '', 'bogus']) {
+      expect(effectiveRole(legacy), legacy).toBeNull();
+    }
+    expect(effectiveRole(null)).toBeNull();
+  });
+
+  it('keeps Outreach a Full-timer\'s alone', () => {
+    expect(canAccessRoute('admin', '/outreach')).toBe(true);
+    expect(canAccessRoute('manager', '/outreach')).toBe(false);
+    expect(canSeeOutreach('admin')).toBe(true);
+    expect(canLogOutreach('admin')).toBe(true);
+    for (const role of ['manager', 'viewer', null]) {
+      expect(canSeeOutreach(role), String(role)).toBe(false);
+      expect(canLogOutreach(role), String(role)).toBe(false);
+    }
+  });
+
+  it('closes the signed-in study reader to a Trainee', () => {
+    expect(canAccessRoute('manager', '/bible-study/read')).toBe(false);
+    expect(canAccessRoute('manager', '/bible-study/present')).toBe(true);
   });
 
   it('defaultRouteForRole falls back to /attendance for unknown roles', () => {
-    expect(defaultRouteForRole('viewer')).toBe('/');
+    expect(defaultRouteForRole('manager')).toBe('/');
     expect(defaultRouteForRole(null)).toBe('/attendance');
   });
 
   it('pickLandingForRole maps roles to their Home-tab landing', () => {
     expect(pickLandingForRole('manager')).toBe('trainee');
-    expect(pickLandingForRole('operator')).toBe('student');
-    expect(pickLandingForRole('viewer')).toBe('community');
+    expect(pickLandingForRole('operator')).toBe('myday');
+    expect(pickLandingForRole('viewer')).toBe('myday');
     expect(pickLandingForRole('admin')).toBe('myday');
     expect(pickLandingForRole(null)).toBe('myday');
     expect(pickLandingForRole('bogus')).toBe('myday');
@@ -104,23 +131,19 @@ describe('permissions', () => {
 
   it('checks role simulation permissions via canSimulateRole', () => {
     expect(canSimulateRole('admin', 'other@example.com')).toBe(true);
-    expect(canSimulateRole('viewer', OWNER_EMAIL)).toBe(true);
+    expect(canSimulateRole('manager', OWNER_EMAIL)).toBe(true);
     expect(canSimulateRole('manager', 'other@example.com')).toBe(false);
-    expect(canSimulateRole('viewer', 'other@example.com')).toBe(false);
     expect(canSimulateRole(null, null)).toBe(false);
   });
 
   it('resolves effective role for app owner and all admin accounts', () => {
     // App owner with ownerViewRole override
-    expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'operator')).toBe('operator');
-    expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'viewer')).toBe('viewer');
+    expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'manager')).toBe('manager');
     // App owner without override returns actual role
     expect(getEffectiveRole(OWNER_EMAIL, 'admin', null)).toBe('admin');
     // Non-owner admin with ownerViewRole returns override
-    expect(getEffectiveRole('other-admin@example.com', 'admin', 'operator')).toBe('operator');
     expect(getEffectiveRole('other-admin@example.com', 'admin', 'manager')).toBe('manager');
     // Non-owner non-admin with ownerViewRole returns actual role
-    expect(getEffectiveRole('other@example.com', 'viewer', 'admin')).toBe('viewer');
     expect(getEffectiveRole('other@example.com', 'manager', 'admin')).toBe('manager');
   });
 
@@ -140,7 +163,6 @@ describe('permissions', () => {
 
     // Co-creators can manage
     expect(canManageCollaborators('manager', 'u-collab', contact)).toBe(true);
-    expect(canManageCollaborators('operator', 'u-collab', contact)).toBe(true);
 
     // Who typed the name is not consulted for permission: a creator who is not
     // a founder (should not exist, but if it does) gains nothing from creation.
@@ -148,18 +170,22 @@ describe('permissions', () => {
 
     // Non-collaborator cannot manage
     expect(canManageCollaborators('manager', 'u-random', contact)).toBe(false);
-    expect(canManageCollaborators('operator', 'u-random', contact)).toBe(false);
     expect(canManageCollaborators('manager', null, contact)).toBe(false);
     expect(canManageCollaborators('manager', 'u-creator', null)).toBe(false);
   });
 });
 
 describe('canSeeContact', () => {
-  it('lets every role that sees all people read any contact', () => {
+  it('lets a Full-timer, the one role that sees all people, read any contact', () => {
     const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
     expect(canSeeContact('admin', 'u1', contact)).toBe(true);
-    expect(canSeeContact('operator', 'u1', contact)).toBe(true);
-    expect(canSeeContact('viewer', 'u1', contact)).toBe(true);
+  });
+
+  it('gives a legacy or missing role no one they are not tied to', () => {
+    const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
+    expect(canSeeContact('operator', 'u1', contact)).toBe(false);
+    expect(canSeeContact('viewer', 'u1', contact)).toBe(false);
+    expect(canSeeContact(null, 'u1', contact)).toBe(false);
   });
 
   it('restricts a trainee to the ties on the record', () => {

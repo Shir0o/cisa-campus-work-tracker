@@ -117,9 +117,9 @@ describe('searchHistory', () => {
     expect(searchHistory([hist()], '', 'manager')).toEqual([]);
   });
 
-  it('returns nothing for a role below manager, regardless of match', () => {
+  it('returns nothing for a legacy or missing role, regardless of match', () => {
     expect(searchHistory([hist({ action: 'created a new contact' })], 'created', 'operator')).toEqual([]);
-    expect(searchHistory([hist({ action: 'created a new contact' })], 'created', 'viewer')).toEqual([]);
+    expect(searchHistory([hist({ action: 'created a new contact' })], 'created', null)).toEqual([]);
   });
 
   it('matches across action/description/target for manager+', () => {
@@ -136,14 +136,14 @@ describe('searchHistory', () => {
 });
 
 describe('quickActionsFor', () => {
-  it('hides "New contact" for a viewer', () => {
+  it('hides "New contact" for a legacy role', () => {
     const keys = quickActionsFor('viewer').map((a) => a.key);
     expect(keys).not.toContain('new-contact');
     expect(keys).toContain('signup');
   });
 
-  it('shows "New contact" for operator and above', () => {
-    expect(quickActionsFor('operator').map((a) => a.key)).toContain('new-contact');
+  it('shows "New contact" for a Trainee and above', () => {
+    expect(quickActionsFor('manager').map((a) => a.key)).toContain('new-contact');
     expect(quickActionsFor('admin').map((a) => a.key)).toContain('new-contact');
   });
 

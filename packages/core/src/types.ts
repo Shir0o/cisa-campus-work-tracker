@@ -331,7 +331,7 @@ export interface AppUser {
   displayName: string;
   photoURL: string;
   approved: boolean;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   pushToken?: string | null;
   /** Which team they're on — the division above the gospel-partner pairs
    *  (#727). Absent means unassigned. */
@@ -343,7 +343,7 @@ export interface AppUser {
 
 export interface Invitation {
   email: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   approved: boolean;
   invitedBy: string;
   createdAt: unknown;

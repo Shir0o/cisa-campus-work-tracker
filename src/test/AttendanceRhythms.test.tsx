@@ -203,6 +203,7 @@ describe('Attendance — Rhythms + This-week wiring (issue #957)', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       isAdmin: true,
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -367,7 +368,7 @@ describe('Attendance — row controls are reachable (issue issue 982)', () => {
     }
     globalThis.Date = MockDate as unknown as DateConstructor;
     mockSnapshotsWith(mockEvents);
-    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true });
+    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true, role: 'admin' });
     (useLayout as any).mockReturnValue({ setSelectedContact: vi.fn() });
   });
 
@@ -443,7 +444,7 @@ describe('Attendance — the count reads the same on every row (issue issue 982)
     }
     globalThis.Date = MockDate as unknown as DateConstructor;
     mockSnapshotsWith(mockEvents);
-    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true });
+    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true, role: 'admin' });
     (useLayout as any).mockReturnValue({ setSelectedContact: vi.fn() });
   });
 
@@ -503,7 +504,7 @@ describe('Attendance — the chip strip opens on the selected week (issue 982)',
     }
     globalThis.Date = MockDate as unknown as DateConstructor;
     mockSnapshotsWith(mockEvents);
-    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true });
+    (useAuth as any).mockReturnValue({ user: { uid: 'u-test', displayName: 'Test User' }, isAdmin: true, role: 'admin' });
     (useLayout as any).mockReturnValue({ setSelectedContact: vi.fn() });
 
     // A strip far wider than its box, with each chip 60px along from the last.

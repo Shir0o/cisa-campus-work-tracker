@@ -12,7 +12,7 @@ import { auth, db } from '../lib/firebase';
 import { registerWebPush, unregisterWebPush } from '../lib/webPush';
 import { sleep } from '../lib/utils';
 
-import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole, roleLabel } from '../lib/permissions';
+import { isAppOwner, canSimulateRole, getEffectiveRole, effectiveRole as appRoleOf, AppRole, roleLabel } from '../lib/permissions';
 import { ImpersonateTarget } from '../types';
 import { Impersonation, meIdFor, identityKey } from '../lib/impersonate';
 import {
@@ -66,9 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const imp = Impersonation.current();
       if (imp) return imp.role;
       const saved = localStorage.getItem(STORAGE_KEY_OWNER_VIEW);
-      if (saved === 'admin' || saved === 'manager' || saved === 'operator' || saved === 'viewer') {
-        return saved as AppRole;
-      }
+      const savedRole = appRoleOf(saved);
+      if (savedRole) return savedRole;
     }
     return null;
   });
@@ -110,10 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ? meIdFor(impersonateTarget.persona)
     : (isOwner && ownerViewRole === 'manager'
         ? 'cisa-trainee'
-        : isOwner && ownerViewRole === 'operator'
-        ? 'cisa-student'
-        : isOwner && ownerViewRole === 'viewer'
-        ? 'cisa-community'
         : (user?.uid || null));
 
   const effectiveUserName = (isOwner && impersonateTarget)
@@ -172,13 +167,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const inviteRef = doc(db, 'invitations', userEmail);
             const inviteDoc = await getDoc(inviteRef);
             
-            let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isAdminClaim ? 'admin' : 'viewer';
+            let initialRole: AppRole = isAdminClaim ? 'admin' : 'manager';
             let initialApproved = isAdminClaim;
 
             if (inviteDoc.exists()) {
               const inviteData = inviteDoc.data();
-              initialRole = inviteData.role;
-              initialApproved = inviteData.approved;
+              // An invitation still naming a cut Student or Community role
+              // lands as a pending Trainee, the same as the downgrade script.
+              const invitedRole = appRoleOf(inviteData.role);
+              initialRole = invitedRole ?? 'manager';
+              initialApproved = invitedRole ? inviteData.approved : false;
             } else if (!isAdminClaim && !isAppOwner(userEmail)) {
               // Uninvited user attempting to log in: keep them signed in but
               // unapproved so the app renders the "Access Restricted" screen
@@ -236,9 +234,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
-            const currentRole = data.role as string;
-            setIsApproved(data.approved || isAdminClaim);
-            const effective = isAdminClaim ? 'admin' : currentRole;
+            // A legacy Student or Community role reads as no role, and no
+            // role has nothing to be approved for.
+            const effective = isAdminClaim ? 'admin' : appRoleOf(data.role ?? null);
+            setIsApproved(!!effective && (data.approved || isAdminClaim));
             setActualRole(effective);
 
             const resolvedDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0] || 'Member';
@@ -254,9 +253,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (doc) => {
               if (doc.exists()) {
                 const data = doc.data();
-                setIsApproved(data.approved || isAdminClaim);
-                const currentRole = data.role as string;
-                const effective = isAdminClaim ? 'admin' : currentRole;
+                const effective = isAdminClaim ? 'admin' : appRoleOf(data.role ?? null);
+                setIsApproved(!!effective && (data.approved || isAdminClaim));
                 setActualRole(effective);
                 if (data?.displayName) {
                   setUser((prev) => (prev && prev.displayName !== data.displayName ? ({ ...prev, displayName: data.displayName, photoURL: data.photoURL || prev.photoURL } as User) : prev));

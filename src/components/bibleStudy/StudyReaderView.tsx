@@ -46,8 +46,8 @@ export type StudyReaderViewProps = {
    * Render this surface as a page: the sticky chrome becomes a `header`
    * (a banner) and the reading region a `main` named by the meeting title.
    * The public scan route owns its own document, so it passes this; the
-   * signed-in reader and the editor preview are already inside the app
-   * shell's `main` and must not nest another (#1814).
+   * editor preview is already inside the app shell's `main` and must not
+   * nest another (#1814).
    */
   asPage?: boolean;
   /**
@@ -59,27 +59,6 @@ export type StudyReaderViewProps = {
    * The public route omits it and the reader owns its own position.
    */
   followSectionIndex?: number;
-  /**
-   * The Section to open on. Unlike `followSectionIndex` this is read once, at
-   * mount, and never pins the reader afterwards — it exists so a Full-timer
-   * who leaves "This week's study" to fix a typo comes back to the Section
-   * they were reading rather than the top of the week (#946). The public
-   * route omits it and always opens at the first Section.
-   */
-  initialSectionIndex?: number;
-  /**
-   * Called with the Section the reader has scrolled to, whenever it changes.
-   * The signed-in reader persists it so the trip out to the editor and back
-   * lands where it left off; the public route omits it.
-   */
-  onSectionChange?: (index: number) => void;
-  /**
-   * Controls for the sticky header's trailing cluster, rendered before the
-   * text-size control. "This week's study" puts Show QR, Copy link and (for
-   * Full-timers) Edit here; the public route and the editor preview pass
-   * nothing, so a student who scanned sees the header exactly as before.
-   */
-  headerActions?: React.ReactNode;
 };
 
 // Pads a 1-based Section index for the counter and the index rows: the +1 is
@@ -321,9 +300,6 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   studyLabel = null,
   asPage = false,
   followSectionIndex,
-  initialSectionIndex,
-  onSectionChange,
-  headerActions,
 }) => {
   const { t } = useLanguage();
   const sections: Section[] = meeting.sections;
@@ -588,30 +564,6 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     handleJump(followSectionIndex);
   }, [followSectionIndex]);
 
-  // Restore-on-return (#946), deliberately mount-only: the stored Section is
-  // an opening position, not an owner of the reader's position. Reacting to
-  // later changes would fight the student's own scrolling, since the value
-  // being stored is derived from that scrolling. It waits for the panels to
-  // exist — the Meeting arrives from a snapshot, so the first render has no
-  // Sections to scroll to.
-  const restoredTo = useRef(false);
-  useEffect(() => {
-    if (restoredTo.current) return;
-    if (initialSectionIndex === undefined || initialSectionIndex <= 0) return;
-    if (sections.length === 0) return;
-    restoredTo.current = true;
-    handleJump(Math.min(initialSectionIndex, sections.length - 1));
-  }, [initialSectionIndex, sections.length]);
-
-  // Report the Section out so a caller can persist it. Reading the mirrored
-  // read model rather than the scroll means this reports settled positions,
-  // not every frame of a smooth scroll.
-  useEffect(() => {
-    onSectionChange?.(state.sectionIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the Section is
-    // the signal; re-running because the caller passed a new closure would
-    // re-report a position that has not moved.
-  }, [state.sectionIndex]);
 
   // The surface below the chrome — the paged deck or the scrolling deck, the
   // rail and the index — is one region, so a route that owns its own page can
@@ -675,7 +627,6 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1 shrink-0">
-          {headerActions}
           {/* The text-size control (#923): the student sets the type size,
               remembered in that browser's storage. The trigger is a small
               "A" button; the popover offers the agreed range. */}

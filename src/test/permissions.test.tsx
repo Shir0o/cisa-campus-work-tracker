@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, canSeeOutreach, canLogOutreach, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
@@ -118,13 +118,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    // '/bible-study/read' (This week's study) and '/bible-study/present' are
-    // every role's (#946): one week, the current one, and the code anyone in
-    // the room may hold up. Only '/bible-study' — the archive — stays admin.
-    viewer:   ['/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/bible-study/read', '/bible-study/present'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', '/bible-study/read', '/bible-study/present'],
-    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/bible-study/read', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/read', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    // '/bible-study/present' is any signed-in user's: the code anyone in the
+    // room may hold up. Only '/bible-study' — the archive — stays admin.
+    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/bible-study/present'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -151,15 +148,26 @@ describe('canAccessRoute()', () => {
     }
   });
 
+  // Student and Community are gone. A stored legacy role is not a rung on the
+  // ladder any more: it reaches nothing, the person page included.
+  it.each(['operator', 'viewer', 'student', 'community'])('a legacy %s role reaches no route', (legacy) => {
+    for (const route of [...ALL_ROUTES, '/people/c1', '/contact', '/bible-study/read']) {
+      expect(canAccessRoute(legacy, route), `${legacy} should NOT access ${route}`).toBe(false);
+    }
+  });
+
+  // The signed-in reader, "This week's study", is cut: the public QR reader
+  // is the week. A Trainee's old bookmark goes home, not to a sibling.
+  it('a Trainee no longer reaches the signed-in study reader', () => {
+    expect(canAccessRoute('manager', '/bible-study/read')).toBe(false);
+    expect(NAV_ITEMS.some((i) => i.href === '/bible-study/read')).toBe(false);
+  });
+
   it('allows approved roles to open the person detail URL route', () => {
-    expect(canAccessRoute('viewer', '/people/c1')).toBe(true);
-    expect(canAccessRoute('operator', '/people/c1')).toBe(true);
     expect(canAccessRoute('manager', '/people/c1')).toBe(true);
     expect(canAccessRoute('admin', '/people/c1')).toBe(true);
     expect(canAccessRoute(null, '/people/c1')).toBe(false);
 
-    expect(canAccessRoute('viewer', '/contact')).toBe(true);
-    expect(canAccessRoute('operator', '/contact')).toBe(true);
     expect(canAccessRoute('manager', '/contact')).toBe(true);
     expect(canAccessRoute('admin', '/contact')).toBe(true);
     expect(canAccessRoute('manager', '/contact/c1')).toBe(true);
@@ -169,24 +177,42 @@ describe('canAccessRoute()', () => {
 // ─── 2. hasMinRole() ─────────────────────────────────────────────────────────
 
 describe('hasMinRole()', () => {
-  it('enforces viewer < operator < manager < admin hierarchy', () => {
+  it('enforces manager < admin, the only two roles', () => {
     expect(hasMinRole('admin', 'admin')).toBe(true);
     expect(hasMinRole('admin', 'manager')).toBe(true);
-    expect(hasMinRole('admin', 'operator')).toBe(true);
-    expect(hasMinRole('admin', 'viewer')).toBe(true);
 
     expect(hasMinRole('manager', 'admin')).toBe(false);
     expect(hasMinRole('manager', 'manager')).toBe(true);
-    expect(hasMinRole('manager', 'operator')).toBe(true);
 
-    expect(hasMinRole('operator', 'manager')).toBe(false);
-    expect(hasMinRole('operator', 'operator')).toBe(true);
-    expect(hasMinRole('operator', 'viewer')).toBe(true);
+    expect(hasMinRole(null, 'manager')).toBe(false);
+  });
 
-    expect(hasMinRole('viewer', 'operator')).toBe(false);
-    expect(hasMinRole('viewer', 'viewer')).toBe(true);
+  it('gives a legacy Student or Community role no rung at all', () => {
+    for (const legacy of ['operator', 'viewer', 'student', 'community']) {
+      expect(hasMinRole(legacy, 'manager'), legacy).toBe(false);
+      expect(hasMinRole(legacy, 'admin'), legacy).toBe(false);
+    }
+  });
+});
 
-    expect(hasMinRole(null, 'viewer')).toBe(false);
+// ─── 2b. effectiveRole() — reading a stored role ────────────────────────────
+
+describe('effectiveRole()', () => {
+  it('passes the two roles through', () => {
+    expect(effectiveRole('admin')).toBe('admin');
+    expect(effectiveRole('manager')).toBe('manager');
+  });
+
+  it('maps a legacy Student or Community role to no role, without throwing', () => {
+    for (const legacy of ['operator', 'viewer', 'student', 'community']) {
+      expect(effectiveRole(legacy), legacy).toBeNull();
+    }
+  });
+
+  it('maps a missing or unknown role to no role', () => {
+    expect(effectiveRole(null)).toBeNull();
+    expect(effectiveRole('')).toBeNull();
+    expect(effectiveRole('owner')).toBeNull();
   });
 });
 
@@ -196,8 +222,6 @@ describe('defaultRouteForRole()', () => {
   it('sends every approved role to the role-based home', () => {
     expect(defaultRouteForRole('admin')).toBe('/');
     expect(defaultRouteForRole('manager')).toBe('/');
-    expect(defaultRouteForRole('operator')).toBe('/');
-    expect(defaultRouteForRole('viewer')).toBe('/');
   });
 
   it('sends a null/unknown role to attendance', () => {
@@ -211,8 +235,6 @@ describe('roleLabel()', () => {
   it('maps internal role keys to the campus-facing names', () => {
     expect(roleLabel('admin')).toBe('Full-timer');
     expect(roleLabel('manager')).toBe('Trainee');
-    expect(roleLabel('operator')).toBe('Student');
-    expect(roleLabel('viewer')).toBe('Community');
     expect(roleLabel(null)).toBe('Guest');
     expect(roleLabel('')).toBe('Guest');
     expect(roleLabel('unregistered_role')).toBe('Unregistered_role');
@@ -222,11 +244,11 @@ describe('roleLabel()', () => {
     // canAccessRoute fallback for invalid role
     expect(canAccessRoute('invalid_role', '/')).toBe(false);
     // canAccessRoute fallback for unknown path (falls back to minRole = admin)
-    expect(canAccessRoute('viewer', '/unknown-route')).toBe(false);
+    expect(canAccessRoute('manager', '/unknown-route')).toBe(false);
     expect(canAccessRoute('admin', '/unknown-route')).toBe(true);
 
     // hasMinRole fallback for invalid role
-    expect(hasMinRole('invalid_role', 'viewer')).toBe(false);
+    expect(hasMinRole('invalid_role', 'manager')).toBe(false);
 
     // defaultRouteForRole fallback for invalid role
     expect(defaultRouteForRole('invalid_role')).toBe('/attendance');
@@ -237,30 +259,6 @@ describe('roleLabel()', () => {
 
 describe('TopNav primary tabs per role', () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it('viewer: Home and On our hearts as primary tabs; Gatherings is denied; More holds the rest', () => {
-    currentUser = TEST_USERS.viewer;
-    renderTopNav();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('On our hearts')).toBeInTheDocument();
-    expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
-    expect(screen.queryByText('My Day')).not.toBeInTheDocument();
-    expect(screen.queryByText('The Board')).not.toBeInTheDocument();
-    expect(screen.queryByText('People')).not.toBeInTheDocument();
-    // primaryNavFor drives the tabs
-    expect(primaryNavFor('viewer').map((i) => i.href)).toEqual(['/', '/prayer']);
-    expect(primaryNavFor('viewer').every((i) => canAccessRoute('viewer', i.href))).toBe(true);
-  });
-
-  it('operator: Home, People, On our hearts; no The Board or Looking back', () => {
-    currentUser = TEST_USERS.operator;
-    renderTopNav();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.queryByText('My Day')).not.toBeInTheDocument();
-    expect(screen.queryByText('The Board')).not.toBeInTheDocument();
-    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
-  });
 
   it('manager: Home, People, The Journey; hides gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
@@ -306,12 +304,12 @@ describe('TopNav primary tabs per role', () => {
 
   it('navExternalFor returns external items according to role', () => {
     expect(navExternalFor('admin').map((i) => i.id)).toContain('calendar');
-    expect(navExternalFor('viewer')).toEqual([]);
+    expect(navExternalFor('manager')).toEqual([]);
     expect(navExternalFor(null)).toEqual([]);
   });
 
   it('primaryNavFor / moreNavFor never overlap and exclude Settings', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       const primary = new Set(primaryNavFor(role).map((i) => i.href));
       const more = moreNavFor(role).map((i) => i.href);
       for (const href of more) {
@@ -325,36 +323,12 @@ describe('TopNav primary tabs per role', () => {
 // ─── 5. MobileNav per role ───────────────────────────────────────────────────
 //
 // #1806 / ADR 0049: Messages and Questions are destinations, so the bar reads
-// four for a trainee and three for a Student or a Community member. The centred
+// four for a trainee and for a Full-timer. The centred
 // search FAB gave up its slot — the phone header already carries a search
 // button, so nothing left the shell's reach.
 
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it('viewer: shows Home, Messages and On our hearts, and no Questions', () => {
-    currentUser = TEST_USERS.viewer;
-    renderMobileNav();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Messages')).toBeInTheDocument();
-    // The destination is "On our hearts" everywhere else in the shell (#1775).
-    expect(screen.getByText('On our hearts')).toBeInTheDocument();
-    // A Community member cannot ask, so the destination would be a dead end.
-    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
-    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-    expect(screen.queryByText('People')).not.toBeInTheDocument();
-  });
-
-  it('operator: shows Home, Messages and People, and no Questions', () => {
-    currentUser = TEST_USERS.operator;
-    renderMobileNav();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Messages')).toBeInTheDocument();
-    expect(screen.getByText('People')).toBeInTheDocument();
-    // Questions opens to a trainee manager and above, never a Student.
-    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
-  });
 
   it('manager (trainee): shows all four destinations', () => {
     currentUser = TEST_USERS.manager;
@@ -389,11 +363,18 @@ describe('MobileNav', () => {
 
 describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings)', () => {
 
-  it('canSeeContact allows full-timer and operator for any contact', () => {
+  it('canSeeContact allows a full-timer any contact', () => {
     const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
     expect(canSeeContact('admin', 'u1', contact)).toBe(true);
-    expect(canSeeContact('operator', 'u1', contact)).toBe(true);
-    expect(canSeeContact('viewer', 'u1', contact)).toBe(true);
+  });
+
+  // The roster used to open to Students and Community too. Only a Full-timer
+  // reads everyone now, the same as the rules' seesAllContacts().
+  it('canSeeContact gives a legacy or missing role no one they are not tied to', () => {
+    const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
+    expect(canSeeContact('operator', 'u1', contact)).toBe(false);
+    expect(canSeeContact('viewer', 'u1', contact)).toBe(false);
+    expect(canSeeContact(null, 'u1', contact)).toBe(false);
   });
 
   it('canSeeContact enforces trainee restrictions (createdBy or coCreators)', () => {
@@ -498,14 +479,12 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
   });
 
   // The decision in #1922: coordination pages are the team's record and a
-  // Trainee does not read them, while a Student reads them through the ladder.
-  // The floor reads "operator and above", which would suggest otherwise, so
-  // this is a guard against /coordination being added to the allowlist rather
-  // than a consequence of ROUTE_MIN_ROLE.
+  // Trainee does not read them. The floor reads "manager and above", which
+  // would suggest otherwise, so this is a guard against /coordination being
+  // added to the allowlist rather than a consequence of ROUTE_MIN_ROLE.
   it('a Trainee cannot reach Coordination Notes, and its floor does not say so', () => {
     expect(canAccessRoute('manager', '/coordination')).toBe(false);
     expect(navItemsForRole('manager').some((i) => i.href === '/coordination')).toBe(false);
-    expect(canAccessRoute('operator', '/coordination')).toBe(true);
     expect(canAccessRoute('admin', '/coordination')).toBe(true);
   });
 
@@ -540,8 +519,8 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
   });
 
   it('exports OWNER_VIEW_ROLES centralized role options', () => {
-    expect(OWNER_VIEW_ROLES).toHaveLength(4);
-    expect(OWNER_VIEW_ROLES.map((r) => r.key)).toEqual(['admin', 'manager', 'operator', 'viewer']);
+    expect(OWNER_VIEW_ROLES).toHaveLength(2);
+    expect(OWNER_VIEW_ROLES.map((r) => r.key)).toEqual(['admin', 'manager']);
   });
 
   describe('isRealPerson, pickableStaff, pickableContacts (#366, #367)', () => {
@@ -672,13 +651,34 @@ describe('Around the team as its own destination (#943)', () => {
   });
 });
 
+// ── Outreach is a Full-timer's alone ────────────────────────────────────────
+// It used to open to Community as well, the folk who went out and logged the
+// names. With Community gone it is not a special case any more.
+
+describe('Outreach access', () => {
+  it('is reachable by a Full-timer only', () => {
+    expect(canAccessRoute('admin', '/outreach')).toBe(true);
+    expect(canAccessRoute('manager', '/outreach')).toBe(false);
+    expect(canAccessRoute('viewer', '/outreach')).toBe(false);
+  });
+
+  it('is seen and logged by a Full-timer only', () => {
+    expect(canSeeOutreach('admin')).toBe(true);
+    expect(canLogOutreach('admin')).toBe(true);
+    for (const role of ['manager', 'viewer', 'operator', null]) {
+      expect(canSeeOutreach(role), String(role)).toBe(false);
+      expect(canLogOutreach(role), String(role)).toBe(false);
+    }
+  });
+});
+
 // Your notes, the submitter's own side of the feedback loop (ADR 0019)
 // `/feedback` used to be reachable only by link (the note button outcome and
 // the outcome notification). It is a destination now, so it belongs in the rail.
 
 describe('Your notes as its own destination', () => {
   it('is reachable by every role that can leave a note', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       expect(canAccessRoute(role, '/feedback')).toBe(true);
     }
     expect(canAccessRoute(null, '/feedback')).toBe(false);
@@ -688,9 +688,9 @@ describe('Your notes as its own destination', () => {
     const item = NAV_ITEMS.find((i) => i.href === '/feedback');
     expect(item).toBeDefined();
     expect(item?.label).toBe('Your reports');
-    expect(item?.minRole).toBe('viewer');
+    expect(item?.minRole).toBe('manager');
 
-    const today = groupedNavFor('viewer').find((g) => g.label === 'Today');
+    const today = groupedNavFor('manager').find((g) => g.label === 'Today');
     expect(today?.items.map((i) => i.href)).toContain('/feedback');
   });
 
@@ -713,25 +713,13 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },  // admin: the index, never the reader (#946)
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
       { label: 'Today', hrefs: ['/', '/questions', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory'] },
-      { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
-    ],
-    operator: [
-      { label: 'Today', hrefs: ['/', '/coordination', '/feedback'] },
-      { label: 'People', hrefs: ['/directory'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study/read', '/messages'] },
-      { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
-    ],
-    viewer: [
-      { label: 'Today', hrefs: ['/', '/feedback'] },
-      { label: 'People', hrefs: ['/outreach'] },
-      { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
-      { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
+      { label: 'Gatherings', hrefs: ['/messages'] },
     ],
   };
 
@@ -746,7 +734,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   });
 
   it('contains exactly the destinations the role can reach — nothing more, nothing less', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       const groups = groupedNavFor(role);
       const groupedHrefs = groups.flatMap((g) => g.items.map((it) => it.href));
       const reachable = navItemsForRole(role).map((it) => it.href);
@@ -762,14 +750,14 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   });
 
   it('Settings is never in the returned groups', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       const hrefs = groupedNavFor(role).flatMap((g) => g.items.map((it) => it.href));
       expect(hrefs).not.toContain('/settings');
     }
   });
 
   it('exposes every group label exactly once and never repeats a destination', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       const groups = groupedNavFor(role);
       const labels = groups.map((g) => g.label);
       expect(new Set(labels).size).toBe(labels.length);
@@ -785,7 +773,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   });
 
   it('preserves stable ordering across calls (same input → same output shape)', () => {
-    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+    for (const role of ['admin', 'manager'] as const) {
       const a = groupedNavFor(role);
       const b = groupedNavFor(role);
       expect(b).toEqual(a);
@@ -797,12 +785,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     // guards against a new NAV_ITEMS entry being added without being placed
     // in a group.
     const adminHrefs = groupedNavFor('admin').flatMap((g) => g.items.map((it) => it.href));
-    // '/bible-study/read' is excluded: it is the same nav entry as
-    // '/bible-study' wearing the same label, and a Full-timer means the index
-    // (#946). It is grouped, just never for this role.
-    const navHrefs = NAV_ITEMS.map((it) => it.href).filter(
-      (h) => h !== '/settings' && h !== '/bible-study/read',
-    );
+    const navHrefs = NAV_ITEMS.map((it) => it.href).filter((h) => h !== '/settings');
     expect(new Set(adminHrefs)).toEqual(new Set(navHrefs));
   });
 });

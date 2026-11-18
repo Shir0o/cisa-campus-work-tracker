@@ -21,7 +21,6 @@ Expo / React Native cross-platform mobile application for iOS, Android, and web.
 - `AuthProvider`: Context provider managing authentication state, user profile subscription, and admin impersonation (`src/lib/AuthProvider.tsx`)
 - `LanguageProvider`: i18n localization provider for English and Spanish (`src/lib/LanguageProvider.tsx`)
 - `routeForNotificationLink`, `useNotificationTapRouting`: Deep link parser and tap listener mapping web notification URLs to native screens (`src/lib/notificationRouting.ts`)
-- `useMemberPrayerData`: Live prayer subscription hook partitioned by role (`src/lib/useMemberPrayerData.ts`)
 - Data Layer: Typed Firestore operations for notifications, prayers, contacts, chat, and attendances (`src/lib/data/*`)
 - UI & V2 Primitives: `Widget`, `Room`, `V2RowCard`, `BufferedTextInput`, `KeyboardScrollView`, `ImpersonateLayer`, `QueueDrawer` (`src/components/*`)
 
