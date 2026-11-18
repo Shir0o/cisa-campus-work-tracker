@@ -3,7 +3,7 @@
 // palette from context, so renders sit inside the real ThemeProvider (room and
 // tint default to the trainee's green room, which is all these pieces need).
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import {
@@ -227,6 +227,37 @@ describe('V2Input / V2TextArea', () => {
     await fireEvent.press(getByLabelText('Clear search'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  // A search's × appears on the first letter and leaves again when the field
+  // empties. Swapping the root between the bare field and a wrapper around it
+  // re-mounts the TextInput, and a re-mounted field loses focus — the keyboard
+  // drops mid-search. The field has to keep its place (and its host instance)
+  // from one render to the next.
+  it('keeps the same field mounted as the clear control comes and goes', async () => {
+    const clear = { label: 'Clear search', onPress: jest.fn() };
+    const { getByPlaceholderText, queryByLabelText, rerender } = await renderV2(
+      <V2Input value="" onChangeText={jest.fn()} placeholder="Search" clear={clear} />,
+    );
+
+    const field = getByPlaceholderText('Search');
+    // Compared as a boolean: the element itself is circular and unprintable.
+    const stillTheSame = () => getByPlaceholderText('Search') === field;
+    expect(queryByLabelText('Clear search')).toBeNull();
+
+    await rerender(
+      <ThemeProvider>
+        <V2Input value="a" onChangeText={jest.fn()} placeholder="Search" clear={clear} />
+      </ThemeProvider>,
+    );
+    expect(stillTheSame()).toBe(true);
+
+    await rerender(
+      <ThemeProvider>
+        <V2Input value="" onChangeText={jest.fn()} placeholder="Search" clear={clear} />
+      </ThemeProvider>,
+    );
+    expect(stillTheSame()).toBe(true);
+  });
 });
 
 describe('V2Seg', () => {
@@ -247,6 +278,40 @@ describe('V2Seg', () => {
     await fireEvent.press(getByText('Prayers'));
     expect(onChange).toHaveBeenCalledWith('prayers');
     expect(getByText('2')).toBeTruthy();
+  });
+
+  // Three equal tabs on a small phone leave the longest label ("Conversation")
+  // barely wider than its pill, and the count pushes it over: the text ran past
+  // the tab's edge instead of staying inside it. The label gives (one line,
+  // ellipsized, allowed to shrink) and the count keeps its width, so nothing
+  // overflows and no number is cut.
+  it('lets a long label ellipsize inside its tab while the count keeps its width', async () => {
+    const { getAllByRole, getByText } = await renderV2(
+      <V2Seg
+        value="conversation"
+        onChange={jest.fn()}
+        items={[
+          { id: 'story', label: 'Interactions', count: 4 },
+          { id: 'prayers', label: 'Prayers', count: 1 },
+          { id: 'conversation', label: 'Conversation', count: 8 },
+        ]}
+      />,
+    );
+
+    for (const tab of getAllByRole('tab')) {
+      const style = StyleSheet.flatten(tab.props.style);
+      expect(style?.paddingHorizontal).toBeGreaterThan(0);
+      expect(style?.minWidth).toBe(0);
+    }
+
+    const label = getByText('Conversation');
+    expect(label.props.numberOfLines).toBe(1);
+    expect(label.props.ellipsizeMode).toBe('tail');
+    expect(StyleSheet.flatten(label.props.style)?.flexShrink).toBe(1);
+
+    const count = getByText('8');
+    expect(count.props.numberOfLines).toBe(1);
+    expect(StyleSheet.flatten(count.props.style)?.flexShrink).toBe(0);
   });
 });
 

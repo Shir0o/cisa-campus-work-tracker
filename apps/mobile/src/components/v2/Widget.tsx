@@ -359,6 +359,10 @@ export function V2Input({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const showClear = !!clear && value !== '';
+  // The field keeps its place in the tree whether or not the × is up. Swapping
+  // the root between the bare field and a `<View>` around it re-mounts the
+  // TextInput, which drops the keyboard on the keystroke that first shows the
+  // × (and on the backspace that empties it).
   const field = (
     <BufferedTextInput
       value={value}
@@ -385,28 +389,30 @@ export function V2Input({
     />
   );
 
-  if (!clear || !showClear) return field;
+  if (!clear) return field;
 
   return (
     <View>
       {field}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={clear.label}
-        onPress={clear.onPress}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(18), color: c.card.ink3 }}>×</Text>
-      </Pressable>
+      {showClear && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={clear.label}
+          onPress={clear.onPress}
+          style={({ pressed }) => ({
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: fs(18), color: c.card.ink3 }}>×</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -475,7 +481,7 @@ export function V2Seg<T extends string>({
 }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <View style={{ flexDirection: 'row', gap: 6, marginTop: 16, marginBottom: 12 }}>
+    <View style={{ flexDirection: 'row', gap: 4, marginTop: 16, marginBottom: 12 }}>
       {items.map((item) => {
         const on = item.id === value;
         return (
@@ -486,23 +492,41 @@ export function V2Seg<T extends string>({
             onPress={() => onChange(item.id)}
             style={({ pressed }) => ({
               flex: 1,
+              minWidth: 0,
               minHeight: 44,
+              paddingHorizontal: 8,
               borderRadius: 14,
               backgroundColor: on ? c.card.inverse : c.room.chip,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
+              gap: 4,
               opacity: pressed ? 0.8 : 1,
               transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card.onInverse : c.room.ink2 }}>
+            {/* Three equal tabs leave a narrow one on a small phone, and the
+                labels here are long ("Conversation"). The label is the part
+                that gives: it ellipsizes inside the pill instead of running
+                past its edge, and the count keeps its width so a number is
+                never the thing that gets cut. */}
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{
+                flexShrink: 1,
+                fontFamily: font.bold,
+                fontSize: fs(13.5),
+                color: on ? c.card.onInverse : c.room.ink2,
+              }}
+            >
               {item.label}
             </Text>
             {!!item.count && (
               <Text
+                numberOfLines={1}
                 style={{
+                  flexShrink: 0,
                   fontFamily: font.bold,
                   fontSize: fs(11),
                   opacity: 0.6,

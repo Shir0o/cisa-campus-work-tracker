@@ -203,4 +203,26 @@ describe('PeopleScreen Step pills (#1800)', () => {
       { uid: 'u1', name: 'Tony' },
     );
   });
+
+  // The keyboard dropped on the first letter typed into the search — and again
+  // when backspacing emptied it — because the × appearing/disappearing swapped
+  // V2Input's root element and re-mounted the TextInput. A focused field that
+  // gets re-mounted is a field the keyboard leaves, so the search must stay one
+  // and the same host element from empty, through the first letter, and back.
+  it('keeps the search field mounted as the × comes and goes, so the keyboard stays', async () => {
+    const { getByPlaceholderText, queryByLabelText } = await renderPeople();
+
+    const field = getByPlaceholderText('Find someone by name, major, hall…');
+    // Compared as a boolean: the element itself is circular and unprintable.
+    const stillTheSame = () => getByPlaceholderText('Find someone by name, major, hall…') === field;
+    expect(queryByLabelText('Clear search')).toBeNull();
+
+    await fireEvent.changeText(field, 'a');
+    expect(queryByLabelText('Clear search')).toBeTruthy();
+    expect(stillTheSame()).toBe(true);
+
+    await fireEvent.changeText(field, '');
+    expect(queryByLabelText('Clear search')).toBeNull();
+    expect(stillTheSame()).toBe(true);
+  });
 });
