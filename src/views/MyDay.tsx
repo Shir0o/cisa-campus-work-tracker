@@ -95,6 +95,8 @@ import PointerCard from "../components/landing/PointerCard";
 import ToAskPointerCard from "../components/landing/ToAskPointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
 import FirstRunCard from "../components/landing/FirstRunCard";
+import AnnouncementCards from "../components/announcements/AnnouncementCards";
+import AnnouncementComposer from "../components/announcements/AnnouncementComposer";
 import { useFirstRunRecords } from "../lib/firstRunRecords";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
@@ -1235,6 +1237,11 @@ export default function MyDay() {
             </button>
           </div>
         </header>
+
+        {/* ── Announcements: the cards not yet marked Got it, then a Full-timer's
+            own box and who has not got theirs (cut-or-keep §20). ── */}
+        <AnnouncementCards className="mt-8" />
+        <AnnouncementComposer className="mt-6" />
 
         {/* ── On you + the pointer card — My Day is a skim dashboard of your
             own work (issue 943). "On you" is a bento card among the others;

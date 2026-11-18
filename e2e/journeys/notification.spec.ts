@@ -334,6 +334,21 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
     await expectPushTo('trainee', /commented on Omar Around/);
   });
 
+  test('an announcement buzzes every other Full-timer and Trainee, and not the poster', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await page.goto('/');
+    await waitForShell(page);
+    const box = page.getByLabel('Post an announcement');
+    await expect(box).toBeVisible({ timeout: 15_000 });
+    await box.fill(`Gathering starts at 7pm ${Date.now()}`);
+    await page.getByRole('button', { name: 'Post', exact: true }).click();
+
+    await expectPushTo('trainee', /posted an announcement/);
+    await expectPushTo('trainee2', /posted an announcement/);
+    // The poster already knows: the bell entries are for everyone else.
+    expect((await pushes()).filter((p) => p.uid === uid.fulltimer && /posted an announcement/.test(p.title))).toHaveLength(0);
+  });
+
   test('a public sign-up reaches every full-timer device and no trainee', async ({ page, browser }) => {
     await page.goto('/signup');
     await expect(page.getByRole('heading', { name: 'Tell us about you.' })).toBeVisible({ timeout: 15_000 });

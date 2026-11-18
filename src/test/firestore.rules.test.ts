@@ -5254,4 +5254,124 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // ── Announcements (cut-or-keep §20) ──
+  // A Full-timer posts; every approved Full-timer and Trainee reads and may say
+  // Got it for themselves — and only that. Chats are gone (see CH1 above).
+  describe('Announcements', () => {
+    const seedAnnouncementUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'ft2'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'trainee2'), { role: 'manager', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
+        await setDoc(doc(c.firestore(), 'users', 'pendingft'), { role: 'admin', approved: false });
+      });
+    };
+    const newAnnouncement = (over: Record<string, unknown> = {}) => ({
+      body: 'Retreat moves to Saturday.',
+      authorId: 'ft1',
+      authorName: 'Mei Lin',
+      createdAt: serverTimestamp(),
+      gotIt: {},
+      ...over,
+    });
+    const seedAnnouncement = async (gotIt: Record<string, unknown> = {}) => {
+      await seedAnnouncementUsers();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'announcements', 'an1'), {
+          body: 'Retreat moves to Saturday.',
+          authorId: 'ft1',
+          authorName: 'Mei Lin',
+          createdAt: new Date('2026-11-18T10:00:00Z'),
+          gotIt,
+        });
+      });
+    };
+    const ref = (uid: string, id = 'an1') => doc(getFirestore({ uid }), 'announcements', id);
+
+    it('ANN1: a Full-timer posts an announcement', async () => {
+      await seedAnnouncementUsers();
+      await assertSucceeds(setDoc(ref('ft1', 'new1'), newAnnouncement()));
+    });
+
+    it('ANN2: a Trainee, an unapproved Full-timer and a signed-out visitor cannot post', async () => {
+      await seedAnnouncementUsers();
+      await assertFails(setDoc(ref('trainee1', 'x1'), newAnnouncement({ authorId: 'trainee1' })));
+      await assertFails(setDoc(ref('pendingft', 'x2'), newAnnouncement({ authorId: 'pendingft' })));
+      await assertFails(setDoc(doc(getFirestore(), 'announcements', 'x3'), newAnnouncement()));
+    });
+
+    it('ANN3: a post must name its poster, keep a body of 1 to 2000 characters and start with nobody Got it', async () => {
+      await seedAnnouncementUsers();
+      // Written as someone else.
+      await assertFails(setDoc(ref('ft1', 'b1'), newAnnouncement({ authorId: 'ft2' })));
+      // Empty, and one past the limit; the limit itself is fine.
+      await assertFails(setDoc(ref('ft1', 'b2'), newAnnouncement({ body: '' })));
+      await assertFails(setDoc(ref('ft1', 'b3'), newAnnouncement({ body: 'x'.repeat(2001) })));
+      await assertSucceeds(setDoc(ref('ft1', 'b4'), newAnnouncement({ body: 'x'.repeat(2000) })));
+      // Pre-filled Got it, a client-chosen time, a stray field, a missing gotIt map.
+      await assertFails(setDoc(ref('ft1', 'b5'), newAnnouncement({ gotIt: { trainee1: serverTimestamp() } })));
+      await assertFails(setDoc(ref('ft1', 'b6'), newAnnouncement({ createdAt: new Date('2020-01-01T00:00:00Z') })));
+      await assertFails(setDoc(ref('ft1', 'b7'), newAnnouncement({ pinned: true })));
+      const { gotIt: _gotIt, ...noGotIt } = newAnnouncement();
+      await assertFails(setDoc(ref('ft1', 'b8'), noGotIt));
+    });
+
+    it('ANN4: every approved Full-timer and Trainee reads announcements; an unapproved user and a visitor cannot', async () => {
+      await seedAnnouncement();
+      for (const uid of ['ft1', 'ft2', 'trainee1', 'trainee2']) {
+        await assertSucceeds(getDoc(ref(uid)));
+        await assertSucceeds(
+          getDocs(query(collection(getFirestore({ uid }), 'announcements'), orderBy('createdAt', 'desc'), limit(50))),
+        );
+      }
+      await assertFails(getDoc(ref('pending1')));
+      await assertFails(getDocs(collection(getFirestore({ uid: 'pending1' }), 'announcements')));
+      await assertFails(getDoc(doc(getFirestore(), 'announcements', 'an1')));
+    });
+
+    it('ANN5: any approved user may say Got it for themselves, and only for themselves', async () => {
+      await seedAnnouncement();
+      await assertSucceeds(updateDoc(ref('trainee1'), { 'gotIt.trainee1': serverTimestamp() }));
+      await assertSucceeds(updateDoc(ref('ft2'), { 'gotIt.ft2': serverTimestamp() }));
+      // Not for someone else, not for two people at once.
+      await assertFails(updateDoc(ref('trainee2'), { 'gotIt.trainee1': serverTimestamp() }));
+      await assertFails(
+        updateDoc(ref('trainee2'), { 'gotIt.trainee2': serverTimestamp(), 'gotIt.ft1': serverTimestamp() }),
+      );
+      // An unapproved user cannot.
+      await assertFails(updateDoc(ref('pending1'), { 'gotIt.pending1': serverTimestamp() }));
+    });
+
+    it('ANN6: Got it is a server timestamp that, once set, stays', async () => {
+      await seedAnnouncement({ trainee1: new Date('2026-11-18T10:05:00Z') });
+      // A client-chosen time, a second Got it, and taking it back.
+      await assertFails(updateDoc(ref('trainee2'), { 'gotIt.trainee2': new Date('2020-01-01T00:00:00Z') }));
+      await assertFails(updateDoc(ref('trainee1'), { 'gotIt.trainee1': serverTimestamp() }));
+      await assertFails(updateDoc(ref('trainee1'), { 'gotIt.trainee1': deleteField() }));
+      // Someone else's Got it cannot be wiped by a Full-timer either.
+      await assertFails(updateDoc(ref('ft2'), { 'gotIt.trainee1': deleteField() }));
+    });
+
+    it('ANN7: nobody edits the body, the poster or the time — not even the poster or another Full-timer', async () => {
+      await seedAnnouncement();
+      for (const uid of ['ft1', 'ft2', 'trainee1']) {
+        await assertFails(updateDoc(ref(uid), { body: 'Changed' }));
+        await assertFails(updateDoc(ref(uid), { authorId: uid }));
+        await assertFails(updateDoc(ref(uid), { createdAt: serverTimestamp() }));
+        // Their own Got it together with another field is still refused.
+        await assertFails(updateDoc(ref(uid), { [`gotIt.${uid}`]: serverTimestamp(), body: 'Changed' }));
+      }
+    });
+
+    it('ANN8: only a Full-timer deletes an announcement', async () => {
+      await seedAnnouncement();
+      await assertFails(deleteDoc(ref('trainee1')));
+      await assertFails(deleteDoc(ref('pendingft')));
+      await assertSucceeds(deleteDoc(ref('ft2')));
+    });
+  });
+
+
 });

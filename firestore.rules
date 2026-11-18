@@ -1328,6 +1328,40 @@ service cloud.firestore {
       allow delete: if isValidId(docId) && isAdmin();
     }
 
+    // 17. Announcements — cut-or-keep §20. A Full-timer posts; every approved
+    // Full-timer and Trainee reads and says "Got it" for themselves, and that is
+    // all anyone but a Full-timer deleting it may change. `gotIt` maps a uid to
+    // the server time that person said it. Chats are gone: the chatRooms path
+    // has no match and is closed to everyone.
+    match /announcements/{announcementId} {
+      function isValidAnnouncement(data) {
+        return data.keys().hasOnly(['body', 'authorId', 'authorName', 'createdAt', 'gotIt']) &&
+               data.keys().hasAll(['body', 'authorId', 'authorName', 'createdAt', 'gotIt']) &&
+               data.body is string && data.body.size() >= 1 && data.body.size() <= 2000 &&
+               data.authorId == request.auth.uid &&
+               data.authorName is string && data.authorName.size() <= 128 &&
+               data.createdAt == request.time &&
+               data.gotIt is map && data.gotIt.size() == 0;
+      }
+
+      // Only your own entry may be added, once, as the server's time. Nothing
+      // else on the announcement moves, and nobody's Got it is taken back.
+      function isOwnGotIt() {
+        let entries = incoming().gotIt.diff(existing().gotIt);
+        return incoming().diff(existing()).affectedKeys().hasOnly(['gotIt']) &&
+               !(request.auth.uid in existing().gotIt) &&
+               entries.affectedKeys().hasOnly([request.auth.uid]) &&
+               entries.addedKeys().hasOnly([request.auth.uid]) &&
+               incoming().gotIt[request.auth.uid] == request.time;
+      }
+
+      allow get, list: if isApprovedManager();
+      allow create: if isValidId(announcementId) && isApprovedManager() && isAdmin() &&
+                       isValidAnnouncement(incoming());
+      allow update: if isValidId(announcementId) && isApprovedManager() && isOwnGotIt();
+      allow delete: if isValidId(announcementId) && isApprovedManager() && isAdmin();
+    }
+
     // 19. Bible Study Meetings — public QR accessible reading documents
     match /bible_study_meetings/{meetingId} {
       function isValidMeeting(data) {

@@ -37,7 +37,23 @@ vi.mock('../lib/threads', async (importOriginal) => {
   };
 });
 
+// The announcement cards and the Full-timer's box own their own subscription;
+// these tests only check that the home mounts them.
+vi.mock('../components/announcements/AnnouncementCards', () => ({
+  default: () => <div data-testid="announcement-cards" />,
+}));
+vi.mock('../components/announcements/AnnouncementComposer', () => ({
+  default: () => <div data-testid="announcement-composer" />,
+}));
+
 describe('MyDayMobile', () => {
+  it('mounts the announcement cards and the Full-timer’s box (cut-or-keep §20)', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
+    expect(screen.getByTestId('announcement-cards')).toBeInTheDocument();
+    expect(screen.getByTestId('announcement-composer')).toBeInTheDocument();
+  });
+
   it('renders correctly with no data', () => {
     (useAuth as any).mockReturnValue({
       user: { displayName: 'John Doe' },

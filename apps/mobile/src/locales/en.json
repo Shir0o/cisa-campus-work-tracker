@@ -1316,6 +1316,20 @@
       "leave_a_note": "Report a problem or idea",
       "all_welcome": "Goes to the people who build the app."
     },
+    "announcements": {
+      "title": "Announcements",
+      "from": "Announcement from {name}",
+      "got_it": "Got it",
+      "mark_failed": "Couldn't mark it. Try again.",
+      "compose_title": "Post an announcement",
+      "compose_placeholder": "Write an announcement",
+      "post": "Post",
+      "posting": "Posting…",
+      "post_failed": "Couldn't post it. Try again.",
+      "yours": "Your announcements",
+      "progress": "{got} of {total} got it",
+      "waiting_on": "Not yet: {names}"
+    },
     "goal": {
       "ring_label": "You've spoken with {count} of {goal} new people today."
     },

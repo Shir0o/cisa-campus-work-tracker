@@ -75,6 +75,13 @@ jest.mock('../log/LogSheet', () => ({ LogSheet: (props: never) => mockLogSheet(p
 const mockReplySheet = jest.fn((_props: { message: object | null; onSend: (body: string) => void }) => null);
 jest.mock('./ReplySheet', () => ({ ReplySheet: (props: never) => mockReplySheet(props) }));
 
+// The panel owns its own subscription; this file only checks the queue mounts it.
+jest.mock('../announcements/AnnouncementsPanel', () => {
+  const { Text } = jest.requireActual('react-native');
+  const ReactActual = jest.requireActual('react');
+  return { AnnouncementsPanel: () => ReactActual.createElement(Text, null, 'announcements-panel') };
+});
+
 const LONG_NOTES =
   'Met at the welcome fair. Studies biology, wants to be a doctor. Grew up near the coast and misses it. ' +
   'Asked about the retreat in spring and whether there is a ride from the dorms.';
@@ -206,6 +213,16 @@ describe('QueueScreen', () => {
       </ThemeProvider>,
     );
     expect(queryByTestId('queue-skeleton')).toBeNull();
+  });
+
+  it('mounts the announcements panel above the card (cut-or-keep §20)', async () => {
+    (useTraineeLandingData as jest.Mock).mockReturnValue({ ...baseData, loading: false });
+    const { getByText } = await render(
+      <ThemeProvider>
+        <QueueScreen />
+      </ThemeProvider>,
+    );
+    expect(getByText('announcements-panel')).toBeTruthy();
   });
 
   describe('Today, off campus', () => {

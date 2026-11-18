@@ -64,17 +64,12 @@ The desktop search palette that opens the do-everything navigation: jump to any 
 The text search on the Directory that finds a contact by matching their name, email, spiritual background, tags, and the teammates tied to them (founders, carers, co-creators). Name matches rank first, and matching is word-boundary rather than substring — "ian" surfaces a person named Ian, not every contact with "christian" in a field — while a contact matched only through a tied teammate is still shown, just demoted beneath any name matches.
 _Avoid_: Find someone, person search, name search
 
-**Messages**:
-The in-app place where people write to each other outside any one contact: **Chats** and **Announcements**. Never the off-app texting logged as an Interaction, which is **Text / DM**.
-_Avoid_: Conversations (for chats), inbox
-
-**Chat**:
-A direct or group exchange in **Messages**, where everyone in it can write.
-_Avoid_: Conversation, message (for the whole exchange), DM
-
 **Announcements**:
-A room in **Messages** that everyone in it reads, where only Full-timers post at the top level and anyone may answer in a **Thread**. Distinct from the **What's New Announcement**, which is about the app.
-_Avoid_: Channel, broadcast
+A note a Full-timer posts to every approved Full-timer and Trainee. It pushes to every phone (one bell entry per person), shows as a card on each person's home until they say **Got it**, and the poster sees how many got it and who has not. No replies and no page of its own: it is one card, not a conversation. Chats, the Messages page and the old Announcements room are gone; their documents stay in Firestore, unread. Distinct from the **What's New Announcement**, which is about the app.
+_Avoid_: Channel, broadcast, Messages, chat
+
+**Got it**:
+One person's acknowledgement of an **Announcement**. It takes the card off their home and nowhere else; the poster's count and the list of who has not both read from it. It is set once and stays.
 
 **Text / DM**:
 The Interaction type for reaching a person by text, DM, or any other written message outside the app.
@@ -110,7 +105,7 @@ _Avoid_: Arbitrary px radii on inputs, lozenge inputs
 
 
 **In-app Notification**:
-An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId` or the chat conversation at `/messages/:roomId`).
+An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, @mentions, or an Announcement. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`; an Announcement opens home, where its card is).
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
@@ -209,7 +204,7 @@ _Avoid_: Discussion, Private, Comments, internal thread, chat
 Two other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; and a **Coordination note** is neither.
 
 **Mention**:
-Explicitly tagging a teammate in a Conversation, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
+Explicitly tagging a teammate in a Conversation or the Full-timers tab using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
 _Avoid_: Tag, ping, callout
 
 **Test Account Purge**:
@@ -240,7 +235,7 @@ One staff member saying a **Follow up** wants doing, written into a contact's **
 _Avoid_: Nudge, reminder, assigned follow-up, task
 
 **Conversation (on a contact)**:
-The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. What is written there comes in three kinds, each named for what it does: **Update**, **Question**, and **Ask someone to follow up** (which raises a Follow-up ask). The word means only this stream — a logged contact with the person is an **Interaction**, and an exchange in **Messages** is a **Chat**. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** stream, which is the same kind of thread restricted to staff.
+The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. What is written there comes in three kinds, each named for what it does: **Update**, **Question**, and **Ask someone to follow up** (which raises a Follow-up ask). The word means only this stream — a logged contact with the person is an **Interaction**,  Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** stream, which is the same kind of thread restricted to staff.
 _Avoid_: Follow-up, Thread, Comments, Walking together; Comment (for the Update kind); Ask a follow-up (reads as a follow-up question)
 
 **The story so far**:
@@ -276,7 +271,7 @@ The two team-wide notifications that keep the week's rhythm. A Full-timer is tol
 _Avoid_: Nudge, digest, cron, check-in
 
 **Thread (replies to one message)**:
-The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** stream, an Interaction's "think this through together", a chat, an announcement. The word means only this — never the stream itself.
+The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** stream, an Interaction's "think this through together". The word means only this — never the stream itself.
 _Avoid_: Sub-thread, nested replies, comments, discussion
 
 **Tied to a contact**:

@@ -49,6 +49,7 @@ import { ReplySheet } from './ReplySheet';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { QueueSkeleton } from '../skeleton/QueueSkeleton';
 import { M2Release } from '../release/M2Release';
+import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel';
 
 /** What the "done for today" toast calls a card: its person, else the thing itself. */
 const cardName = (card: QueueCardData | undefined): string =>
@@ -394,6 +395,10 @@ export function QueueScreen() {
           </View>
         )}
       </View>
+
+      {/* Announcements a Full-timer posted that this trainee has not marked Got it.
+          Nothing draws when there are none, so the queue keeps its whole screen. */}
+      <AnnouncementsPanel uid={uid} name={user?.displayName || 'A trainee'} isFullTimer={false} inset />
 
       {current ? (
         <View style={{ flex: 1, paddingHorizontal: 18, minHeight: 0 }}>

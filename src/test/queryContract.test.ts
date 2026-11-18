@@ -67,6 +67,8 @@ import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { activitiesPageQuery, countActivities } from '../../packages/core/src/data/activities';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
+import { markGotIt, postAnnouncement, subscribeAnnouncements } from '../../packages/core/src/data/announcements';
+import type { Announcement } from '../../packages/core/src/announcements';
 import { setPrayerTeamPrayer } from '../../packages/core/src/data/prayers';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
@@ -234,6 +236,15 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await seedDoc(db, 'toAskNotes/admin1', {
         teamFilter: 'all',
         lines: [{ id: 'n1', text: 'Ask Jae about Sam', group: 'jae', createdAt: ISO }],
+      });
+
+      // An announcement a Full-timer posted for the whole team (§20).
+      await seedDoc(db, 'announcements/ann-1', {
+        body: 'Retreat moves to Saturday',
+        authorId: ADMIN,
+        authorName: 'Admin',
+        createdAt: Timestamp.fromMillis(Date.parse(ISO)),
+        gotIt: {},
       });
 
       // The vault's audit feed (#1966): entries a Full-timer appends. The feed
@@ -573,6 +584,54 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       const update = { id: 'u1', text: 'x', at: ISO, dest: 'line' as const };
       await expect(dismissToAskLine(db, ADMIN, {}, 'notReached|c-mine', ISO)).rejects.toBeTruthy();
       await expect(postToAskLineUpdate(db, ADMIN, {}, 'notReached|c-mine', update)).rejects.toBeTruthy();
+    }
+  });
+
+  // ── Announcements (cut-or-keep §20) ────────────────────────────────────────
+  // The card on every home reads the newest announcements; a Full-timer posts
+  // one and writes a bell entry per person; anyone approved says Got it for
+  // themselves. The app's real builders, run for each role.
+  it('row 23 — every approved Full-timer and Trainee reads the announcements; an unapproved user cannot', async () => {
+    for (const uid of [ADMIN, ADMIN_FRESH, TRAINEE, OTHER_TRAINEE]) {
+      const res = await awaitSnapshot<Announcement[]>((cb, onError) => subscribeAnnouncements(dbFor(uid), cb, onError));
+      expect(res.ok, uid).toBe(true);
+      if (res.ok) expect(res.value.map((a) => a.id)).toContain('ann-1');
+    }
+    const denied = await awaitSnapshot<Announcement[]>((cb, onError) => subscribeAnnouncements(dbFor(PENDING), cb, onError));
+    expect(denied.ok).toBe(false);
+  });
+
+  it('row 23 — a Full-timer posts, and a Trainee and an unapproved user cannot', async () => {
+    const notified: string[] = [];
+    const id = await postAnnouncement(dbFor(ADMIN), { uid: ADMIN, name: 'Admin' }, 'New time', [TRAINEE, OTHER_TRAINEE], (n) => {
+      notified.push(n.userId);
+    });
+    expect(id).toBeTruthy();
+    expect(notified).toEqual([TRAINEE, OTHER_TRAINEE]);
+
+    for (const uid of [TRAINEE, PENDING]) {
+      const onNotify = vi.fn();
+      await expect(postAnnouncement(dbFor(uid), { uid, name: 'X' }, 'Nope', [ADMIN], onNotify)).rejects.toBeTruthy();
+      // A refused post writes no bell entry.
+      expect(onNotify).not.toHaveBeenCalled();
+    }
+  });
+
+  it('row 23 — each person says Got it for themselves only, and the poster sees it', async () => {
+    await expect(markGotIt(dbFor(TRAINEE), 'ann-1', TRAINEE)).resolves.toBeUndefined();
+    await expect(markGotIt(dbFor(ADMIN_FRESH), 'ann-1', ADMIN_FRESH)).resolves.toBeUndefined();
+    // Negative: another person's name, a second Got it, and an unapproved user.
+    await expect(markGotIt(dbFor(OTHER_TRAINEE), 'ann-1', TRAINEE)).rejects.toBeTruthy();
+    await expect(markGotIt(dbFor(TRAINEE), 'ann-1', TRAINEE)).rejects.toBeTruthy();
+    await expect(markGotIt(dbFor(PENDING), 'ann-1', PENDING)).rejects.toBeTruthy();
+
+    const seen = await awaitSnapshot<Announcement[]>(
+      (cb, onError) => subscribeAnnouncements(dbFor(ADMIN), cb, onError),
+      (list) => Object.keys(list.find((a) => a.id === 'ann-1')?.gotIt ?? {}).length === 2,
+    );
+    expect(seen.ok).toBe(true);
+    if (seen.ok) {
+      expect(Object.keys(seen.value.find((a) => a.id === 'ann-1')!.gotIt).sort()).toEqual([ADMIN_FRESH, TRAINEE]);
     }
   });
 

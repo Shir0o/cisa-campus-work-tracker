@@ -35,6 +35,7 @@ import { FromTeam } from './FromTeam';
 import { GoneQuiet } from './GoneQuiet';
 import { PrayersToCarry } from './PrayersToCarry';
 import { HomesOpen } from './HomesOpen';
+import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
 import { FtTodoSheet } from './FtTodoSheet';
@@ -226,6 +227,9 @@ function FtHome() {
           </View>
           <PersonMark name={user?.displayName || me} id={uid} size={44} radius={15} fontSize={14} />
         </View>
+
+        {/* ── what the team has said, and a box to say something to it ── */}
+        <AnnouncementsPanel uid={uid} name={user?.displayName || 'A Full-timer'} isFullTimer={role === 'admin'} />
 
         {/* ── the two things worth doing in twenty seconds ── */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
