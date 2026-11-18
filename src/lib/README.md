@@ -27,7 +27,6 @@ Client-side domain helpers, Firebase initialization, crypto credential vault, pe
 - [bibleStudy.ts] const SETUP_LIMITS: Record<keyof StudySetupForm, number> = {
 - [bibleStudy.ts] for (const field of Object.keys(SETUP_LIMITS) as (keyof StudySetupForm)[]) {
 - [bibleStudy.ts] const limit = SETUP_LIMITS[field];
-- [bnpb.ts] throw new Error('That contact is not visible to you.');
 - [combineClient.ts] if (!response.ok) throw new Error(body.error || fallbackError);
 - [credentialVault.ts] export const VAULT_AUDIT_LIMIT = 20;
 - [credentialVault.ts] export function credentialAuditFeedQuery(database: Firestore, size: number = VAULT_AUDIT_LIMIT) {
@@ -40,8 +39,6 @@ Client-side domain helpers, Firebase initialization, crypto credential vault, pe
 - [asks.ts] await addDoc(col(), {
 - [asks.ts] void sendNotification({
 - [asks.ts] await deleteDoc(ref(replyId));
-- [bnpb.ts] return onSnapshot(
-- [bnpb.ts] return onSnapshot(
 
 ## Verification
 - Run: `npm test`

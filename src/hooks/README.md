@@ -4,7 +4,6 @@
 Custom React hooks managing reactive subscriptions, contact interactions, story feeds, and question badge counters.
 
 ## Interface
-- `useContactInteractions` (`useContactInteractions.ts`)
 - `TeamMember` (`useContactStory.ts`)
 - `UseContactStoryOptions` (`useContactStory.ts`)
 - `ContactPatch` (`useContactStory.ts`)
