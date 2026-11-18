@@ -55,8 +55,6 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // rosters, the walk-in picker, and a door into every person's detail page.
   // A Trainee takes the allowlist path below and is not on it (#1834).
   '/attendance': 'manager',
-  // Outreach is a Full-timer's alone.
-  '/outreach': 'admin',
   // Full-timers only, on both sides: what a visit records is pastoral detail,
   // not team-wide reading.
   '/visits': 'admin',
@@ -131,7 +129,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'manager' },
   { href: '/bible-study', label: 'Bible study', minRole: 'admin' },
-  { href: '/outreach', label: 'Gospel', minRole: 'admin' },
   { href: '/visits', label: 'Visits', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
@@ -242,7 +239,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 // test in src/test/permissions.test.tsx guards against drift.
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/questions', '/around', '/feedback'],
-  People: ['/board', '/directory', '/visits', '/outreach', '/history'],
+  People: ['/board', '/directory', '/visits', '/history'],
   Gatherings: ['/attendance', '/bible-study', '/messages'],
   Prayer: ['/prayer', '/answered'],
 };
@@ -277,9 +274,7 @@ export const canSeeSettings = (role: AppRole | string | null) => role === 'admin
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
 export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
-// Outreach and Visits are Full-timers' alone.
-export const canSeeOutreach = (role: AppRole | string | null) => role === 'admin';
-export const canLogOutreach = (role: AppRole | string | null) => role === 'admin';
+// Visits are Full-timers' alone.
 export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
 export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 // Only a Full-timer reads the whole roster — the rules' seesAllContacts().

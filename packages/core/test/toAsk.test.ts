@@ -161,6 +161,22 @@ describe("buildToAsk — the three signals draft lines", () => {
   });
 });
 
+// The monthly park outing log is cut (cut-or-keep §2). To ask never drafted a
+// line from an outing; its lines come from the signals above, and the text
+// with no reply (#1670) is text-reach logic, which stays.
+describe("buildToAsk — no outing source", () => {
+  it("drafts only the signal kinds for a person met at an outing, and still drafts the text-reach line", () => {
+    const view = buildToAsk(
+      base({
+        people: [fresh("c1", { name: "Duy Pham", carers: ["jae"] }), person("c2", { name: "Mei Lin", carers: ["jae"] })],
+        interactions: [interaction({ contactId: "c2", id: "i2" })],
+      }),
+    );
+    const kinds = view.groups.flatMap((g) => g.lines.map((l) => l.kind)).sort();
+    expect(kinds).toEqual(["noReply", "notReached"]);
+  });
+});
+
 describe("buildToAsk — grouping", () => {
   it("shows a person tied to two Trainees under each, counted once", () => {
     const view = buildToAsk(

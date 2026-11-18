@@ -1235,26 +1235,6 @@ service cloud.firestore {
       allow delete: if isManager() || isSuperAdmin();
     }
 
-    // 10a. Outreach — monthly park outings. Full-timers only. The record's
-    // NAMES are the point: logging creates the contacts (open to any approved
-    // user) alongside, via the contacts rules; the follow-up to-dos ride the
-    // tasks rules.
-    match /outreach/{outreachId} {
-      function isValidOutreach(data) {
-        return data.date is string && data.date.size() <= 20 &&
-               data.where is string && data.where.size() <= 300 &&
-               data.went is list &&
-               data.others is int && data.others >= 0 &&
-               data.handed is map &&
-               data.how is string &&
-               data.photoCount is int && data.photoCount >= 0 &&
-               data.names is list;
-      }
-      allow list, get: if isAdmin();
-      allow create: if isAdmin() && isValidOutreach(incoming());
-      allow update: if isAdmin() && isValidOutreach(incoming());
-      allow delete: if isAdmin();
-    }
     // 10b. Visits Collection — a record of having gone to where someone lives.
     // Full-timers only, on both sides: what's written in a visit ("she's been
     // quiet since her dad's surgery") is pastoral detail that shouldn't be a

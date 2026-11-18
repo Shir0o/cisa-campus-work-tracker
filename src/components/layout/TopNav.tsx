@@ -56,7 +56,6 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/directory': Contact,
   '/history': HistoryIcon,
   '/attendance': CalendarCheck,
-  '/outreach': BookOpen,
   '/visits': CalendarDays,
   '/prayer': HeartHandshake,
   '/answered': Sun,

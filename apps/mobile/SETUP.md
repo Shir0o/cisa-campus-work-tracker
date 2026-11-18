@@ -96,8 +96,8 @@ bucket, and Realtime Database are shared with prod.
   created) — plus a full fake dataset to explore: the stages/gathering-types
   taxonomies, ~8 contacts (with interactions, comments, and walking-together
   threads), prayers + prayer requests, gathering events + RSVPs, chat rooms +
-  messages, to-dos, notifications, coordination-notes pages, an outreach
-  record, and activity entries.
+  messages, to-dos, notifications, coordination-notes pages, and activity
+  entries.
 
 ### Reviewer credentials
 

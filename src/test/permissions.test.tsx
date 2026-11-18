@@ -12,7 +12,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, canSeeOutreach, canLogOutreach, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import * as permissionsModule from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
@@ -121,7 +122,7 @@ describe('canAccessRoute()', () => {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
     manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -282,7 +283,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages', '/questions', '/around']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/messages', '/questions', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -291,7 +292,6 @@ describe('TopNav primary tabs per role', () => {
       'Around the team',
       'Bible study',
       'Gatherings',
-      'Gospel',
       'Looking back',
       'Messages',
       'My Day',
@@ -651,24 +651,15 @@ describe('Around the team as its own destination (#943)', () => {
   });
 });
 
-// ── Outreach is a Full-timer's alone ────────────────────────────────────────
-// It used to open to Community as well, the folk who went out and logged the
-// names. With Community gone it is not a special case any more.
+// ── Outreach is cut ─────────────────────────────────────────────────────────
+// The monthly park outing log is gone (cut-or-keep §2): no nav entry and no
+// seeing/logging predicates.
 
-describe('Outreach access', () => {
-  it('is reachable by a Full-timer only', () => {
-    expect(canAccessRoute('admin', '/outreach')).toBe(true);
-    expect(canAccessRoute('manager', '/outreach')).toBe(false);
-    expect(canAccessRoute('viewer', '/outreach')).toBe(false);
-  });
-
-  it('is seen and logged by a Full-timer only', () => {
-    expect(canSeeOutreach('admin')).toBe(true);
-    expect(canLogOutreach('admin')).toBe(true);
-    for (const role of ['manager', 'viewer', 'operator', null]) {
-      expect(canSeeOutreach(role), String(role)).toBe(false);
-      expect(canLogOutreach(role), String(role)).toBe(false);
-    }
+describe('Outreach is cut', () => {
+  it('has no nav entry and no predicates', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/outreach')).toBe(false);
+    expect('canSeeOutreach' in permissionsModule).toBe(false);
+    expect('canLogOutreach' in permissionsModule).toBe(false);
   });
 });
 
@@ -712,7 +703,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around', '/feedback'] },
-      { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
+      { label: 'People', hrefs: ['/board', '/directory', '/visits', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],

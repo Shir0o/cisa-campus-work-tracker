@@ -1,5 +1,5 @@
 // A list of card rows in placeholder blocks — what list screens (People, The
-// Journey, Gatherings, The Board, the FT prayer log, outreach) show while their
+// Journey, Gatherings, The Board, the FT prayer log) show while their
 // first snapshot is in flight. Rows mirror V2PersonRow's geometry: an avatar
 // tile, a name line, a sub line, and a right-hand stub, on the card layer.
 // `avatar: false` draws plain line rows for text-heavy cards (a person's story
