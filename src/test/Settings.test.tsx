@@ -2323,16 +2323,16 @@ describe('Settings', () => {
       expect(section('Quick add by text')).toBeInTheDocument();
       expect(section('API & webhook console')).toBeInTheDocument();
       expect(screen.getAllByText('What the app is costing').length).toBeGreaterThan(0);
-      expect(screen.getByRole('button', { name: 'Tempo' })).toBeInTheDocument();
+      // The BNPB token card is cut (cut-or-keep §4): not even the owner gets it.
+      expect(screen.queryByRole('button', { name: 'Tempo' })).not.toBeInTheDocument();
       owner.unmount();
 
-      // A Full-timer who unlocks is not the owner: no BNPB token card, no cost.
+      // A Full-timer who unlocks is not the owner: no cost.
       setupManagerAuth();
       render(<Settings />);
       expect(section('Quick add by text')).toBeInTheDocument();
       expect(section('API & webhook console')).toBeInTheDocument();
       expect(screen.queryAllByText('What the app is costing')).toHaveLength(0);
-      expect(screen.queryByRole('button', { name: 'Tempo' })).not.toBeInTheDocument();
     });
 
     it('gives a Trainee no version line and no developer sections, even with the flag set', () => {

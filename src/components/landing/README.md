@@ -6,7 +6,6 @@ Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee
 ## Interface
 - `AskStack` (`AskStack.tsx`)
 - `AskTheTeam` (`AskTheTeam.tsx`)
-- `BnpbReviewCard` (`BnpbReviewCard.tsx`)
 - `useCardThread` (`CardConversation.tsx`)
 - `CardConversation` (`CardConversation.tsx`)
 - `FirstRunCardProps` (`FirstRunCard.tsx`)

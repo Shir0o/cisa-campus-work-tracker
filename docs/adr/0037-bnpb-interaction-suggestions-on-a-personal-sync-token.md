@@ -1,7 +1,7 @@
 # 0037: BNPB interaction suggestions on a personal sync token
 
 ## Status
-Accepted
+Superseded: BNPB interaction suggestions were removed (cut-or-keep audit, 2026-11-17). The sync endpoint, personal token, queue page and rules are gone; stored suggestion documents are left in Firestore, unread.
 
 ## Context
 BNPB (`~/bnpb`) is a personal, offline-first relationship app that already

@@ -25,7 +25,6 @@ import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../componen
 import OnYouCard from '../components/landing/OnYouCard';
 import PointerCard from '../components/landing/PointerCard';
 import QuestionsPointerCard from '../components/landing/QuestionsPointerCard';
-import BnpbReviewCard from '../components/landing/BnpbReviewCard';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { greetingKey } from '../components/landing/helpers';
 import { useLanguage } from '../components/LanguageProvider';
@@ -278,11 +277,6 @@ export default function MyDayMobile({
           </button>
         </div>
       </header>
-
-      {/* ── BNPB suggestions waiting for the owner (#1423) ── */}
-      <div className="px-5 mt-4">
-        <BnpbReviewCard />
-      </div>
 
       {/* ── Relational Nudge Prompt ── */}
       {staleLeader && (

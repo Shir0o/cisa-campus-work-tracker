@@ -465,6 +465,19 @@ describe('App Component', () => {
     });
   });
 
+  // BNPB interaction suggestions are cut (cut-or-keep §4). A bookmark lands home.
+  it('sends a Full-timer who opens /suggestions home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/suggestions');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
   it.each(['/prayer', '/answered', '/attendance'])(
     'redirects trainee away from %s (page not in their allowed set) to home',
     async (path) => {

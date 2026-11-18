@@ -19,7 +19,6 @@ import { writeCredentialAudit } from '../lib/credentialVault';
 import { AppUser, Invitation } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
-import BnpbSyncCard from '../components/settings/BnpbSyncCard';
 import PageContainer from '../components/layout/PageContainer';
 import {
   Shield,
@@ -3912,12 +3911,6 @@ export default function Settings() {
       label: t('settings.account_session', 'Account & Session'),
       visible: true,
       node: <AccountSection />,
-    },
-    {
-      id: 'settings-phone-sync',
-      label: t('bnpb.settings_title', 'Tempo'),
-      visible: isOwner && devUnlocked,
-      node: <BnpbSyncCard />,
     },
     {
       id: 'settings-security',

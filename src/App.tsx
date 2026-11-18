@@ -76,7 +76,6 @@ const Questions = lazyWithRetry(() => import("./views/Questions"));
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Ask = lazyWithRetry(() => import("./views/Ask"));
 const CredentialVault = lazyWithRetry(() => import("./views/CredentialVault"));
-const SuggestionsQueue = lazyWithRetry(() => import("./views/SuggestionsQueue"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const GuestCoordinationDoc = lazyWithRetry(() => import("./views/GuestCoordinationDoc"));
@@ -1251,28 +1250,6 @@ export default function App() {
                           </React.Suspense>
                         </DashboardLayout>
                       </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* BNPB Suggestion queue (#1420): owner-only. Non-owners are
-                    bounced home by ProtectedRoute (role) or the view itself. */}
-                <Route
-                  path="/suggestions"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout>
-                        <React.Suspense
-                          fallback={
-                            <div className="p-8 space-y-6">
-                              <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-xl" />
-                            </div>
-                          }
-                        >
-                          <SuggestionsQueue />
-                        </React.Suspense>
-                      </DashboardLayout>
                     </ProtectedRoute>
                   }
                 />
