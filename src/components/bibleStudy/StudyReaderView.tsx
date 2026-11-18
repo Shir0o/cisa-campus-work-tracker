@@ -23,17 +23,12 @@ import { useLanguage } from '../LanguageProvider';
 export type StudyReaderViewProps = {
   meeting: Meeting;
   /**
-   * The stale-week date chip's text, or null for the current week. The chip
-   * lives inside the sticky header so a reader who lands on panel 4 of an
-   * older week can still see the week is old (ADR 0011 §3 — falling back is
-   * correct; falling back silently is not).
+   * Retained for backwards compatibility only: the header no longer renders a
+   * date chip, so this is accepted and ignored (ADR 0011 §3's stale-week cue
+   * now lives outside the reader's top bar).
    */
   staleDateLabel?: string | null;
-  /**
-   * The current week's date, plainly ("Wednesday, October 21") — the same
-   * chip the stale week wears, without the "Most recent · " prefix (#1814).
-   * Omitted by the app shell, where the week above says where the reader is.
-   */
+  /** Retained for backwards compatibility only; no longer rendered. */
   weekDateLabel?: string | null;
   /**
    * The study this week belongs to ("Romans · Fall 2026"), printed quietly
@@ -65,21 +60,6 @@ export type StudyReaderViewProps = {
 // the index→ordinal step, so the denominator (a count, not an index) must not
 // go through this helper.
 const padOneBased = (n: number) => String(n + 1).padStart(2, '0');
-
-const ChevronIcon: React.FC = () => (
-  <svg
-    className="w-3.5 h-3.5 shrink-0"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect width="18" height="18" x="3" y="4" rx="2" />
-    <path d="M16 2v4M8 2v4M3 10h18" />
-  </svg>
-);
 
 // The panel's top padding, in px — the air above the card while a Section
 // settles. The settle measurement subtracts it so the card's resting offset
@@ -295,8 +275,6 @@ const PagedSection: React.FC<{
 
 const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   meeting,
-  staleDateLabel = null,
-  weekDateLabel = null,
   studyLabel = null,
   asPage = false,
   followSectionIndex,
@@ -577,30 +555,14 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
       className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col"
       style={{ '--reader-fs': `${typeSize}px` } as React.CSSProperties}
     >
-      {/* Sticky chrome — slim: the week's date, the title, the counter and the
-          text-size control. */}
+      {/* Sticky chrome — slim, one row: the title and study on the left, the
+          text-size control and the counter on the right. */}
       <header
         data-testid="reader-header"
-        className={`shrink-0 sticky top-0 z-20 flex flex-wrap md:flex-nowrap items-center gap-2 pt-[calc(env(safe-area-inset-top)+2px)] pb-1 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
+        className={`shrink-0 sticky top-0 z-20 flex items-center gap-2 pt-[calc(env(safe-area-inset-top)+2px)] pb-1 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
           showPaged ? 'px-8' : 'px-5 border-b border-outline-variant'
         }`}
       >
-        {(staleDateLabel || weekDateLabel) && (
-          // Its own row on a phone (#1777): side by side with the title it took
-          // 206 of 335 px and squeezed the week's name into a 38px column —
-          // three stacked words. On the paged deck it can sit inline again.
-          // The current week wears the same chip, plainly (#1814): a date
-          // only appeared once the week was already out of date.
-          <div className="w-full md:w-auto min-w-0 flex">
-            <span
-              data-testid={staleDateLabel ? 'stale-date-chip' : 'week-date-chip'}
-              className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-full bg-surface border border-outline-variant text-[11px] text-on-surface-variant"
-            >
-              <ChevronIcon />
-              <span className="truncate">{staleDateLabel ?? weekDateLabel}</span>
-            </span>
-          </div>
-        )}
         {/* The Meeting title, and the page's only h1 (#1814). It wraps rather
             than truncates: capping the text at the header's width hides the
             week's name exactly where the preview exists to show the whole

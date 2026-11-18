@@ -3,8 +3,9 @@
 // student sees. The reader is now a scrolling deck — Sections stack as snap
 // panels, scrolling IS the navigation model, and the reducer's advance/back
 // are gone. Tests assert what a reader SEES: one panel per Section, a peek of
-// the next Section, the stale-week chip in the sticky header, an index that
-// jumps — never class names or reducer internals.
+// the next Section, a single top bar with no date chip, an index that
+// jumps — never class names or reducer internals (bar one class assertion,
+// because jsdom cannot otherwise see that the header refuses to wrap).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
@@ -188,7 +189,7 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(screen.getAllByRole('heading', { level: 2 })[0]).toHaveTextContent('Where peace starts');
   });
 
-  it('dates the current week plainly and names the study under the title (#1814)', () => {
+  it('names the study under the title and renders no date chip in the header (#1814)', () => {
     render(
       <StudyReaderView
         meeting={meeting({})}
@@ -198,25 +199,29 @@ describe('StudyReaderView (the scrolling deck)', () => {
       />,
     );
 
-    expect(screen.getByTestId('week-date-chip')).toHaveTextContent('Wednesday, September 2');
     expect(screen.getByTestId('study-identity')).toHaveTextContent('Romans · Fall 2026');
+    // The header is one bar: title and study on the left, controls on the
+    // right. Neither the current week nor a stale week wears a date chip.
+    expect(screen.queryByTestId('week-date-chip')).toBeNull();
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
   });
 
-  it('carries the stale-week date chip inside the sticky header, visible from any panel', () => {
+  it('keeps the header a single bar — title, counter and text size — even for a stale week', () => {
     render(
       <StudyReaderView meeting={meeting({})} staleDateLabel="Most recent · September 2" />,
     );
 
-    const chip = screen.getByTestId('stale-date-chip');
-    expect(chip).toHaveTextContent('Most recent · September 2');
-    // The chip lives inside the sticky header, not in a bar that scrolls away.
-    expect(chip.closest('[data-testid="reader-header"]')).not.toBeNull();
-  });
-
-  it('shows no stale chip when the newest week is current', () => {
-    render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
-
+    const header = screen.getByTestId('reader-header');
+    // The stale date is passed but never rendered.
     expect(screen.queryByTestId('stale-date-chip')).toBeNull();
+    expect(screen.queryByTestId('week-date-chip')).toBeNull();
+    // Both ends of the one bar live inside the header.
+    expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent('Peace that holds');
+    expect(header).toHaveTextContent('01 / 03');
+    expect(within(header).getByLabelText('Text size')).toBeInTheDocument();
+    // jsdom has no layout, so the class is the only observable signal that the
+    // bar cannot wrap onto a second row at any screen width.
+    expect(header.className).not.toMatch(/\bflex-wrap\b/);
   });
 
   it('peeks the next Section\'s title beneath each panel and ends the last one differently', () => {
@@ -714,7 +719,7 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(document.activeElement).toBe(next);
     });
 
-    it('keeps the stale-week chip', () => {
+    it('keeps a single top bar on the paged deck, with no date chip', () => {
       const box = stubReaderBox();
       render(
         <StudyReaderView
@@ -724,7 +729,12 @@ describe('StudyReaderView (the scrolling deck)', () => {
       );
       box.resize(1280, 800);
 
-      expect(screen.getByTestId('stale-date-chip')).toHaveTextContent('Most recent · September 2');
+      const header = screen.getByTestId('reader-header');
+      expect(screen.queryByTestId('stale-date-chip')).toBeNull();
+      expect(screen.queryByTestId('week-date-chip')).toBeNull();
+      // The paged deck moves the counter to the footer; the bar itself stays,
+      // with the title on the left and the text size on the right.
+      expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent('Peace that holds');
       expect(screen.getByLabelText('Text size')).toBeInTheDocument();
     });
 
