@@ -1821,6 +1821,7 @@
       "no_trainee_hint": "Nobody to ask in person yet — share them with a Trainee.",
       "add_line": "Add a line for {name}…",
       "add_line_general": "Add a line for everyone…",
+      "add_line_submit": "Add line",
       "your_note": "Your note",
       "mark_asked": "Mark asked",
       "asked_undo": "Asked — undo",
