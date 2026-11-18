@@ -465,6 +465,20 @@ describe('App Component', () => {
     });
   });
 
+  // Questions for the team is cut (cut-or-keep §5). A bookmark lands home, for
+  // the Full-timer who answered there and the Trainee who asked there.
+  it.each(['admin', 'manager'])('sends a %s who opens /questions home', async (role) => {
+    mockAuthValue.user = { uid: '123', email: 'someone@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = role;
+    window.history.replaceState(null, '', '/questions');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
   // BNPB interaction suggestions are cut (cut-or-keep §4). A bookmark lands home.
   it('sends a Full-timer who opens /suggestions home', async () => {
     mockAuthValue.user = { uid: '123', email: 'admin@example.com' };

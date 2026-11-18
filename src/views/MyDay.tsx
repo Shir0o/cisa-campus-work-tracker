@@ -94,7 +94,6 @@ import OnYouCard from "../components/landing/OnYouCard";
 import PointerCard from "../components/landing/PointerCard";
 import ToAskPointerCard from "../components/landing/ToAskPointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
-import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
 import { useFirstRunRecords } from "../lib/firstRunRecords";
 import { UndoSnackbar } from "../components/UndoSnackbar";
@@ -1236,9 +1235,6 @@ export default function MyDay() {
             </button>
           </div>
         </header>
-
-        {/* ── Questions for the team — person-less trainee questions (#545) ── */}
-        {uid && <AskStack className="mt-8" />}
 
         {/* ── On you + the pointer card — My Day is a skim dashboard of your
             own work (issue 943). "On you" is a bento card among the others;

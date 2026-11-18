@@ -1,7 +1,7 @@
 # 0049: A Trainee's bottom bar carries Messages and Questions, and the answers owed to them
 
 ## Status
-Accepted
+Accepted, in part superseded: Questions for the team was removed (cut-or-keep audit, 2026-11-17), so the bar carries Messages without a Questions destination or its waiting count. Stored question documents are left in Firestore, unread.
 
 ## Context
 At 375×812 the phone bar held **two destinations and a search button**: `Home`,

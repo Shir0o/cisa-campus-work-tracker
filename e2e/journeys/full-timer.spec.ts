@@ -45,14 +45,13 @@
  * This file also absorbs the retired feature specs (the Full-timer is the widest
  * role, so the admin-driven surfaces live here): `settings-and-partners.spec.ts`,
  * `people-directory.spec.ts`, `prayer-carrying.spec.ts`, `announcements-flow.spec.ts`,
- * `asks-questions-for-team.spec.ts`, `feedback-submission.spec.ts`, and the
+ * `feedback-submission.spec.ts`, and the
  * Full-timer halves of `cross-role-journey.spec.ts` and `quick-capture.spec.ts`.
  */
 
 import { test, expect, type Page } from '@playwright/test';
 import { signInAs } from '../helpers/auth';
 import { initializeApp, getApps } from 'firebase-admin';
-import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminFS } from 'firebase-admin/firestore';
 
 const CARE_CONTACT = 'Lila Chen';
@@ -786,134 +785,33 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
 });
 
 /**
- * Folded from `asks-questions-for-team.spec.ts` (#603, #645): the staff-only
- * Questions page, asking and answering in place, and the role gate. Serial: the
- * answer steps build on the questions posted just above.
+ * Questions for the team is cut (cut-or-keep §5): @mentions replace it. An old
+ * `/questions` bookmark lands on My Day for both roles that used the page, not
+ * on a dead end.
  */
-test.describe('Full-timer journey — Questions for the team (#1477)', () => {
-  test.describe.configure({ mode: 'serial' });
-
-  const heading = (page: Page) => page.getByRole('heading', { name: 'Questions for Full-timers' });
-  const OWN_PLACEHOLDER = /What do you want to ask/;
-
-  async function openQuestions(page: Page) {
-    await page.goto('/questions');
-    await expect(heading(page)).toBeVisible({ timeout: 15_000 });
+test.describe('Full-timer journey — Questions for the team is cut', () => {
+  for (const role of ['fulltimer', 'trainee'] as const) {
+    test(`an old /questions bookmark lands a ${role} on My Day`, async ({ page }) => {
+      await signInAs(page, role);
+      await page.goto('/questions');
+      await waitForShell(page);
+      await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
+      await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toHaveCount(0);
+    });
   }
-
-  async function openAskPanel(page: Page) {
-    await page.getByRole('button', { name: 'Ask a Full-timer', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
-  }
-
-  /** The ask panel only closes after the write resolves, so navigating away
-   *  before that would cancel the in-flight write. */
-  async function postOwnQuestion(page: Page, text: string) {
-    const composer = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await composer.fill(text);
-    await composer.press('Meta+Enter');
-    await expect(composer).toBeHidden({ timeout: 10_000 });
-  }
-
-  test('a Full-timer asks the team; a Trainee reads it but cannot answer', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await openQuestions(page);
-    await openAskPanel(page);
-    const ftQuestion = `E2E FT Question ${Date.now()}: Where is the team retreat?`;
-    await postOwnQuestion(page, ftQuestion);
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-
-    await signInAs(page, 'trainee');
-    await page.goto('/');
-    await expect(page.getByRole('main').getByText(ftQuestion)).toBeVisible({ timeout: 15_000 });
-
-    await openQuestions(page);
-    await page.getByRole('button', { name: /^All/ }).click();
-    const card = page.locator('article', { hasText: ftQuestion });
-    await expect(card).toBeVisible({ timeout: 15_000 });
-    await expect(card.getByText('A full-timer will answer this.')).toBeVisible();
-    await expect(card.getByRole('button', { name: /^Answer / })).toHaveCount(0);
-  });
-
-  test('a Full-timer records an in-person question and answers a Trainee in place', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await openQuestions(page);
-    await openAskPanel(page);
-
-    // Both modes are offered; "My own question" is the default.
-    await page.getByRole('button', { name: 'Someone asked me' }).click();
-    const inPerson = page.getByPlaceholder(/In their words, as close as you can remember/);
-    await inPerson.fill('E2E In-person question recorded by Full-timer');
-    const writeItDown = page.getByRole('button', { name: 'Write it down' });
-    await expect(writeItDown).toBeDisabled();
-    await page.getByRole('main').getByText('Who asked it?').waitFor();
-    await page.getByRole('button', { name: /Caleb/ }).first().click();
-    await expect(writeItDown).toBeEnabled();
-    await writeItDown.click();
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-
-    // The Trainee asks; the Full-timer answers ON the question.
-    await signInAs(page, 'trainee2');
-    await openQuestions(page);
-    await openAskPanel(page);
-    const t2Question = `E2E Trainee2 Question ${Date.now()}: How do we handle late students?`;
-    await postOwnQuestion(page, t2Question);
-
-    await signInAs(page, 'fulltimer');
-    await openQuestions(page);
-    const card = page.locator('article', { hasText: t2Question });
-    await card.getByRole('button', { name: /^Answer / }).click();
-    await card.getByRole('textbox').fill('Say hi when they arrive and catch them after.');
-    await card.getByRole('button', { name: 'Send answer' }).click();
-    // The toast fires only after the write resolves; navigate only then.
-    await expect(page.getByRole('status').filter({ hasText: 'Answered Caleb.' })).toBeVisible({ timeout: 10_000 });
-
-    await signInAs(page, 'trainee');
-    await page.goto('/');
-    await expect(page.getByRole('main').getByText(t2Question)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('main').getByText('Say hi when they arrive and catch them after.')).toBeVisible({ timeout: 15_000 });
-  });
 });
 
 /**
- * My Day on a phone (#1859, ADR 0015 decision 2). The five inline question
- * stacks spent 1,691px above the reader's own work, so the home now carries one
- * compact door to /questions instead. jsdom cannot measure the fold, so the
- * pixel claim lives here: On you must start inside a 812px phone's scroller.
+ * My Day on a phone (#1859, ADR 0015 decision 2). jsdom cannot measure the
+ * fold, so the pixel claim lives here: On you must start inside a 812px
+ * phone's scroller.
  */
 test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
-  /** A waiting question the home must not read, only count. */
-  async function seedWaitingQuestion(body: string): Promise<string> {
-    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
-    const trainee = await adminAuth().getUserByEmail('trainee.e2e@example.com');
-    const ref = adminFS().collection('asks').doc(`e2e-1859-${Date.now()}`);
-    await ref.set({
-      parentId: null,
-      owner: trainee.uid,
-      from: trainee.uid,
-      fromName: 'Zion Adeyemi',
-      kind: 'question',
-      body,
-      at: new Date().toISOString(),
-    });
-    return ref.id;
-  }
-
-  test('the questions stack is one door and On you starts in the first screen (#1859)', async ({ page }) => {
-    const body = `E2E phone question ${Date.now()}: How should we follow up after the club fair?`;
-    const askId = await seedWaitingQuestion(body);
-
+  test('On you starts in the first screen (#1859)', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await signInAs(page, 'fulltimer');
     await page.goto('/');
     await waitForShell(page);
-
-    // One line: the title, a count, and the door — 44px tall at least.
-    const row = page.getByRole('link', { name: /Questions for Full-timers/ });
-    await expect(row).toBeVisible({ timeout: 15_000 });
-    const rowBox = await row.boundingBox();
-    expect(rowBox).not.toBeNull();
-    expect(rowBox!.height).toBeGreaterThanOrEqual(44);
 
     // The reader's own work is inside the phone's scroller without scrolling.
     const onYou = page.getByRole('region', { name: 'On you' });
@@ -921,21 +819,6 @@ test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
     const onYouBox = await onYou.boundingBox();
     expect(onYouBox).not.toBeNull();
     expect(onYouBox!.y).toBeLessThan(755);
-
-    // No question is read on the home: no body, no per-question answer.
-    await expect(page.getByRole('main').getByText(body)).toHaveCount(0);
-    await expect(page.getByRole('main').getByRole('button', { name: /^Answer / })).toHaveCount(0);
-    await expect(page.getByRole('main').getByText('Mark all scanned')).toHaveCount(0);
-
-    // The door is the list, not one focused answer.
-    await row.click();
-    await expect(page).toHaveURL(/\/questions$/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toBeVisible({
-      timeout: 15_000,
-    });
-
-    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
-    await adminFS().collection('asks').doc(askId).delete();
   });
 });
 

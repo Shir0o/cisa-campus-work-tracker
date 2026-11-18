@@ -311,7 +311,7 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/people/c_alex');
   });
 
-  it('navigates to questions page when ask notification with link is clicked', async () => {
+  it('follows the stored link on an old answered-question bell entry (the retired /questions page redirects home)', async () => {
     const mockNotifs = [
       {
         id: 'n_ask',
@@ -859,7 +859,7 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/messages/room_9');
   });
 
-  it('navigates to questions for unlinked ask notifications with question/answer in title', () => {
+  it('no longer routes an unlinked question/answer title to /questions (cut-or-keep §5)', () => {
     triggerOnSnapshotCallbacks([
       { id: 'n1', userId: 'mock-user-id', title: 'Answer to your question', body: 'b', type: 'info', targetId: 'ask_123', read: true, createdAt: { toDate: () => new Date() } },
     ]);
@@ -871,7 +871,7 @@ describe('NotificationCenter Component', () => {
 
     fireEvent.click(screen.getByLabelText(/notifications/i));
     fireEvent.click(screen.getByText('Answer to your question'));
-    expect(mockNavigate).toHaveBeenCalledWith('/questions');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/questions');
   });
 
   it('navigates to contact for unlinked contact activity notifications', () => {

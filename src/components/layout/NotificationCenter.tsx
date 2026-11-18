@@ -291,9 +291,7 @@ export default function NotificationCenter() {
         navigate('/coordination');
       } else {
         const titleLower = (notif.title || '').toLowerCase();
-        if (titleLower.includes('question') || titleLower.includes('answer')) {
-          navigate('/questions');
-        } else if (
+        if (
           titleLower.includes('logged time') ||
           titleLower.includes('contact') ||
           titleLower.includes('person') ||

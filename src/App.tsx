@@ -72,7 +72,6 @@ const MyNotes = lazyWithRetry(() => import("./views/MyNotes"));
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
 const Messages = lazyWithRetry(() => import("./views/Messages"));
-const Questions = lazyWithRetry(() => import("./views/Questions"));
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Ask = lazyWithRetry(() => import("./views/Ask"));
 const CredentialVault = lazyWithRetry(() => import("./views/CredentialVault"));
@@ -1099,26 +1098,6 @@ export default function App() {
                   }
                 />
 
-
-                <Route
-                  path="/questions"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout>
-                        <React.Suspense
-                          fallback={
-                            <div className="p-8 space-y-6">
-                              <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-xl" />
-                            </div>
-                          }
-                        >
-                          <Questions />
-                        </React.Suspense>
-                      </DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
 
                 <Route
                   path="/around"

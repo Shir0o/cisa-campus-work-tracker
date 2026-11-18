@@ -32,7 +32,6 @@ import {
   inboxItemsFor,
   personalContactIdsOf,
   contactStakeholdersOf,
-  askStacksFor as coreAskStacksFor,
   type AppUser,
   type Contact,
   type Event,
@@ -47,7 +46,6 @@ import {
   type ThreadKind,
   type ThreadMessageWithContact,
   type Touch,
-  type AskMessage,
 } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { useIdentityReset } from './useIdentityReset';
@@ -58,7 +56,6 @@ import { addThreadMessage, subscribeAllThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { subscribeUsers } from './data/users';
 import { setPrayerRequestStatus, subscribeOpenPrayerRequests } from './data/prayerRequests';
-import { addAskReply, subscribeAsks, type AskStack } from './data/asks';
 import { subscribeHospitalityOffers } from './data/hospitality';
 import { getOrCreateDirectChat } from './data/chat';
 import { InboxReads, useInboxReads } from './data/inboxReads';
@@ -84,7 +81,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   const [team, setTeam] = useState<AppUser[]>([]);
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
   const [offers, setOffers] = useState<HospitalityOffer[]>([]);
-  const [asks, setAsks] = useState<AskMessage[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +101,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     setTeam([]);
     setRequests([]);
     setOffers([]);
-    setAsks([]);
     setPrefContactIds(null);
     setLoading(true);
     setError(null);
@@ -191,7 +186,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     // permission-denied, and neither is worth failing the whole screen over.
     const unsubRequests = subscribeOpenPrayerRequests(setRequests, () => setRequests([]));
     const unsubOffers = subscribeHospitalityOffers(setOffers, () => setOffers([]));
-    const unsubAsks = subscribeAsks(setAsks, () => setAsks([]), { uid: uid ?? undefined, isStaff: true });
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
       setPrefContactIds(prefs.personalContactIds ?? null),
     );
@@ -208,7 +202,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
       unsubTeam();
       unsubRequests();
       unsubOffers();
-      unsubAsks();
       unsubPrefs();
     };
   }, [uid]);
@@ -279,22 +272,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   );
   const unreadCount = useMemo(() => inboxRows.filter((r) => r.unread).length, [inboxRows]);
 
-  // ── ask the team (#545) ───────────────────────────────────────────────────
-  // One stack per asker, unanswered only, newest first. Read-state rides the
-  // same InboxReads as the rest (keyed `ask:<id>`).
-  const askStacks = useMemo<AskStack[]>(
-    () => (uid ? coreAskStacksFor(asks, uid) : []),
-    [asks, uid],
-  );
-  const askUnread = useMemo(
-    () =>
-      askStacks.reduce(
-        (n, s) => n + s.items.filter((m) => !inbox.isRead(uid ?? '', 'ask:' + m.id)).length,
-        0,
-      ),
-    [askStacks, inbox, uid],
-  );
-
   // ── prayers, and the calendar ─────────────────────────────────────────────
   const openPrayers = useMemo(() => ftOpenPrayers(prayers), [prayers]);
   // Members' own asks ride in the same widget as the prayers staff logged, and
@@ -340,8 +317,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     todos,
     inboxRows,
     unreadCount,
-    askStacks,
-    askUnread,
     quiet,
     openPrayers,
     carryRows,
@@ -388,15 +363,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     },
     markScanned: (id: string, scanned: boolean) =>
       uid && (scanned ? InboxReads.markRead(uid, id) : InboxReads.markUnread(uid, id)),
-
-    /** Answer a person-less question; pings the asker's bell. The first
-     *  full-timer to reply takes it off every full-timer's feed. */
-    answerAsk: (parentId: string, owner: string, body: string) => {
-      if (!uid) return;
-      void addAskReply(parentId, { from: uid, fromName: meName, body }, owner, owner);
-      InboxReads.markRead(uid, 'ask:' + parentId);
-    },
-    markAskScanned: (id: string) => uid && InboxReads.markRead(uid, 'ask:' + id),
 
     // "Prayed for {name}" is device-local, exactly as it is on the trainee's
     // queue (QueueCard's pray branch just marks the card handled): PrayerRecord

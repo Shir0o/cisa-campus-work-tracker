@@ -12,7 +12,6 @@ import {
   Sun,
   FileText,
   MessageSquare,
-  MessageCircleQuestion,
   LayoutDashboard,
   Users,
   StickyNote,
@@ -45,7 +44,6 @@ import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { useI18n } from '../LanguageProvider';
 import { SIGNUP_TITLE } from './SignupInvite';
-import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 import { sectionHrefFor } from '../../lib/navTrail';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
@@ -61,7 +59,6 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/answered': Sun,
   '/coordination': FileText,
   '/messages': MessageSquare,
-  '/questions': MessageCircleQuestion,
   '/bible-study': BookOpen,
   '/around': Users,
   '/feedback': StickyNote,
@@ -74,18 +71,13 @@ function NavGlyph({ href, size = 20, className }: { href: string; size?: number;
 }
 
 export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateModal?: () => void }) {
-  const { user, logOut, isAdmin, isOwner, role, impersonateTarget, ownerViewRole, effectiveUserId, effectiveUserName } = useAuth();
+  const { user, logOut, isAdmin, isOwner, role, impersonateTarget, ownerViewRole, effectiveUserName } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen, setSearchOpen } = useLayout();
   const { t } = useI18n();
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
   const [moreOpen, setMoreOpen] = useState(false);
-  // Questions lives in the More menu now (#646). Folding a destination away costs
-  // discoverability, so the fold leaks: a dot on More, the count on the row.
-  // The shared hook also feeds the rail's badge (#665); both shells read
-  // from the same Firestore collection so they stay in sync.
-  const waitingAsks = useWaitingAsksCount(effectiveUserId || user?.uid, isAdmin);
   const [profileOpen, setProfileOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -230,12 +222,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 <NavGlyph href={section ?? pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
                 <span className="whitespace-nowrap">{t('actions.more', 'More')}</span>
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', moreOpen && 'rotate-180')} />
-                {waitingAsks > 0 && !moreOpen && (
-                  <span
-                    aria-label={`${waitingAsks} questions waiting on an answer`}
-                    className="absolute top-1.5 right-1.5 w-[7px] h-[7px] rounded-full bg-primary ring-2 ring-surface"
-                  />
-                )}
               </button>
 
               <AnimatePresence>
@@ -266,11 +252,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                           >
                             <NavGlyph href={href} size={18} className={pathname === href || (href !== '/' && pathname.startsWith(href)) ? 'text-on-primary' : ''} />
                             <span className="min-w-0 flex-1">{label}</span>
-                            {href === '/questions' && waitingAsks > 0 && (
-                              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-on-primary bg-on-primary/20 rounded-full px-1.5 py-0.5">
-                                {waitingAsks}
-                              </span>
-                            )}
                           </button>
                         );
                       })}

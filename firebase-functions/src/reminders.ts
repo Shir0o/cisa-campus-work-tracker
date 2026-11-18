@@ -1,8 +1,8 @@
-// The reminder schedule (#1289): the two reminders for asks and questions,
-// run on the campus clock. The rule that decides what is due lives once in the
-// shared core package; this is the thin writer around it — it reads the open
-// asks and unanswered questions, asks the rule, writes each bell entry, and
-// marks the ask or question reminded so it is never reminded twice. The
+// The reminder schedule (#1289): the reminders for asks and @mentions, run on
+// the campus clock. The rule that decides what is due lives once in the shared
+// core package; this is the thin writer around it — it reads the open asks and
+// mentions, asks the rule, writes each bell entry, and marks the ask or mention
+// reminded so it is never reminded twice. The
 // Firestore trigger on `notifications` sends the push (ADR 0031).
 import {
   campusWeekdayHour,
@@ -24,7 +24,7 @@ import {
 import type { Firestore } from "firebase-admin/firestore";
 
 export interface ReminderDeps {
-  /** Open Follow-up asks, questions and @mentions, with a question's Thread replies. */
+  /** Open Follow-up asks and @mentions. */
   candidates(): Promise<ReminderCandidate[]>;
   writeBell(notification: ReminderNotification): Promise<void>;
   markReminded(source: DueReminder["source"]): Promise<void>;
@@ -36,7 +36,7 @@ export interface ReminderRunResult {
 }
 
 /** One tick: write exactly the bell entries the rule returns, and record each
- *  ask or question reminded. */
+ *  ask or mention reminded. */
 export async function runAskReminders(deps: ReminderDeps): Promise<ReminderRunResult> {
   const due = remindersDue(await deps.candidates(), deps.now());
   for (const { notification, source } of due) {
@@ -54,7 +54,7 @@ export function firestoreReminderDeps(db: Firestore): ReminderDeps {
     async candidates() {
       // Every message is a comment now; one waits on someone only while it
       // @mentions them and nobody has closed it.
-      const snap = await db.collectionGroup("threads").where("kind", "in", ["nudge", "question", "comment"]).get();
+      const snap = await db.collectionGroup("threads").where("kind", "in", ["nudge", "comment"]).get();
       const candidates: ReminderCandidate[] = [];
       for (const doc of snap.docs) {
         const data = doc.data();
@@ -62,12 +62,7 @@ export function firestoreReminderDeps(db: Firestore): ReminderDeps {
           const mentionedUserIds = Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : [];
           if (!isOpenMention({ id: doc.id, from: data.from ?? "", kind: "comment", at: data.at ?? "", mentionedUserIds, closedAt: data.closedAt ?? null })) continue;
         }
-        const kind = data.kind === "nudge" ? "ask" : data.kind === "question" ? "question" : "mention";
-        let replies: ReminderCandidate["replies"];
-        if (kind === "question") {
-          const replySnap = await doc.ref.parent.where("parentId", "==", doc.id).limit(50).get();
-          replies = replySnap.docs.map((r) => ({ from: r.data().from ?? "", at: r.data().at ?? "" }));
-        }
+        const kind = data.kind === "nudge" ? "ask" : "mention";
         candidates.push({
           contactId: doc.ref.parent.parent?.id ?? "",
           messageId: doc.id,
@@ -77,7 +72,6 @@ export function firestoreReminderDeps(db: Firestore): ReminderDeps {
           at: data.at ?? "",
           closedAt: data.closedAt ?? null,
           remindedAt: data.remindedAt ?? null,
-          replies,
         });
       }
       return candidates;

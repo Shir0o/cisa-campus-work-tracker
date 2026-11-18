@@ -217,7 +217,7 @@ function scheduledReceiptsFor(database: string) {
 export const scheduledReceiptsProd = scheduledReceiptsFor("prod");
 export const scheduledReceiptsQa = scheduledReceiptsFor("qa-db");
 
-/** Once a day on campus time, tell each asker whose Follow-up ask or question
+/** Once a day on campus time, tell each asker whose Follow-up ask or @mention
  *  has gone unanswered three calendar days. The rule lives in @cisa/core. */
 function scheduledRemindersFor(database: string) {
   return onSchedule(

@@ -55,7 +55,6 @@ import {
   updateContactTags,
 } from '../../packages/core/src/data/contacts';
 import { addThreadMessage, subscribeAllThreads } from '../../packages/core/src/data/threads';
-import { subscribeAsks, subscribeStaffAsks } from '../../packages/core/src/data/asks';
 import {
   subscribeToAskNotepad,
   saveToAskNotepad,
@@ -77,7 +76,6 @@ import { traineeWaitingItems } from '../../packages/core/src/inbox';
 import { applyRoster } from '../../packages/core/src/walking';
 import type { Contact, AppUser } from '../../packages/core/src/types';
 import type { Touch } from '../../packages/core/src/myday';
-import type { AskMessage } from '../../packages/core/src/asks';
 import type { ThreadMessageWithContact } from '../../packages/core/src/threads';
 import { nullEmailContact, noOwnerContact } from './fixtures/contacts';
 
@@ -234,16 +232,6 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
         from: OTHER_TRAINEE, fromName: 'Other', kind: 'comment', body: 'secret', at: ISO,
       });
 
-      // Ask-the-team rows: two owners. Staff read the whole collection.
-      await seedDoc(db, 'asks/q-mine', {
-        parentId: null, owner: TRAINEE, from: TRAINEE, fromName: 'Trainee',
-        kind: 'question', body: 'mine', at: ISO,
-      });
-      await seedDoc(db, 'asks/q-other', {
-        parentId: null, owner: OTHER_TRAINEE, from: OTHER_TRAINEE, fromName: 'Other',
-        kind: 'question', body: 'theirs', at: ISO,
-      });
-
       // The Full-timer's private To ask notepad (#1649).
       await seedDoc(db, 'toAskNotes/admin1', {
         teamFilter: 'all',
@@ -359,28 +347,9 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await assertFails(getDocs(query(collection(dbFor(TRAINEE), 'contacts'))));
   });
 
-  // ── Row 3: Messages & Questions for the team broke for staff (#564) ───────
-  // The asks feed read the whole collection; the rules allow that only to
-  // `isManager()` (staff).
-  it('row 3 — the staff asks subscription reads the whole team feed', async () => {
-    const res = await awaitSnapshot<AskMessage[]>((cb, onError) =>
-      subscribeAsks(dbFor(ADMIN), cb, onError, { uid: ADMIN, isStaff: true }),
-    );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.value.map((a) => a.id).sort()).toEqual(['q-mine', 'q-other']);
-  });
-
-  // ── Row 4: Questions channel denied under "See as their view" (#603) ──────
-  // A Full-timer impersonating a trainee must still read the team feed. The
-  // query is unscoped for staff; scoping it by the persona's uid would both
-  // hide the team's questions and be denied (the persona did not author them).
-  it('row 4 — the staff asks feed is not scoped to the impersonated uid', async () => {
-    const res = await awaitSnapshot<AskMessage[]>((cb, onError) => subscribeStaffAsks(dbFor(ADMIN), TRAINEE, cb, onError));
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.value.map((a) => a.id).sort()).toEqual(['q-mine', 'q-other']);
-  });
+  // Rows 3 and 4 (the Questions for the team feed, #564 and #603) are retired:
+  // the feature is cut (cut-or-keep §5), its builders are gone and the `asks`
+  // collection is closed (src/test/firestore.rules.test.ts).
 
   // ── Row 5: Full-timers-only posts leaked onto the trainee phone home (#951)
   // `buildQueue` and `traineeWaitingItems` must drop `scope: "team"` messages.

@@ -9,8 +9,7 @@
  * destinations grouped, the current one is unmistakable, the mark and the
  * account block stay pinned, the collapse control announces its expanded
  * state, the destination names survive as accessible labels in compact
- * mode, the unread count renders as a number when expanded and a dot when
- * collapsed, and destination labels appear as tooltips on hover and on
+ * mode, and destination labels appear as tooltips on hover and on
  * keyboard focus.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,31 +19,6 @@ import NavRail from '../components/layout/NavRail';
 import { NavShellProvider } from '../components/NavShellProvider';
 import { groupedNavFor, navExternalFor } from '../lib/permissions';
 import type { AppRole } from '../lib/permissions';
-import * as asks from '../lib/asks';
-// ── asks subscription mock ──────────────────────────────────────────────────
-// The rail renders an unread badge for /questions, the same way the top bar
-// does (#646). The badge reads the same subscribed list the page consumes.
-const asksMock = vi.hoisted(() => ({
-  // Tests that care about a specific count reassign this with
-//   vi.mocked(asks.subscribeAsks).mockImplementation(...)
-  subscribeAsks: vi.fn<
-    (
-      cb: (m: unknown[]) => void,
-      _err?: unknown,
-      opts?: { uid?: string; isStaff?: boolean },
-    ) => () => void
-  >((cb) => {
-    cb([]);
-    return () => {};
-  }),
-  subscribeStaffAsks: vi.fn((_uid: string, cb: (m: unknown[]) => void) => {
-    cb([]);
-    return () => {};
-  }),
-  askQuestions: vi.fn((m: unknown[]) => m as never[]),
-  askAnswered: vi.fn(() => false),
-}));
-vi.mock('../lib/asks', () => asksMock);
 // ── auth + layout mocks ─────────────────────────────────────────────────────
 const h = vi.hoisted(() => ({
   user: null as null | { uid: string; email: string; displayName: string; photoURL: string | null },
@@ -347,62 +321,12 @@ describe('NavRail (#664)', () => {
     }
   });
 
-  // ── Unread badge (acceptance criterion 5: count → dot on collapse) ──
-  it('shows the waiting-asks count as a number next to the Questions label in the expanded rail', () => {
-    // Three open questions on other people's accounts — counted by askQuestions
-    // and gated by askAnswered returning false. The current user (u-1) is
-    // excluded by the `from !== uid` filter, mirroring TopNav's logic.
-    const messages = [
-      { id: 'q1', parentId: null, owner: 't1', from: 't1', kind: 'question' },
-      { id: 'q2', parentId: null, owner: 't2', from: 't2', kind: 'question' },
-      { id: 'q3', parentId: null, owner: 't3', from: 't3', kind: 'question' },
-    ];
-    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: typeof messages) => void) => {
-      cb(messages);
-      return () => {};
-    }) as never);
-    vi.mocked(asks.askQuestions).mockImplementation(((m: typeof messages) => m) as never);
-    vi.mocked(asks.askAnswered).mockReturnValue(false as never);
-
+  // Questions for the team is cut (cut-or-keep §5), and the waiting-asks badge
+  // that only it carried went with it.
+  it('has no Questions destination and no waiting badge', () => {
     renderRail({ role: 'admin' });
-    // The number "3" must be visible next to the Questions label.
-    const questions = screen.getByRole('link', { name: /Questions/i });
-    expect(within(questions).getByText('3')).toBeInTheDocument();
-  });
-
-  it('shows the waiting-asks count as a dot (no number) when the rail is collapsed', () => {
-    const messages = [
-      { id: 'q1', parentId: null, owner: 't1', from: 't1', kind: 'question' },
-      { id: 'q2', parentId: null, owner: 't2', from: 't2', kind: 'question' },
-    ];
-    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: typeof messages) => void) => {
-      cb(messages);
-      return () => {};
-    }) as never);
-    vi.mocked(asks.askQuestions).mockImplementation(((m: typeof messages) => m) as never);
-    vi.mocked(asks.askAnswered).mockReturnValue(false as never);
-
-    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
-    renderRail({ role: 'admin' });
-
-    const questions = screen.getByRole('link', { name: /Questions/i });
-    // No number — a dot is an aria-hidden indicator, the count is in the
-    // accessible name so screen readers still hear "Questions, 2 waiting".
-    expect(within(questions).queryByText('2')).not.toBeInTheDocument();
-    expect(questions).toHaveAccessibleName(/2\s+waiting/);
-  });
-
-  it('does not show a badge at all when there are no waiting asks', () => {
-    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: unknown[]) => void) => {
-      cb([]);
-      return () => {};
-    }) as never);
-
-    renderRail({ role: 'admin' });
-    const questions = screen.getByRole('link', { name: /^Questions$/ });
-    // The accessible name is the label alone — no "waiting" suffix when
-    // there's nothing to wait on.
-    expect(questions).toHaveAccessibleName('Questions');
+    expect(screen.queryByRole('link', { name: /Questions/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/waiting/i)).not.toBeInTheDocument();
   });
 
   // ── Focusable tooltip (acceptance criterion 6: label on hover AND focus)
@@ -414,30 +338,30 @@ describe('NavRail (#664)', () => {
     // surfaced via a non-title channel. The collapsed rail sets `data-tooltip`,
     // which NavRail's delegated focus handler turns into the portal bubble
     // for keyboard focus.
-    const questions = screen.getByRole('link', { name: /Questions/i });
-    expect(questions).toHaveAttribute('data-tooltip', 'Questions');
+    const messages = screen.getByRole('link', { name: /^Messages$/ });
+    expect(messages).toHaveAttribute('data-tooltip', 'Messages');
   });
 
   // ── Unclipped hover tooltip (#711) ────────────────────────────────────────
   it('shows the full label in a portal tooltip on hover, outside the rail (#711)', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail({ role: 'admin' });
-    const questions = screen.getByRole('link', { name: /Questions/i });
-    fireEvent.mouseOver(questions);
+    const messages = screen.getByRole('link', { name: /^Messages$/ });
+    fireEvent.mouseOver(messages);
     const tooltip = screen.getByRole('tooltip');
-    expect(tooltip).toHaveTextContent('Questions');
+    expect(tooltip).toHaveTextContent('Messages');
     // The bubble must NOT live inside the rail: both the aside and the
     // destinations nav clip overflow, which cropped the old CSS pseudo into
     // an unreadable sliver at the rail's edge (#711).
     expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
-    fireEvent.mouseOut(questions);
+    fireEvent.mouseOut(messages);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('shows the portal tooltip on keyboard focus (#665 AC6, #711)', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail({ role: 'admin' });
-    const questions = screen.getByRole('link', { name: /Questions/i });
+    const messages = screen.getByRole('link', { name: /^Messages$/ });
     // jsdom has no :focus-visible heuristic (it always answers false), so
     // simulate the engine: only this link answers true, as keyboard focus
     // would in a real browser.
@@ -445,13 +369,13 @@ describe('NavRail (#664)', () => {
     const spy = vi
       .spyOn(HTMLElement.prototype, 'matches')
       .mockImplementation(function (this: HTMLElement, selector: string) {
-        if (selector === ':focus-visible') return this === questions;
+        if (selector === ':focus-visible') return this === messages;
         return nativeMatches.call(this, selector);
       });
     try {
-      fireEvent.focus(questions);
+      fireEvent.focus(messages);
       const tooltip = screen.getByRole('tooltip');
-      expect(tooltip).toHaveTextContent('Questions');
+      expect(tooltip).toHaveTextContent('Messages');
       expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
     } finally {
       spy.mockRestore();

@@ -4,16 +4,12 @@ import {
   LayoutDashboard,
   Contact,
   MessageSquare,
-  MessageCircleQuestion,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
-import { canAccessRoute } from '../../lib/permissions';
 import { sectionHrefFor } from '../../lib/navTrail';
 import { useI18n } from '../LanguageProvider';
-import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
-import { useMyAskRepliesCount } from '../../hooks/useMyAskRepliesCount';
 
 /**
  * Re-tapping the lit destination returns the list under it to the top, the way
@@ -35,25 +31,17 @@ function scrollCurrentListToTop() {
  * invisible outdoors and to low-vision users (#1775). `Link`, not `NavLink`:
  * the shell selects on `sectionHrefFor`, which also lights a destination for
  * the routes underneath it (/people/:id still belongs to People).
- *
- * `waiting` is the count of things owed to the reader here (#1806). It rides
- * the disc as a pill and is repeated for screen readers after the label, so a
- * tab bar announces "Questions, 3 waiting" the way a native one does.
  */
 function Destination({
   to,
   label,
   icon: Icon,
   active,
-  waiting = 0,
-  waitingLabel,
 }: {
   to: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
-  waiting?: number;
-  waitingLabel?: string;
 }) {
   return (
     <Link
@@ -76,14 +64,6 @@ function Destination({
         )}
       >
         <Icon className="h-5 w-5" />
-        {waiting > 0 && (
-          <span
-            data-testid="mobile-nav-waiting"
-            className="absolute -top-1 right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-semibold leading-4 tabular-nums text-on-primary ring-2 ring-surface-container-low"
-          >
-            {waiting}
-          </span>
-        )}
       </span>
       <span
         className={cn(
@@ -93,40 +73,20 @@ function Destination({
       >
         {label}
       </span>
-      {waiting > 0 && waitingLabel && (
-        <span className="sr-only">, {waitingLabel}</span>
-      )}
     </Link>
   );
 }
 
 export default function MobileNav() {
-  const { user, role, effectiveUserId } = useAuth();
+  const { role } = useAuth();
   const { t } = useI18n();
   const { pathname } = useLocation();
   const section = sectionHrefFor(pathname);
-  const isAdmin = role === 'admin';
-  // The route allowlist, not a role rung: Questions opens to a trainee manager
-  // and above (#1806).
-  const canSeeQuestions = canAccessRoute(role, '/questions');
-  const uid = effectiveUserId || user?.uid || null;
-
-  // Two counts, one slot. A full-timer carries the team's unanswered backlog,
-  // which the rail and the top bar already show; a trainee carries the replies
-  // owed on their own questions, the number the Messages header uses (#563).
-  // Neither is a new query — both read the asks feed the shells already read.
-  const waitingAsks = useWaitingAsksCount(uid, isAdmin);
-  const myReplies = useMyAskRepliesCount(isAdmin || !canSeeQuestions ? null : uid);
-  const questionsWaiting = isAdmin ? waitingAsks : myReplies;
 
   // Same names the drawer, rail and top bar use — the bar used to say
   // "Contacts" and "Prayer" for destinations called "People" and "On our
   // hearts" everywhere else (#1775).
   const homeLabel = role === 'admin' ? t('nav.my_day', 'My Day') : t('nav.home', 'Home');
-  const waitingLabel =
-    questionsWaiting > 0
-      ? t('nav.questions_waiting', '{n} waiting').replace('{n}', String(questionsWaiting))
-      : undefined;
 
   return (
     <nav
@@ -135,8 +95,8 @@ export default function MobileNav() {
     >
       <Destination to="/" label={homeLabel} icon={LayoutDashboard} active={section === '/'} />
 
-      {/* Messages and Questions are the two places a Trainee has live work in,
-          so they are destinations rather than drawer rows (ADR 0049). The
+      {/* Messages is where a Trainee has live work, so it is a destination
+          rather than a drawer row (ADR 0049). The
           centred search FAB that used to hold this middle slot was a duplicate:
           the phone header already renders its own search button, and the bar
           could not grow past five controls at 375px. */}
@@ -146,17 +106,6 @@ export default function MobileNav() {
         icon={MessageSquare}
         active={section === '/messages'}
       />
-
-      {canSeeQuestions && (
-        <Destination
-          to="/questions"
-          label={t('nav.questions', 'Questions')}
-          icon={MessageCircleQuestion}
-          active={section === '/questions'}
-          waiting={questionsWaiting}
-          waitingLabel={waitingLabel}
-        />
-      )}
 
       <Destination
         to="/directory"

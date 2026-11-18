@@ -66,7 +66,6 @@ export function QueueDrawer({
     const labels: Record<string, string> = {
       people: t('mobile.nav.people'),
       messages: t('mobile.nav.messages'),
-      ask: t('mobile.ask.title', 'Ask a Full-timer'),
       signup: t('mobile.nav.sign_up_form'),
       tutorial: t('mobile.nav.how_this_works'),
       settings: t('mobile.nav.your_app'),

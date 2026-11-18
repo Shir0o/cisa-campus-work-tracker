@@ -12,7 +12,6 @@ import {
   Sun,
   FileText,
   MessageSquare,
-  MessageCircleQuestion,
   BookOpen,
   LayoutDashboard,
   Users,
@@ -32,7 +31,6 @@ import {
 } from '../../lib/permissions';
 import { useNavShell } from '../NavShellProvider';
 import { sectionHrefFor } from '../../lib/navTrail';
-import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 import { SIGNUP_TITLE } from './SignupInvite';
 
 const NAV_ICONS: Record<string, LucideIcon> = {
@@ -46,7 +44,6 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/answered': Sun,
   '/coordination': FileText,
   '/messages': MessageSquare,
-  '/questions': MessageCircleQuestion,
   '/bible-study': BookOpen,
   '/around': Users,
   '/feedback': StickyNote,
@@ -64,31 +61,19 @@ const PINNED_LABELS: Record<NavGroupLabel, string> = {
   Prayer: 'Prayer',
 };
 
-// Stable test id for the unread badge on a destination. Used in both the
-// expanded-rail number span and the collapsed-rail dot so tests can target
-// the same node regardless of which shell variant is rendered. The href
-// is sanitised to alphanumeric so it can be used as a DOM id class safely.
-const unreadTestId = (href: string) => `rail-unread-${href.replace(/[^a-z0-9]/gi, '')}`;
-
 export interface NavRailProps {
   /** Reserved for future use — kept for symmetry with TopNav. */
   onOpenImpersonateModal?: () => void;
 }
 
 export default function NavRail(_props: NavRailProps = {}) {
-  const { role, isAdmin, user, effectiveUserId } = useAuth();
+  const { role } = useAuth();
   const { pathname } = useLocation();
   const { effective } = useNavShell();
   const collapsed = effective === 'rail-collapsed';
 
   const groups = groupedNavFor(role);
   const externalLinks = navExternalFor(role);
-
-  // The /questions destination shows a badge: a number when the rail is
-  // expanded, a dot when it's collapsed. The same hook powers the badge on
-  // the top bar (#646); both shells stay in sync because they read from
-  // the same Firestore collection.
-  const waitingAsks = useWaitingAsksCount(effectiveUserId || user?.uid, isAdmin);
 
   const railWidth = collapsed ? 'w-[76px]' : 'w-[232px]';
 
@@ -211,7 +196,6 @@ export default function NavRail(_props: NavRailProps = {}) {
                     collapsed={collapsed}
                     currentPath={pathname}
                     role={role as AppRole | null}
-                    unread={item.href === '/questions' ? waitingAsks : 0}
                   />
                 </li>
               ))}
@@ -306,21 +290,14 @@ interface RailItemProps {
   collapsed: boolean;
   currentPath: string;
   role: AppRole | null;
-  /** Unread count for this destination. 0 means no badge. */
-  unread?: number;
 }
 
-function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemProps) {
+function RailItem({ item, collapsed, currentPath, role }: RailItemProps) {
   // `sectionHrefFor` resolves a path to the destination it belongs to, so a
   // route that sits *under* one still lights its item. Matching the pathname
   // directly left `/people/:contactId` selecting nothing at all (#803).
   const isActive = sectionHrefFor(currentPath) === item.href;
   const label = item.href === '/' && role === 'admin' ? 'My Day' : item.label;
-  // The spec requires the count to be readable on a screen reader even when
-  // the badge is reduced to a dot (#665, "unread counts to remain visible when
-  // the rail is collapsed"). The dot is `aria-hidden`; the count lives in the
-  // link's accessible name.
-  const a11yLabel = unread > 0 ? `${label}, ${unread} waiting` : label;
 
   return (
     // `Link`, not `NavLink`: NavLink derives `aria-current` from its own
@@ -329,7 +306,6 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
     <Link
       to={item.href}
       aria-current={isActive ? 'page' : undefined}
-      aria-label={unread > 0 ? a11yLabel : undefined}
       // The collapsed rail is icon-only, so the destination's label is
       // surfaced as a `data-tooltip` attribute that NavRail's delegated
       // handlers turn into a portal bubble on hover and keyboard focus —
@@ -354,38 +330,7 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
         size={collapsed ? 20 : 18}
         className={cn(isActive ? 'text-rail-on-selected' : '')}
       />
-      {!collapsed && (
-        <>
-          <span className="text-sm whitespace-nowrap truncate flex-1">{label}</span>
-          {unread > 0 && (
-            <span
-              data-testid={unreadTestId(item.href)}
-              aria-hidden="true"
-              className={cn(
-                'shrink-0 text-[11px] font-semibold tabular-nums rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center',
-                // The badge has to follow the item it sits on. A single
-                // pairing that assumed the selected fill left the count at
-                // ~1.6:1 on every resting item — i.e. invisible exactly where
-                // it matters. See docs/design/DRIFT.md #6.
-                isActive
-                  ? 'text-rail-on-selected bg-rail-on-selected/15'
-                  : 'text-rail-on bg-rail-hover',
-              )}
-            >
-              {unread}
-            </span>
-          )}
-        </>
-      )}
-      {collapsed && unread > 0 && (
-        // A dot — "something here" without the number. The number is in the
-        // accessible name above; the dot is purely visual.
-        <span
-          data-testid={unreadTestId(item.href)}
-          aria-hidden="true"
-          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rail-selected ring-2 ring-rail"
-        />
-      )}
+      {!collapsed && <span className="text-sm whitespace-nowrap truncate flex-1">{label}</span>}
       {collapsed && <span className="sr-only">{label}</span>}
     </Link>
   );

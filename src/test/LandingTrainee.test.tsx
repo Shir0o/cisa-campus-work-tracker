@@ -221,17 +221,6 @@ vi.mock('../lib/inboxReads', () => ({
   }),
 }));
 
-vi.mock('../lib/asks', () => ({
-  subscribeStaffAsks: vi.fn((_uid, callback) => {
-    callback([]);
-    return () => {};
-  }),
-  askQuestions: vi.fn(() => []),
-  askRepliesOf: vi.fn(() => []),
-  askWaitedDays: vi.fn(() => 0),
-  addAsk: vi.fn().mockResolvedValue(true),
-}));
-
 describe('LandingTrainee component', () => {
   afterEach(() => {
     readIds = new Set();
@@ -312,7 +301,7 @@ describe('LandingTrainee component', () => {
 
   // The rules deny a Trainee the threads collection group (it spans people
   // outside their visibleTo), so "What's waiting" reads each visible person's.
-  it('puts Ask the team last, after the people and the prayers', async () => {
+  it('ends on the people and the prayers, with no Ask a Full-timer panel (cut-or-keep §5)', async () => {
     render(
       <MemoryRouter>
         <LandingTrainee />
@@ -323,11 +312,12 @@ describe('LandingTrainee component', () => {
       "What's waiting on you",
       'Your people',
       "Prayers we're praying for",
-      'Ask a Full-timer',
     ].map((name) => screen.getByRole('heading', { name }));
     for (let i = 1; i < order.length; i++) {
       expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
+    expect(screen.queryByRole('heading', { name: 'Ask a Full-timer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ask a Full-timer/ })).not.toBeInTheDocument();
   });
 
   it('Log interaction on a person opens the log popup for that person', async () => {

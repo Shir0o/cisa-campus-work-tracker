@@ -3484,210 +3484,41 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // Cut-or-keep §5: Questions for the team is gone, so nothing reads or writes
+  // the `asks` collection. The documents stay in Firestore, unread.
   describe('Ask the team — person-less questions', () => {
-    const seedAskUsers = async () => {
+    it('nobody reads or writes the asks collection, a Full-timer included', async () => {
       await testEnv.withSecurityRulesDisabled(async (c) => {
         await setDoc(doc(c.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
-        await setDoc(doc(c.firestore(), 'users', 'ft2'), { role: 'admin', approved: true });
-        await setDoc(doc(c.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
-      });
-    };
-    const newAsk = (over: Record<string, unknown> = {}) => ({
-      parentId: null,
-      owner: 'trainee1',
-      from: 'trainee1',
-      fromName: 'Zion Park',
-      kind: 'question',
-      body: 'How do I start a conversation at the club table?',
-      at: new Date().toISOString(),
-      ...over,
-    });
-    const seedAsk = async (id: string, over: Record<string, unknown> = {}) => {
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'asks', id), newAsk(over));
-      });
-    };
-
-    it('ASK1: a trainee can ask a person-less question', async () => {
-      await seedAskUsers();
-      const db = getFirestore({ uid: 'trainee1' });
-      await assertSucceeds(setDoc(doc(db, 'asks', 'ask1'), newAsk()));
-    });
-
-    it('ASK2: nobody can file a question in someone else\'s name without takenBy', async () => {
-      await seedAskUsers();
-      const db = getFirestore({ uid: 'ft1' });
-      await assertFails(setDoc(doc(db, 'asks', 'ask2'), newAsk({ from: 'trainee1' })));
-    });
-
-    it('ASK2b: a full-timer can write down a question on behalf of a trainee with takenBy (#563)', async () => {
-      await seedAskUsers();
-      const ftDb = getFirestore({ uid: 'ft1' });
-      // Admin filing on behalf of trainee1 with takenBy: 'ft1' succeeds
-      await assertSucceeds(
-        setDoc(
-          doc(ftDb, 'asks', 'ask2b'),
-          newAsk({
-            from: 'trainee1',
-            owner: 'trainee1',
-            fromName: 'Zion Park',
-            takenBy: 'ft1',
-            takenByName: 'Mei Lin',
-          }),
-        ),
-      );
-
-      // Trainee cannot file on behalf of someone else even with takenBy
-      const traineeDb = getFirestore({ uid: 'trainee1' });
-      await assertFails(
-        setDoc(
-          doc(traineeDb, 'asks', 'ask2c'),
-          newAsk({
-            from: 'trainee2',
-            owner: 'trainee2',
-            fromName: 'Other Trainee',
-            takenBy: 'trainee1',
-          }),
-        ),
-      );
-    });
-
-    it('ASK3: a student cannot ask the team', async () => {
-      await seedAskUsers();
-      const db = getFirestore({ uid: 'student1' });
-      await assertFails(setDoc(doc(db, 'asks', 'ask3'), newAsk({ from: 'student1', owner: 'student1' })));
-    });
-
-    it('ASK4: an empty or oversized body is rejected', async () => {
-      await seedAskUsers();
-      const db = getFirestore({ uid: 'trainee1' });
-      await assertFails(setDoc(doc(db, 'asks', 'ask4'), newAsk({ body: '' })));
-      await assertFails(
-        setDoc(doc(db, 'asks', 'ask5'), newAsk({ body: 'a'.repeat(6000) })),
-      );
-    });
-
-    it('ASK5: a full-timer answers a question, stamped with the asker\'s owner', async () => {
-      await seedAskUsers();
-      await seedAsk('ask6');
-      const db = getFirestore({ uid: 'ft1' });
-      await assertSucceeds(
-        setDoc(doc(db, 'asks', 'ask6a'), {
-          parentId: 'ask6',
+        await setDoc(doc(c.firestore(), 'asks', 'ask1'), {
+          parentId: null,
           owner: 'trainee1',
-          from: 'ft1',
-          fromName: 'Mei',
-          kind: 'comment',
-          body: 'Three tries, spread out.',
+          from: 'trainee1',
+          fromName: 'Zion Park',
+          kind: 'question',
+          body: 'How do I start a conversation at the club table?',
           at: new Date().toISOString(),
-        }),
-      );
-    });
-
-    it('ASK6: a trainee reads their own question and every staff question, team-wide', async () => {
-      await seedAskUsers();
-      await seedAsk('ask7');
-      await seedAsk('ask8', { from: 'ft2', owner: 'ft2' });
-      const trainee = getFirestore({ uid: 'trainee1' });
-      // own question (owner === me) — allowed
-      await assertSucceeds(getDoc(doc(trainee, 'asks', 'ask7')));
-      // a full-timer's own question — now visible to every staff member
-      await assertSucceeds(getDoc(doc(trainee, 'asks', 'ask8')));
-      // a full-timer reads everything
-      const ft = getFirestore({ uid: 'ft1' });
-      await assertSucceeds(getDoc(doc(ft, 'asks', 'ask8')));
-      // a student (non-staff) still cannot read a staff question
-      const student = getFirestore({ uid: 'student1' });
-      await assertFails(getDoc(doc(student, 'asks', 'ask8')));
-    });
-
-    it('ASK6b: staff list all asks unfiltered; non-staff list queries stay owner-scoped', async () => {
-      await seedAskUsers();
-      await seedAsk('ask7', { owner: 'trainee1', from: 'trainee1' });
-      await seedAsk('ask8', { owner: 'ft2', from: 'ft2' });
-      const trainee = getFirestore({ uid: 'trainee1' });
-      // unfiltered query by a trainee (manager) — allowed team-wide
-      await assertSucceeds(getDocs(query(collection(trainee, 'asks'))));
-      // full-timer unfiltered query succeeds
-      const ft = getFirestore({ uid: 'ft1' });
-      await assertSucceeds(getDocs(query(collection(ft, 'asks'))));
-      // a student's unfiltered query is denied — they may only read their own (none)
-      const student = getFirestore({ uid: 'student1' });
-      await assertFails(getDocs(query(collection(student, 'asks'))));
-      await assertSucceeds(getDocs(query(collection(student, 'asks'), where('owner', '==', 'student1'))));
-    });
-
-    it('ASK7: reaction writes are rejected — the reactions field is gone', async () => {
-      await seedAskUsers();
-      await seedAsk('ask9');
-      const db = getFirestore({ uid: 'ft1' });
-      await assertFails(
-        updateDoc(doc(db, 'asks', 'ask9'), {
-          reactions: [{ by: 'ft1', emoji: '🙏' }],
-        }),
-      );
-    });
-
-    it('ASK8: body edits stay with the author', async () => {
-      await seedAskUsers();
-      await seedAsk('ask10');
-      // the asker may edit their own body
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'ask10'), {
-          body: 'Rephrased.',
-        }),
-      );
-      // another full-timer cannot edit the asker's body
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'ask10'), {
-          body: 'Rewritten by someone else.',
-        }),
-      );
-    });
-
-    it('ASK9: the asker deletes their own question and its answers; a full-timer deletes anyone\'s; a fellow trainee cannot', async () => {
-      await seedAskUsers();
-      await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'users', 'trainee2'), { role: 'manager', approved: true });
+        });
       });
-      // A question with an answer on it — the answer carries the asker's owner.
-      await seedAsk('askDel1');
-      await seedAsk('askDel1a', {
-        parentId: 'askDel1',
-        from: 'ft1',
-        fromName: 'Mei',
-        kind: 'comment',
-        body: 'Three tries, spread out.',
-      });
-
-      // A fellow trainee cannot delete someone else's question.
-      await assertFails(deleteDoc(doc(getFirestore({ uid: 'trainee2' }), 'asks', 'askDel1')));
-
-      // The asker takes down the answer in their thread, then the question.
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDel1a')));
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDel1')));
-
-      // A full-timer deletes a question they did not ask.
-      await seedAsk('askDel2');
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDel2')));
-    });
-
-    it('ASK9b (#680): a full-timer can delete a single reply on a question they did not ask', async () => {
-      await seedAskUsers();
-      // Trainee1 asks; ft1 answers. ft2 (also a full-timer) drops the answer.
-      await seedAsk('askDelB1');
-      await seedAsk('askDelB1a', {
-        parentId: 'askDelB1',
-        from: 'ft1',
-        fromName: 'Mei',
-        kind: 'comment',
-        body: 'Three tries, spread out.',
-      });
-
-      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDelB1a')));
-      // The question itself is still in place — only the reply was removed.
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDelB1')));
+      for (const uid of ['ft1', 'trainee1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'asks', 'ask1')));
+        await assertFails(getDocs(collection(db, 'asks')));
+        await assertFails(
+          setDoc(doc(db, 'asks', 'ask2'), {
+            parentId: null,
+            owner: uid,
+            from: uid,
+            fromName: 'Someone',
+            kind: 'question',
+            body: 'A new question.',
+            at: new Date().toISOString(),
+          }),
+        );
+        await assertFails(updateDoc(doc(db, 'asks', 'ask1'), { body: 'Rephrased.' }));
+        await assertFails(deleteDoc(doc(db, 'asks', 'ask1')));
+      }
     });
   });
 

@@ -10,13 +10,11 @@ Custom React hooks managing reactive subscriptions, contact interactions, story 
 - `ContactStoryActions` (`useContactStory.ts`)
 - `UseContactStoryResult` (`useContactStory.ts`)
 - `useContactStory` (`useContactStory.ts`)
-- `useMyAskRepliesCount` (`useMyAskRepliesCount.ts`)
 - `UseTranslateOptions` (`useTranslate.ts`)
 - `useTranslate` (`useTranslate.ts`)
 - `useTranslateMarkdown` (`useTranslate.ts`)
 - `UndoSnack` (`useUndoSnack.ts`)
 - `useUndoSnack` (`useUndoSnack.ts`)
-- `useWaitingAsksCount` (`useWaitingAsksCount.ts`)
 
 ## Invariants
 - Code within this directory adheres to strict TypeScript typing and project ESLint rules.
