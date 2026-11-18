@@ -49,28 +49,26 @@ describe('board audience / visibility', () => {
   it('maps roles to board levels', () => {
     expect(boardLevelForRole('admin')).toBe(2);
     expect(boardLevelForRole('manager')).toBe(1);
-    expect(boardLevelForRole('operator')).toBe(0);
+    expect(boardLevelForRole('operator')).toBe(-1);
     expect(boardLevelForRole('viewer')).toBe(-1);
   });
 
   it('lets a role see only pages at or below its level', () => {
-    // operator (Student) sees Open pages, not Trainee/Team pages
-    expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(true);
-    expect(canSeeBoardDoc('operator', { audience: 'trainees' })).toBe(false);
-    expect(canSeeBoardDoc('operator', { audience: 'team' })).toBe(false);
     // manager (Trainee) sees Open + Trainee, not Team
+    expect(canSeeBoardDoc('manager', { audience: 'everyone' })).toBe(true);
     expect(canSeeBoardDoc('manager', { audience: 'trainees' })).toBe(true);
     expect(canSeeBoardDoc('manager', { audience: 'team' })).toBe(false);
     // admin sees everything
     expect(canSeeBoardDoc('admin', { audience: 'team' })).toBe(true);
-    // community has no board access
+    // a legacy Student or Community role has no board access
+    expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(false);
     expect(canSeeBoardDoc('viewer', { audience: 'everyone' })).toBe(false);
   });
 
   it('scopes the query audiences per role', () => {
     expect(boardAudiencesForRole('admin')).toEqual([]); // unconstrained
     expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
-    expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
+    expect(boardAudiencesForRole('operator')).toEqual([]);
   });
 });
 

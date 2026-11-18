@@ -14,7 +14,6 @@ Full-page router views covering contact directory, The Journey board, prayers, g
 - `BibleStudyEditor` (`BibleStudyEditor.tsx`)
 - `BibleStudyIndex` (`BibleStudyIndex.tsx`)
 - `BibleStudyPresent` (`BibleStudyPresent.tsx`)
-- `BibleStudyRead` (`BibleStudyRead.tsx`)
 - `CombineContacts` (`CombineContacts.tsx`)
 - `CombineTags` (`CombineTags.tsx`)
 - `TeamMember` (`CoordinationNotes.tsx`)

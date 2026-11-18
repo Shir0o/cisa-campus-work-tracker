@@ -225,7 +225,7 @@ export default function TodoComposer({
     scope: "overlay",
     description: "Create the to-do",
     shortcut: { key: "Enter", mod: true },
-    minRole: "operator",
+    minRole: "manager",
     handler: () => void commit(),
   });
 

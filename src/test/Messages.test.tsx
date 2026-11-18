@@ -375,7 +375,7 @@ describe('Messages View Component', () => {
 
     (useAuth as any).mockReturnValue({
       user: stableUser,
-      role: 'operator',
+      role: 'manager',
     });
 
     render(
@@ -794,13 +794,11 @@ describe('Messages View Component', () => {
   // one render; the destinations it may reach are listed, anything else must
   // render as a non-button that names where the card lives.
   const ATTACHMENT_ROLE_MATRIX: Array<{
-    role: 'admin' | 'manager' | 'operator' | 'viewer';
+    role: 'admin' | 'manager';
     open: Record<string, string>;
   }> = [
     { role: 'admin', open: { interaction: '/history', event: '/attendance', prayer: '/prayer', note: '/coordination', feedback: '/admin/feedback' } },
     { role: 'manager', open: {} },
-    { role: 'operator', open: { event: '/attendance', prayer: '/prayer', note: '/coordination' } },
-    { role: 'viewer', open: { prayer: '/prayer' } },
   ];
 
   const ATTACHMENT_CARDS = [
@@ -1303,7 +1301,7 @@ describe('Messages View Component', () => {
     });
 
     it('replaces the composer with the guidance bar for non-admins', async () => {
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
       renderWithAnnouncement();
       openTheRoom();
 
@@ -1314,7 +1312,7 @@ describe('Messages View Component', () => {
     });
 
     it('leaves the composer alone in a group room', async () => {
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
       render(
         <MemoryRouter>
           <Messages />
@@ -2266,7 +2264,7 @@ describe('Messages View Component', () => {
       // The channel row used the chat grammar: selecting it swapped in a composer
       // that POSTED A NEW QUESTION rather than replying. It is gone from every
       // role's rail, and so is the trap.
-      for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      for (const role of ['admin', 'manager'] as const) {
         (useAuth as any).mockReturnValue({ user: stableUser, role });
         const { unmount } = render(
           <MemoryRouter>

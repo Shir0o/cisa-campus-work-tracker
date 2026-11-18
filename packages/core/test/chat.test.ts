@@ -59,7 +59,7 @@ const appUser = (overrides: Partial<AppUser> = {}): AppUser => ({
   displayName: 'User One',
   photoURL: '',
   approved: true,
-  role: 'viewer',
+  role: 'manager',
   ...overrides,
 });
 

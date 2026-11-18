@@ -12,8 +12,8 @@ import {
 import { contactWriter } from "./contactWriter";
 import type { StreamAdapter } from "./types";
 
-/** Operator or above may write a contact's stream — the rules' `isOperator()`. */
-export const WRITERS = new Set(["admin", "manager", "operator"]);
+/** A Trainee or above may write a contact's stream — the rules' `isManager()`. */
+export const WRITERS = new Set(["admin", "manager"]);
 
 export interface ConversationAdapterInput {
   contactId: string;

@@ -98,7 +98,6 @@ function MoreMenu({
   onLogInteraction,
   onAddPrayer,
   onRemindMe,
-  showRemindMe,
   onCall,
   onText,
   onEmail,
@@ -117,7 +116,6 @@ function MoreMenu({
   onLogInteraction: () => void;
   onAddPrayer: () => void;
   onRemindMe: () => void;
-  showRemindMe: boolean;
   onCall: () => void;
   onText: () => void;
   onEmail: () => void;
@@ -185,18 +183,16 @@ function MoreMenu({
           {/* #1802: a dated reminder without logging a visit. The composer this
               opens already lives on the page; the trigger hands it focus back
               when it closes, so Escape from the composer lands here. */}
-          {showRemindMe && (
-            <button
-              onClick={() => {
-                setOpen(false);
-                triggerRef.current?.focus();
-                onRemindMe();
-              }}
-              className={item}
-            >
-              <Bell className="w-4 h-4" /> {t('modals.contactDetails.remind_me', 'Remind me')}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setOpen(false);
+              triggerRef.current?.focus();
+              onRemindMe();
+            }}
+            className={item}
+          >
+            <Bell className="w-4 h-4" /> {t('modals.contactDetails.remind_me', 'Remind me')}
+          </button>
           {contact.phone && (
             <button onClick={() => { setOpen(false); onCall(); }} className={item}>
               <Phone className="w-4 h-4" /> {t('modals.contactDetails.call')}
@@ -260,7 +256,6 @@ export interface ContactHeaderModel {
   currentStageInfo?: Stage;
   sinceText: string;
   carerNames: string[];
-  role: string;
   isAdmin: boolean;
   showDelete: boolean;
   showRelease?: boolean;
@@ -328,7 +323,6 @@ export default function ContactHead(props: ContactHeadProps) {
     currentStageInfo,
     sinceText,
     carerNames,
-    role,
     isAdmin,
     showDelete,
     showRelease,
@@ -363,8 +357,6 @@ export default function ContactHead(props: ContactHeadProps) {
   } = actions;
 
   const { t } = useLanguage();
-  // A viewer reads the page but writes nothing, so the reminder is not offered.
-  const showRemindMe = role !== 'viewer';
   const aboutLabel = t('modals.contactDetails.about_person').replace('{name}', contact.name);
   const prayersLine = openPrayerCount > 0 && (
     <button
@@ -414,20 +406,17 @@ export default function ContactHead(props: ContactHeadProps) {
                 <span>{t('modals.contactDetails.people')}</span>
               </button>
               <div className="flex items-center gap-2">
-                {role !== 'viewer' && (
-                  <button
-                    onClick={onEdit}
-                    className="min-h-11 px-4 rounded-full border border-outline text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
-                  >
-                    {t('actions.edit') || 'Edit'}
-                  </button>
-                )}
+                <button
+                  onClick={onEdit}
+                  className="min-h-11 px-4 rounded-full border border-outline text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
+                >
+                  {t('actions.edit') || 'Edit'}
+                </button>
                 <MoreMenu
                   contact={contact}
                   onLogInteraction={onLogInteraction}
                   onAddPrayer={onStartPrayer}
                   onRemindMe={onRemindMe}
-                  showRemindMe={showRemindMe}
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}
@@ -668,21 +657,18 @@ export default function ContactHead(props: ContactHeadProps) {
                   </button>
                 )}
                 {/* #1666: Edit is a header action, not an overflow item. */}
-                {role !== 'viewer' && (
-                  <button
-                    onClick={onEdit}
-                    title={t('modals.contactDetails.edit_details')}
-                    className="h-9 px-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                  >
-                    <Edit3 className="w-4 h-4" /> {t('modals.contactDetails.edit_details')}
-                  </button>
-                )}
+                <button
+                  onClick={onEdit}
+                  title={t('modals.contactDetails.edit_details')}
+                  className="h-9 px-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  <Edit3 className="w-4 h-4" /> {t('modals.contactDetails.edit_details')}
+                </button>
                 <MoreMenu
                   contact={contact}
                   onLogInteraction={onLogInteraction}
                   onAddPrayer={onStartPrayer}
                   onRemindMe={onRemindMe}
-                  showRemindMe={showRemindMe}
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}

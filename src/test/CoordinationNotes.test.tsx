@@ -265,19 +265,11 @@ const nonAdminAuth = {
   loading: false,
 };
 
-// Trainee (manager) and Student (operator) read a role-scoped, read-only Board.
+// A Trainee (manager) reads a role-scoped, read-only Board.
 const traineeAuth = {
   user: { uid: 'u-trainee', email: 'zion@test.com', displayName: 'Zion Park' },
   isAdmin: false,
   role: 'manager',
-  isApproved: true,
-  loading: false,
-};
-
-const studentAuth = {
-  user: { uid: 'u-student', email: 'tim@test.com', displayName: 'Timothy Lee' },
-  isAdmin: false,
-  role: 'operator',
   isApproved: true,
   loading: false,
 };
@@ -400,17 +392,6 @@ describe('CoordinationNotes', () => {
       expect(screen.queryByRole('button', { name: /new record/i })).not.toBeInTheDocument();
       // The board_docs query is scoped to the trainee's audiences.
       expect(where).toHaveBeenCalledWith('audience', 'in', ['trainees', 'everyone']);
-    });
-
-    it('student (operator) sees a "What\'s happening" read-only view without the notes archive', () => {
-      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(studentAuth);
-      setupSnapshots({ docs: audDocs, notes: mockNotes, team: mockTeam });
-      render(<CoordinationNotes />);
-
-      expect(screen.getByRole('heading', { name: /what's happening/i, level: 1 })).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: /notes & learnings/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /new page/i })).not.toBeInTheDocument();
-      expect(where).toHaveBeenCalledWith('audience', 'in', ['everyone']);
     });
 
     it('full-timer (admin) reads every page unconstrained (no audience filter)', () => {
@@ -1904,7 +1885,7 @@ describe('CoordinationNotes', () => {
             displayName: 'cisa-test-account',
             email: 'cisa-test@example.com',
             approved: true,
-            role: 'viewer',
+            role: 'manager',
           }),
         },
       ];

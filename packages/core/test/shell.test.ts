@@ -19,15 +19,17 @@ describe('shellForRole', () => {
     expect(shellForRole('manager')).toBe('queue');
   });
 
-  it('gives both member roles the member shell', () => {
-    expect(shellForRole('operator')).toBe('member');
-    expect(shellForRole('viewer')).toBe('member');
+  it('gives the full-timer the FT shell', () => {
+    expect(shellForRole('admin')).toBe('ft');
   });
 
-  it('falls through to the full-timer shell for admin and for no role', () => {
-    expect(shellForRole('admin')).toBe('ft');
-    expect(shellForRole(null)).toBe('ft');
-    expect(shellForRole('something-new')).toBe('ft');
+  // No role (unapproved, legacy Student/Community, unknown) is never the
+  // Full-timer shell: it gets no shell and no tabs.
+  it('gives a missing, legacy or unknown role no shell', () => {
+    for (const role of [null, undefined, 'operator', 'viewer', 'something-new']) {
+      expect(shellForRole(role), String(role)).toBe('none');
+      expect(tabsForRole(role), String(role)).toEqual([]);
+    }
   });
 });
 
@@ -43,28 +45,6 @@ describe('tabsForRole', () => {
       { name: 'messages', title: 'Messages' },
       { name: 'more', title: 'More' },
     ]);
-  });
-
-  it('gives a student Today · Prayer · Messages · You', () => {
-    expect(tabsForRole('operator')).toEqual([
-      { name: 'index', title: 'Today' },
-      { name: 'prayer', title: 'Prayer' },
-      { name: 'messages', title: 'Messages' },
-      { name: 'more', title: 'You' },
-    ]);
-  });
-
-  it("opens Community on What's on instead of Today", () => {
-    expect(tabsForRole('viewer')[0]).toEqual({ name: 'index', title: "What's on" });
-  });
-
-  it('keeps the directory and the logging tab away from members', () => {
-    for (const role of ['operator', 'viewer']) {
-      const names = tabsForRole(role).map((t) => t.name);
-      expect(names).not.toContain('people');
-      expect(names).not.toContain('log');
-      expect(names).not.toContain('journey');
-    }
   });
 
   it('drops the prayer tab for both staff roles', () => {
@@ -83,7 +63,6 @@ describe('isPushedScreen', () => {
 
   it('is false for a screen the role has as a tab', () => {
     expect(isPushedScreen('admin', 'people')).toBe(false);
-    expect(isPushedScreen('operator', 'prayer')).toBe(false);
   });
 });
 

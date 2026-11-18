@@ -17,6 +17,7 @@ import {
   isAppOwner,
   canSimulateRole,
   getEffectiveRole,
+  effectiveRole as appRoleOf,
   resolveImpersonateTarget,
   meIdFor,
   identityKey,
@@ -85,10 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.getItem(STORAGE_KEY_MOBILE_IMP_TARGET),
     ])
       .then(([savedRole, savedTargetKey]) => {
-        let role: AppRole | null = null;
-        if (savedRole === 'admin' || savedRole === 'manager' || savedRole === 'operator' || savedRole === 'viewer') {
-          role = savedRole as AppRole;
-        }
+        const role = appRoleOf(savedRole);
         if (savedTargetKey) {
           const resolved = resolveImpersonateTarget(savedTargetKey);
           if (resolved) {
@@ -142,10 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ? meIdFor(impersonateTarget.persona)
     : (ownerViewRole === 'manager'
         ? 'cisa-trainee'
-        : ownerViewRole === 'operator'
-        ? 'cisa-student'
-        : ownerViewRole === 'viewer'
-        ? 'cisa-community'
         : user?.uid || null);
 
   const effectiveIdentityKey = impersonateTarget
@@ -168,12 +162,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Until the user doc arrives the role is unknown; stay loading so the
+      // access gate does not flash the pending screen on every sign-in.
+      setLoading(true);
       unsubUserDoc = onSnapshot(
         doc(db, 'users', authUser.uid),
         (snap) => {
-          const data = snap.data() as { role?: AppRole; approved?: boolean; displayName?: string; photoURL?: string } | undefined;
-          setActualRole(data?.role ?? null);
-          setIsApproved(!!data?.approved);
+          const data = snap.data() as { role?: string; approved?: boolean; displayName?: string; photoURL?: string } | undefined;
+          // A legacy Student or Community role reads as no role, and no role
+          // has nothing to be approved for.
+          const role = appRoleOf(data?.role ?? null);
+          setActualRole(role);
+          setIsApproved(!!role && !!data?.approved);
           const profileDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0];
           const profilePhoto = authUser.photoURL || data?.photoURL;
           if (profileDisplayName && (authUser.displayName !== profileDisplayName || authUser.photoURL !== profilePhoto)) {

@@ -13,8 +13,6 @@ export interface RoleOption {
 
 // Ordered low → high, mirrors web's ROLE_OPTIONS.
 export const ROLE_OPTIONS: RoleOption[] = [
-  { value: "viewer", label: ROLE_LABELS.viewer },
-  { value: "operator", label: ROLE_LABELS.operator },
   { value: "manager", label: ROLE_LABELS.manager },
   { value: "admin", label: ROLE_LABELS.admin },
 ];
@@ -49,20 +47,6 @@ export const ROLE_CARDS: RoleCard[] = [
     initials: "TR",
     description: "Cares for the team. Manages users and accesses all data surfaces, minus dev-only admin.",
     access: ["Home", "People", "The Journey", "Gatherings", "Prayer", "History"],
-  },
-  {
-    key: "operator",
-    label: "Student",
-    initials: "ST",
-    description: "Can add and update people, log interactions, and mark attendance.",
-    access: ["Home", "People", "Gatherings", "Prayer"],
-  },
-  {
-    key: "viewer",
-    label: "Community",
-    initials: "CM",
-    description: "A read-only window — can see gatherings and prayers, nothing else.",
-    access: ["Gatherings", "Prayer"],
   },
 ];
 

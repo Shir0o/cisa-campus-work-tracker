@@ -1,9 +1,9 @@
-export type Role = 'fulltimer' | 'trainee' | 'trainee2' | 'student' | 'community' | 'reviewer';
+export type Role = 'fulltimer' | 'trainee' | 'trainee2' | 'reviewer';
 
 export interface CredentialInfo {
   email: string;
   password: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   label: string;
 }
 
@@ -31,17 +31,5 @@ export const DEFAULT_CREDENTIALS: Record<Role, CredentialInfo> = {
     password: 'password123',
     role: 'manager',
     label: 'Caleb Owusu',
-  },
-  student: {
-    email: 'student.e2e@example.com',
-    password: 'password123',
-    role: 'operator',
-    label: 'Timothy Hale',
-  },
-  community: {
-    email: 'community.e2e@example.com',
-    password: 'password123',
-    role: 'viewer',
-    label: 'Philip Nardi',
   },
 };

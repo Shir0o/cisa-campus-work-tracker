@@ -966,7 +966,7 @@ function AddThisWeekMobile({
     scope: 'compose',
     description: translate('prayers.add_prayer'),
     shortcut: { key: 'Enter', mod: true },
-    minRole: 'operator',
+    minRole: 'manager',
     when: (e) => e.target === taRef.current,
     available: () => open && !!val.trim() && !saving,
     handler: () => void save(),

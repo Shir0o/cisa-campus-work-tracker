@@ -1,32 +1,20 @@
 // A Thread in a chat room, on the phone (ADR 0033, T2–T3): replies to one
 // message, one level deep, as a pushed screen with a back control to the room.
-// Header: "Thread" over the room's name. Staff and members share it; in an
-// announcement any member can say Got it on the post and reply here.
+// Header: "Thread" over the room's name. In an announcement any member can say
+// Got it on the post and reply here.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getRoomName, memberRoleOf } from '@cisa/core';
+import { getRoomName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useV2Theme } from '../../theme/v2';
 import { SafeAreaView } from '../ui/SafeArea';
-import { MemberRoom } from '../member/MemberScreen';
 import { ChatStreamPane } from './ChatStreamPane';
 
-export function ChatReplyThreadScreen(props: { roomId: string; parentId: string }) {
-  const { role } = useAuth();
-  return memberRoleOf(role) ? (
-    <MemberRoom>
-      <ThreadBody {...props} />
-    </MemberRoom>
-  ) : (
-    <ThreadBody {...props} />
-  );
-}
-
-function ThreadBody({ roomId, parentId }: { roomId: string; parentId: string }) {
+export function ChatReplyThreadScreen({ roomId, parentId }: { roomId: string; parentId: string }) {
   const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { uid } = useAuth();

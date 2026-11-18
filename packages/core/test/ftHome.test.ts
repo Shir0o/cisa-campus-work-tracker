@@ -15,6 +15,7 @@ import {
   ftTodos,
   ftWeekAhead,
   ftWeighsHeavy,
+  memberAgo,
 } from '../src/ftHome';
 import type { InboxItem } from '../src/inbox';
 import type { Leader } from '../src/myday';
@@ -634,13 +635,12 @@ describe('ftAssignees', () => {
     ...overrides,
   });
 
-  it('filters out cisa-* test accounts, unapproved users, viewers, and the current user', () => {
+  it('filters out cisa-* test accounts, unapproved users, and the current user', () => {
     const team: AppUser[] = [
       user({ uid: 'me', displayName: 'Current User' }),
       user({ uid: 'test1', email: 'cisa-ft@hub.com', displayName: 'cisa-ft' }),
       user({ uid: 'test2', email: 'regular@example.com', displayName: 'cisa-Trainee' }),
       user({ uid: 'unapproved', email: 'p@example.com', displayName: 'Pending', approved: false }),
-      user({ uid: 'viewer', email: 'v@example.com', displayName: 'Viewer', role: 'viewer' }),
       user({ uid: 'valid1', email: 'b@example.com', displayName: 'Bob Smith' }),
       user({ uid: 'valid2', email: 'a@example.com', displayName: 'Alice Wong' }),
     ];
@@ -648,5 +648,32 @@ describe('ftAssignees', () => {
     const result = ftAssignees(team, 'me');
     expect(result.map((u) => u.uid)).toEqual(['valid2', 'valid1']);
     expect(result.map((u) => u.displayName)).toEqual(['Alice Wong', 'Bob Smith']);
+  });
+});
+
+describe('memberAgo', () => {
+  const NOW = new Date('2026-07-15T09:00:00Z').getTime();
+  const iso = (offsetDays: number) => new Date(NOW + offsetDays * 86_400_000).toISOString();
+
+  it('says "today" for something that just happened, never "0 days ago"', () => {
+    // The whole reason this exists: agoLabel prints "0 days ago" for a request
+    // sent a moment ago, which reads as a bug.
+    expect(memberAgo(iso(0), NOW)).toBe('today');
+    expect(memberAgo(new Date(NOW - 60_000).toISOString(), NOW)).toBe('today');
+  });
+
+  it('names yesterday, then counts the days', () => {
+    expect(memberAgo(iso(-1), NOW)).toBe('yesterday');
+    expect(memberAgo(iso(-4), NOW)).toBe('4 days ago');
+  });
+
+  it('does not go negative for a timestamp in the future', () => {
+    expect(memberAgo(iso(2), NOW)).toBe('today');
+  });
+
+  it('says something rather than nothing when the date is missing or unreadable', () => {
+    expect(memberAgo(null, NOW)).toBe('a while ago');
+    expect(memberAgo(undefined, NOW)).toBe('a while ago');
+    expect(memberAgo('not a date', NOW)).toBe('a while ago');
   });
 });

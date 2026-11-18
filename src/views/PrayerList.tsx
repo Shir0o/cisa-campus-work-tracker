@@ -147,7 +147,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 export default function PrayerList() {
   const { user, role } = useAuth();
   const { setSelectedContact } = useLayout();
-  const isOperator = hasMinRole(role, 'operator');
+  const isOperator = hasMinRole(role, 'manager');
   // Clear-prayer (#706): the firestore delete rule for prayers/{id} is
   // isManager (Full-timer + Trainee); mirror that here.
   const isManager = hasMinRole(role, 'manager');
@@ -1693,7 +1693,7 @@ function AddThisWeek({
     scope: 'compose',
     description: translate('prayers.add_prayer'),
     shortcut: { key: 'Enter', mod: true },
-    minRole: 'operator',
+    minRole: 'manager',
     when: (e) => e.target === taRef.current,
     available: () => open && !!val.trim() && !saving,
     handler: () => void save(),

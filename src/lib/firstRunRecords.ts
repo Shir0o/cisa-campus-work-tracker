@@ -12,13 +12,12 @@ import type { FirstRunPredicateContext } from './firstRun';
 
 export type FirstRunRecordFlags = Pick<
   FirstRunPredicateContext,
-  'docsCount' | 'messagesCount' | 'feedbackCount'
+  'docsCount' | 'messagesCount'
 >;
 
 export const EMPTY_FIRST_RUN_RECORDS: FirstRunRecordFlags = {
   docsCount: 0,
   messagesCount: 0,
-  feedbackCount: 0,
 };
 
 export function existenceFlag(present: boolean): number {
@@ -28,22 +27,15 @@ export function existenceFlag(present: boolean): number {
 export interface FirstRunRecordSources {
   docs: boolean;
   messages: boolean;
-  feedback: boolean;
 }
 
 export function firstRunRecordSources(role?: string | null): FirstRunRecordSources {
   const norm = (role || 'trainee').toLowerCase();
   const fullTimer = norm === 'admin' || norm === 'ft';
   const trainee = norm === 'trainee' || norm === 'manager';
-  const community =
-    norm === 'operator' ||
-    norm === 'student' ||
-    norm === 'viewer' ||
-    norm === 'community';
   return {
     docs: fullTimer,
-    messages: trainee || community,
-    feedback: community,
+    messages: trainee,
   };
 }
 
@@ -51,7 +43,7 @@ export function useFirstRunRecords(
   role?: string | null,
   uid?: string | null,
 ): FirstRunRecordFlags {
-  const { docs, messages, feedback } = firstRunRecordSources(role);
+  const { docs, messages } = firstRunRecordSources(role);
   const [flags, setFlags] = useState<FirstRunRecordFlags>(EMPTY_FIRST_RUN_RECORDS);
   const [lastUid, setLastUid] = useState(uid);
 
@@ -68,15 +60,6 @@ export function useFirstRunRecords(
       () => setFlags((f) => ({ ...f, docsCount: 0 })),
     );
   }, [uid, docs]);
-
-  useEffect(() => {
-    if (!uid || !feedback) return;
-    return onSnapshot(
-      query(collection(db, 'feedback'), where('userId', '==', uid), limit(1)),
-      (snap) => setFlags((f) => ({ ...f, feedbackCount: existenceFlag(!snap.empty) })),
-      () => setFlags((f) => ({ ...f, feedbackCount: 0 })),
-    );
-  }, [uid, feedback]);
 
   useEffect(() => {
     if (!uid || !messages) return;
@@ -116,6 +99,5 @@ export function useFirstRunRecords(
   return {
     docsCount: docs ? flags.docsCount : 0,
     messagesCount: messages ? flags.messagesCount : 0,
-    feedbackCount: feedback ? flags.feedbackCount : 0,
   };
 }

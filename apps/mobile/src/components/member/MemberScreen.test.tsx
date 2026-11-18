@@ -5,7 +5,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { MemberScreen } from './MemberScreen';
 
 jest.mock('../../lib/AuthProvider', () => ({
-  useAuth: () => ({ uid: 'user1', user: null, role: 'student' }),
+  useAuth: () => ({ uid: 'user1', user: null, role: 'manager' }),
 }));
 
 describe('MemberScreen', () => {

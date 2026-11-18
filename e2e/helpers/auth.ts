@@ -41,7 +41,7 @@ export function credentials(): Record<Role, CredentialInfo> {
   }
 }
 
-export const ROLES: Role[] = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'];
+export const ROLES: Role[] = ['fulltimer', 'trainee', 'trainee2'];
 
 /** `WHATS_NEW_STORAGE_KEY` in src/lib/whatsNew.ts — inlined so e2e keeps its
  *  boundary with app source. Update both together if the key ever changes. */

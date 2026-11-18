@@ -120,6 +120,7 @@ describe('History View', () => {
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({

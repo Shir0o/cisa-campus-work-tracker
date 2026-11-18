@@ -85,8 +85,6 @@ const ADMIN = 'admin1';
 const ADMIN_FRESH = 'admin2';
 const TRAINEE = 'manager1';
 const OTHER_TRAINEE = 'manager2';
-const STUDENT = 'operator1';
-const VIEWER = 'viewer1';
 const PENDING = 'pending1';
 
 const ISO = '2026-10-01T00:00:00.000Z';
@@ -141,7 +139,7 @@ function seedUser(db: Firestore, uid: string, over: Record<string, unknown>): Pr
     email: `${uid}@example.com`,
     displayName: uid,
     photoURL: null,
-    role: 'viewer',
+    role: 'manager',
     approved: true,
     createdAt: ISO,
     updatedAt: ISO,
@@ -168,15 +166,13 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
     await env.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as unknown as Firestore;
-      // Approved roster. manager = trainee (scoped); admin/operator/viewer see
-      // every person; pending is approved:false.
+      // Approved roster. manager = trainee (scoped); admin sees every person;
+      // pending is approved:false.
       await seedUser(db, ADMIN, { role: 'admin', approved: true });
       await seedUser(db, ADMIN_FRESH, { role: 'admin', approved: true });
       await seedUser(db, TRAINEE, { role: 'manager', approved: true });
       await seedUser(db, OTHER_TRAINEE, { role: 'manager', approved: true });
-      await seedUser(db, STUDENT, { role: 'operator', approved: true });
-      await seedUser(db, VIEWER, { role: 'viewer', approved: true });
-      await seedUser(db, PENDING, { role: 'viewer', approved: false });
+      await seedUser(db, PENDING, { role: 'manager', approved: false });
 
       // Contacts: one the trainee is tied to, one they are not.
       await seedDoc(db, 'contacts/c-mine', contact('c-mine', {
@@ -260,7 +256,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await seedDoc(db, 'chatRooms/room-team', {
         type: 'group',
         name: 'Team',
-        memberIds: [TRAINEE, ADMIN, STUDENT],
+        memberIds: [TRAINEE, ADMIN],
         createdById: ADMIN,
         createdByName: 'Admin',
         createdAt: chatAt(0),
@@ -365,7 +361,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
   // ── Row 3: Messages & Questions for the team broke for staff (#564) ───────
   // The asks feed read the whole collection; the rules allow that only to
-  // `isManager()` (staff), not to viewers.
+  // `isManager()` (staff).
   it('row 3 — the staff asks subscription reads the whole team feed', async () => {
     const res = await awaitSnapshot<AskMessage[]>((cb, onError) =>
       subscribeAsks(dbFor(ADMIN), cb, onError, { uid: ADMIN, isStaff: true }),
@@ -373,15 +369,6 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.value.map((a) => a.id).sort()).toEqual(['q-mine', 'q-other']);
-  });
-
-  it('row 3 — a non-staff viewer’s own-owner query is allowed but empty for others', async () => {
-    const res = await awaitSnapshot<AskMessage[]>((cb, onError) =>
-      subscribeAsks(dbFor(VIEWER), cb, onError, { uid: VIEWER, isStaff: false }),
-    );
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.value).toEqual([]);
   });
 
   // ── Row 4: Questions channel denied under "See as their view" (#603) ──────
@@ -510,8 +497,8 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await expect(saveSeasonSettings(dbFor(TRAINEE), { bfa: false })).resolves.toBeUndefined();
   });
 
-  it('row 18 — a non-manager may not write the season flag', async () => {
-    await assertFails(saveSeasonSettings(dbFor(VIEWER), { bfa: true }));
+  it('row 18 — an unapproved account may not write the season flag', async () => {
+    await assertFails(saveSeasonSettings(dbFor(PENDING), { bfa: true }));
   });
 
   // ── Row 19: Add to story refused for everyone (#1328) ────────────────────
@@ -584,12 +571,6 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     );
     expect(trainee.ok).toBe(false);
     await expect(saveToAskNotepad(dbFor(TRAINEE), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
-
-    const viewer = await awaitSnapshot<ToAskNotepad>((cb, onError) =>
-      subscribeToAskNotepad(dbFor(VIEWER), ADMIN, cb, onError),
-    );
-    expect(viewer.ok).toBe(false);
-    await expect(saveToAskNotepad(dbFor(VIEWER), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
   });
 
   // Row 22b: a merge write never removes a nested key, so Undo Asked and the
@@ -674,7 +655,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
   // be able to run it for their own rooms; anyone outside the room must not.
   it('row 23 — members count unread chat messages; an outsider cannot (#1791)', async () => {
     const mark = Date.parse(ISO) + 15 * 60_000; // after m1, before m2 and m3
-    for (const uid of [TRAINEE, ADMIN, STUDENT]) {
+    for (const uid of [TRAINEE, ADMIN]) {
       const db = dbFor(uid);
       const unread = await assertSucceeds(
         getCountFromServer(unreadMessagesQuery(db, 'room-team', mark)),
@@ -693,7 +674,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     expect(read.data().count).toBe(0);
 
     // Negative: not a member of the room.
-    await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(VIEWER), 'room-team', mark)));
+    await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(OTHER_TRAINEE), 'room-team', mark)));
     await assertFails(getCountFromServer(unreadMessagesQuery(dbFor(TRAINEE), 'room-outside', mark)));
   });
 
@@ -745,8 +726,8 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
   // ── Team prayer toggle: the flag is written, never deleted ────────────────
   // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`). Bringing
   // it to the team is a batch that also clears the contact's `prayerListRemoved`.
-  // An operator may do either; a viewer may not.
-  it('team prayer toggle — an operator brings a prayer to the team (clearing the contact removal) and takes it off', async () => {
+  // A tied Trainee may do either; an untied one may not.
+  it('team prayer toggle — a tied Trainee brings a prayer to the team (clearing the contact removal) and takes it off', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'prayers', 'p-toggle'), {
         contactId: 'c-mine', burden: 'Peace', status: 'pending', teamPrayer: false, updatedAt: ISO,
@@ -755,9 +736,9 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
         prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
       });
     });
-    const by = { uid: STUDENT, name: 'Op' };
-    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', true, by)).resolves.toBeUndefined();
-    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
+    const by = { uid: TRAINEE, name: 'Tr' };
+    await expect(setPrayerTeamPrayer(dbFor(TRAINEE), 'p-toggle', 'c-mine', true, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(TRAINEE), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
     expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).not.toHaveProperty('prayerListRemoved');
 
     await env.withSecurityRulesDisabled(async (ctx) => {
@@ -765,12 +746,12 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
         prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
       });
     });
-    await expect(setPrayerTeamPrayer(dbFor(STUDENT), 'p-toggle', 'c-mine', false, by)).resolves.toBeUndefined();
-    expect((await getDoc(doc(dbFor(STUDENT), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
+    await expect(setPrayerTeamPrayer(dbFor(TRAINEE), 'p-toggle', 'c-mine', false, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(TRAINEE), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
     expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).toHaveProperty('prayerListRemoved'); // untouched
   });
 
-  it('team prayer toggle — a viewer is refused (negative)', async () => {
-    await assertFails(setPrayerTeamPrayer(dbFor(VIEWER), 'p-toggle', 'c-mine', true, { uid: VIEWER, name: 'V' }));
+  it('team prayer toggle — an untied Trainee is refused (negative)', async () => {
+    await assertFails(setPrayerTeamPrayer(dbFor(OTHER_TRAINEE), 'p-toggle', 'c-mine', true, { uid: OTHER_TRAINEE, name: 'T2' }));
   });
 });

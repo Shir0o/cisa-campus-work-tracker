@@ -129,16 +129,11 @@ describe('SignUp View', () => {
   });
 
   it('renders staff preview strip when viewed by staff', () => {
-    render(<SignUp role="admin" />);
+    render(<SignUp />);
     expect(screen.getByText(/Tagging sign-ups for/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Club rush/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /BFA/i }));
     expect(mockToggleBfa).toHaveBeenCalled();
-  });
-
-  it('hides staff preview strip for student or community roles', () => {
-    render(<SignUp role="student" />);
-    expect(screen.queryByText(/Tagging sign-ups for/i)).not.toBeInTheDocument();
   });
 
   it('fills all fields and submits successfully in one step', async () => {
@@ -557,7 +552,7 @@ describe('SignUp View', () => {
   });
 
   it('lets staff override the season, reset it, and toggle club rush', () => {
-    const { container } = render(<SignUp role="admin" />);
+    const { container } = render(<SignUp />);
 
     const seasonSelect = container.querySelector('.su-admin-sel')!;
     fireEvent.change(seasonSelect, { target: { value: 'fall' } });
@@ -571,7 +566,7 @@ describe('SignUp View', () => {
     seasonState.isAuto = false;
     seasonState.clubRush = true;
 
-    const { container } = render(<SignUp role="admin" />);
+    const { container } = render(<SignUp />);
 
     fireEvent.click(screen.getByRole('button', { name: /reset/i }));
     expect(mockResetSeason).toHaveBeenCalled();

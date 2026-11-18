@@ -15,26 +15,9 @@ export interface StaffItem {
 export const DEFAULT_TEST_ACCOUNTS: StaffItem[] = [
   { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
   { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
-  { id: 'cisa-student', name: 'cisa-student', email: 'cisa-student@cisa.campus', role: 'Student', isTrainee: false },
-  { id: 'cisa-community', name: 'cisa-community', email: 'cisa-community@cisa.campus', role: 'Community', isTrainee: false },
 ];
 
 export const DEFAULT_STAFF: StaffItem[] = DEFAULT_TEST_ACCOUNTS;
-
-export const PERSONAS: Record<string, { name: string; initials: string; subtitle: string; role: AppRole }> = {
-  student: {
-    name: 'Student View Persona',
-    initials: 'ST',
-    subtitle: 'Student window',
-    role: 'operator',
-  },
-  community: {
-    name: 'Community View Persona',
-    initials: 'CM',
-    subtitle: 'Friend of CISA',
-    role: 'viewer',
-  },
-};
 
 export function impFirst(name: string): string {
   return (name || '').split(' ')[0];
@@ -65,7 +48,7 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const roleStr = s.role || 'admin';
   const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
 
-  const validRoles: AppRole[] = ['admin', 'manager', 'operator', 'viewer'];
+  const validRoles: AppRole[] = ['admin', 'manager'];
   const roleKey: AppRole = validRoles.includes(roleStr as AppRole)
     ? (roleStr as AppRole)
     : isTrainee
@@ -75,8 +58,6 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const roleLabelMap: Record<AppRole, string> = {
     admin: 'Full-timer',
     manager: 'Trainee',
-    operator: 'Student',
-    viewer: 'Community',
   };
   const roleLabel = roleLabelMap[roleKey] || 'Full-timer';
 
@@ -99,45 +80,6 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
       roleShort: isTrainee ? 'In training' : 'Full-time',
       subtitle: s.email || roleLabel,
       staffId: id,
-    },
-  };
-}
-
-export function impPersonaTarget(k: string): ImpersonateTarget | null {
-  const p = PERSONAS[k];
-  if (!p) return null;
-  return {
-    key: `persona:${k}`,
-    name: p.name,
-    initials: p.initials,
-    sub: p.subtitle,
-    note: k === 'student' ? "A student's own window" : 'A friend of the work',
-    role: p.role,
-    persona: { id: k, ...p },
-  };
-}
-
-export function impContactTarget(c: { id: string; name: string; year?: string; major?: string }): ImpersonateTarget {
-  const cleanName = cleanCisaName(c.name);
-  const sub = [c.year, c.major].filter(Boolean).join(' · ');
-  const initials = impInits(cleanName);
-  return {
-    key: `contact:${c.id}`,
-    name: cleanName,
-    initials,
-    sub: sub || 'Student',
-    note: "A student's own window",
-    role: 'operator',
-    persona: {
-      id: 'student',
-      name: cleanName,
-      first: impFirst(cleanName),
-      initials,
-      role: 'Student',
-      roleShort: 'Student',
-      subtitle: sub || 'Student',
-      caredById: 'u1',
-      contactId: c.id,
     },
   };
 }
@@ -179,20 +121,14 @@ export function impScope(
   let people: string;
   if (role === 'admin') {
     people = totalContacts > 0 ? `Everyone — all ${totalContacts} people` : 'Everyone — all roster people';
-  } else if (role === 'manager') {
+  } else {
     const n = visibleCount !== undefined ? visibleCount : 0;
     people = n === 1 ? '1 person — the one they added' : `${n} people they added or were named on`;
-  } else {
-    people = 'No roster — just their own window';
   }
 
   const missingKeys: string[] = [];
   if (role === 'manager') {
     missingKeys.push('history', 'attendance', 'prayer', 'answered', 'coordination', 'settings');
-  } else if (role === 'operator') {
-    missingKeys.push('board', 'history');
-  } else if (role === 'viewer') {
-    missingKeys.push('board', 'contacts', 'attendance', 'history', 'coordination');
   }
 
   const missingLabels = missingKeys.map((k) => IMP_SCOPE_LABEL[k] || k);
@@ -224,7 +160,7 @@ export const Impersonation = {
       // ignore storage errors
     }
   },
-  resolve(k: string | null, contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {
+  resolve(k: string | null, users: any[] = []): ImpersonateTarget | null {
     if (!k) return null;
     const i = k.indexOf(':');
     if (i === -1) return null;
@@ -237,15 +173,10 @@ export const Impersonation = {
       const s = DEFAULT_TEST_ACCOUNTS.find((x) => x.id === id);
       return s ? impStaffTarget(s) : null;
     }
-    if (kind === 'persona') return impPersonaTarget(id);
-    if (kind === 'contact') {
-      const c = contacts.find((x) => x.id === id);
-      return c ? impContactTarget(c) : null;
-    }
     return null;
   },
-  current(contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {
-    return this.resolve(this.key(), contacts, users);
+  current(users: any[] = []): ImpersonateTarget | null {
+    return this.resolve(this.key(), users);
   },
 };
 

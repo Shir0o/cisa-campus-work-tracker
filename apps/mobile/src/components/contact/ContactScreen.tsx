@@ -149,7 +149,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
     [teamMembers],
   );
 
-  const canWrite = role !== 'viewer' && !isImpersonating;
+  const canWrite = !isImpersonating;
   // The Full-timers switch is cut on the EFFECTIVE role, as feedVisibleThreads
   // is, so "See it as they do" shows a Trainee's screen (#1024 phase 2).
   const isFullTimer = role === 'admin';

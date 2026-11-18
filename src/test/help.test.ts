@@ -25,8 +25,9 @@ const manifest: HelpManifest = {
 
 describe('visibleHelpPages', () => {
   it('shows an unset audience to every role', () => {
-    const slugs = visibleHelpPages(manifest, 'viewer').map((p) => p.slug);
-    expect(slugs).toEqual(['everyone']);
+    for (const role of ['admin', 'manager']) {
+      expect(visibleHelpPages(manifest, role).map((p) => p.slug)).toContain('everyone');
+    }
   });
 
   it('shows a page whose audience lists the role', () => {
@@ -42,7 +43,7 @@ describe('visibleHelpPages', () => {
   });
 
   it('hides audience pages from a role not listed', () => {
-    expect(visibleHelpPages(manifest, 'operator').map((p) => p.slug)).toEqual(['everyone']);
+    expect(visibleHelpPages(manifest, 'manager').map((p) => p.slug)).not.toContain('admins');
   });
 
   it('hides audience pages when there is no role', () => {
@@ -50,8 +51,8 @@ describe('visibleHelpPages', () => {
   });
 
   it('does not grant an admin super-power over a page listed for another role', () => {
-    const onlyViewer: HelpManifest = { pages: [page({ slug: 'community', audience: ['viewer'] })] };
-    expect(visibleHelpPages(onlyViewer, 'admin')).toEqual([]);
+    const onlyTrainees: HelpManifest = { pages: [page({ slug: 'trainees', audience: ['manager'] })] };
+    expect(visibleHelpPages(onlyTrainees, 'admin')).toEqual([]);
   });
 });
 
@@ -61,7 +62,7 @@ describe('helpPageForRole', () => {
   });
 
   it('returns undefined for a hidden page (route resolves as not-found)', () => {
-    expect(helpPageForRole(manifest, 'viewer', 'admins')).toBeUndefined();
+    expect(helpPageForRole(manifest, 'manager', 'admins')).toBeUndefined();
   });
 
   it('returns undefined for an unknown slug', () => {

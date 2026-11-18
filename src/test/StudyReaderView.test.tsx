@@ -735,38 +735,18 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(document.activeElement).toBe(next);
     });
 
-    it('keeps the stale-week chip and the caller\'s header actions', () => {
+    it('keeps the stale-week chip', () => {
       const box = stubReaderBox();
       render(
         <StudyReaderView
           meeting={meeting({})}
           staleDateLabel="Most recent · September 2"
-          headerActions={<button type="button">Show QR</button>}
         />,
       );
       box.resize(1280, 800);
 
       expect(screen.getByTestId('stale-date-chip')).toHaveTextContent('Most recent · September 2');
-      expect(screen.getByRole('button', { name: 'Show QR' })).toBeInTheDocument();
       expect(screen.getByLabelText('Text size')).toBeInTheDocument();
-    });
-
-    it('opens on initialSectionIndex and reports every page through onSectionChange', () => {
-      const box = stubReaderBox();
-      const onSectionChange = vi.fn();
-      render(
-        <StudyReaderView
-          meeting={meeting({})}
-          staleDateLabel={null}
-          initialSectionIndex={1}
-          onSectionChange={onSectionChange}
-        />,
-      );
-      box.resize(1280, 800);
-
-      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
-      fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
-      expect(onSectionChange).toHaveBeenLastCalledWith(2);
     });
 
     it('shows the Section named by followSectionIndex', () => {

@@ -2,24 +2,28 @@ import { contactKind } from './contactKind';
 export { visibleToOf } from './contactTies';
 export type { ContactTies } from './contactTies';
 
-export type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
+export type AppRole = 'admin' | 'manager';
 
 export const ROLE_LEVEL: Record<AppRole, number> = {
-  viewer: 0,
-  operator: 1,
-  manager: 2,
-  admin: 3,
+  manager: 0,
+  admin: 1,
 };
 
 /**
- * User-facing display names. The internal role keys (admin/manager/operator/
- * viewer) are unchanged — these only affect what's shown in the UI.
+ * Reads a stored role. Student (`operator`) and Community (`viewer`) are cut:
+ * a legacy or unknown value is no role at all — no access, and no crash.
+ */
+export function effectiveRole(raw: string | null): AppRole | null {
+  return raw === 'admin' || raw === 'manager' ? raw : null;
+}
+
+/**
+ * User-facing display names. The internal role keys (admin/manager) are
+ * unchanged — these only affect what's shown in the UI.
  */
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Full-timer',
   manager: 'Trainee',
-  operator: 'Student',
-  viewer: 'Community',
 };
 
 export function roleLabel(role: AppRole | string | null): string {
@@ -36,14 +40,12 @@ export interface OwnerViewRoleOption {
 export const OWNER_VIEW_ROLES: OwnerViewRoleOption[] = [
   { key: 'admin', label: 'Full-timer', note: 'Widgets & full-timer home' },
   { key: 'manager', label: 'Trainee', note: 'Focus queue & drawer' },
-  { key: 'operator', label: 'Student', note: 'Member app (Student)' },
-  { key: 'viewer', label: 'Community', note: 'Member app (Community)' },
 ];
 
 export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
-  '/': 'viewer',
+  '/': 'manager',
   '/board': 'manager',
-  '/directory': 'operator',
+  '/directory': 'manager',
   // Looking back is the whole team's record — every visit, note quote and
   // prayer burden in one stream — so it stays Full-timer-only. A Trainee takes
   // the allowlist path below and is not on it, so this entry is not what stops
@@ -51,22 +53,18 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/history': 'admin',
   // Gatherings carries the whole contact database — the missed list, the
   // rosters, the walk-in picker, and a door into every person's detail page.
-  // Community has no People page, so it may not reach the directory sideways
-  // through here: this shares People's floor.
-  '/attendance': 'operator',
-  // Outreach is admin + community — a deliberately non-ladder access, so
-  // `canAccessRoute` special-cases it below (viewer and admin only, never
-  // operator or manager). This entry only exists so the route has an entry.
-  '/outreach': 'viewer',
+  // A Trainee takes the allowlist path below and is not on it (#1834).
+  '/attendance': 'manager',
+  // Outreach is a Full-timer's alone.
+  '/outreach': 'admin',
   // Full-timers only, on both sides: what a visit records is pastoral detail,
   // not team-wide reading.
   '/visits': 'admin',
-  '/prayer': 'viewer',
-  '/answered': 'viewer',
-  '/settings': 'viewer',
-  '/messages': 'viewer',
-  // Questions for the team is staff-only on both sides: Trainees ask, Full-timers
-  // answer. Students and Community have no ask surface at all (#603).
+  '/prayer': 'manager',
+  '/answered': 'manager',
+  '/settings': 'manager',
+  '/messages': 'manager',
+  // Questions for the team: Trainees ask, Full-timers answer (#603).
   '/questions': 'manager',
   // Around the team is Full-timer-only (#943): the team's activity is pastoral
   // detail, and the pointer card on My Day is the only door.
@@ -77,27 +75,22 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // with a passphrase the app never stores. Full-timers only, and the door is
   // one row in Settings → Security rather than a nav item.
   '/vault': 'admin',
-  '/feedback': 'viewer',
+  '/feedback': 'manager',
   '/admin/feedback': 'admin',
-  // The floor reads "operator and above", which is true for Student and
-  // Full-timer but not for a Trainee: they take the allowlist path below and
-  // are not on it. The deny is the decision (#1922), the same shape as
-  // /history (#1825). This entry is not what stops a Trainee and must not
-  // claim otherwise.
-  '/coordination': 'operator',
+  // The floor reads "manager and above", which is not true for a Trainee: they
+  // take the allowlist path below and are not on it. The deny is the decision
+  // (#1922), the same shape as /history (#1825). This entry is not what stops
+  // a Trainee and must not claim otherwise.
+  '/coordination': 'manager',
   '/coordination/trash': 'admin',
   // The Weeks index is the archive, and the archive is Full-timers only
   // (ADR 0011 §6).
   '/bible-study': 'admin',
-  // "This week's study" is every role's (#946): one week, the current one,
-  // resolved by exactly the chain a scan follows. Not an archive — no other
-  // week is reachable from it.
-  '/bible-study/read': 'viewer',
   // Present mode is any signed-in user's: whoever holds the phone up in the
   // room is often not a Full-timer. It had no entry here, so it fell through
   // to the 'admin' default and contradicted both its own route guard and its
   // comment — a Trainee sent to it was bounced home (#946).
-  '/bible-study/present': 'viewer',
+  '/bible-study/present': 'manager',
   'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
@@ -106,13 +99,6 @@ export interface NavItem {
   label: string;
   minRole: AppRole;
   isExternal?: boolean;
-  /**
-   * Roles that must NOT see this item even though they can reach its href.
-   * Exists for one shape: two destinations wearing the same label, where the
-   * role decides which one is meant. "Bible study" is the Weeks index for a
-   * Full-timer and This week's study for everyone else (#946).
-   */
-  hideForRoles?: AppRole[];
 }
 
 export interface ExternalNavItem {
@@ -139,23 +125,18 @@ export function navExternalFor(role: AppRole | string | null): ExternalNavItem[]
 // Field Notes (#10) — warm, human nav labels. Route hrefs are unchanged; only
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Home', minRole: 'viewer' },
+  { href: '/', label: 'Home', minRole: 'manager' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
-  { href: '/directory', label: 'People', minRole: 'operator' },
+  { href: '/directory', label: 'People', minRole: 'manager' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
-  { href: '/attendance', label: 'Gatherings', minRole: 'operator' },
-  // One label, two destinations (#946). A Full-timer means the Weeks index;
-  // everyone else means the week itself. Exactly one is ever shown, because
-  // the index entry is admin-gated by its href and the reader entry is hidden
-  // from admins.
+  { href: '/attendance', label: 'Gatherings', minRole: 'manager' },
   { href: '/bible-study', label: 'Bible study', minRole: 'admin' },
-  { href: '/bible-study/read', label: 'Bible study', minRole: 'viewer', hideForRoles: ['admin'] },
-  { href: '/outreach', label: 'Gospel', minRole: 'viewer' },
+  { href: '/outreach', label: 'Gospel', minRole: 'admin' },
   { href: '/visits', label: 'Visits', minRole: 'admin' },
-  { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
-  { href: '/answered', label: 'Answered', minRole: 'viewer' },
-  { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },
-  { href: '/messages', label: 'Messages', minRole: 'viewer' },
+  { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
+  { href: '/answered', label: 'Answered', minRole: 'manager' },
+  { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
+  { href: '/messages', label: 'Messages', minRole: 'manager' },
   // "Questions", not "Questions for Full-timers" — the long form does not fit one
   // line in the 224px More menu. The page heading keeps the full name.
   { href: '/questions', label: 'Questions', minRole: 'manager' },
@@ -164,27 +145,25 @@ export const NAV_ITEMS: NavItem[] = [
   // Your reports (`/feedback`) is the submitter's own side of the feedback
   // loop (ADR 0019). It reads as a personal inbox, so it sits in Today
   // beside the other things aimed at you.
-  { href: '/feedback', label: 'Your reports', minRole: 'viewer' },
-  { href: '/settings', label: 'Settings', minRole: 'viewer' },
+  { href: '/feedback', label: 'Your reports', minRole: 'manager' },
+  { href: '/settings', label: 'Settings', minRole: 'manager' },
 ];
 
 /**
- * Trainees are an allowlist, not a rung on the ladder, so a viewer-level
- * ROUTE_MIN_ROLE does not reach them — the two study routes are named here
- * explicitly (#946).
+ * Trainees are an allowlist, not a rung on the ladder, so a manager-level
+ * ROUTE_MIN_ROLE does not reach them — present mode is named here explicitly
+ * (#946).
  *
  * '/attendance' is deliberately missing, even though its floor reads
- * "operator and above" (#1834). Taking attendance is the Student's task:
- * a Student sees the whole room, while a Trainee only sees the people they
- * are tied to (`seesAllPeople`), so Gatherings would hand them a partial
- * roster and a partial missed list — worse in the room than no page at all.
+ * "manager and above" (#1834). A Trainee only sees the people they are tied
+ * to (`seesAllPeople`), so Gatherings would hand them a partial roster and a
+ * partial missed list — worse in the room than no page at all.
  * The prayer pair is deliberately missing as well (#1794, #1822): /prayer
  * and /answered are the team's shared list and the testimonies that came
  * out of it, while a Trainee's prayer surface is the home card's personal
- * list ("just between you and God"). Community and Student reach both
- * through the ladder, so the asymmetry is the decision, not a missed entry.
+ * list ("just between you and God").
  * '/coordination' is deliberately missing (#1922): a Trainee does not read
- * the team's coordination pages. Its floor reads "operator and above", so
+ * the team's coordination pages. Its floor reads "manager and above", so
  * this allowlist is the only place the deny is enforced.
  * '/settings' is here because a Trainee sets their own preferences. The
  * team surface stays Full-timer-only: Settings branches on isAdmin, so a
@@ -192,18 +171,14 @@ export const NAV_ITEMS: NavItem[] = [
  *
  * Exported so the core mirror can be pinned to it (#1940).
  */
-export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/read', '/bible-study/present'];
+export const TRAINEE_ROUTES: readonly string[] = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/contact', '/bible-study/present'];
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
-  // Outreach is full-timer + community — not a ladder: viewer and admin can,
-  // operator (student) and manager (trainee) cannot, even though a viewer-level
-  // min role would let them through. Keep it explicit here.
-  if (path === '/outreach') return role === 'admin' || role === 'viewer';
   // Person detail is now a real URL route so back/top-nav navigation works.
   // Every approved role can open a person page; individual contact visibility
   // is still enforced inside ContactDetailsModal.
-  if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'viewer');
+  if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'manager');
   if (role === 'manager') return TRAINEE_ROUTES.includes(path);
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
   const min = ROUTE_MIN_ROLE[path] ?? 'admin';
@@ -211,26 +186,7 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
 }
 
 export function navItemsForRole(role: AppRole | string | null): NavItem[] {
-  return NAV_ITEMS.filter(
-    (item) =>
-      canAccessRoute(role, item.href) && !item.hideForRoles?.includes(role as AppRole),
-  );
-}
-
-/**
- * Where to send a role that reached a route it cannot open, when the honest
- * answer is a sibling rather than home.
- *
- * Only the Bible study pair needs this so far: a Trainee following an old link
- * or a bookmark to the Weeks index wants the week, not their dashboard, and
- * bouncing them home reads as the app losing the page (#946). Returns null
- * when there is no better place than the role's default.
- */
-export function fallbackRouteFor(role: AppRole | string | null, path: string): string | null {
-  if (path === '/bible-study' && canAccessRoute(role, '/bible-study/read')) {
-    return '/bible-study/read';
-  }
-  return null;
+  return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
 }
 
 // ── Top-anchored navigation (shell bake-off, direction B — picked 18 Aug) ────
@@ -251,8 +207,6 @@ export interface NavGroup {
 const PRIMARY_BY_ROLE: Record<AppRole, string[]> = {
   admin: ['/coordination', '/directory', '/prayer'],
   manager: ['/', '/directory', '/board'],
-  operator: ['/', '/directory', '/prayer'],
-  viewer: ['/', '/prayer'],
 };
 
 export function primaryNavFor(role: AppRole | string | null): NavItem[] {
@@ -289,9 +243,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/questions', '/around', '/feedback'],
   People: ['/board', '/directory', '/visits', '/outreach', '/history'],
-  // Both Bible study destinations sit here; navItemsForRole has already
-  // dropped whichever one this role does not mean (#946).
-  Gatherings: ['/attendance', '/bible-study', '/bible-study/read', '/messages'],
+  Gatherings: ['/attendance', '/bible-study', '/messages'],
   Prayer: ['/prayer', '/answered'],
 };
 
@@ -302,8 +254,7 @@ const NAV_GROUP_ORDER: readonly NavGroupLabel[] = ['Today', 'People', 'Gathering
  * (#664) renders this directly. Group order and within-group order are both
  * stable across calls. Settings is excluded — it is pinned by the shell below
  * a divider, not part of the grouped data. Groups that have no items for the
- * role are omitted, so a Community member's "People" group contains only
- * Gospel rather than an empty section.
+ * role are omitted, so a Trainee gets no empty "Prayer" section.
  */
 export function groupedNavFor(role: AppRole | string | null): NavGroup[] {
   // No early return for null/unknown: navItemsForRole / canAccessRoute already
@@ -326,14 +277,13 @@ export const canSeeSettings = (role: AppRole | string | null) => role === 'admin
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
 export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
-// Outreach: full-timers + the community folk who go out and log the names
-// (the design's "community members go out and log these; full-timers oversee").
-// Trainees and students don't see it. Visits stays full-timer-only when built.
-export const canSeeOutreach = (role: AppRole | string | null) => role === 'admin' || role === 'viewer';
-export const canLogOutreach = (role: AppRole | string | null) => role === 'admin' || role === 'viewer';
+// Outreach and Visits are Full-timers' alone.
+export const canSeeOutreach = (role: AppRole | string | null) => role === 'admin';
+export const canLogOutreach = (role: AppRole | string | null) => role === 'admin';
 export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
 export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
-export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
+// Only a Full-timer reads the whole roster — the rules' seesAllContacts().
+export const seesAllPeople = (role: AppRole | string | null) => role === 'admin';
 
 export function canSeeContact(
   role: AppRole | string | null,
@@ -426,7 +376,7 @@ export function hasMinRole(role: AppRole | string | null, min: AppRole): boolean
 }
 
 export function defaultRouteForRole(role: AppRole | string | null): string {
-  if (hasMinRole(role, 'viewer')) return '/';
+  if (hasMinRole(role, 'manager')) return '/';
   return '/attendance';
 }
 

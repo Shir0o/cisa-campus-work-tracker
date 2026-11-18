@@ -62,7 +62,7 @@ const data = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const renderThread = async (props: React.ComponentProps<typeof ContactThreadScreen>, over?: Record<string, unknown>, auth = { uid: 'user1', role: 'manager' }) => {
+const renderThread = async (props: React.ComponentProps<typeof ContactThreadScreen>, over?: Record<string, unknown>, auth: { uid: string; role: string; isImpersonating?: boolean } = { uid: 'user1', role: 'manager' }) => {
   const d = data(over);
   (useAuth as jest.Mock).mockReturnValue({ user: { displayName: 'Staffer' }, ...auth });
   (useContactDetailData as jest.Mock).mockReturnValue(d);
@@ -169,8 +169,8 @@ describe('a Thread on the phone (#1261)', () => {
     expect(d.closeAsk).toHaveBeenCalledWith(ask);
   });
 
-  it('offers no reply box to someone who cannot write', async () => {
-    const { queryByLabelText } = await renderThread({ contactId: 'c1', parentId: 'p1' }, {}, { uid: 'v1', role: 'viewer' });
+  it('offers no reply box while seeing it as someone else', async () => {
+    const { queryByLabelText } = await renderThread({ contactId: 'c1', parentId: 'p1' }, {}, { uid: 'v1', role: 'manager', isImpersonating: true });
     expect(queryByLabelText('Reply in thread')).toBeNull();
   });
 

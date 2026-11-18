@@ -57,7 +57,7 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
   // The message being rewritten, if any (author-only, open threads only).
   const [editingMessage, setEditingMessage] = useState<ThreadMessage | null>(null);
 
-  const canWrite = role !== 'viewer' && !isImpersonating;
+  const canWrite = !isImpersonating;
   const viewer = { uid: uid ?? '', role: canWrite ? role : null };
   // Read once per visit: "Today" and "Open N days" are said against it.
   const [now] = useState(Date.now);

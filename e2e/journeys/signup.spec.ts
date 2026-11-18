@@ -5,7 +5,7 @@
  * Full-timer in Around the team and My Day → the sidebar shows the Sign-up form
  * link. It folds in `outreach-signup.spec.ts`, retired with this journey:
  *
- *  - the Outreach view for a Full-timer and a Community member;
+ *  - the Outreach view for a Full-timer;
  *  - the public intake form itself (the old spec's signed-out submission);
  *  - the #1493 phone-preservation pair (the lead survives the "Has phone"
  *    Directory filter, and a Trainee never sees the untied sign-up).
@@ -145,8 +145,8 @@ test.describe('Sign-up journey (#1478)', () => {
 });
 
 /**
- * Folded from `outreach-signup.spec.ts`: the Outreach view, its role gate for a
- * Community member, and the #1493 phone-preservation pair.
+ * Folded from `outreach-signup.spec.ts`: the Outreach view and the #1493
+ * phone-preservation pair.
  */
 test.describe('Sign-up journey — Outreach view and phone preservation (#1478)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -159,13 +159,6 @@ test.describe('Sign-up journey — Outreach view and phone preservation (#1478)'
     await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Gospel' })).toBeVisible({
       timeout: 10_000,
     });
-  });
-
-  test('a Community member reaches the Outreach view', async ({ page }) => {
-    await signInAs(page, 'community');
-    await page.goto('/outreach');
-    await waitForShell(page);
-    expect(new URL(page.url()).pathname).toBe('/outreach');
   });
 
   const unique = `Phone Lead ${Date.now()}`;

@@ -152,7 +152,7 @@ describe('TopNav (top-anchored navigation)', () => {
   });
 
   it('shows "Home" label (not My Day) for non-admin roles', () => {
-    h.auth = { ...baseAuth, role: 'operator', isAdmin: false };
+    h.auth = { ...baseAuth, role: 'manager', isAdmin: false };
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();

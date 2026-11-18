@@ -151,12 +151,12 @@ describe('GlobalSearch', () => {
 
   it('lists registry commands in Shortcuts, filtered by role', () => {
     h.mockLayout.searchOpen = true;
-    const unOperator = registerCommand({
-      id: 'test.shortcut.operator',
+    const unManager = registerCommand({
+      id: 'test.shortcut.manager',
       scope: 'global',
-      description: 'Operator-only shortcut',
+      description: 'Manager-and-up shortcut',
       shortcut: { key: 'o', mod: true },
-      minRole: 'operator',
+      minRole: 'manager',
       handler: vi.fn(),
     });
     const unAdmin = registerCommand({
@@ -171,17 +171,17 @@ describe('GlobalSearch', () => {
     h.mockAuth.value = TEST_USERS.admin;
     const { unmount } = render(<GlobalSearch />);
     expect(screen.getAllByText('Shortcuts').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Operator-only shortcut').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Manager-and-up shortcut').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Admin-only shortcut').length).toBeGreaterThan(0);
     expect(screen.getAllByText('⌘O').length).toBeGreaterThan(0);
     unmount();
 
-    h.mockAuth.value = TEST_USERS.viewer;
+    h.mockAuth.value = TEST_USERS.manager;
     render(<GlobalSearch />);
-    expect(screen.queryByText('Operator-only shortcut')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Manager-and-up shortcut').length).toBeGreaterThan(0);
     expect(screen.queryByText('Admin-only shortcut')).not.toBeInTheDocument();
 
-    unOperator();
+    unManager();
     unAdmin();
   });
 
@@ -316,16 +316,6 @@ describe('GlobalSearch', () => {
     }
   });
 
-  it('operator does not see staff-only groups or the history toggle', () => {
-    h.mockAuth.value = TEST_USERS.operator;
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    expect(screen.getAllByText('People').length).toBeGreaterThan(0);
-    expect(screen.queryAllByText('Interactions').length).toBe(0);
-    expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
-    expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
-  });
-
   it('Trainee gets no history toggle and never reads the activity feed', () => {
     // The rules deny a Trainee the whole feed — History entries follow their
     // contact's visibility — so the unscoped listener must not start.
@@ -374,7 +364,7 @@ describe('GlobalSearch', () => {
   it('the phone bar carries destinations, not a search button (#1806)', () => {
     // ADR 0049: the centred FAB was a duplicate of the header's own search
     // button, and the bar needed the slot for Messages and Questions.
-    h.mockAuth.value = TEST_USERS.operator;
+    h.mockAuth.value = TEST_USERS.manager;
     render(
       <MemoryRouter>
         <MobileNav />

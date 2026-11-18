@@ -171,17 +171,6 @@ describe('Outreach', () => {
     expect(logActivity).toHaveBeenCalled();
   });
 
-  it('a community logger creates the contact but not the auto-todo', async () => {
-    asRole('viewer', 'v9');
-    render(<Outreach />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
-    fireEvent.change(await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn'), { target: { value: 'Riverside' } });
-    fireEvent.change(screen.getByPlaceholderText('Their name'), { target: { value: 'Sam Ortiz' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Log the outing' }));
-    await waitFor(() => expect(addDoc).toHaveBeenCalled());
-    expect(addTodo).not.toHaveBeenCalled();
-  });
-
   it('edits an outing without touching its names', async () => {
     render(<Outreach />);
     fireEvent.click(screen.getByText('Cedar Park — the north lawn'));
@@ -233,21 +222,6 @@ describe('Outreach', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     await waitFor(() => expect(deleteDoc).toHaveBeenCalled());
     expect(logActivity).toHaveBeenCalled();
-  });
-
-  it('community sees the page read-mostly: no take, remind, edit or remove', async () => {
-    asRole('viewer', 'v9');
-    render(<Outreach />);
-    // The queue still shows Chloe, and she can open her — but not take her.
-    expect(await screen.findByText('Chloe Baptiste')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: "I'll take this" })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Remind/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Open' })).toBeTruthy();
-    // Cards read, but no manage row.
-    fireEvent.click(screen.getByText('Cedar Park — the north lawn'));
-    expect(await screen.findByText('Duy Pham')).toBeTruthy();
-    expect(screen.queryByText('Edit this one')).toBeNull();
-    expect(screen.queryByText('Remove')).toBeNull();
   });
 
   it('renders one CTA, and no zeroed figures, when nothing has been logged (#1845)', async () => {
@@ -347,10 +321,9 @@ describe('Outreach', () => {
     expect(otWhen(iso, (_k, fallback) => fallback ?? _k, 'en')).toBe('14\u00a0Aug');
   });
 
-  it('is full-timer + community — trainees and students are locked out', () => {
+  it('is a Full-timer\'s alone — trainees and any legacy role are locked out', () => {
     expect(canAccessRoute('admin', '/outreach')).toBe(true);
-    expect(canAccessRoute('viewer', '/outreach')).toBe(true);
-    for (const role of ['manager', 'operator']) {
+    for (const role of ['manager', 'operator', 'viewer']) {
       expect(canAccessRoute(role, '/outreach')).toBe(false);
     }
   });

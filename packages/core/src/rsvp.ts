@@ -1,17 +1,8 @@
-// Event RSVPs — pure derivations shared by web and mobile, ported from
-// src/components/landing/UpcomingEventsRsvp.tsx. The Firestore reads/writes
-// live in ./data/rsvp.ts behind an injected db.
+// Upcoming events — a pure derivation the phone's Gatherings screen reads. It
+// outlived the RSVP feature it was written for (cut with the Student and
+// Community roles), so the name still says RSVP.
 import { DAY_MS, parseMs } from "./myday";
 import type { Event } from "./types";
-
-// Event RSVPs live under events/{eventId}/rsvps/{uid} — one doc per attendee,
-// keyed by uid so a person can RSVP at most once. Un-RSVP deletes the doc.
-export interface Rsvp {
-  uid: string;
-  name: string;
-  status: "going";
-  createdAt?: unknown;
-}
 
 /** Events from "yesterday" onward (a one-day grace period), soonest first,
  * ties broken by `order`, capped to `count`. */

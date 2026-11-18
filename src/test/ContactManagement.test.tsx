@@ -67,6 +67,7 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: '123' },
     isAdmin: true,
+    role: 'admin',
   }),
 }));
 

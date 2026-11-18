@@ -65,7 +65,6 @@ interface AttendanceMobileProps {
   /** Writes one exact mark — what an Undo needs, including "no mark at all". */
   setAttendanceStatus?: SetAttendanceStatus;
   here: (gathering: Gathering, contactId: string) => boolean;
-  RsvpCountComponent: React.ComponentType<{ eventId: string }>;
   team?: TodoPerson[];
   onOpenTodo?: (contact: Contact, event: Gathering) => void;
   /** The Gathering's expected roster (its Rhythm's, with the week's override). */
@@ -95,7 +94,6 @@ export default function AttendanceMobile({
   cycleAttendance,
   setAttendanceStatus,
   here,
-  RsvpCountComponent,
   team,
   onOpenTodo,
   resolvedRosterFor,
@@ -273,7 +271,6 @@ export default function AttendanceMobile({
                       {[ev.time, ev.location || t('attendance.no_location_set')].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  <RsvpCountComponent eventId={ev.id} />
                 </div>
               );
             })

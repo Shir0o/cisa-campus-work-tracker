@@ -301,7 +301,8 @@ describe('ContactScreen', () => {
       (useAuth as jest.Mock).mockReturnValue({
         uid: 'user1',
         user: { displayName: 'Staffer' },
-        role: canWrite ? 'trainee' : 'viewer',
+        role: 'trainee',
+        isImpersonating: !canWrite,
       });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
@@ -412,14 +413,6 @@ describe('ContactScreen', () => {
       expect(baseLoadedData.deleteInteraction).toHaveBeenCalledWith(interaction);
     });
 
-    it('hides the remove affordance for a non-owner non-manager', async () => {
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'other-user', user: { displayName: 'Viewer' }, role: 'viewer' });
-      const { getByText, queryByText } = await renderStory();
-
-      expect(getByText('Coffee chat')).toBeTruthy();
-      expect(queryByText('Remove')).toBeNull();
-    });
-
     it('hides the remove affordance for visit-mirror interactions', async () => {
       const { queryByText } = await renderStory({
         interactions: [{ ...interaction, id: 'visit_abc' }],
@@ -471,8 +464,8 @@ describe('ContactScreen', () => {
       expect(getByText('Edit')).toBeTruthy();
     });
 
-    it('hides Edit button for viewer role', async () => {
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'user_viewer', user: { displayName: 'Viewer' }, role: 'viewer' });
+    it('hides Edit button while seeing it as someone else', async () => {
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'trainee', isImpersonating: true });
       (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
       const { queryByText } = await render(
         <ThemeProvider>
@@ -1053,9 +1046,7 @@ describe('ContactScreen', () => {
         expect(queryByRole('button', { name: 'Never mind' })).toBeNull();
       });
 
-      it('offers no actions to someone who cannot write, or while seeing it as someone else', async () => {
-        const viewer = await renderAs({ uid: 'v1', role: 'viewer' }, [ask]);
-        expect(viewer.queryByRole('button', { name: 'I followed up' })).toBeNull();
+      it('offers no actions while seeing it as someone else', async () => {
         const seeing = await renderAs({ uid: 'user1', role: 'manager', isImpersonating: true }, [ask]);
         expect(seeing.queryByRole('button', { name: 'I followed up' })).toBeNull();
       });

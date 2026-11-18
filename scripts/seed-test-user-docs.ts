@@ -1,5 +1,5 @@
 /**
- * One-time seed: create approved /users/{uid} docs for the four real E2E test
+ * One-time seed: create approved /users/{uid} docs for the real E2E test
  * users in the REAL Firestore, so they can pass the app's approval gate.
  *
  * The app's security rules (correctly) prevent users from self-approving, so
@@ -27,7 +27,7 @@ admin.initializeApp({ projectId: cfg.projectId });
 const auth = admin.auth();
 const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
 
-const KEYS = ['fulltimer', 'trainee', 'student', 'community'] as const;
+const KEYS = ['fulltimer', 'trainee'] as const;
 
 async function seed() {
   for (const key of KEYS) {

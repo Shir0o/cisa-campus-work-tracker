@@ -160,17 +160,14 @@ export default function BibleStudyPresent() {
   // Leave returns to whoever showed the code: the week's editor when Show QR
   // was pressed there, the Weeks index otherwise (direct entry, a pasted
   // link, a relaunch). The fallback keeps the documented invariant — leaving
-  // never lands on the home page. The target is validated to a plain meeting
+  // never lands a Full-timer on the home page. The target is validated to a plain meeting
   // id so the query string can never steer an authenticated holder anywhere
   // else in the app.
   const backTo = (() => {
     if (backMeeting && /^[A-Za-z0-9-]+$/.test(backMeeting)) return `/bible-study/${backMeeting}`;
-    // #946: the Weeks index is Full-timers only, so it is the wrong fallback
-    // for the Trainee who can now reach Present mode from This week's study —
-    // sending them there bounced them to their dashboard, which is precisely
-    // the "leaving never lands on the home page" invariant this exists to
-    // uphold. Everyone else goes back to the week they were reading.
-    if (!isAdmin) return `/bible-study/read${entryPoint ? `?ep=${entryPoint.slug}` : ''}`;
+    // The Weeks index is Full-timers only, and the signed-in reader a Trainee
+    // used to go back to is cut, so a Trainee leaves for home.
+    if (!isAdmin) return '/';
     return '/bible-study';
   })();
 
