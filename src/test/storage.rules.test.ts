@@ -92,46 +92,43 @@ describeRules('Cloud Storage Security Rules (#1403)', () => {
     });
   });
 
-  // Visit photos are the pre-existing path; pinned here so the prayers change
-  // can't loosen or break the posture it shares.
-  describe('visit photos (existing posture, unchanged)', () => {
+  // Visit photos are cut with the Visits page (cut-or-keep §5): nothing reads or
+  // writes `visits/` any more. The objects already stored stay in the bucket,
+  // unread; with no match the default rule closes the path to everyone.
+  describe('visit photos (closed — the Visits page is cut)', () => {
     const VISIT_PHOTO = 'visits/visit-123/1700000000000-0.jpg';
 
-    it('allows an authenticated image/jpeg upload under 8 MB', async () => {
-      await assertSucceeds(
-        uploadBytes(ref(getStorage('fulltimer-1'), VISIT_PHOTO), new Uint8Array([1, 2, 3]), {
+    it('denies a member upload and read', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await uploadBytes(ref(ctx.storage(), VISIT_PHOTO), new Uint8Array([1, 2, 3]), {
           contentType: 'image/jpeg',
-        }),
-      );
-    });
-
-    it('denies an unauthenticated upload', async () => {
+        });
+      });
       await assertFails(
-        uploadBytes(ref(getStorage(), VISIT_PHOTO), new Uint8Array([1, 2, 3]), {
+        uploadBytes(ref(getStorage('fulltimer-1'), 'visits/visit-123/new.jpg'), new Uint8Array([1, 2, 3]), {
           contentType: 'image/jpeg',
         }),
       );
+      await assertFails(getMetadata(ref(getStorage('fulltimer-1'), VISIT_PHOTO)));
     });
   });
 
   // Guest sign-ins carry `guest: true` in their token. They are signed in to
-  // Auth but are not members, so neither photo path is theirs (Nov 2026).
+  // Auth but are not members, so the photo path is not theirs (Nov 2026).
   describe('guest sign-ins', () => {
     const guestStorage = () =>
       testEnv.authenticatedContext('guest-1', { guest: true }).storage();
 
-    it('denies a guest upload to visit and prayer photos', async () => {
-      for (const path of ['visits/visit-123/g.jpg', 'prayers/prayer-123/g.jpg']) {
-        await assertFails(
-          uploadBytes(ref(guestStorage(), path), new Uint8Array([1, 2, 3]), {
-            contentType: 'image/jpeg',
-          }),
-        );
-      }
+    it('denies a guest upload to prayer photos', async () => {
+      await assertFails(
+        uploadBytes(ref(guestStorage(), 'prayers/prayer-123/g.jpg'), new Uint8Array([1, 2, 3]), {
+          contentType: 'image/jpeg',
+        }),
+      );
     });
 
     it('denies a guest read of a stored photo, while a member can read it', async () => {
-      const path = 'visits/visit-123/seeded.jpg';
+      const path = 'prayers/prayer-123/seeded.jpg';
       await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await uploadBytes(ref(ctx.storage(), path), new Uint8Array([1, 2, 3]), {
           contentType: 'image/jpeg',

@@ -139,7 +139,8 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
-    expect(screen.getByText('Visits')).toBeInTheDocument();
+    // The Visits page is cut (cut-or-keep §5): a visit is logged on the person.
+    expect(screen.queryByText('Visits')).not.toBeInTheDocument();
     expect(screen.getByText('Shared Calendar')).toBeInTheDocument();
     expect(screen.getByText('Sign-up form')).toBeInTheDocument();
   });

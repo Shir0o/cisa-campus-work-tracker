@@ -354,6 +354,14 @@ describe('interactionKindLabel', () => {
     expect(interactionKindLabel('meet')).toBe('Ran into each other');
   });
 
+  // Visit joins the kinds the sheet offers (cut-or-keep §5). The Visits page's
+  // old mirrored interactions already carry `type: 'visit'`, so one label reads
+  // both the new write and what was logged before.
+  it('offers Visit, and names it for a visit logged before the page was cut', () => {
+    expect(QUICK_CAPTURE_KINDS.map((k) => k.id)).toContain('visit');
+    expect(interactionKindLabel('visit')).toBe('Visit');
+  });
+
   it('still names the legacy kinds sitting in older logs', () => {
     expect(interactionKindLabel('coffee')).toBe('Coffee');
     expect(interactionKindLabel('meal')).toBe('Shared a meal');

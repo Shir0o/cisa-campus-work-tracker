@@ -42,7 +42,8 @@ import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKi
 import AboutSheet from "../contact/AboutSheet";
 import DelegateSheet from "../contact/DelegateSheet";
 import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
-import { useContactStory, type UseContactStoryResult } from "../../hooks/useContactStory";
+import { announceInteraction, useContactStory, type UseContactStoryResult } from "../../hooks/useContactStory";
+import { logInteraction } from "../../lib/logInteraction";
 
 import ContactHead, { type ContactHeaderModel, type ContactHeaderActions } from "../contact/ContactHead";
 import CombinedFromBanner from "../contact/CombinedFromBanner";
@@ -327,10 +328,6 @@ export default function ContactDetailsModal({
       }));
   }, [currentContact, teamMembers]);
 
-  const canRemoveInteraction = (interaction: Interaction) =>
-    !interaction.id.startsWith("visit_") &&
-    (currentUid === interaction.userId || hasMinRole(role, "manager"));
-
   const handleRemoveInteraction = (interaction: Interaction) => {
     if (!contact) return;
     const threadCount = countFor(threadMessages, interaction.id);
@@ -542,7 +539,7 @@ export default function ContactDetailsModal({
           ? { id: selectedReacher.id, name: selectedReacher.name }
           : null;
 
-      await actions.addInteraction({
+      const entry = {
         content: composer.text.trim(),
         dateTime: composer.dateTime,
         type: composer.type,
@@ -551,7 +548,27 @@ export default function ContactDetailsModal({
         userPhoto: user.photoURL || "",
         reacher,
         t,
-      });
+      };
+      // A Visit may have others with it: each person's page gets its own entry,
+      // tied together by one groupId (cut-or-keep §5). The whole group is one
+      // batch, so a refused write saves nobody and a retry cannot duplicate or
+      // split it; the bell and History entries follow once it has landed.
+      const others = composer.type === "visit" ? composer.withPeople : [];
+      if (others.length > 0) {
+        const people = [{ id: contact.id, name: contact.name }, ...others];
+        await logInteraction({
+          contactIds: people.map((p) => p.id),
+          contactNames: Object.fromEntries(people.map((p) => [p.id, p.name])),
+          type: entry.type,
+          dateTime: entry.dateTime,
+          content: entry.content,
+          by: { uid: user.uid, name: loggerName, photoURL: user.photoURL },
+          reacher,
+        });
+        for (const person of people) await announceInteraction(person, entry);
+      } else {
+        await actions.addInteraction(entry);
+      }
 
       setComposer(emptyComposer());
       setComposerOpen(false);
@@ -794,6 +811,7 @@ export default function ContactDetailsModal({
       canLogOnBehalf={isAdmin && !isImpersonating}
       teamMembers={teamMembers}
       firstName={firstName}
+      contactId={contact?.id}
     />
   );
 

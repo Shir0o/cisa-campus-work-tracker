@@ -26,7 +26,7 @@ export function Switch({
   ['aria-label']: string;
 }) {
   // The track label is the one string on this primitive, and it is shared by
-  // every switch in the app (Settings, SeasonChip, HomesModal), so it reads the
+  // every switch in the app (Settings, SeasonChip), so it reads the
   // session language here rather than taking a label prop per call site (#1818).
   const { t } = useLanguage();
   return (

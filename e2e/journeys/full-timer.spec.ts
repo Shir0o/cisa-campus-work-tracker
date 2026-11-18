@@ -51,6 +51,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { signInAs } from '../helpers/auth';
+import { legacyVisitMirror } from '../../src/test/fixtures/visits';
 import { initializeApp, getApps } from 'firebase-admin';
 import { getFirestore as adminFS } from 'firebase-admin/firestore';
 
@@ -978,154 +979,101 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
 });
 
 /**
- * #1857 — the Visits reading on a phone.
- *
- * The reading used to be one 13-column grid with a `min-w-[640px]` floor inside
- * a ~320px wrapper. The phone shell's `main` is `overflow-x-hidden`, so the
- * document never reports the overflow: the "since" column — the reading's whole
- * answer — was silently cut off with no scroller to find. These assertions
- * measure the reading itself (its own scroll width, each row's value, each month
- * label), because `documentElement.scrollWidth` cannot see this bug.
- *
- * The emulator seeds no homes, so the home is made through the Manage homes
- * sheet with two seeded people, and a visit is logged from a row for one of
- * them — the other must keep reading as a gap.
+ * Visits are an interaction type (cut-or-keep §5). The Visits page is gone: an
+ * old `/visits` bookmark lands on My Day, a Visit is logged on a person's own
+ * page and can name the others seen in the same visit, and a visit logged under
+ * the old page still shows in each visited person's story from the interaction
+ * the page mirrored onto them (the seed carries one on Lila).
  */
-test.describe('Full-timer journey — the Visits reading fits a phone (#1857)', () => {
-  test.use({ viewport: { width: 375, height: 812 } });
+test.describe('Full-timer journey — Visits is an interaction type', () => {
+  for (const role of ['fulltimer', 'trainee'] as const) {
+    test(`an old /visits bookmark lands a ${role} on My Day (#1903)`, async ({ page }) => {
+      await signInAs(page, role);
+      await page.goto('/visits');
+      await waitForShell(page);
+      await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
+      await expect(
+        page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: /^Visits$/ }),
+      ).toHaveCount(0);
+    });
+  }
 
-  test('every since value and all twelve months fit the phone reading (#1857)', async ({ page }) => {
+  test('a visit logged under the old page still shows in the person’s story (#1903)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
-    await page.goto('/visits');
+    await page.goto('/directory');
     await waitForShell(page);
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
+    await expect(page.getByRole('main').getByText(legacyVisitMirror().content)).toBeVisible({ timeout: 10_000 });
+  });
 
-    // One home, two people: Lila gets a visit, Held Burden never does.
-    await page.getByRole('button', { name: 'Manage homes' }).click();
-    const sheet = page.getByRole('dialog');
-    await expect(sheet.getByRole('heading', { name: 'Homes' })).toBeVisible({ timeout: 10_000 });
-    await sheet.getByRole('button', { name: 'Add a home' }).click();
-    await sheet.getByLabel('Name', { exact: true }).fill('the Islams');
-    await sheet.getByLabel('Where they live', { exact: true }).fill('Whitman Hall');
-    await sheet.getByRole('button', { name: 'Lila Chen', exact: true }).click();
-    await sheet.getByRole('button', { name: 'Held Burden', exact: true }).click();
-    await sheet.getByRole('button', { name: 'Create home' }).click();
-    await expect(sheet.getByText('the Islams')).toBeVisible({ timeout: 10_000 });
-    await sheet.getByLabel('Close').click();
+  test('a Visit logged for two people shows in each one’s story, sharing a groupId (#1903)', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await page.goto('/directory');
+    await waitForShell(page);
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
+    const contactPage = page.getByRole('main');
+    await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
+      timeout: 10_000,
+    });
 
-    await expect(page.getByRole('heading', { name: 'the Islams', level: 3 })).toBeVisible({ timeout: 10_000 });
-    // Both read as gaps before the visit, including one never seen at all.
-    await expect(page.getByRole('button', { name: 'Log a visit: Held Burden' })).toBeVisible();
+    const text = `Dinner with the family ${Date.now()}`;
+    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
+    await contactPage.getByText('Log interaction').click();
+    await contactPage.getByPlaceholder(/What happened with Lila/i).fill(text);
+    await contactPage.getByRole('button', { name: 'Visit', exact: true }).click();
+    await contactPage.getByRole('button', { name: 'Add people' }).click();
+    const picker = contactPage.getByRole('dialog', { name: 'Add people' });
+    await picker.getByRole('textbox', { name: 'Search people' }).fill('Held');
+    await picker.getByRole('button', { name: /Held Burden/ }).click();
+    await picker.getByRole('button', { name: 'Done' }).click();
+    await expect(contactPage.getByRole('button', { name: 'Remove Held Burden' })).toBeVisible();
+    await contactPage.getByRole('button', { name: 'Log', exact: true }).click();
 
-    // A row carries the home and its people; drop Held Burden so only Lila is
-    // seen, which leaves a genuine "never" beside a real "today".
-    await page.getByRole('button', { name: 'Log a visit: Lila Chen' }).click();
-    const log = page.getByRole('dialog');
-    await expect(log.getByRole('heading', { name: 'Log a visit' })).toBeVisible({ timeout: 10_000 });
-    await log.getByRole('button', { name: 'Remove Held Burden' }).click();
-    await log.getByRole('button', { name: 'Log the visit' }).click();
-    await expect(log).toBeHidden({ timeout: 10_000 });
-    await expect(page.getByRole('button', { name: 'Log a visit: Lila Chen' })).toBeVisible();
+    // The composer clears once every entry is written; Lila's own story shows it.
+    await expect(contactPage.getByPlaceholder(/What happened with Lila/i)).toHaveValue('', { timeout: 15_000 });
+    await expect(contactPage.getByText(text)).toBeVisible({ timeout: 10_000 });
 
-    const homeBlock = page.locator('section').filter({ has: page.getByRole('heading', { name: 'the Islams', level: 3 }) });
-
-    /** The four measurements, taken at whatever width the viewport is now. */
-    const measure = async (width: number) => {
-      // (a) No sideways scroller anywhere in the reading, and the reading's own
-      // content is no wider than its box.
-      const sideways = await page.locator('main *').evaluateAll((els) =>
-        els
-          .filter((el) => {
-            const s = getComputedStyle(el);
-            return (s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1;
-          })
-          .map((el) => el.className || el.tagName),
-      );
-      expect(sideways, `a horizontal scroller at ${width}px`).toEqual([]);
-      expect(
-        await homeBlock.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-        `the home block is wider than its box at ${width}px`,
-      ).toBe(true);
-
-      // Nothing inside the home block crosses the viewport's right edge.
-      const past = await homeBlock.locator('*').evaluateAll((els) =>
-        els
-          .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
-          .map((el) => `${el.tagName}.${String(el.className).slice(0, 40)}`),
-      );
-      expect(past, `elements past the right edge at ${width}px`).toEqual([]);
-
-      // (b) Every row's since value is on screen, both edges.
-      const values = await page.locator('[data-since]').evaluateAll((els) =>
-        els.map((el) => {
-          const r = el.getBoundingClientRect();
-          return { text: (el.textContent ?? '').trim(), left: r.left, right: r.right };
-        }),
-      );
-      expect(values.map((v) => v.text)).toEqual(expect.arrayContaining(['today', 'never']));
-      for (const v of values) {
-        expect(v.left, `"${v.text}" cut off on the left at ${width}px`).toBeGreaterThanOrEqual(0);
-        expect(v.right, `"${v.text}" cut off on the right at ${width}px`).toBeLessThanOrEqual(width);
-      }
-
-      // (c) Every month label is whole, and stays on screen.
-      const labels = await page.locator('[data-month]').evaluateAll((els) =>
-        els
-          .filter((el) => (el.textContent ?? '').trim())
-          .map((el) => {
-            const r = el.getBoundingClientRect();
-            return {
-              text: (el.textContent ?? '').trim(),
-              scrollWidth: el.scrollWidth,
-              clientWidth: el.clientWidth,
-              left: r.left,
-              right: r.right,
-            };
-          }),
-      );
-      expect(labels.length).toBeGreaterThanOrEqual(6);
-      for (const l of labels) {
-        expect(l.scrollWidth, `"${l.text}" is clipped at ${width}px`).toBeLessThanOrEqual(l.clientWidth + 1);
-        expect(l.left, `"${l.text}" starts off screen at ${width}px`).toBeGreaterThanOrEqual(0);
-        expect(l.right, `"${l.text}" runs off the right at ${width}px`).toBeLessThanOrEqual(width);
-      }
-
-      // (d) The never reading is visible, and every row still carries twelve months.
-      await expect(page.getByText('never', { exact: true }).first()).toBeVisible();
-      for (const row of await page.getByRole('button', { name: /^Log a visit: / }).all()) {
-        await expect(row.locator('[data-seen]')).toHaveCount(12);
-      }
-
-      // Each month's dots sit under that month's label — the strip is the same
-      // twelve columns as the caption, not a separate spacing that drifts.
-      const captionCentres = await homeBlock.locator('[data-month]').evaluateAll((els) =>
-        els.map((el) => {
-          const r = el.getBoundingClientRect();
-          return { text: (el.textContent ?? '').trim(), centre: (r.left + r.right) / 2 };
-        }),
-      );
-      expect(captionCentres).toHaveLength(12);
-      for (const row of await page.getByRole('button', { name: /^Log a visit: / }).all()) {
-        const dotCentres = await row.locator('[data-seen]').evaluateAll((els) =>
-          els.map((el) => {
-            const r = el.getBoundingClientRect();
-            return (r.left + r.right) / 2;
-          }),
-        );
-        expect(dotCentres).toHaveLength(12);
-        dotCentres.forEach((centre, i) => {
-          if (!captionCentres[i].text) return;
-          expect(
-            Math.abs(centre - captionCentres[i].centre),
-            `the ${captionCentres[i].text} dot is not under its label at ${width}px`,
-          ).toBeLessThanOrEqual(2);
-        });
-      }
+    // So does the other person's, and the two entries are one moment.
+    const groupIdOn = async (contactId: string) => {
+      if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+      const snap = await adminFS().collection('contacts').doc(contactId).collection('interactions').where('content', '==', text).get();
+      expect(snap.size, `entries on ${contactId}`).toBe(1);
+      return snap.docs[0].data();
     };
+    await expect(async () => {
+      const lila = await groupIdOn(CARE_ID);
+      const held = await groupIdOn('e2e-contact-held');
+      expect(lila.type).toBe('visit');
+      expect(held.type).toBe('visit');
+      expect(lila.groupId).toBeTruthy();
+      expect(held.groupId).toBe(lila.groupId);
+    }).toPass({ timeout: 10_000 });
 
-    await measure(375);
-    // The conservative budget from the brief: 320px, where a classic scrollbar
-    // takes the reading down to ~280px of content.
-    await page.setViewportSize({ width: 320, height: 812 });
-    await measure(320);
+    await page.goto('/directory');
+    await waitForShell(page);
+    await page.getByRole('main').getByText(HELD_CONTACT).click();
+    // The head's "Lately:" line quotes the newest entry too, so take the first match.
+    await expect(page.getByRole('main').getByText(text).first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  // The negative check for this role: a Trainee's people list is their own.
+  test('a Trainee’s Visit people list holds only the people they can see (#1903)', async ({ page }) => {
+    await signInAs(page, 'trainee');
+    await page.goto('/directory');
+    await waitForShell(page);
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
+    const contactPage = page.getByRole('main');
+    await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
+    await contactPage.getByText('Log interaction').click();
+    await contactPage.getByRole('button', { name: 'Visit', exact: true }).click();
+    await contactPage.getByRole('button', { name: 'Add people' }).click();
+    const picker = contactPage.getByRole('dialog', { name: 'Add people' });
+    await expect(picker.getByRole('button', { name: /Jordan Visible/ })).toBeVisible({ timeout: 10_000 });
+    await expect(picker.getByRole('button', { name: /Casey Untied/ })).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: /Held Burden/ })).toHaveCount(0);
   });
 });

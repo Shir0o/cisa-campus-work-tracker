@@ -74,7 +74,6 @@ const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Ask = lazyWithRetry(() => import("./views/Ask"));
 const CredentialVault = lazyWithRetry(() => import("./views/CredentialVault"));
-const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const GuestCoordinationDoc = lazyWithRetry(() => import("./views/GuestCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
@@ -996,19 +995,6 @@ export default function App() {
                       <RoleGuard minRole="manager">
                         <DashboardLayout>
                           <History />
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
-
-                <Route
-                  path="/visits"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="admin">
-                        <DashboardLayout>
-                          <Visits />
                         </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>

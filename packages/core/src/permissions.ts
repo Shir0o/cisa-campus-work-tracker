@@ -57,9 +57,6 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // rosters, the walk-in picker, and a door into every person's detail page.
   // A Trainee takes the allowlist path below and is not on it (#1834).
   '/attendance': 'manager',
-  // Full-timers only, on both sides: what a visit records is pastoral detail,
-  // not team-wide reading.
-  '/visits': 'admin',
   '/prayer': 'manager',
   '/answered': 'manager',
   '/settings': 'manager',
@@ -144,9 +141,6 @@ export const canSeeSettings = (role: AppRole | string | null) => role === 'admin
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
 export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
-// Visits are Full-timers' alone.
-export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
-export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 // Only a Full-timer reads the whole roster — the rules' seesAllContacts().
 export const seesAllPeople = (role: AppRole | string | null) => role === 'admin';
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildContactStory } from '../lib/contactStory';
 import { isReached } from '../lib/reach';
 import type { Gathering, Rhythm } from '../types';
+import { LEGACY_VISIT, legacyVisitMirror } from './fixtures/visits';
 
 const contact = {
   id: 'maya',
@@ -677,5 +678,48 @@ describe('buildContactStory', () => {
       gatherings: [],
     });
     expect(reached).toBe(true);
+  });
+});
+
+// Cut-or-keep §5: the Visits page and its `visits` docs are gone. A visit
+// already logged lives on as the interaction the old page mirrored onto each
+// visited person's card, and the story has to keep showing it from that alone.
+describe('a visit logged before Visits became an interaction type', () => {
+  it('shows in each visited person’s story from the mirrored interaction alone', () => {
+    for (const person of LEGACY_VISIT.contactIds) {
+      const story = buildContactStory({
+        contact: { id: person, createdAt: '2026-09-01T00:00:00.000Z' },
+        ...empty,
+        interactions: [legacyVisitMirror()],
+      });
+      const entry = story.find((e) => e.kind === 'conversation');
+      expect(entry, `no visit in ${person}'s story`).toBeDefined();
+      expect(entry).toMatchObject({
+        kind: 'conversation',
+        id: 'visit_v-legacy',
+        interaction: {
+          type: 'visit',
+          dateTime: '2026-09-12',
+          content: 'Visited at Whitman Hall — Sat on the floor and talked about her classes.',
+        },
+      });
+    }
+  });
+
+  it('sits among the person’s other conversations by its visit day', () => {
+    const story = buildContactStory({
+      contact: { id: 'c-ama', createdAt: '2026-09-01T00:00:00.000Z' },
+      ...empty,
+      interactions: [
+        conversation('older', '2026-09-05T12:00:00.000Z'),
+        legacyVisitMirror(),
+        conversation('newer', '2026-09-20T12:00:00.000Z'),
+      ],
+    });
+    expect(story.filter((e) => e.kind === 'conversation').map((e) => e.id)).toEqual([
+      'newer',
+      'visit_v-legacy',
+      'older',
+    ]);
   });
 });

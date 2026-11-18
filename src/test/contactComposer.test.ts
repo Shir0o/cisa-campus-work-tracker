@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  INTERACTION_TYPES,
   emptyComposer,
   formatDateTime,
   interactionEditValue,
@@ -19,7 +20,22 @@ describe('contactComposer', () => {
       type: 'chat',
       dateTime: '2026-10-03T14:30',
       reachedById: '',
+      withPeople: [],
     });
+  });
+
+  it('offers Visit among the interaction kinds, ahead of Other', () => {
+    expect(INTERACTION_TYPES).toEqual(['chat', 'call', 'meeting', 'email', 'visit', 'interaction']);
+  });
+
+  it('reopens a visit already logged as a Visit, not as Other (cut-or-keep §5)', () => {
+    const v = interactionEditValue({
+      content: 'Visited at Whitman Hall',
+      dateTime: '2026-09-12',
+      type: 'visit',
+    });
+    expect(v.type).toBe('visit');
+    expect(v.withPeople).toEqual([]);
   });
 
   it('reads a recent moment as Now, today by its time, older by date (#1292)', () => {
@@ -87,6 +103,7 @@ describe('interactionEditValue (#1673)', () => {
       type: 'meeting',
       dateTime: '2026-06-15T08:00',
       reachedById: '',
+      withPeople: [],
     });
   });
 
@@ -98,7 +115,7 @@ describe('interactionEditValue (#1673)', () => {
   });
 
   it('treats a missing or unknown type as Other, and keeps an unparseable time as it is', () => {
-    const v = interactionEditValue({ content: 'x', dateTime: 'garbage', type: 'visit' });
+    const v = interactionEditValue({ content: 'x', dateTime: 'garbage', type: 'coffee' });
     expect(v.type).toBe('interaction');
     expect(v.dateTime).toBe('garbage');
     expect(interactionEditValue({ content: 'x', dateTime: '' }).type).toBe('interaction');

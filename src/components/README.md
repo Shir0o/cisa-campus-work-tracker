@@ -24,13 +24,12 @@ Top-level directory grouping modular UI components, modals, shell navigation, an
 - [contact](./contact/README.md): Contact stream feeds, composer, story views, and profile management sheets.
 - [landing](./landing/README.md): Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee Landing, Student Landing).
 - [layout](./layout/README.md): Global navigation bars, navigation rail, mobile navigation drawer, impersonation banners, and global search palettes.
-- [modals](./modals/README.md): Popups, sliding action drawers, and modal sheets for contact creation, visit logging, event scheduling, and attendee management.
+- [modals](./modals/README.md): Popups, sliding action drawers, and modal sheets for contact creation, interaction logging, event scheduling, and attendee management.
 - [notifications](./notifications/README.md): User permission prompts and banner components for native Web Push notifications.
 - [settings](./settings/README.md): System configuration cards, test account purging tools, and usage statistics dashboards.
 - [stream](./stream/README.md): Unified activity stream components, timeline composers, and message thread adapters.
 - [todos](./todos/README.md): Interactive action item rows, priority pickers, and inline task composers.
 - [ui](./ui/README.md): Atomic design system components including avatars, buttons, date pickers, switches, dropdowns, and skeleton loaders.
-- [visits](./visits/README.md): Cards and dialog components detailing pastoral visits, prayer burdens, and unreached contacts.
 
 ## Invariants
 - [AuthProvider.tsx] throw new Error(

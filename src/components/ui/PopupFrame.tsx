@@ -24,7 +24,7 @@ const SIZES = {
 const AVATAR_HUES = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'] as const;
 
 /** The open dialogs, oldest first. Only the topmost responds to Escape, so a
- *  popup opened on top of another (e.g. the Home editor from Log a visit) owns
+ *  popup opened on top of another (e.g. a picker opened from Log interaction) owns
  *  the keyboard without the one underneath also handling the same key. */
 const OPEN_DIALOGS: symbol[] = [];
 

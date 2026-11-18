@@ -122,7 +122,7 @@ describe('canAccessRoute()', () => {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
     manager:  ['/', '/directory', '/board', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -283,7 +283,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/around']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/answered', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -295,7 +295,6 @@ describe('TopNav primary tabs per role', () => {
       'Looking back',
       'My Day',
       'The Journey',
-      'Visits',
       'Your reports',
     ]);
   });
@@ -678,7 +677,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/around', '/feedback'] },
-      { label: 'People', hrefs: ['/board', '/directory', '/visits', '/history'] },
+      { label: 'People', hrefs: ['/board', '/directory', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],

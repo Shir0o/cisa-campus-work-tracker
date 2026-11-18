@@ -492,6 +492,20 @@ describe('App Component', () => {
     });
   });
 
+  // The Visits page is cut (cut-or-keep §5): a visit is an interaction logged on
+  // the person. A bookmark lands home, rather than on a page that is gone.
+  it('sends a Full-timer who opens /visits home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/visits');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
   it.each(['/prayer', '/answered', '/attendance'])(
     'redirects trainee away from %s (page not in their allowed set) to home',
     async (path) => {

@@ -1208,7 +1208,7 @@ function PrayerItem({
   };
 
   // Answer photos — previews for the files just picked; revoked when the set
-  // changes or the item unmounts (same hygiene as LogVisitModal).
+  // changes or the item unmounts.
   const newPhotoUrls = useMemo(
     () =>
       newPhotoFiles.map((f) => {

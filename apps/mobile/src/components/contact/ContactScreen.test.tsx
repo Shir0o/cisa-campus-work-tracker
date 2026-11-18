@@ -413,12 +413,13 @@ describe('ContactScreen', () => {
       expect(baseLoadedData.deleteInteraction).toHaveBeenCalledWith(interaction);
     });
 
-    it('hides the remove affordance for visit-mirror interactions', async () => {
-      const { queryByText } = await renderStory({
+    // The Visits page is gone, so a visit already logged is just an interaction.
+    it('lets a legacy visit’s interaction be removed like any other', async () => {
+      const { getByText } = await renderStory({
         interactions: [{ ...interaction, id: 'visit_abc' }],
       });
 
-      expect(queryByText('Remove')).toBeNull();
+      expect(getByText('Remove')).toBeTruthy();
     });
 
     it('asks for confirmation when the interaction has thread messages', async () => {

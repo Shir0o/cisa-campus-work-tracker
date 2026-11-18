@@ -13,6 +13,7 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
 import { LEGACY_CONTACT_FIXTURES, type LegacyCreatedAt } from '../src/test/fixtures/contacts';
+import { legacyVisitMirror } from '../src/test/fixtures/visits';
 import {
   VAULT_ENTRY,
   VAULT_ITERATIONS,
@@ -141,6 +142,12 @@ export async function seedEmulator() {
     type: 'coffee',
     createdAt: new Date().toISOString(),
   }, { merge: true });
+
+  // A visit logged under the old Visits page (cut-or-keep §5). The page and its
+  // `visits` doc are gone, so the interaction it mirrored onto Lila is all her
+  // story has of it. The same fixture the unit tests import.
+  const { id: legacyVisitId, ...legacyVisitDoc } = legacyVisitMirror();
+  await sampleContactRef.collection('interactions').doc(legacyVisitId).set(legacyVisitDoc, { merge: true });
 
   // General walking-together thread message on contact
   await sampleContactRef.collection('threads').doc('e2e-thread-1').set({

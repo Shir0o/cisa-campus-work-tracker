@@ -64,7 +64,7 @@ export function cancelInteractionRemoval(interactionId: string): void {
 
 import { hasMinRole } from "./permissions";
 
-/** Check if interaction is removable by user (non-visit-mirror, and owner or manager). */
+/** Check if interaction is removable by user (the owner, or a manager). */
 export function canRemoveInteraction(
   interaction?: { id?: string; userId?: string } | null,
   uid?: string | null,
@@ -72,6 +72,5 @@ export function canRemoveInteraction(
   isAdmin?: boolean,
 ): boolean {
   if (!interaction?.id) return false;
-  if (interaction.id.startsWith("visit_")) return false;
   return uid === interaction.userId || isAdmin === true || hasMinRole(role, "manager");
 }
