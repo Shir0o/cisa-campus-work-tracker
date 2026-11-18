@@ -59,3 +59,9 @@ docs/design/**/[a-z]*-*.html
 # Metrics and Lighthouse CI local scratch/cache
 .cache/
 .lighthouseci/
+
+# The MCP server is its own package: its dependencies, local Wrangler secrets and
+# Wrangler state must never be committed.
+mcp/node_modules/
+mcp/.dev.vars
+mcp/.wrangler/

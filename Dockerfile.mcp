@@ -1,0 +1,27 @@
+# CISA Campus Work Tracker MCP server over Streamable HTTP (Claude Custom Connector).
+#
+# Build (from the repository root):
+#   docker build -f Dockerfile.mcp -t cisa-work-tracker-mcp .
+# Run:
+#   docker run -p 8080:8080 \
+#     -e MCP_AUTH_TOKEN="$(openssl rand -hex 32)" \
+#     -e FIREBASE_SERVICE_ACCOUNT="$(cat service-account.json)" \
+#     cisa-work-tracker-mcp
+FROM node:24-slim
+
+WORKDIR /app
+
+# The named-database defaults (sac-campus-hub / prod) come from this file.
+COPY firebase-applet-config.json ./
+COPY mcp/package.json mcp/package-lock.json ./mcp/
+RUN npm ci --prefix mcp
+
+COPY mcp ./mcp
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+EXPOSE 8080
+
+# tsx is a devDependency, so it must be installed before NODE_ENV=production.
+CMD ["./mcp/node_modules/.bin/tsx", "mcp/src/http-server.ts"]

@@ -40,7 +40,13 @@
     "metrics:audit:mobile": "npm run mobile:export && npm run measure:bundle:mobile",
     "maintenance:discover": "tsx scripts/discover-improvements.ts",
     "maintenance:run": "tsx scripts/agent/runner.ts",
-    "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\""
+    "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\"",
+    "mcp": "npm --prefix mcp run start",
+    "mcp:http": "npm --prefix mcp run start:http",
+    "mcp:typecheck": "npm --prefix mcp run typecheck",
+    "mcp:test": "npm --prefix mcp test",
+    "mcp:dev:worker": "npm --prefix mcp run dev:worker",
+    "mcp:deploy:worker": "npm --prefix mcp run deploy:worker"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
