@@ -105,11 +105,15 @@ describe('permissions', () => {
 
   it('pickLandingForRole maps roles to their Home-tab landing', () => {
     expect(pickLandingForRole('manager')).toBe('trainee');
-    expect(pickLandingForRole('operator')).toBe('myday');
-    expect(pickLandingForRole('viewer')).toBe('myday');
     expect(pickLandingForRole('admin')).toBe('myday');
-    expect(pickLandingForRole(null)).toBe('myday');
-    expect(pickLandingForRole('bogus')).toBe('myday');
+  });
+
+  // A missing, legacy or unknown role has no home at all: it must never fall
+  // through to the Full-timer's My Day (the phone has no route guard there).
+  it('pickLandingForRole gives a missing, legacy or unknown role no landing', () => {
+    for (const role of [null, 'operator', 'viewer', 'student', 'community', 'bogus']) {
+      expect(pickLandingForRole(role), String(role)).toBe('none');
+    }
   });
 
   it('every NAV_ITEM route is accessible to a user at its minRole', () => {

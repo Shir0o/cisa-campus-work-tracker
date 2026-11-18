@@ -162,6 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Until the user doc arrives the role is unknown; stay loading so the
+      // access gate does not flash the pending screen on every sign-in.
+      setLoading(true);
       unsubUserDoc = onSnapshot(
         doc(db, 'users', authUser.uid),
         (snap) => {

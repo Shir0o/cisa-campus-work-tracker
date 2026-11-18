@@ -293,13 +293,16 @@ export function defaultRouteForRole(role: AppRole | string | null): string {
   return '/attendance';
 }
 
-// Which Home-tab landing a role sees. Mirrors web's `Landing.tsx` dispatcher:
-// admin (Full-timer) and any unrecognized/null role fall through to My Day.
-export type LandingKind = 'myday' | 'trainee';
+// Which Home-tab landing a role sees. Mirrors web's `Landing.tsx` dispatcher
+// for the two roles. A missing, legacy or unknown role has no landing at all:
+// the phone has no route guard in front of Home, so it must never fall through
+// to the Full-timer's My Day.
+export type LandingKind = 'myday' | 'trainee' | 'none';
 
 export function pickLandingForRole(role: AppRole | string | null): LandingKind {
   if (role === 'manager') return 'trainee';
-  return 'myday';
+  if (role === 'admin') return 'myday';
+  return 'none';
 }
 
 /**

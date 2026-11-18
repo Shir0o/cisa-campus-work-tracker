@@ -20,6 +20,7 @@ import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { useNotificationTapRouting } from '../src/lib/notificationRouting';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
+import { AccessGate } from '../src/components/auth/AccessGate';
 import { initReleaseStore } from '../src/lib/releases';
 import { initSentry, wrapRootLayout } from '../src/lib/sentry';
 import { MobileNotificationPermissionBanner } from '../src/components/notifications/MobileNotificationPermissionBanner';
@@ -37,7 +38,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
   const { mode, colors } = useTheme();
-  const { user, uid, loading } = useAuth();
+  const { user, uid, role, isApproved, loading } = useAuth();
   const [tint] = useRoomTint(uid);
   const pathname = usePathname();
   usePushRegistration();
@@ -55,7 +56,7 @@ function RootNavigator() {
 
   // Only once the Stack below is mounted and someone is signed in — a tap
   // that cold-starts the app waits here rather than navigating into nothing.
-  useNotificationTapRouting(!!user && !loading && (fontsLoaded || !!fontError));
+  useNotificationTapRouting(!!user && !!role && isApproved && !loading && (fontsLoaded || !!fontError));
 
   useEffect(() => {
     if (fontError) {
@@ -94,21 +95,26 @@ function RootNavigator() {
           do" strip sits above every route — including the trainee's tab-less
           queue — the way the design's impersonation layer covers every branch
           of its App. */}
-      <View style={{ flex: 1 }}>
-        <ImpersonateLayer>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="signup" />
-          </Stack>
-          <MobileNotificationPermissionBanner />
-        </ImpersonateLayer>
-      </View>
+      {/* A signed-in account with no role or no approval (a legacy Student or
+          Community role reads as none) waits on the pending screen instead of
+          landing in a shell. */}
+      <AccessGate>
+        <View style={{ flex: 1 }}>
+          <ImpersonateLayer>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="signup" />
+            </Stack>
+            <MobileNotificationPermissionBanner />
+          </ImpersonateLayer>
+        </View>
+      </AccessGate>
       {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
     </V2RoomTintContext.Provider>
   );
