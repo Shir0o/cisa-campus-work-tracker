@@ -207,9 +207,11 @@ describe('GlobalSearch', () => {
     expect(screen.getAllByText('Quick actions').length).toBeGreaterThan(0);
     // recency proxy: most-recently-updated contact first
     expect(screen.getAllByText('Alice Wong').length).toBeGreaterThan(0);
-    for (const label of ['New contact', 'Log a visit', 'Sign-up form (for someone new)', 'The Journey']) {
+    for (const label of ['New contact', 'Log a visit', 'Sign-up form (for someone new)']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+    // The Journey board is cut (§22): no quick action jumps to it.
+    expect(screen.queryAllByText('The Journey').length).toBe(0);
   });
 
   // #1345: the stored role is retired; a person is described by year · major.
@@ -433,11 +435,9 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
   });
 
-  it('quick action "The Journey" navigates to /board', () => {
+  it('quick action "The Journey" is gone with the board (§22)', () => {
     render(<GlobalSearch />);
-    fireEvent.click(screen.getAllByRole('button', { name: /The Journey/i })[0]);
-    expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+    expect(screen.queryAllByRole('button', { name: /The Journey/i }).length).toBe(0);
   });
 
   it('clicking a recent person in the empty state opens the contact', () => {
@@ -659,12 +659,12 @@ describe('GlobalSearch', () => {
 
   it('records open event when selecting destination in search results', () => {
     render(<GlobalSearch />);
-    typeDesktop('journey');
-    const boardRow = screen.getAllByText('The Journey')[0].closest('button')!;
-    fireEvent.click(boardRow);
+    typeDesktop('people');
+    const peopleRow = screen.getAllByText('People')[0].closest('button')!;
+    fireEvent.click(peopleRow);
 
-    expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
-    expect(Frecency.getScore('u1', 'dest:/board')).toBeGreaterThan(0);
+    expect(h.mockNavigate).toHaveBeenCalledWith('/directory', undefined);
+    expect(Frecency.getScore('u1', 'dest:/directory')).toBeGreaterThan(0);
   });
 
   // ── visual contract — PICKED shell design (issue #653) ────────────────

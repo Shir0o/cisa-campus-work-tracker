@@ -336,15 +336,6 @@ export default function GlobalSearch() {
       show: true,
       run: () => go('/signup'),
     },
-    {
-      key: 'qa-journey',
-      label: t('search.the_journey'),
-      sub: t('search.walk_the_board'),
-      icon: Compass,
-      tone: 'violet' as Tone,
-      show: isStaff,
-      run: () => go('/board'),
-    },
   ].filter((a) => a.show);
 
   // Registry-backed shortcuts the user can actually take right now, filtered

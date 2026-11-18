@@ -66,13 +66,8 @@ export function computeContactDerivedModel({
       : null);
 
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
-  const stageIdx = currentContact.stage
-    ? sortedStages.findIndex((s) => s.label === currentContact.stage)
-    : -1;
   const canMoveStage = (isAdmin || hasMinRole(role, "manager")) && sortedStages.length > 0;
   const canDelete = isAdmin || hasMinRole(role, "manager");
-  const currentStageIndex = stageIdx === -1 ? 0 : stageIdx;
-  const currentStageInfo = stageIdx === -1 ? undefined : sortedStages[stageIdx];
   const openPrayers = prayers.filter(
     (p) => p.status !== "answered" && p.status !== "unanswered",
   );
@@ -86,11 +81,8 @@ export function computeContactDerivedModel({
     carerMembers,
     addedByName,
     sortedStages,
-    stageIdx,
     canMoveStage,
     canDelete,
-    currentStageIndex,
-    currentStageInfo,
     openPrayers,
   };
 }

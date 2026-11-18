@@ -20,7 +20,7 @@ describe('sectionHrefFor (#803)', () => {
 
   it('falls back to the deepest destination an undeclared child sits under', () => {
     // Preserves the shells' old `startsWith(href + "/")` behaviour.
-    expect(sectionHrefFor('/board/anything')).toBe('/board');
+    expect(sectionHrefFor('/directory/anything')).toBe('/directory');
   });
 
   it('never resolves an unrelated path to Home by prefix', () => {

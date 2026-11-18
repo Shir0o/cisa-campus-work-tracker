@@ -1,23 +1,22 @@
 /**
  * The Trainee journey (#1475).
  *
- * My Day → a contact in their care → log an interaction → the contact shows on
- * the Journey board. The Trainee is the scoped role: they see only the people
- * tied to them, and the rules accept that read only because the query carries
- * the tie (`contactVisibilityConstraints`). This spec folds in the trainee
- * halves of the feature specs the e2e map retires:
+ * My Day → a contact in their care → log an interaction → the contact shows in
+ * the People directory. The Trainee is the scoped role: they see only the
+ * people tied to them, and the rules accept that read only because the query
+ * carries the tie (`contactVisibilityConstraints`). This spec folds in the
+ * trainee halves of the feature specs the e2e map retires:
  *
- *  - `the-journey-board.spec.ts` — the trainee board view;
+ *  - the trainee's People surface — the tied person shows, the untied ones do
+ *    not;
  *  - the trainee half of `walking-together-threads.spec.ts` — the Full-timers
  *    stream stays hidden;
- *  - the trainee half of `cross-role-journey.spec.ts` — the board loads for a
- *    trainee;
  *  - `mobile-and-pwa-contact-editing.spec.ts` and `mobile-viewport.spec.ts` —
  *    the mobile viewport lives here as a describe.
  *
  * Escape rows (docs/research/e2e-coverage-audit.md):
- *  - row 2  — The Journey does not load for trainees (rules ↔ query scope). The
- *             board must render the tied person, which means the query carried
+ *  - row 2  — People does not load for trainees (rules ↔ query scope). The
+ *             page must render the tied person, which means the query carried
  *             the tie; the pre-#1224 unscoped query is permission-denied.
  *  - row 5  — Full-timers-only posts leaked onto the trainee home (web analogue:
  *             a trainee must not see the Full-timers stream on a contact).
@@ -117,20 +116,19 @@ test.describe('Trainee journey (#1475)', () => {
     await expect(dialog.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
   });
 
-  test('the Journey board loads for a trainee with the tied person and not the untied one', async ({ page }) => {
+  test('the Directory shows a trainee the tied person and not the untied one', async ({ page }) => {
     await signInAs(page, 'trainee');
-    await page.goto('/board');
+    await page.goto('/directory');
     await waitForShell(page);
-    expect(new URL(page.url()).pathname).toBe('/board');
+    expect(new URL(page.url()).pathname).toBe('/directory');
 
-    // Row 2: the board renders (the scoped query was accepted) and shows the
-    // staged person. If the board's query dropped its tie it would be denied and
-    // this would never appear.
-    await expect(page.getByRole('heading', { name: 'First Contact' }).first()).toBeVisible({ timeout: 10_000 });
+    // Row 2: People renders (the scoped query was accepted) and shows the
+    // person in their care. If the page's query dropped its tie it would be
+    // denied and this would never appear.
     await expect(page.getByRole('main').getByText(CARE_CONTACT)).toBeVisible({ timeout: 10_000 });
 
     // ...and neither the untied person nor the readable-but-untied one is on
-    // the board either (negative checks).
+    // the page either (negative checks).
     await expect(page.getByText(UNTIED_CONTACT)).toHaveCount(0);
     await expect(page.getByText(VISIBLE_NOT_CARED)).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
@@ -165,7 +163,6 @@ test.describe('Trainee journey on a mobile viewport (#1475)', () => {
   const routes = [
     { path: '/', name: 'Home' },
     { path: '/directory', name: 'People' },
-    { path: '/board', name: 'The Journey' },
   ];
 
   test('trainee routes do not overflow horizontally on a phone', async ({ page }) => {

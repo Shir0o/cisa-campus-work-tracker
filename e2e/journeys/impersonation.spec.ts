@@ -126,7 +126,6 @@ test.describe('Impersonation journey (#1476)', () => {
     const navAfter = await nav.getByRole('link').allInnerTexts();
     const navAsText = navAfter.join(' | ');
     expect(navAsText).toMatch(/home|my day/i);
-    expect(navAsText).toMatch(/the journey/i);
     expect(navAsText).toMatch(/people/i);
     expect(navAfter.some((l) => /^coordination notes$/i.test(l))).toBe(false);
 
@@ -138,7 +137,6 @@ test.describe('Impersonation journey (#1476)', () => {
     expect(navReset.some((l) => /coordination notes/i.test(l))).toBe(true);
   });
 
-  // ── The journey ─────────────────────────────────────────────────────────
   test('stepping into the trainee shows exactly their People and My Day, opening a contact does not crash, and Back to my view restores the Full-timer', async ({ page }) => {
     const reactErrors: string[] = [];
     page.on('pageerror', (e) => reactErrors.push(e.message));
@@ -153,7 +151,6 @@ test.describe('Impersonation journey (#1476)', () => {
 
     // The nav is the trainee's nav — no Full-timer-only Coordination Notes.
     const navAsText = (await page.getByLabel('Main Navigation').getByRole('link').allInnerTexts()).join(' | ');
-    expect(navAsText).toMatch(/the journey/i);
     expect(navAsText).not.toMatch(/coordination notes/i);
 
     // My Day: the person in the trainee's care shows; no one outside the

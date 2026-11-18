@@ -5,7 +5,7 @@ import Directory from '../views/Directory';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { logActivity, handleFirestoreError } from '../lib/firebase';
-import { DEFAULT_DIRECTORY_FILTERS, writeDirectoryFilters, __resetDirectoryFilters } from '../lib/directoryFilters';
+import { DEFAULT_DIRECTORY_FILTERS, NOT_YET_PLACED, writeDirectoryFilters, __resetDirectoryFilters } from '../lib/directoryFilters';
 import React from 'react';
 
 // Mock writeBatch operations
@@ -165,7 +165,7 @@ describe('Directory', () => {
     expect(summary.className).toMatch(/min-w-/);
   });
 
-  it('renders contacts directory title, stats, and contact cards', async () => {
+  it('renders the People title and the contact cards', async () => {
     render(<Directory />);
 
     await waitFor(() => {
@@ -233,46 +233,14 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 
-  it('filters contacts by spiritual background', async () => {
+  it('searches contacts by interest', async () => {
     render(<Directory />);
 
     await waitFor(() => {
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     });
 
-    const filtersButton = screen.getByText('Filters');
-    fireEvent.click(filtersButton);
-
-    const spiritualSelect = screen.getByText('Spiritual background').parentElement?.querySelector('select') as HTMLSelectElement;
-    fireEvent.change(spiritualSelect, { target: { value: 'Christian' } });
-    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
-    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Clear all'));
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-  });
-
-  it('filters contacts by interest option and searches contacts by interest', async () => {
-    render(<Directory />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    const filtersButton = screen.getByText('Filters');
-    fireEvent.click(filtersButton);
-
-    const interestSelect = screen.getByText('Interest').parentElement?.querySelector('select') as HTMLSelectElement;
-    expect(interestSelect).toBeInTheDocument();
-    fireEvent.change(interestSelect, { target: { value: 'Bible study' } });
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Clear all'));
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
-
-    // Also verify search by interest
+    // The interest filter is cut (§23); searching still reads interests.
     const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
     fireEvent.change(searchInput, { target: { value: 'Bible study' } });
     expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
@@ -280,8 +248,9 @@ describe('Directory', () => {
   });
 
   // #1345: the free-text group (`role`) is retired; kind is the only answer to
-  // "what sort of person is this".
-  it('has no Group filter in the Filters menu (#1345)', async () => {
+  // "what sort of person is this". §23 also retires the background, interest,
+  // has-phone and added-when narrowings.
+  it('has no Group, background, interest, phone or added-when filter (#1345, §23)', async () => {
     render(<Directory />);
     await waitFor(() => {
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
@@ -289,8 +258,12 @@ describe('Directory', () => {
 
     fireEvent.click(screen.getByText('Filters'));
 
-    expect(screen.getByText('Spiritual background')).toBeInTheDocument();
-    expect(screen.queryByText('Group')).not.toBeInTheDocument();
+    expect(screen.getByText('Stage')).toBeInTheDocument();
+    expect(screen.getByText('Kind')).toBeInTheDocument();
+    expect(screen.getByText('Reach')).toBeInTheDocument();
+    for (const gone of ['Group', 'Spiritual background', 'Interest', 'Added', 'Custom range', 'Has phone']) {
+      expect(screen.queryByText(gone), gone).not.toBeInTheDocument();
+    }
     expect(screen.queryByRole('option', { name: 'All groups' })).not.toBeInTheDocument();
   });
 
@@ -383,20 +356,15 @@ describe('Directory', () => {
     expect(screen.queryByText(/Last connected 2 days ago/i)).not.toBeInTheDocument();
   });
 
-  it('filters contacts by Added When (today, week, month)', async () => {
-    const today = new Date().toISOString();
-    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
-    const twentyDaysAgo = new Date(Date.now() - 20 * 86_400_000).toISOString();
-    const twoMonthsAgo = new Date(Date.now() - 60 * 86_400_000).toISOString();
-
+  it('filters the list to Not yet placed when a step is missing, blank or retired (§22)', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({
           docs: [
-            { id: 'c-today', data: () => ({ name: 'Today User', role: 'Student', stage: 'Lead', createdAt: today, tags: [] }) },
-            { id: 'c-week', data: () => ({ name: 'Week User', role: 'Student', stage: 'Lead', createdAt: threeDaysAgo, tags: [] }) },
-            { id: 'c-month', data: () => ({ name: 'Month User', role: 'Student', stage: 'Lead', createdAt: twentyDaysAgo, tags: [] }) },
-            { id: 'c-old', data: () => ({ name: 'Old User', role: 'Student', stage: 'Lead', createdAt: twoMonthsAgo, tags: [] }) },
+            { id: 'c-placed', data: () => ({ name: 'Placed Person', stage: 'Regular', tags: [] }) },
+            { id: 'c-blank', data: () => ({ name: 'Blank Step', stage: '', tags: [] }) },
+            { id: 'c-missing', data: () => ({ name: 'No Step', tags: [] }) },
+            { id: 'c-retired', data: () => ({ name: 'Retired Step', stage: 'Church Home', tags: [] }) },
           ],
           size: 4,
         });
@@ -409,86 +377,16 @@ describe('Directory', () => {
     });
 
     render(<Directory />);
-    await waitFor(() => {
-      expect(screen.getByText('Today User')).toBeInTheDocument();
-      expect(screen.getByText('Week User')).toBeInTheDocument();
-      expect(screen.getByText('Month User')).toBeInTheDocument();
-      expect(screen.getByText('Old User')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText('Placed Person')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Filters'));
-    const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
+    const stageSelect = screen.getByText('Stage').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(stageSelect, { target: { value: NOT_YET_PLACED } });
 
-    // Filter by Added today
-    fireEvent.change(addedSelect, { target: { value: 'today' } });
-    expect(screen.getByText('Today User')).toBeInTheDocument();
-    expect(screen.queryByText('Week User')).not.toBeInTheDocument();
-    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
-    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
-
-    // Filter by Added this week
-    fireEvent.change(addedSelect, { target: { value: 'week' } });
-    expect(screen.getByText('Today User')).toBeInTheDocument();
-    expect(screen.getByText('Week User')).toBeInTheDocument();
-    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
-    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
-
-    // Filter by Added this month
-    fireEvent.change(addedSelect, { target: { value: 'month' } });
-    expect(screen.getByText('Today User')).toBeInTheDocument();
-    expect(screen.getByText('Week User')).toBeInTheDocument();
-    expect(screen.getByText('Month User')).toBeInTheDocument();
-    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
-
-    // Clear filters
-    fireEvent.click(screen.getByText('Clear all'));
-    expect(screen.getByText('Old User')).toBeInTheDocument();
-  });
-
-  it('buckets Added today by calendar day, so yesterday evening is not today (#1072)', async () => {
-    // Pin system time to midday so "yesterday 23:00" is less than 24 hours ago
-    // (which would have matched the old rolling window) yet falls on the
-    // previous calendar day.
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-08-17T12:00:00'));
-    try {
-      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-        if (ref?.path === 'contacts') {
-          callback({
-            docs: [
-              { id: 'c-today', data: () => ({ name: 'Today User', role: 'Student', stage: 'Lead', createdAt: '2026-08-17T08:00:00', tags: [] }) },
-              { id: 'c-yesterday', data: () => ({ name: 'Yesterday User', role: 'Student', stage: 'Lead', createdAt: '2026-08-16T23:00:00', tags: [] }) },
-            ],
-            size: 2,
-          });
-        } else if (ref?.path === 'stages') {
-          callback({ docs: mockStages, size: 2 });
-        } else {
-          callback({ docs: [], size: 0 });
-        }
-        return vi.fn();
-      });
-
-      render(<Directory />);
-      await waitFor(() => {
-        expect(screen.getByText('Today User')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByText('Filters'));
-      const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
-
-      // Yesterday evening is on the previous calendar day, so it must NOT match
-      // "Added today" even though it is under 24 hours old.
-      fireEvent.change(addedSelect, { target: { value: 'today' } });
-      expect(screen.getByText('Today User')).toBeInTheDocument();
-      expect(screen.queryByText('Yesterday User')).not.toBeInTheDocument();
-
-      // It should instead surface under "Added this week".
-      fireEvent.change(addedSelect, { target: { value: 'week' } });
-      expect(screen.getByText('Yesterday User')).toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(screen.getByText('Blank Step')).toBeInTheDocument();
+    expect(screen.getByText('No Step')).toBeInTheDocument();
+    expect(screen.getByText('Retired Step')).toBeInTheDocument();
+    expect(screen.queryByText('Placed Person')).not.toBeInTheDocument();
   });
 
   it('renders dynamic new tag for contacts created within past week and allows filtering by new tag', async () => {
@@ -609,32 +507,15 @@ describe('Directory', () => {
     });
     // Toast confirms the copy
     expect(await screen.findByText(/Copied 1 email/i)).toBeInTheDocument();
-    const tagBtn = screen.getByTitle('Tag selected');
-    fireEvent.click(tagBtn);
-    expect(screen.getByText('Add a tag')).toBeInTheDocument();
+    // The bulk tag action is cut (§23): Copy emails is the last of the tools.
+    expect(screen.queryByTitle('Tag selected')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Set who the selected people are')).not.toBeInTheDocument();
 
-    const tagInput = screen.getByPlaceholderText('e.g. leader-track');
-    fireEvent.change(tagInput, { target: { value: 'new-tag' } });
-    
-    const submitBtn = screen.getByRole('button', { name: 'Add tag' });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalled();
-      expect(logActivity).toHaveBeenCalled();
-    });
-
-    // Wait for the modal to close and the selection to be cleared
-    await waitFor(() => {
-      expect(screen.queryByText('Add a tag')).not.toBeInTheDocument();
-    });
-
-    // Select all
+    // Select all: the selection is still one person (the tag bulk action that
+    // used to clear it is cut, §23), so the label reads "1 selected".
     let selectAllLabel: HTMLElement | null = null;
     await waitFor(() => {
-      const span = screen.getByText((_content, element) => {
-        return element?.tagName.toLowerCase() === 'span' && element.textContent?.includes('3 people') === true;
-      });
+      const span = screen.getByText('1 selected', { selector: 'span' });
       selectAllLabel = span.closest('label');
       expect(selectAllLabel).not.toBeNull();
     });
@@ -846,81 +727,7 @@ describe('Directory', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('intersects a custom From/To range with the active preset (#751)', async () => {
-    // Three-day-ago contact is inside both the "week"/"month" presets AND a 7-day
-    // From-window. Eighteen-day-ago contact is inside "month" preset but outside
-    // the 7-day From-window. With "month" preset + From=7 days ago + To=today the
-    // 18-day-old contact must be excluded (preset passes, range fails). Drop the
-    // From to "no filter" and the 18-day contact reappears (still inside "month").
-    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
-    const eighteenDaysAgo = new Date(Date.now() - 18 * 86_400_000).toISOString();
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({
-          docs: [
-            { id: 'c-week', data: () => ({ name: 'Week User', role: 'Student', stage: 'Lead', createdAt: threeDaysAgo, tags: [] }) },
-            { id: 'c-month', data: () => ({ name: 'Month User', role: 'Student', stage: 'Lead', createdAt: eighteenDaysAgo, tags: [] }) },
-          ],
-          size: 2,
-        });
-      } else if (ref?.path === 'stages') {
-        callback({ docs: mockStages, size: 2 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<Directory />);
-    await waitFor(() => {
-      expect(screen.getByText('Week User')).toBeInTheDocument();
-      expect(screen.getByText('Month User')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Filters'));
-
-    // Set the "month" preset AND a From=7 days ago / To=today window.
-    // Month User (18 days ago) is inside "month" but OUTSIDE the 7-day window —
-    // intersection filters it out.
-    const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
-    fireEvent.change(addedSelect, { target: { value: 'month' } });
-
-    const fromInput = await waitFor(() => screen.getByLabelText(/From/i)) as HTMLInputElement;
-    const toInput = await waitFor(() => screen.getByLabelText(/To/i)) as HTMLInputElement;
-    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    fireEvent.change(fromInput, { target: { value: sevenDaysAgo } });
-    fireEvent.change(toInput, { target: { value: todayStr } });
-
-    expect(screen.getByText('Week User')).toBeInTheDocument();
-    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
-
-    // Loosen the From to "all-time" via Clear all; the preset still applies so
-    // both contacts are now visible — proving the range was the binding constraint.
-    fireEvent.click(screen.getByText('Clear all'));
-    expect(screen.getByText('Week User')).toBeInTheDocument();
-    expect(screen.getByText('Month User')).toBeInTheDocument();
-  });
-  it('shows a validation toast and applies no range when From is after To (#751)', async () => {
-    render(<Directory />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Filters'));
-
-    const fromInput = await waitFor(() => screen.getByLabelText(/From/i)) as HTMLInputElement;
-    const toInput = await waitFor(() => screen.getByLabelText(/To/i)) as HTMLInputElement;
-    fireEvent.change(fromInput, { target: { value: '2026-08-25' } });
-    fireEvent.change(toInput, { target: { value: '2026-08-10' } });
-
-    expect(await screen.findByText(/start date before/i)).toBeInTheDocument();
-    // Invalid range must NOT hide contacts
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-  });
-
-   it('shows a no-emails toast when selected contacts have no email addresses (#751)', async () => {
+  it('shows a no-emails toast when selected contacts have no email addresses (#751)', async () => {
     const noEmail = {
       id: 'c-noemail',
       data: () => ({
@@ -1346,40 +1153,6 @@ describe('Directory', () => {
     expect(screen.queryByText('BFA Reached')).not.toBeInTheDocument();
   });
 
-  it('the Has phone filter narrows to contacts whose phone is a non-empty string (#1391)', async () => {
-    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
-    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({
-          docs: [
-            { id: 'has-phone', data: () => ({ name: 'Has Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: '555-0100' }) },
-            { id: 'empty-phone', data: () => ({ name: 'Empty Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: '' }) },
-            { id: 'null-phone', data: () => ({ name: 'Null Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: null }) },
-            { id: 'no-phone', data: () => ({ name: 'No Phone', role: 'Student', stage: 'Lead', createdAt: days(2) }) },
-          ],
-          size: 4,
-        });
-      } else if (ref?.path === 'stages') {
-        callback({ docs: mockStages, size: 2 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<Directory />);
-    await waitFor(() => expect(screen.getByText('Has Phone')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByText('Filters'));
-    fireEvent.click(screen.getByTestId('filter-has-phone'));
-
-    expect(screen.getByText('Has Phone')).toBeInTheDocument();
-    expect(screen.queryByText('Empty Phone')).not.toBeInTheDocument();
-    expect(screen.queryByText('Null Phone')).not.toBeInTheDocument();
-    expect(screen.queryByText('No Phone')).not.toBeInTheDocument();
-  });
-
   it('a Full-timer sees a person reached long before the 500 newest interactions as reached, everywhere (#1335)', async () => {
     (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
     const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
@@ -1770,86 +1543,6 @@ describe('Directory — the kind of person', () => {
   });
 });
 
-// #1152 review follow-up: the bulk picker offers three kinds, but a Contact can
-// be a student or a local — the fourth cell. Setting someone to Contact must
-// not silently overwrite what we know about their being a student.
-describe('Directory — bulk-setting the kind', () => {
-  const studentContact = [
-    { id: 'b1', data: () => ({ name: 'Known Student', email: 'ks@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: true, isStudent: true, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
-  ];
-
-  beforeEach(() => {
-    __resetDirectoryFilters();
-    vi.mocked(useAuth).mockReturnValue({
-      user: { uid: 'ft1', email: 'ft@example.com', displayName: 'Full Timer' },
-      role: 'admin',
-      isAdmin: true,
-    } as any);
-    (useLayout as any).mockReturnValue({
-      openNewContact: vi.fn(),
-      setSelectedContact: vi.fn(),
-    });
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') callback({ docs: studentContact, size: 1 });
-      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
-      else callback({ docs: [], size: 0 });
-      return vi.fn();
-    });
-  });
-
-  const setKindTo = async (value: string) => {
-    render(<Directory />);
-    // The student is Our own, so the default Contacts segment hides them.
-    fireEvent.click(await screen.findByRole('button', { name: 'All' }));
-    await waitFor(() => expect(screen.getByText('Known Student')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByTitle('Select')[0]);
-    fireEvent.click(screen.getByTitle('Set who the selected people are'));
-    fireEvent.change(screen.getByTestId('bulk-kind-select'), { target: { value } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  };
-
-  it('leaves the student fact alone when setting someone to Contact', async () => {
-    await setKindTo('contact');
-    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
-    const written = mockUpdate.mock.calls.at(-1)?.[1];
-    expect(written.inChurchLife).toBe(false);
-    expect(written).not.toHaveProperty('isStudent');
-    expect(written.kindSetBy).toBe('ft1');
-  });
-
-  it('sets both when making someone Our own', async () => {
-    await setKindTo('our-own');
-    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
-    const written = mockUpdate.mock.calls.at(-1)?.[1];
-    expect(written.inChurchLife).toBe(true);
-    expect(written.isStudent).toBe(true);
-  });
-
-  // #1263: saving the kind is a person deciding, so the picker never offers a
-  // pre-chosen answer — not a default, and not whatever was saved last time.
-  it('opens blank every time, and Save waits for a choice', async () => {
-    await setKindTo('our-own');
-    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
-    await waitFor(() => expect(screen.queryByTestId('bulk-kind-select')).not.toBeInTheDocument());
-
-    fireEvent.click(screen.getAllByTitle('Select')[0]);
-    fireEvent.click(screen.getByTitle('Set who the selected people are'));
-    expect((screen.getByTestId('bulk-kind-select') as HTMLSelectElement).value).toBe('');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-
-    fireEvent.change(screen.getByTestId('bulk-kind-select'), { target: { value: 'local-saint' } });
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
-  });
-
-  it('records the change in the team\u2019s own words, not slugs', async () => {
-    await setKindTo('local-saint');
-    await waitFor(() => expect(logActivity).toHaveBeenCalled());
-    const logged = vi.mocked(logActivity).mock.calls.at(-1)?.[0] as any;
-    expect(logged.description).toContain('Local saint');
-    expect(logged.description).not.toContain('local-saint');
-  });
-});
-
 // #1351: Moving up a year. Next to Not sorted yet, a Full-timer confirms every
 // student's year for the new school year — all at once, with exceptions.
 describe('Directory — Moving up a year', () => {
@@ -2173,7 +1866,7 @@ describe('Directory — the order of the list (#1783)', () => {
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
 
     const control = sortSelect();
-    expect(control).toBeVisible();
+    await waitFor(() => expect(control).toBeVisible());
     // Visible without opening the Filters panel, as the current choice must be.
     expect(screen.queryByText('Narrow it down')).not.toBeInTheDocument();
     expect(control.closest('[data-testid="directory-sort"]')).toHaveClass('min-h-[44px]');

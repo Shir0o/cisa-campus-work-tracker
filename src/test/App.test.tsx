@@ -28,7 +28,6 @@ vi.mock('../views/landings/Landing', () => ({
   }
 }));
 vi.mock('../views/Attendance', () => ({ default: () => <div data-testid="attendance-view">Attendance View</div> }));
-vi.mock('../views/OutreachBoard', () => ({ default: () => <div data-testid="board-view">OutreachBoard View</div> }));
 vi.mock('../views/Directory', () => ({ default: () => <div data-testid="directory-view">Directory View</div> }));
 vi.mock('../views/History', () => ({ default: () => <div data-testid="history-view">History View</div> }));
 vi.mock('../views/PrayerList', () => ({ default: () => <div data-testid="prayer-view">PrayerList View</div> }));
@@ -462,6 +461,22 @@ describe('App Component', () => {
     render(<App />);
     await waitFor(() => {
       expect(window.location.pathname).toBe('/');
+    });
+  });
+
+  // The Journey board is cut (cut-or-keep §22). Its old bookmark lands on the
+  // People directory — the surface that replaced it — for either role, rather
+  // than on Home.
+  it.each(['admin', 'manager'])('sends a %s who opens /board to the directory', async (role) => {
+    mockAuthValue.user = { uid: '123', email: 'someone@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = role;
+    window.history.replaceState(null, '', '/board');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/directory');
+      expect(screen.getByTestId('directory-view')).toBeInTheDocument();
     });
   });
 

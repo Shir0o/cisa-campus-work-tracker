@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../lib/firebase';
 import { writeCredentialAudit } from '../lib/credentialVault';
-import { AppUser, Invitation } from '../types';
+import { AppUser, Contact, Invitation, Stage } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -55,6 +55,7 @@ import {
   RefreshCw,
   Video,
   BookOpen,
+  ChevronUp,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -68,6 +69,7 @@ import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import TestAccountPurgeModal from '../components/settings/TestAccountPurgeModal';
 import WhatsNewModal from '../components/WhatsNewModal';
 import { Select } from '../components/ui/Select';
+import { PopupFrame } from '../components/ui/PopupFrame';
 import whatsNewManifest from '../generated/whats-new.json';
 import type { WhatsNewManifest } from '../scripts/compile-whats-new';
 import { useWhatsNewSettings } from '../lib/whatsNew';
@@ -95,6 +97,14 @@ import {
   type Weekday,
 } from '../lib/weeklyReminders';
 import { isRealPerson } from '../lib/permissions';
+import {
+  addStage,
+  applyStageReorder,
+  persistStageOrder,
+  removeStageWithReassign,
+  renameStageWithContacts,
+} from '../lib/data/stages';
+import { contactVisibilityConstraints } from '../lib/contactQueries';
 import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
 import {
   useCalendarSync,
@@ -205,7 +215,6 @@ const ROLE_OPTIONS: { value: AppRole }[] = [
 const ROLE_SECTIONS: Record<string, [key: string, label: string]> = {
   today: ['settings.access_today', 'Today'],
   people: ['nav.directory', 'People'],
-  journey: ['nav.the_journey', 'The Journey'],
   gatherings: ['nav.gatherings', 'Gatherings'],
   prayer: ['nav.prayer', 'Prayer'],
   history: ['nav.history', 'History'],
@@ -228,7 +237,7 @@ const ROLE_CARDS: {
     descKey: 'settings.roles.full_timer_desc',
     initials: 'FT',
     description: 'Full-time staff. Sees the whole work — every person, the team board, and all admin tools.',
-    access: ['today', 'people', 'journey', 'gatherings', 'prayer', 'history', 'settings'],
+    access: ['today', 'people', 'gatherings', 'prayer', 'history', 'settings'],
   },
   {
     key: 'manager',
@@ -236,8 +245,8 @@ const ROLE_CARDS: {
     label: 'Trainee',
     descKey: 'settings.roles.trainee_desc',
     initials: 'TR',
-    description: 'Cares for the people they are tied to, joins The Journey board, and keeps their own preferences.',
-    access: ['today', 'people', 'journey', 'settings'],
+    description: 'Cares for the people they are tied to, narrows People by step, and keeps their own preferences.',
+    access: ['today', 'people', 'settings'],
   },
 ];
 
@@ -3552,6 +3561,346 @@ function SettingsSectionRail({
   );
 }
 
+/**
+ * The steps of the journey (cut-or-keep §22). The Journey board was cut; the
+ * Directory's Step filter replaced its columns, and step management moved here:
+ * list in order, add, rename, reorder, remove-with-reassign. There is no colour
+ * picker — steps render without a per-step colour, so the neutral token style
+ * is the whole story.
+ *
+ * The writes live in `lib/data/stages.ts` (moved out of the board rather than
+ * copied): a rename carries its people to the new label, and a removal moves
+ * everyone on the step to the step the reader picks before it deletes anything.
+ */
+function StepsSection() {
+  const { t } = useLanguage();
+  const { user, role, effectiveUserId } = useAuth();
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null);
+  const [removing, setRemoving] = useState<Stage | null>(null);
+  const [reassignTo, setReassignTo] = useState('');
+
+  useEffect(() => {
+    const unsubStages = onSnapshot(
+      query(collection(db, 'stages'), orderBy('order', 'asc')),
+      (snapshot) => {
+        setStages(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Stage[]);
+        setFailed(false);
+        setLoading(false);
+      },
+      () => {
+        setFailed(true);
+        setLoading(false);
+      },
+    );
+
+    // The people on each step, read the same scoped way the Directory reads
+    // them, so a step's count and its reassign batch are the same people the
+    // reader can see.
+    const unsubContacts = onSnapshot(
+      query(
+        collection(db, 'contacts'),
+        ...contactVisibilityConstraints(role, effectiveUserId || user?.uid),
+        orderBy('name', 'asc'),
+      ),
+      (snapshot) => setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]),
+      () => {},
+    );
+
+    return () => {
+      unsubStages();
+      unsubContacts();
+    };
+  }, [role, effectiveUserId, user?.uid]);
+
+  const peopleOn = (label: string) => contacts.filter((c) => c.stage === label);
+  const otherStages = removing ? stages.filter((s) => s.id !== removing.id) : [];
+
+  const move = async (index: number, delta: number) => {
+    const stage = stages[index];
+    const neighbour = stages[index + delta];
+    if (!stage || !neighbour || busy) return;
+    const before = stages;
+    const next = applyStageReorder(stages, stage.id, neighbour.id);
+    setStages(next);
+    setBusy(true);
+    try {
+      await persistStageOrder(next);
+    } catch (error) {
+      setStages(before);
+      handleFirestoreError(error, OperationType.UPDATE, 'stages');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLabel.trim() || busy) return;
+    setBusy(true);
+    try {
+      // Append after the last step's own `order`, so a gap left by an earlier
+      // removal cannot produce two steps sharing one order.
+      const lastOrder = stages.length > 0 ? stages[stages.length - 1].order : -1;
+      await addStage(newLabel, lastOrder + 1);
+      setNewLabel('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'stages');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renaming || !renaming.label.trim() || busy) return;
+    const stage = stages.find((s) => s.id === renaming.id);
+    if (!stage) return;
+    setBusy(true);
+    try {
+      await renameStageWithContacts(stage, renaming.label, peopleOn(stage.label).map((c) => c.id));
+      setRenaming(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'stages');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const askToRemove = (stage: Stage) => {
+    if (busy) return;
+    setRemoving(stage);
+    setReassignTo(stages.find((s) => s.id !== stage.id)?.label ?? '');
+  };
+
+  const confirmRemove = async () => {
+    if (!removing || busy) return;
+    const moving = peopleOn(removing.label);
+    if (moving.length > 0 && !reassignTo) return;
+    setBusy(true);
+    try {
+      await removeStageWithReassign(
+        removing.id,
+        moving.map((c) => c.id),
+        moving.length > 0 ? reassignTo : '',
+      );
+      setRemoving(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'stages');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const peopleLabel = (n: number) =>
+    n === 0
+      ? t('settings.steps_no_one', 'no one yet')
+      : n === 1
+        ? t('settings.steps_one_person', '1 person')
+        : t('settings.steps_people', '{n} people').replace('{n}', String(n));
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.steps_title', 'Steps')}
+        sub={t(
+          'settings.steps_sub',
+          'The steps of the journey, in order. Add one, rename it, move it, or remove it — anyone on a step you remove moves to the step you choose.',
+        )}
+      />
+
+      {failed ? (
+        <p role="alert" className="text-sm text-error">
+          {t('settings.steps_load_failed', "Couldn't load the steps. Try again in a moment.")}
+        </p>
+      ) : loading ? (
+        <Skeleton className="h-24 w-full max-w-2xl rounded-xl" />
+      ) : stages.length === 0 ? (
+        <p className="text-sm text-on-surface-variant">
+          {t('settings.steps_empty', 'No steps yet. Add the first one below.')}
+        </p>
+      ) : (
+        <ol className="flex max-w-2xl flex-col gap-2">
+          {stages.map((stage, index) => {
+            const onThisStep = peopleOn(stage.label).length;
+            const isRenaming = renaming?.id === stage.id;
+            return (
+              <li
+                key={stage.id}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-container-low px-3 py-2"
+              >
+                {isRenaming ? (
+                  <form onSubmit={saveRename} className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <input
+                      autoFocus
+                      type="text"
+                      required
+                      value={renaming.label}
+                      onChange={(e) => setRenaming({ ...renaming, label: e.target.value })}
+                      aria-label={t('settings.steps_new_name', 'New name')}
+                      className="h-10 min-w-0 flex-1 rounded-sm border border-outline bg-surface px-3 text-sm text-on-surface outline-none focus:border-primary"
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy || !renaming.label.trim()}
+                      className="h-10 rounded-full bg-primary px-4 text-sm font-medium text-on-primary disabled:opacity-40"
+                    >
+                      {t('settings.steps_save_name', 'Save')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRenaming(null)}
+                      className="h-10 rounded-full px-3 text-sm font-medium text-on-surface-variant hover:bg-surface-variant"
+                    >
+                      {t('actions.cancel')}
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-variant text-[12px] font-semibold text-on-surface-variant tabular-nums">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-on-surface">
+                      {stage.label}
+                    </span>
+                    <span className="text-xs tabular-nums text-on-surface-variant">
+                      {peopleLabel(onThisStep)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => move(index, -1)}
+                        disabled={busy || index === 0}
+                        aria-label={`${t('settings.steps_move_up', 'Move up')} ${stage.label}`}
+                        className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-surface-variant disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(index, 1)}
+                        disabled={busy || index === stages.length - 1}
+                        aria-label={`${t('settings.steps_move_down', 'Move down')} ${stage.label}`}
+                        className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-surface-variant disabled:opacity-30"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRenaming({ id: stage.id, label: stage.label })}
+                        disabled={busy}
+                        className="h-10 rounded-full px-3 text-sm font-medium text-on-surface-variant hover:bg-surface-variant"
+                      >
+                        {t('settings.steps_rename', 'Rename')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => askToRemove(stage)}
+                        disabled={busy}
+                        className="h-10 rounded-full px-3 text-sm font-medium text-error hover:bg-error/10"
+                      >
+                        {t('settings.steps_remove', 'Remove')}
+                      </button>
+                    </span>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+
+      <form onSubmit={add} className="mt-4 flex max-w-2xl flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder={t('settings.steps_add_placeholder', 'e.g. Church Home')}
+          aria-label={t('settings.steps_add_label', 'A new step')}
+          className="h-11 min-w-0 flex-1 rounded-sm border border-outline-variant bg-surface px-3 text-sm text-on-surface outline-none focus:border-primary"
+        />
+        <button
+          type="submit"
+          disabled={busy || !newLabel.trim()}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-on-primary disabled:opacity-40"
+        >
+          <Plus className="h-4 w-4" /> {t('settings.steps_add', 'Add step')}
+        </button>
+      </form>
+
+      <PopupFrame
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        size="sm"
+        title={
+          removing
+            ? t('settings.steps_remove_title', 'Remove {step}').replace('{step}', removing.label)
+            : t('settings.steps_remove', 'Remove')
+        }
+        cancelLabel={t('actions.cancel')}
+        onCancel={() => setRemoving(null)}
+        primary={{
+          label: t('settings.steps_remove_confirm', 'Remove step'),
+          onClick: confirmRemove,
+          disabled: busy || (peopleOn(removing?.label ?? '').length > 0 && !reassignTo),
+          saving: busy,
+          savingLabel: t('actions.saving'),
+        }}
+      >
+        <div className="space-y-4 px-7 pb-6 pt-1">
+          {removing && peopleOn(removing.label).length > 0 ? (
+            <>
+              <p className="text-sm leading-relaxed text-on-surface">
+                <b className="font-semibold">
+                  {peopleOn(removing.label).length === 1
+                    ? t('settings.steps_one_person', '1 person')
+                    : peopleOn(removing.label).length}
+                </b>{' '}
+                {peopleOn(removing.label).length === 1
+                  ? t('settings.steps_person_is_on_it', 'person is on this step. Where do they go?')
+                  : t('settings.steps_people_are_on_it', 'people are on this step. Where do they go?')}
+              </p>
+              <label className="block space-y-1.5">
+                <span className="text-[13px] font-medium text-on-surface">
+                  {t('settings.steps_destination', 'Move them to')}
+                </span>
+                <select
+                  value={reassignTo}
+                  onChange={(e) => setReassignTo(e.target.value)}
+                  className="h-11 w-full rounded-sm border border-outline bg-surface px-3 text-sm text-on-surface outline-none focus:border-primary"
+                >
+                  {otherStages.map((s) => (
+                    <option key={s.id} value={s.label}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {otherStages.length === 0 && (
+                <p role="status" className="text-sm text-on-surface-variant">
+                  {t(
+                    'settings.steps_need_another',
+                    'Add another step first, so this one’s people have somewhere to go.',
+                  )}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm leading-relaxed text-on-surface">
+              {t('settings.steps_remove_empty_body', 'No one is on this step. Removing it leaves every person where they are.')}
+            </p>
+          )}
+        </div>
+      </PopupFrame>
+    </section>
+  );
+}
+
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager, role, isApproved } = useAuth();
   const isDev = currentUser?.email?.toLowerCase() === OWNER_EMAIL || isAdmin;
@@ -3991,6 +4340,12 @@ export default function Settings() {
       label: t('teams.title', "Which team they're on"),
       visible: isAdmin,
       node: <TeamsSection users={users} />,
+    },
+    {
+      id: 'settings-steps',
+      label: t('settings.steps_title', 'Steps'),
+      visible: isAdmin,
+      node: <StepsSection />,
     },
     {
       id: 'settings-reminder-schedule',

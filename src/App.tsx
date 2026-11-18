@@ -54,7 +54,6 @@ import { wrapRoutesWithSentry } from "./lib/sentry";
 const SentryRoutes = wrapRoutesWithSentry(Routes);
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
-const OutreachBoard = lazyWithRetry(() => import("./views/OutreachBoard"));
 const Directory = lazyWithRetry(() => import("./views/Directory"));
 const CombineContacts = lazyWithRetry(() => import("./views/CombineContacts"));
 const CombineTags = lazyWithRetry(() => import("./views/CombineTags"));
@@ -922,18 +921,10 @@ export default function App() {
                   }
                 />
 
-                <Route
-                  path="/board"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="manager">
-                        <DashboardLayout>
-                          <OutreachBoard />
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
+                {/* The Journey board is cut (cut-or-keep §22): the Directory's
+                    step filter replaced it, so an old bookmark lands there
+                    rather than on Home. */}
+                <Route path="/board" element={<Navigate to="/directory" replace />} />
 
                 <Route
                   path="/directory"

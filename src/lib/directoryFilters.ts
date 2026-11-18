@@ -23,14 +23,9 @@ export const DIRECTORY_SORTS: readonly DirectorySort[] = ['recent', 'longest', '
 export interface DirectoryFilterState {
   searchQuery: string;
   filterStage: string;
-  filterSpiritualBackground: string;
-  filterInterest: string;
   kindSegment: KindSegment;
   filterUnsorted: boolean;
   filterNotReached: boolean;
-  filterHasPhone: boolean;
-  filterAddedWhen: 'all' | 'today' | 'week' | 'month';
-  customRange: { from: string; to: string };
   selectedTags: string[];
   sort: DirectorySort;
 }
@@ -38,37 +33,42 @@ export interface DirectoryFilterState {
 export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   searchQuery: '',
   filterStage: 'All',
-  filterSpiritualBackground: 'All',
-  filterInterest: 'All',
   kindSegment: 'contact',
   filterUnsorted: false,
   filterNotReached: false,
-  filterHasPhone: false,
-  filterAddedWhen: 'all',
-  customRange: { from: '', to: '' },
   selectedTags: [],
   // The list's existing order, so adding the control changes nothing until
   // someone asks for a different one.
   sort: 'name',
 };
 
+/**
+ * Fields a memory may still carry from filters that were cut (§23): the
+ * background, interest, has-phone and added-when narrowings, and the Group
+ * filter retired before them (#1345). A remounted directory drops them rather
+ * than restoring a filter whose control no longer exists.
+ */
+const RETIRED_FILTER_KEYS = [
+  'filterRole',
+  'filterSpiritualBackground',
+  'filterInterest',
+  'filterHasPhone',
+  'filterAddedWhen',
+  'customRange',
+] as const;
+
 const store = new Map<string, DirectoryFilterState>();
 
 /** The last-known filter state for a user, or the defaults if never set. */
 export function readDirectoryFilters(userKey: string): DirectoryFilterState {
-  // State retained before the Group filter was retired may still carry
-  // `filterRole`; load it without that key.
-  const saved = { ...(store.get(userKey) ?? DEFAULT_DIRECTORY_FILTERS) } as DirectoryFilterState & { filterRole?: string };
-  delete saved.filterRole;
+  const saved = { ...(store.get(userKey) ?? DEFAULT_DIRECTORY_FILTERS) } as DirectoryFilterState &
+    Record<string, unknown>;
+  for (const key of RETIRED_FILTER_KEYS) delete saved[key];
   return {
     ...saved,
-    // State saved before this field existed (#1391) reads as off rather than
-    // an uncontrolled `undefined`.
-    filterHasPhone: saved.filterHasPhone ?? false,
     // Likewise the order (#1783): a memory from before the sort control opens
     // on the list's existing order rather than on no option at all.
     sort: DIRECTORY_SORTS.includes(saved.sort) ? saved.sort : 'name',
-    customRange: { ...saved.customRange },
     selectedTags: [...saved.selectedTags],
   };
 }
@@ -77,7 +77,6 @@ export function readDirectoryFilters(userKey: string): DirectoryFilterState {
 export function writeDirectoryFilters(userKey: string, state: DirectoryFilterState): void {
   store.set(userKey, {
     ...state,
-    customRange: { ...state.customRange },
     selectedTags: [...state.selectedTags],
   });
 }
@@ -90,6 +89,42 @@ export function clearDirectoryFilters(userKey: string): void {
 /** Test-only reset of the module-level store. */
 export function __resetDirectoryFilters(): void {
   store.clear();
+}
+
+// ── The Step filter (§22) ───────────────────────────────────────────────────
+
+/**
+ * The Step filter's value for people who are on no step at all. It is a
+ * separate value rather than a label, so a step someone happens to name "Not
+ * yet placed" cannot be mistaken for it.
+ */
+export const NOT_YET_PLACED = '__not-yet-placed';
+
+/** One person has no step that exists: missing, blank, or an id whose step has
+ *  since been removed. Those people are still findable rather than lost. */
+export function isNotYetPlaced(
+  contact: { stage?: string | null },
+  knownStageLabels: readonly string[],
+): boolean {
+  const stage = (contact.stage ?? '').trim();
+  return stage === '' || !knownStageLabels.includes(stage);
+}
+
+/**
+ * Narrow a list by the Step filter. `All` changes nothing; a step's label keeps
+ * the people on it; `NOT_YET_PLACED` keeps everyone with no step that exists.
+ * Returns a new array and leaves the caller's list untouched.
+ */
+export function filterByStage<T extends { stage?: string | null }>(
+  contacts: readonly T[],
+  filterStage: string,
+  knownStageLabels: readonly string[],
+): T[] {
+  if (filterStage === 'All') return contacts.slice();
+  if (filterStage === NOT_YET_PLACED) {
+    return contacts.filter((c) => isNotYetPlaced(c, knownStageLabels));
+  }
+  return contacts.filter((c) => (c.stage ?? '') === filterStage);
 }
 
 // ── The order of the list (#1783) ──────────────────────────────────────────

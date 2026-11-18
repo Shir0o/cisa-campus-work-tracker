@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import {
   Sunrise,
-  Kanban,
   Contact,
   CalendarCheck,
   CalendarDays,
@@ -34,7 +33,6 @@ import { SIGNUP_TITLE } from './SignupInvite';
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   '/': Sunrise,
-  '/board': Kanban,
   '/directory': Contact,
   '/history': HistoryIcon,
   '/attendance': CalendarCheck,

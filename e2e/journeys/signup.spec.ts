@@ -169,8 +169,8 @@ test.describe('Sign-up journey — retired Outreach route and phone preservation
     await page.getByRole('button', { name: 'Send it' }).click();
     await expect(await successHeading(page, firstName)).toBeVisible({ timeout: 10_000 });
 
-    // A Full-timer sees the new lead, and the "Has phone" filter keeps it —
-    // only a contact whose phone actually persisted survives that filter.
+    // A Full-timer sees the new lead, and the contact page shows the number —
+    // only a contact whose phone actually persisted can display it.
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -179,9 +179,9 @@ test.describe('Sign-up journey — retired Outreach route and phone preservation
     const directory = page.getByRole('main');
     await expect(directory.getByText(unique).first()).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: 'Filters' }).first().click();
-    await page.getByTestId('filter-has-phone').check();
-    await expect(directory.getByText(unique).first()).toBeVisible({ timeout: 10_000 });
+    await directory.getByText(unique).first().click();
+    await page.getByRole('button', { name: `About ${unique}` }).first().click();
+    await expect(page.getByText(/555\D?014\D?7788/).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('a Trainee does not see the untied public sign-up (#1493)', async ({ page }) => {

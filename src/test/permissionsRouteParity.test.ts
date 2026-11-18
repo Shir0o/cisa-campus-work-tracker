@@ -68,7 +68,7 @@ describe('route permissions: web and core mirrors agree (#1940)', () => {
   // The concrete calls the phone makes, so a green corpus cannot hide a
   // disagreement behind a path neither app actually routes to.
   it('agrees on the routes mobile gates on today', () => {
-    const GATED = ['/contact', '/coordination', '/attendance', '/directory', '/board'];
+    const GATED = ['/contact', '/coordination', '/attendance', '/directory'];
     for (const role of ROLES) {
       for (const path of GATED) {
         expect(

@@ -562,7 +562,7 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     await page.goto('/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
 
-    for (const section of ['Your team', 'Going out together', "The day's goal", 'Roles & access']) {
+    for (const section of ['Your team', 'Going out together', "The day's goal", 'Roles & access', 'Steps']) {
       await expect(page.getByRole('heading', { level: 2, name: section })).toBeVisible();
     }
 
@@ -652,6 +652,8 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     await expect(page.getByText('Your team')).not.toBeVisible();
     await expect(page.getByText('Going out together')).not.toBeVisible();
     await expect(page.getByText("The day's goal")).not.toBeVisible();
+    // Steps are the team's structure: a Full-timer's to shape, not a Trainee's.
+    await expect(page.getByRole('heading', { level: 2, name: 'Steps' })).toHaveCount(0);
   });
 });
 
@@ -710,6 +712,8 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
 
     await page.getByLabel('Post an announcement').fill(body);
     await page.getByRole('button', { name: 'Post', exact: true }).click();
+    // The composer clears only once the post (and its bell entries) are committed.
+    await expect(page.getByLabel('Post an announcement')).toHaveValue('', { timeout: 10_000 });
 
     await expect(yours(page)).toBeVisible({ timeout: 10_000 });
     await expect(yours(page).getByText(progress)).toBeVisible({ timeout: 10_000 });
@@ -851,11 +855,11 @@ test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
 /**
  * Folded from the Full-timer parts of `quick-capture.spec.ts` and
  * `cross-role-journey.spec.ts` (#628, #631): Quick Capture minimum payload,
- * the optional disclosure, persistence, advancing across the Journey board,
- * and the story composer's "By:" chip (#1494). Serial: later steps reuse the
- * contact the first one captured.
+ * the optional disclosure, persistence, advancing a person's step on their own
+ * page and reading it back in People, and the story composer's "By:" chip
+ * (#1494). Serial: later steps reuse the contact the first one captured.
  */
-test.describe('Full-timer journey — Quick Capture and the Journey board (#1477)', () => {
+test.describe('Full-timer journey — Quick Capture and a person\'s step (#1477)', () => {
   test.describe.configure({ mode: 'serial' });
 
   const captured = `E2E Captured ${Date.now()}`;
@@ -891,7 +895,7 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await expect(page.getByRole('main').getByText(captured)).toBeVisible({ timeout: 10_000 });
   });
 
-  test('the captured contact advances across the pipeline and the By-chip reaches every teammate (#1494)', async ({ page }) => {
+  test('the captured contact advances a step and People reads it back (#1494)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -908,10 +912,13 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
       timeout: 5_000,
     });
 
-    // The board reflects the new step.
-    await page.goto('/board');
-    await waitForShell(page);
-    await expect(page.getByRole('main').getByText(captured)).toBeVisible({ timeout: 10_000 });
+    // People reflects the new step: the person's own card wears it. Navigate
+    // in-app — a full reload can drop the still-pending write and show the old
+    // step.
+    await page.getByRole('link', { name: 'People', exact: true }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeVisible({ timeout: 10_000 });
+    const advanced = page.getByRole('main').locator('div.group').filter({ hasText: captured }).first();
+    await expect(advanced.getByText('Second Contact', { exact: true })).toBeVisible({ timeout: 10_000 });
 
     // Back on the contact page, the story's By chip (#1494) offers every
     // teammate's name without clipping.

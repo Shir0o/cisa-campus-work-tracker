@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   DEFAULT_DIRECTORY_FILTERS,
+  NOT_YET_PLACED,
   readDirectoryFilters,
   writeDirectoryFilters,
   clearDirectoryFilters,
+  filterByStage,
+  isNotYetPlaced,
   sortDirectoryContacts,
   __resetDirectoryFilters,
   type DirectorySort,
@@ -12,11 +15,6 @@ import {
 const state = {
   searchQuery: 'Alice',
   filterStage: 'Regular',
-  filterSpiritualBackground: 'Christian',
-  filterInterest: 'Bible study',
-  filterAddedWhen: 'month',
-  filterHasPhone: true,
-  customRange: { from: '2026-01-01', to: '2026-02-01' },
   selectedTags: ['Freshman', 'Senior'],
   sort: 'longest',
 } as const;
@@ -28,19 +26,29 @@ describe("directoryFilters — retaining People directory filters across contact
 
   it("returns the defaults when nothing has been retained yet", () => {
     expect(readDirectoryFilters('u1')).toEqual(DEFAULT_DIRECTORY_FILTERS);
-    expect(DEFAULT_DIRECTORY_FILTERS.filterInterest).toBe('All');
+    expect(DEFAULT_DIRECTORY_FILTERS.filterStage).toBe('All');
   });
 
-  it("defaults filterHasPhone to false and round-trips it (#1391)", () => {
-    expect(DEFAULT_DIRECTORY_FILTERS.filterHasPhone).toBe(false);
-    writeDirectoryFilters('u1', { ...state, filterHasPhone: true } as any);
-    expect(readDirectoryFilters('u1').filterHasPhone).toBe(true);
-  });
-
-  it("defaults filterHasPhone to false for state saved before the field existed (#1391)", () => {
-    const { filterHasPhone: _dropped, ...stale } = state;
-    writeDirectoryFilters('u1', stale as any);
-    expect(readDirectoryFilters('u1').filterHasPhone).toBe(false);
+  it("drops the filter fields that were cut, so an old memory cannot bring them back (§23)", () => {
+    writeDirectoryFilters('u1', {
+      ...state,
+      filterSpiritualBackground: 'Christian',
+      filterInterest: 'Bible study',
+      filterHasPhone: true,
+      filterAddedWhen: 'month',
+      customRange: { from: '2026-01-01', to: '2026-02-01' },
+    } as any);
+    const read = readDirectoryFilters('u1') as unknown as Record<string, unknown>;
+    for (const key of [
+      'filterSpiritualBackground',
+      'filterInterest',
+      'filterHasPhone',
+      'filterAddedWhen',
+      'customRange',
+    ]) {
+      expect(read, key).not.toHaveProperty(key);
+    }
+    expect(read.filterStage).toBe('Regular');
   });
 
   it("restores exactly what was retained (open-then-close contact detail cycle)", () => {
@@ -65,9 +73,7 @@ describe("directoryFilters — retaining People directory filters across contact
     const a = readDirectoryFilters('u1');
     const b = readDirectoryFilters('u1');
     a.selectedTags.push('Changed');
-    a.customRange.from = 'HACKED';
     expect(b.selectedTags).toEqual(state.selectedTags);
-    expect(b.customRange.from).toBe('2026-01-01');
     expect(readDirectoryFilters('u1').selectedTags).toEqual(state.selectedTags);
   });
 
@@ -161,5 +167,47 @@ describe("sortDirectoryContacts — Recently connected, Longest since connected,
       { id: 'none', name: 'None', createdAt: undefined },
     ];
     expect(sortDirectoryContacts(legacy, 'added', () => null).map((c) => c.id)).toEqual(['todate', 'seconds', 'none']);
+  });
+});
+// The Step filter (§22): the Journey board is gone, so its "not yet placed"
+// column becomes an option in People's own Step filter.
+describe("filterByStage — the Step filter, with Not yet placed (§22)", () => {
+  const stages = ['First Contact', 'Regular'];
+  const people = [
+    { id: 'placed', stage: 'Regular' },
+    { id: 'other-step', stage: 'First Contact' },
+    { id: 'missing', stage: undefined },
+    { id: 'blank', stage: '' },
+    { id: 'null', stage: null },
+    { id: 'retired-step', stage: 'Church Home' },
+  ];
+  const ids = (filter: string) => filterByStage(people, filter, stages).map((p) => p.id);
+
+  it("All keeps everyone", () => {
+    expect(ids('All')).toEqual(people.map((p) => p.id));
+  });
+
+  it("a named step keeps only the people on it", () => {
+    expect(ids('Regular')).toEqual(['placed']);
+    expect(ids('First Contact')).toEqual(['other-step']);
+  });
+
+  it("Not yet placed keeps a missing, blank or retired step — anyone with no step that exists", () => {
+    expect(ids(NOT_YET_PLACED)).toEqual(['missing', 'blank', 'null', 'retired-step']);
+  });
+
+  it("Not yet placed is a distinct filter value, never a step's label", () => {
+    expect(stages).not.toContain(NOT_YET_PLACED);
+  });
+
+  it("isNotYetPlaced reads one person the same way", () => {
+    expect(isNotYetPlaced({ stage: 'Regular' }, stages)).toBe(false);
+    expect(isNotYetPlaced({ stage: 'Gone' }, stages)).toBe(true);
+    expect(isNotYetPlaced({}, stages)).toBe(true);
+  });
+
+  it("leaves the caller's list untouched", () => {
+    filterByStage(people, NOT_YET_PLACED, stages);
+    expect(people.map((p) => p.id)).toEqual(['placed', 'other-step', 'missing', 'blank', 'null', 'retired-step']);
   });
 });
