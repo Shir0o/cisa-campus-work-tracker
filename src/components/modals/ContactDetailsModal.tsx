@@ -83,7 +83,7 @@ export default function ContactDetailsModal({
   storyModel,
 }: ContactDetailsModalProps) {
   const { user, isAdmin, role, effectiveUserId, isImpersonating } = useAuth();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -294,7 +294,7 @@ export default function ContactDetailsModal({
   const conversation = conversationAdapter(adapterBase);
   const fullTimers = fullTimersAdapter(adapterBase);
   const interactionAdapterFor = (interaction: Interaction) =>
-    interactionAdapter({ ...adapterBase, interaction, locale: language === "es" ? "es" : "en-US" });
+    interactionAdapter({ ...adapterBase, interaction, locale: "en-US" });
   const openInteraction = interactions.find((i) => i.id === openThread) ?? null;
   const interactionThread = openInteraction ? interactionAdapterFor(openInteraction) : null;
 

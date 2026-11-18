@@ -6,7 +6,6 @@ import AnsweredList from '../views/AnsweredList';
 import { parsePrayerDate } from '../views/AnsweredList';
 import { onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../components/AuthProvider';
-import { LanguageProvider } from '../components/LanguageProvider';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, path) => ({ path })),
@@ -227,7 +226,6 @@ describe('AnsweredList', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
     });
-    localStorage.setItem('cisa_language', 'en');
   });
 
   it('renders initial loading state', () => {
@@ -450,39 +448,6 @@ describe('AnsweredList', () => {
     expect(container.querySelector('.ans-count-n')?.textContent).toBe('1');
     expect(screen.getByText(/answered Oct 18/)).toBeInTheDocument();
     expect(screen.queryByText(/2001/)).not.toBeInTheDocument();
-  });
-
-  it('formats the answer date in the reader language (#1766)', async () => {
-    const stored = [
-      {
-        id: 'p-es',
-        data: () => ({
-          contactId: 'c1',
-          burden: 'Sabiduría para la entrevista',
-          date: daysAgo(20),
-          status: 'answered',
-          answer: 'Consiguió la plaza.',
-          answeredAt: 'Oct 18',
-        }),
-      },
-    ];
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      callback({ docs: ref?.path === 'contacts' ? mockContacts : stored, size: stored.length });
-      return vi.fn();
-    });
-    localStorage.setItem('cisa_language', 'es');
-
-    render(
-      <MemoryRouter initialEntries={['/answered']}>
-        <LanguageProvider>
-          <AnsweredList />
-        </LanguageProvider>
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText(/18 oct/)).toBeInTheDocument();
-    });
   });
 
   it('offers a keyboard-reachable control that opens the person from a card (#1766)', async () => {

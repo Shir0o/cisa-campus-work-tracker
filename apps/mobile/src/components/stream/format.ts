@@ -5,7 +5,7 @@
 import { joinNames, type AskState, type MentionState, type StreamDay } from '@cisa/core';
 import type { TranslateFunction } from '../../lib/LanguageProvider';
 
-const localeOf = (lang: string) => (lang === 'es' ? 'es' : 'en-US');
+const localeOf = (_lang: string) => 'en-US';
 
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();

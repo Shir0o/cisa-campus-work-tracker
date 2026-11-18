@@ -40,20 +40,19 @@ describe('historyMs', () => {
 
 describe('clockLabel', () => {
   it('formats a Timestamp-shaped createdAt instead of throwing', () => {
-    const label = clockLabel(TIMESTAMP_SHAPE, 'en');
+    const label = clockLabel(TIMESTAMP_SHAPE);
     expect(typeof label).toBe('string');
     expect(label).toMatch(/\d/);
   });
 
-  it('formats an ISO string in the reader language', () => {
+  it('formats an ISO string on a 12-hour clock', () => {
     const iso = isoAt(2026, 10, 24, 13);
-    expect(clockLabel(iso, 'en')).toMatch(/PM/);
-    expect(clockLabel(iso, 'es')).not.toMatch(/AM|PM/);
+    expect(clockLabel(iso)).toMatch(/PM/);
   });
 
   it('returns an empty string rather than throwing on a bad value', () => {
-    expect(clockLabel(undefined, 'en')).toBe('');
-    expect(clockLabel('nope', 'en')).toBe('');
+    expect(clockLabel(undefined)).toBe('');
+    expect(clockLabel('nope')).toBe('');
   });
 });
 
@@ -61,19 +60,15 @@ describe('dayMark', () => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9).toISOString();
 
-  it('names today and yesterday in the reader language', () => {
+  it('names today and yesterday', () => {
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 9).toISOString();
-    const en = { today: dayMark(today, 'en', t), yesterday: dayMark(yesterday, 'en', t) };
-    const es = { today: dayMark(today, 'es', t), yesterday: dayMark(yesterday, 'es', t) };
-    expect(en.today.label).toBe('Today');
-    expect(en.yesterday.label).toBe('Yesterday');
-    expect(es.today.label).toBe('Hoy');
-    expect(es.yesterday.label).toBe('Ayer');
+    expect(dayMark(today, t).label).toBe('Today');
+    expect(dayMark(yesterday, t).label).toBe('Yesterday');
   });
 
   it('always puts the date in the label and the weekday in the sub', () => {
-    const thisWeek = dayMark(isoAt(2026, 10, 22), 'en', t);
-    const older = dayMark(isoAt(2026, 10, 16), 'en', t);
+    const thisWeek = dayMark(isoAt(2026, 10, 22), t);
+    const older = dayMark(isoAt(2026, 10, 16), t);
     expect(thisWeek.label).toBe('October 22');
     expect(thisWeek.sub).toBe('Thursday');
     expect(older.label).toBe('October 16');
@@ -81,15 +76,15 @@ describe('dayMark', () => {
   });
 
   it('carries the year when it is not this year, so two Septembers differ', () => {
-    const thisYear = dayMark(isoAt(now.getFullYear(), 9, 19), 'en', t);
-    const lastYear = dayMark(isoAt(now.getFullYear() - 1, 9, 19), 'en', t);
+    const thisYear = dayMark(isoAt(now.getFullYear(), 9, 19), t);
+    const lastYear = dayMark(isoAt(now.getFullYear() - 1, 9, 19), t);
     expect(thisYear.label).toBe('September 19');
     expect(lastYear.label).toBe(`September 19, ${now.getFullYear() - 1}`);
     expect(thisYear.label).not.toBe(lastYear.label);
   });
 
   it('returns an empty mark for a value it cannot read, without throwing', () => {
-    expect(dayMark({}, 'en', t)).toEqual({ label: '', sub: '' });
+    expect(dayMark({}, t)).toEqual({ label: '', sub: '' });
   });
 });
 

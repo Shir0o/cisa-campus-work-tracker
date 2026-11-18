@@ -5,7 +5,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import AskStack from "../components/landing/AskStack";
-import { LanguageProvider } from "../components/LanguageProvider";
 import { useAuth } from "../components/AuthProvider";
 import { __resetInboxReadsCache } from "../lib/inboxReads";
 
@@ -78,13 +77,6 @@ vi.mock("../lib/asks", async (importOriginal) => {
     addAskReply: vi.fn(),
   };
 });
-
-// LanguageProvider subscribes to saved preferences when an effective user is
-// present; a stack test only needs the language it was given.
-vi.mock("../lib/userPreferences", () => ({
-  subscribeUserPreferences: () => () => {},
-  saveUserPreferences: vi.fn(),
-}));
 
 vi.mock("../lib/firebase", () => ({
   db: {},
@@ -185,84 +177,5 @@ describe("AskStack (web full-timer)", () => {
 
     fireEvent.click(screen.getAllByText(/Mark scanned/)[0]);
     expect(mockNavigate).not.toHaveBeenCalled();
-  });
-});
-
-// #1831: the full-timer feed printed English origin and wait sentences inside
-// a Spanish session. Both are now composed through the shared translators.
-describe("AskStack origin and wait in Spanish (#1831)", () => {
-  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
-
-  beforeEach(() => {
-    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { uid: "ft1", displayName: "Mei" },
-      effectiveUserId: "ft1",
-      role: "admin",
-    });
-    __resetInboxReadsCache();
-    mockStackMessages = [
-      {
-        id: "es-a",
-        parentId: null,
-        owner: "t2",
-        from: "t2",
-        fromName: "Ana Lei",
-        takenBy: "ft1",
-        takenByName: "Mei Lin",
-        kind: "question",
-        body: "Pregunta apuntada por mí",
-        at: daysAgo(2),
-      },
-      {
-        id: "es-b",
-        parentId: null,
-        owner: "t3",
-        from: "t3",
-        fromName: "Rio",
-        takenBy: "ft2",
-        takenByName: "Daniel Ortiz",
-        kind: "question",
-        body: "Pregunta apuntada por otra persona",
-        at: daysAgo(1),
-      },
-      {
-        id: "es-c",
-        parentId: null,
-        owner: "t4",
-        from: "t4",
-        fromName: "Zion Park",
-        kind: "question",
-        body: "Pregunta escrita en la app",
-        at: daysAgo(0),
-      },
-    ];
-  });
-
-  it("writes the origin sentence and the wait line in Spanish for every question", () => {
-    render(
-      <MemoryRouter>
-        <LanguageProvider defaultLanguage="es">
-          <AskStack />
-        </LanguageProvider>
-      </MemoryRouter>,
-    );
-
-    // origin_in_person with the `origin_you` slot, another pen, and no pen.
-    expect(screen.getByText("Preguntada en persona · escrita por ti")).toBeInTheDocument();
-    expect(screen.getByText("Preguntada en persona · escrita por Daniel")).toBeInTheDocument();
-    expect(screen.getByText("Preguntada aquí, con sus propias palabras")).toBeInTheDocument();
-
-    // waited_days · waited_yesterday · waited_today, and never "1 días".
-    expect(screen.getByText(/esperando 2 días/)).toBeInTheDocument();
-    expect(screen.getByText(/esperando desde ayer/)).toBeInTheDocument();
-    expect(screen.getByText(/preguntada hoy/)).toBeInTheDocument();
-    expect(screen.queryByText(/1 días/)).not.toBeInTheDocument();
-
-    // No English origin or wait sentence survives the Spanish session.
-    expect(
-      screen.queryByText(
-        /You asked this here|Asked here|Asked in person|asked today|waiting since yesterday|waiting \d+ days|wrote it down|written down by/,
-      ),
-    ).not.toBeInTheDocument();
   });
 });

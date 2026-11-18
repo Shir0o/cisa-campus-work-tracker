@@ -1549,12 +1549,6 @@ service cloud.firestore {
       }
     }
 
-    // 18. Translations Cache Collection (shared multi-tier cache)
-    match /translations/{translationId} {
-      allow read: if isApprovedUser();
-      allow write: if false; // Only written via Firebase Admin SDK backend
-    }
-
     // 19. Bible Study Meetings — public QR accessible reading documents
     match /bible_study_meetings/{meetingId} {
       function isValidMeeting(data) {

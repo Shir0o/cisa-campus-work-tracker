@@ -89,11 +89,8 @@ describe('public/_headers', () => {
     expect(blocks['/*']['x-robots-tag']).toContain('noindex');
   });
 
-  it.each(['/manifest.json', '/manifest-es.json'])(
-    'ensures %s has Cache-Control: no-cache for prompt PWA updates',
-    (manifestPath) => {
-      expect(blocks[manifestPath]).toBeDefined();
-      expect(blocks[manifestPath]['cache-control']).toBe('no-cache');
-    },
-  );
+  it('ensures /manifest.json has Cache-Control: no-cache for prompt PWA updates', () => {
+    expect(blocks['/manifest.json']).toBeDefined();
+    expect(blocks['/manifest.json']['cache-control']).toBe('no-cache');
+  });
 });

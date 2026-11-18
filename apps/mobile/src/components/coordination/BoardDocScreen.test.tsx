@@ -5,7 +5,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { LanguageProvider } from '../../lib/LanguageProvider';
 import { BoardDocScreen } from './BoardDocScreen';
 import { useBoardDocData } from '../../lib/useBoardDocData';
-import { setCachedTranslation, clearTranslationCache } from '../../lib/translator';
+import { clearTranslationCache } from '../../lib/translator';
 import type { BoardDoc } from '@cisa/core';
 
 jest.mock('../../lib/AuthProvider', () => ({
@@ -45,7 +45,7 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-describe('BoardDocScreen Spanish Translation', () => {
+describe('BoardDocScreen', () => {
   let fetchSpy: jest.SpyInstance;
 
   beforeEach(async () => {
@@ -79,7 +79,7 @@ describe('BoardDocScreen Spanish Translation', () => {
     });
 
     const { getByText } = await render(
-      <LanguageProvider defaultLanguage="en">
+      <LanguageProvider>
         <ThemeProvider>
           <BoardDocScreen docId="doc-1" />
         </ThemeProvider>
@@ -91,173 +91,5 @@ describe('BoardDocScreen Spanish Translation', () => {
     expect(getByText('Meet with freshmen')).toBeTruthy();
     expect(getByText('Full-timers')).toBeTruthy();
     expect(getByText("Ana keeps this page. Writing happens on the desktop site — here you're reading.")).toBeTruthy();
-  });
-
-  it('renders translated markdown content and title in Spanish', async () => {
-    const mockDoc: BoardDoc = {
-      id: 'doc-2',
-      date: '',
-      title: 'Campus Outreach Review',
-      md: '# Enfoque Semanal\n- [ ] Hablar con los estudiantes',
-      audience: 'trainees',
-    };
-
-    setCachedTranslation('Campus Outreach Review', 'Revisión de alcance en el campus', 'es');
-    // A body already confidently in Spanish is shown as-is to a Spanish reader
-    // (ADR 0037), so the cached string is not used for the markdown.
-    setCachedTranslation(mockDoc.md, '# Enfoque Semanal Traducido\n- [ ] Hablar con los estudiantes', 'es');
-
-    (useBoardDocData as jest.Mock).mockReturnValue({
-      loading: false,
-      doc: mockDoc,
-      allowed: true,
-      error: null,
-      keeperName: 'Carlos Doe',
-    });
-
-    const { getByText } = await render(
-      <LanguageProvider defaultLanguage="es">
-        <ThemeProvider>
-          <BoardDocScreen docId="doc-2" />
-        </ThemeProvider>
-      </LanguageProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getByText('Revisión de alcance en el campus')).toBeTruthy();
-      expect(getByText('Enfoque Semanal')).toBeTruthy();
-      expect(getByText('Hablar con los estudiantes')).toBeTruthy();
-      expect(getByText('Personal y capacitandos')).toBeTruthy();
-      expect(getByText('Carlos mantiene esta página. La escritura se realiza en el sitio web de escritorio; aquí estás leyendo.')).toBeTruthy();
-    });
-  });
-
-  it('renders team keeper footer and empty page fallback in Spanish', async () => {
-    const mockDoc: BoardDoc = {
-      id: 'doc-3',
-      date: '2026-08-24',
-      title: 'General Gathering',
-      md: '',
-      audience: 'everyone',
-    };
-
-    (useBoardDocData as jest.Mock).mockReturnValue({
-      loading: false,
-      doc: mockDoc,
-      allowed: true,
-      error: null,
-      keeperName: null,
-    });
-
-    const { getByText } = await render(
-      <LanguageProvider defaultLanguage="es">
-        <ThemeProvider>
-          <BoardDocScreen docId="doc-3" />
-        </ThemeProvider>
-      </LanguageProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getByText('Esta página está vacía.')).toBeTruthy();
-      expect(getByText('Cualquiera en CISA')).toBeTruthy();
-      expect(getByText('El equipo mantiene esta página. La escritura se realiza en el sitio web de escritorio; aquí estás leyendo.')).toBeTruthy();
-    });
-  });
-
-  it('renders not found and not allowed error states in Spanish', async () => {
-    (useBoardDocData as jest.Mock).mockReturnValue({
-      loading: false,
-      doc: null,
-      allowed: true,
-      error: null,
-      keeperName: null,
-    });
-
-    const { getByText, rerender } = await render(
-      <LanguageProvider defaultLanguage="es">
-        <ThemeProvider>
-          <BoardDocScreen docId="missing" />
-        </ThemeProvider>
-      </LanguageProvider>,
-    );
-
-    expect(getByText('No se pudo encontrar esta página.')).toBeTruthy();
-
-    (useBoardDocData as jest.Mock).mockReturnValue({
-      loading: false,
-      doc: {
-        id: 'doc-locked',
-        date: '2026-08-24',
-        title: 'Admin Only',
-        md: '',
-        audience: 'team',
-      },
-      allowed: false,
-      error: null,
-      keeperName: null,
-    });
-
-    await rerender(
-      <LanguageProvider defaultLanguage="es">
-        <ThemeProvider>
-          <BoardDocScreen docId="locked" />
-        </ThemeProvider>
-      </LanguageProvider>,
-    );
-
-    expect(getByText('Esta página no está abierta para tu rol.')).toBeTruthy();
-  });
-
-  it('reuses cached h1 sections and translates only the changed one', async () => {
-    const mockDoc: BoardDoc = {
-      id: 'doc-4',
-      date: '2026-08-24',
-      title: 'Weekly Review',
-      md: '# Focus\n\nMeet freshmen.\n\n# Outreach\n\nCall mentor.',
-      audience: 'team',
-    };
-
-    setCachedTranslation('Weekly Review', 'Revisión Semanal', 'es');
-    setCachedTranslation('Monday', 'Lunes', 'es');
-    setCachedTranslation('# Focus\n\nMeet freshmen.', '# Enfoque\n\nConocer a los estudiantes de primer año.', 'es');
-
-    const fetchMock = globalThis.fetch as jest.Mock;
-    fetchMock.mockImplementation(async () => ({
-      ok: true,
-      json: async () => ({
-        success: true,
-        targetLang: 'es',
-        translations: [
-          { original: '# Outreach\n\nCall mentor.', translated: '# Divulgación\n\nLlamar al mentor.', hash: 'h', cached: false },
-        ],
-      }),
-    } as any));
-
-    (useBoardDocData as jest.Mock).mockReturnValue({
-      loading: false,
-      doc: mockDoc,
-      allowed: true,
-      error: null,
-      keeperName: 'Ana Smith',
-    });
-
-    const { getByText } = await render(
-      <LanguageProvider defaultLanguage="es">
-        <ThemeProvider>
-          <BoardDocScreen docId="doc-4" />
-        </ThemeProvider>
-      </LanguageProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getByText('Enfoque')).toBeTruthy();
-      expect(getByText('Conocer a los estudiantes de primer año.')).toBeTruthy();
-      expect(getByText('Divulgación')).toBeTruthy();
-      expect(getByText('Llamar al mentor.')).toBeTruthy();
-    });
-
-    const call = fetchMock.mock.calls.find((c: any) => String(c[0]).includes('/api/translate'));
-    const body = JSON.parse(String(call?.[1]?.body));
-    expect(body.texts).toEqual(['# Outreach\n\nCall mentor.']);
   });
 });

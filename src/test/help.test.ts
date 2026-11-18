@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   visibleHelpPages,
   helpPageForRole,
-  helpContentForLocale,
 } from '../lib/help';
 import type { HelpManifest, HelpPage } from '../scripts/compile-help';
 
@@ -10,7 +9,6 @@ const page = (over: Partial<HelpPage> & { slug: string }): HelpPage => ({
   order: 1,
   content: {
     en: { title: over.slug, body: `${over.slug} body` },
-    es: { title: over.slug, body: `${over.slug} body` },
   },
   ...over,
 });
@@ -67,27 +65,5 @@ describe('helpPageForRole', () => {
 
   it('returns undefined for an unknown slug', () => {
     expect(helpPageForRole(manifest, 'admin', 'missing')).toBeUndefined();
-  });
-});
-
-describe('helpContentForLocale', () => {
-  it('returns the requested locale when authored', () => {
-    const translated = page({
-      slug: 'welcome',
-      content: {
-        en: { title: 'Welcome', body: 'Hello' },
-        es: { title: 'Bienvenido', body: 'Hola' },
-      },
-    });
-    expect(helpContentForLocale(translated, 'es')).toEqual({ title: 'Bienvenido', body: 'Hola' });
-  });
-
-  it('falls back to English when the locale is not authored', () => {
-    const englishOnly = {
-      slug: 'welcome',
-      order: 1,
-      content: { en: { title: 'Welcome', body: 'Hello' } },
-    } as unknown as HelpPage;
-    expect(helpContentForLocale(englishOnly, 'es')).toEqual({ title: 'Welcome', body: 'Hello' });
   });
 });

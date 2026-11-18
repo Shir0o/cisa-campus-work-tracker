@@ -7,7 +7,6 @@ import CoordinationNotes, { SuggestedTaskCard } from '../views/CoordinationNotes
 import { useAuth } from '../components/AuthProvider';
 import { LanguageProvider } from '../components/LanguageProvider';
 import { logActivity } from '../lib/firebase';
-import * as translator from '../lib/translator';
 import { todayISO } from '../lib/board';
 
 // ── Auth mock ────────────────────────────────────────────────────────────────
@@ -1256,61 +1255,6 @@ describe('CoordinationNotes', () => {
       expect(screen.getByText('2 to do')).toBeInTheDocument();
     });
 
-    // #1850: the head used to print date-fns' locale-blind "Saturday, Oct 24"
-    // and the raw DOC_STATUS label, so a Spanish page said "Today" and "Saturday".
-    it('writes the open page\'s date and status chip in the reader\'s language', async () => {
-      const pastDate = '2026-06-10';
-      const customDocs = [
-        {
-          id: `doc-${today}`,
-          data: () => ({
-            title: 'Standup page',
-            date: today,
-            weekday: 'Monday',
-            md: '# Standup page',
-            createdBy: 'u-admin',
-            updatedAt: 'mock-ts',
-          }),
-        },
-        {
-          id: 'doc-past',
-          data: () => ({
-            title: 'Retreat page',
-            date: pastDate,
-            weekday: 'Wednesday',
-            md: '# Retreat page',
-            createdBy: 'u-admin',
-            updatedAt: 'mock-ts',
-          }),
-        },
-      ];
-      setupSnapshots({ docs: customDocs, notes: [], team: mockTeam });
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <CoordinationNotes />
-        </LanguageProvider>
-      );
-
-      const head = await screen.findByTestId('coordination-doc-hold');
-      const esDate = (iso: string) =>
-        new Intl.DateTimeFormat('es', { weekday: 'long', month: 'short', day: 'numeric' }).format(
-          new Date(`${iso}T00:00:00`),
-        );
-
-      await waitFor(() => {
-        expect(within(head).getByText('Hoy')).toBeInTheDocument();
-        expect(within(head).getByText(esDate(today))).toBeInTheDocument();
-      });
-      expect(within(head).queryByText(/Today|Saturday|Coming up|Past/)).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('Retreat page'));
-
-      await waitFor(() => {
-        expect(within(head).getByText('Ya pasó')).toBeInTheDocument();
-        expect(within(head).getByText(esDate(pastDate))).toBeInTheDocument();
-      });
-    });
-
     it('keeps the head chip and date in English by default', async () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
@@ -1346,38 +1290,6 @@ describe('CoordinationNotes', () => {
       // Contributor initials or title should be rendered inside Avatar
       // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
       expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
-    });
-
-    it('renders NoteCard with localized title, checklist items, body, and series', async () => {
-      const customNotes = [
-        {
-          id: 'note-list',
-          data: () => ({
-            type: 'record',
-            series: 'Campus Outreach',
-            title: 'Outreach Checklist',
-            body: '- [ ] Distribute flyers\n- [x] Set up banner',
-            tags: [],
-            displayMode: 'list',
-            date: '2026-03-24',
-            contributorIds: ['u-admin'],
-            createdBy: 'u-admin',
-          }),
-        },
-      ];
-      setupSnapshots({ docs: mockDocs, notes: customNotes, team: mockTeam });
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <CoordinationNotes />
-        </LanguageProvider>
-      );
-
-      await screen.findByText('Outreach Checklist');
-      expect(screen.getByText('Distribute flyers')).toBeInTheDocument();
-      expect(screen.getByText('Set up banner')).toBeInTheDocument();
-      expect(screen.getAllByText('Campus Outreach').length).toBeGreaterThanOrEqual(2);
-      expect(screen.getByTitle('Cambiar al modo de texto')).toBeInTheDocument();
-      expect(screen.getByTitle('Archivar nota')).toBeInTheDocument();
     });
 
     it('toggles NoteForm type and saves note', async () => {
@@ -2531,60 +2443,7 @@ describe('CoordinationNotes', () => {
       expect(dragBtnA).toBeInTheDocument();
     });
 
-    describe('Spanish translation support for Coordination Doc view and note form', () => {
-      it('renders translated title and markdown in Coordination Doc view when language is Spanish', async () => {
-        (useAuth as any).mockReturnValue(adminAuth);
-        translator.setCachedTranslation('Wednesday care', 'Cuidado de miércoles', 'es');
-        translator.setCachedTranslation('# hi\n\nNotes for team', '# hola\n\nNotas para el equipo', 'es');
-        const docsList = [
-          {
-            id: 'doc-today',
-            data: () => ({
-              title: 'Wednesday care',
-              date: todayISO(),
-              weekday: 'Wednesday',
-              md: '# hi\n\nNotes for team',
-              createdBy: 'u-admin',
-              updatedAt: 'mock-ts',
-            }),
-          },
-        ];
-        setupSnapshots({ docs: docsList as any, notes: [], team: mockTeam as any });
-
-        render(
-          <LanguageProvider defaultLanguage="es">
-            <CoordinationNotes />
-          </LanguageProvider>
-        );
-
-        await waitFor(() => {
-          expect(screen.getByRole('heading', { name: 'Cuidado de miércoles' })).toBeInTheDocument();
-          expect(screen.getByText(/Notas para el equipo/i)).toBeInTheDocument();
-        });
-
-        // In Spanish mode, translated reading view is displayed directly without an in-header toggle button (#1664)
-        expect(screen.queryByRole('button', { name: /^edit$|^editar$/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /ver traducción|view translation/i })).not.toBeInTheDocument();
-
-        // Clicking Markdown button shows the raw markdown textarea (#1661, #1664)
-        const mdBtn = screen.getByRole('button', { name: /código markdown|markdown/i });
-        fireEvent.click(mdBtn);
-        expect(document.getElementById('markdown-source-textarea')).toBeInTheDocument();
-
-        // Clicking Markdown button again hides it
-        fireEvent.click(mdBtn);
-        expect(document.getElementById('markdown-source-textarea')).not.toBeInTheDocument();
-
-        // Promote to note in Spanish prefills translated title and body
-        const promoteBtn = screen.getByRole('button', { name: /keep as a note|guardar como nota/i });
-        fireEvent.click(promoteBtn);
-
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText(/un título corto|short title/i)).toHaveValue('Cuidado de miércoles');
-          expect(screen.getByPlaceholderText(/qué pasó|what happened/i)).toHaveValue('Notas para el equipo');
-        });
-      });
-
+    describe('Coordination Doc view and note form', () => {
       it('renders editable title and editor in English mode without toggle button (#1664)', async () => {
         const docsList = [
           {
@@ -2602,7 +2461,7 @@ describe('CoordinationNotes', () => {
         setupSnapshots({ docs: docsList as any, notes: [], team: mockTeam as any });
 
         render(
-          <LanguageProvider defaultLanguage="en">
+          <LanguageProvider>
             <CoordinationNotes />
           </LanguageProvider>
         );

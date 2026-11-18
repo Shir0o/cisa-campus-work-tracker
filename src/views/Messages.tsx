@@ -34,7 +34,6 @@ import { canAccessRoute } from '../lib/permissions';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import { prefetchTranslations } from '../lib/translator';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
@@ -168,7 +167,7 @@ export default function Messages() {
   const [unreadCounts, setUnreadCounts] = useState<
     Record<string, { count: number; at: number | null }>
   >({});
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
 
   useEffect(() => {
     setActiveRoomId(roomId || null);
@@ -184,14 +183,6 @@ export default function Messages() {
     navigate('/messages');
   };
 
-  // Warm translation cache for visible chat messages when Spanish is active.
-  useEffect(() => {
-    if (language !== 'es') return;
-    void prefetchTranslations(
-      messages.flatMap((m) => [m.text, ...(m.attachments ?? []).map((a) => a.name)]),
-      language,
-    );
-  }, [messages, language]);
 
   // Rail filter + thread chrome (the design's msgs-filters / pinned strip / thread search)
   const [filter, setFilter] = useState<'all' | 'unread' | 'groups' | 'announce'>('all');

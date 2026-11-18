@@ -43,7 +43,6 @@ import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
-import { LanguageToggle } from '../LanguageToggle';
 import { useI18n } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
@@ -409,11 +408,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     <span>{t('nav.settings', 'Settings')}</span>
                   </Link>
 
-                  <div className="px-4 py-2 flex items-center justify-between border-t border-outline-variant/50">
-                    <span className="text-xs text-on-surface-variant font-medium">{t('settings.language', 'Language')}</span>
-                    <LanguageToggle />
-                  </div>
-
                   <button
                     type="button"
                     onClick={() => {
@@ -546,10 +540,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
             </NavLink>
 
             <div className="mt-auto pt-4 border-t border-outline-variant space-y-3">
-              <div className="flex items-center justify-between px-3">
-                <span className="text-xs font-medium text-on-surface-variant">{t('settings.language', 'Language')}</span>
-                <LanguageToggle />
-              </div>
               <button
                 type="button"
                 onClick={() => {

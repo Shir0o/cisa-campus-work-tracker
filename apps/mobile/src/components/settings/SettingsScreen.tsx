@@ -176,7 +176,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Settings() {
   const router = useRouter();
   const { user, uid, role, logOut } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { scheme, setScheme } = useTheme();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
@@ -629,36 +629,6 @@ function Settings() {
               {t('mobile.settings.read_how_this_works')}
             </Text>
           </Pressable>
-        </Section>
-
-        <Section title={t('mobile.settings.language')}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {(['en', 'es'] as const).map((lang) => {
-              const active = language === lang;
-              return (
-                <Pressable
-                  key={lang}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => setLanguage(lang)}
-                  style={{
-                    flex: 1,
-                    minHeight: 48,
-                    borderRadius: radius.chip,
-                    borderWidth: 1.5,
-                    borderColor: active ? c.card.ink : c.card.border,
-                    backgroundColor: active ? c.card.ink : c.card.react,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: active ? c.card.bg : c.card.ink2 }}>
-                    {lang === 'en' ? t('mobile.settings.english') : t('mobile.settings.spanish')}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </Section>
 
         <Section title={t('mobile.settings.how_it_looks')}>

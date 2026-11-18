@@ -18,7 +18,6 @@ import GlobalSearch from './GlobalSearch';
 import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { UserAvatar } from '../ui/UserAvatar';
-import { LanguageToggle } from '../LanguageToggle';
 import { Translate } from '../Translate';
 import { useI18n } from '../LanguageProvider';
 import { cn } from '../../lib/utils';
@@ -163,13 +162,6 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
                 <SettingsIcon className="w-4 h-4" />
                 <span>{t('nav.settings', 'Settings')}</span>
               </Link>
-
-              <div className="px-4 py-2 flex items-center justify-between border-t border-outline-variant/50">
-                <span className="text-xs text-on-surface-variant font-medium">
-                  {t('settings.language', 'Language')}
-                </span>
-                <LanguageToggle />
-              </div>
 
               <button
                 type="button"

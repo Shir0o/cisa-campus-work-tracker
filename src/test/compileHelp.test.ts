@@ -5,7 +5,7 @@ import {
   type HelpSource,
 } from '../scripts/compile-help';
 
-const page = (slug: string, locale: 'en' | 'es', raw: string): HelpSource => ({
+const page = (slug: string, locale: 'en', raw: string): HelpSource => ({
   slug,
   locale,
   raw,
@@ -122,33 +122,12 @@ First body`,
     expect(manifest.pages.map((p) => p.slug)).toEqual(['alpha', 'zeta']);
   });
 
-  it('falls a page back to English when no Spanish is authored', () => {
+  it('carries the English title and body', () => {
     const manifest = compileHelpManifest([
       page('welcome', 'en', `---\ntitle: Welcome\norder: 1\n---\nHello`),
     ]);
 
-    const welcome = manifest.pages[0];
-    expect(welcome.content.en).toEqual({ title: 'Welcome', body: 'Hello' });
-    expect(welcome.content.es).toEqual({ title: 'Welcome', body: 'Hello' });
-  });
-
-  it('uses the Spanish title and body when authored', () => {
-    const manifest = compileHelpManifest([
-      page('welcome', 'en', `---\ntitle: Welcome\norder: 1\n---\nHello`),
-      page('welcome', 'es', `---\ntitle: Bienvenido\norder: 1\n---\nHola`),
-    ]);
-
-    const welcome = manifest.pages[0];
-    expect(welcome.content.en).toEqual({ title: 'Welcome', body: 'Hello' });
-    expect(welcome.content.es).toEqual({ title: 'Bienvenido', body: 'Hola' });
-  });
-
-  it('rejects a slug with no English source', () => {
-    expect(() =>
-      compileHelpManifest([
-        page('solo', 'es', `---\ntitle: Solo\norder: 1\n---\nHola`),
-      ]),
-    ).toThrow(/English/);
+    expect(manifest.pages[0].content).toEqual({ en: { title: 'Welcome', body: 'Hello' } });
   });
 
   it('carries category and audience from the English page', () => {

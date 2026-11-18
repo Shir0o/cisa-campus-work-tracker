@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useTranslate } from "../hooks/useTranslate";
-import { useLanguage } from "./LanguageProvider";
 import { cn } from "../lib/utils";
 import type { AppLanguage } from "../lib/userPreferences";
 
@@ -32,8 +31,6 @@ export function Translate({
 
   const { translatedText, originalText, isPending } = useTranslate(content, { targetLang, enabled });
   const [showingOriginal, setShowingOriginal] = useState(false);
-  const { language } = useLanguage();
-  const effectiveLang = targetLang ?? language;
 
   const isTranslated = Boolean(content && content.trim() && translatedText !== originalText);
 
@@ -57,13 +54,7 @@ export function Translate({
           }}
           className="ml-2 inline-flex items-center text-[11px] font-medium text-primary hover:underline cursor-pointer select-none"
         >
-          {showingOriginal
-            ? effectiveLang === "es"
-              ? "Ver traducción"
-              : "Show translation"
-            : effectiveLang === "es"
-              ? "Ver original"
-              : "Show original"}
+          {showingOriginal ? "Show translation" : "Show original"}
         </button>
       )}
     </Component>
@@ -73,16 +64,12 @@ export function Translate({
 export function OriginalToggle({
   showingOriginal,
   onToggle,
-  targetLang,
   className,
 }: {
   showingOriginal: boolean;
   onToggle: () => void;
-  targetLang?: AppLanguage;
   className?: string;
 }) {
-  const { language } = useLanguage();
-  const effectiveLang = targetLang ?? language;
 
   return (
     <button
@@ -96,13 +83,7 @@ export function OriginalToggle({
         className,
       )}
     >
-      {showingOriginal
-        ? effectiveLang === "es"
-          ? "Ver traducción"
-          : "Show translation"
-        : effectiveLang === "es"
-          ? "Ver original"
-          : "Show original"}
+      {showingOriginal ? "Show translation" : "Show original"}
     </button>
   );
 }

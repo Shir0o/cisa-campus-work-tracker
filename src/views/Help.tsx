@@ -8,7 +8,7 @@ import type { HelpManifest } from '../scripts/compile-help';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { cn } from '../lib/utils';
-import { helpContentForLocale, helpPageForRole, visibleHelpPages } from '../lib/help';
+import { helpPageForRole, visibleHelpPages } from '../lib/help';
 
 const HELP_MD: Components = {
   h1: ({ children }) => (
@@ -49,12 +49,12 @@ export default function Help() {
   const manifest = helpManifest as HelpManifest;
   const { slug } = useParams();
   const { role } = useAuth();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const pages = visibleHelpPages(manifest, role);
   const activePage = slug ? helpPageForRole(manifest, role, slug) : undefined;
-  const content = activePage ? helpContentForLocale(activePage, language) : undefined;
+  const content = activePage ? activePage.content.en : undefined;
 
   return (
     <main
@@ -96,7 +96,7 @@ export default function Help() {
                       : 'border-transparent text-on-surface-variant hover:bg-surface-container',
                   )}
                 >
-                  {helpContentForLocale(page, language).title}
+                  {page.content.en.title}
                 </Link>
               ))}
             </nav>

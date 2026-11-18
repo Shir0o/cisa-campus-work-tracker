@@ -19,14 +19,12 @@ import { V2TabBar, getMobileTabTitle } from '../../../app/(tabs)/_layout';
 
 describe('V2TabBar and Tab Navigation', () => {
   describe('getMobileTabTitle (P0 Tab Labels & i18n)', () => {
-    it('returns "More" on the more route in English and "Más" in Spanish', () => {
+    it('returns "More" on the more route', () => {
       expect(getMobileTabTitle('more', 'en')).toBe('More');
-      expect(getMobileTabTitle('more', 'es')).toBe('Más');
     });
 
-    it('returns "Today" on the index route in English and "Hoy" in Spanish', () => {
+    it('returns "Today" on the index route', () => {
       expect(getMobileTabTitle('index', 'en')).toBe('Today');
-      expect(getMobileTabTitle('index', 'es')).toBe('Hoy');
     });
   });
 
@@ -122,27 +120,17 @@ describe('V2TabBar and Tab Navigation', () => {
       });
     });
 
-    it('localizes accessibilityLabel with unread counts in English and Spanish', async () => {
+    it('labels the Messages tab with its unread count', async () => {
       const props = createProps(0, 3);
       const enRender = await render(
         <ThemeProvider>
-          <LanguageProvider defaultLanguage="en">
+          <LanguageProvider>
             <V2TabBar {...props} />
           </LanguageProvider>
         </ThemeProvider>,
       );
 
       expect(enRender.getByLabelText('Messages, 3 unread')).toBeTruthy();
-
-      const esRender = await render(
-        <ThemeProvider>
-          <LanguageProvider defaultLanguage="es">
-            <V2TabBar {...props} />
-          </LanguageProvider>
-        </ThemeProvider>,
-      );
-
-      expect(esRender.getByLabelText('Messages, 3 sin leer')).toBeTruthy();
     });
   });
 });

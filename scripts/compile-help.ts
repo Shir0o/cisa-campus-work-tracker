@@ -10,7 +10,7 @@ const ROOT = process.cwd();
 const CONTENT_DIR = path.join(ROOT, 'content/help');
 const OUTPUT = path.join(ROOT, 'src/generated/help.json');
 
-const SOURCE_PATTERN = /^(.+)\.(en|es)\.md$/;
+const SOURCE_PATTERN = /^(.+)\.(en)\.md$/;
 
 export function runCompile() {
   if (!fs.existsSync(CONTENT_DIR)) {

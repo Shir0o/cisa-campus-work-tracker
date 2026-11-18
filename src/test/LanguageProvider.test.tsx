@@ -1,20 +1,19 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { LanguageProvider, useLanguage } from "../components/LanguageProvider";
 
-function TestLanguageSwitcher() {
-  const { language, setLanguage } = useLanguage();
+function ShowLanguage() {
+  const { language, t } = useLanguage();
   return (
     <div>
       <span data-testid="current-lang">{language}</span>
-      <button onClick={() => setLanguage("es")}>Switch ES</button>
-      <button onClick={() => setLanguage("en")}>Switch EN</button>
+      <span data-testid="nav-my-day">{t("nav.my_day")}</span>
     </div>
   );
 }
 
-describe("LanguageProvider browser metadata", () => {
+describe("LanguageProvider (English only)", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.lang = "en";
@@ -23,51 +22,33 @@ describe("LanguageProvider browser metadata", () => {
     document.querySelector('link[rel="manifest"]')?.remove();
   });
 
-  it("updates html lang, title, description, and manifest for Spanish", () => {
+  it("falls back to English when a stored preference is Spanish", () => {
+    localStorage.setItem("cisa_language", "es");
     render(
-      <LanguageProvider defaultLanguage="es">
-        <TestLanguageSwitcher />
+      <LanguageProvider>
+        <ShowLanguage />
       </LanguageProvider>,
     );
 
-    expect(document.documentElement.lang).toBe("es");
-    expect(document.title).toBe("CISA Campus Work Tracker");
-    expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toContain(
-      "Gestión colaborativa de contactos",
-    );
-    expect(document.querySelector('link[rel="manifest"]')?.getAttribute("href")).toBe(
-      "/manifest-es.json",
+    expect(screen.getByTestId("current-lang").textContent).toBe("en");
+    expect(screen.getByTestId("nav-my-day").textContent).toBe("My Day");
+    expect(document.documentElement.lang).toBe("en");
+    expect(document.querySelector('link[rel="manifest"]')?.getAttribute("href") ?? "/manifest.json").toBe(
+      "/manifest.json",
     );
   });
 
-  it("switches metadata back to English when language changes", () => {
+  it("sets html lang, title and description in English", () => {
     render(
-      <LanguageProvider defaultLanguage="es">
-        <TestLanguageSwitcher />
+      <LanguageProvider>
+        <ShowLanguage />
       </LanguageProvider>,
     );
-
-    fireEvent.click(screen.getByText("Switch EN"));
 
     expect(document.documentElement.lang).toBe("en");
     expect(document.title).toBe("CISA Campus Work Tracker");
     expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(
       "Collaborative campus ministry contact management, outreach planning, and journey tracking.",
     );
-    expect(document.querySelector('link[rel="manifest"]')?.getAttribute("href")).toBe(
-      "/manifest.json",
-    );
-  });
-
-  it("creates a description meta tag when none exists", () => {
-    render(
-      <LanguageProvider defaultLanguage="en">
-        <TestLanguageSwitcher />
-      </LanguageProvider>,
-    );
-
-    const meta = document.querySelector('meta[name="description"]');
-    expect(meta).not.toBeNull();
-    expect(meta?.getAttribute("content")).toContain("Collaborative campus ministry");
   });
 });

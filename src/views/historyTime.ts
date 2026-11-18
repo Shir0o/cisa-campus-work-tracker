@@ -17,44 +17,36 @@ export const historyMs = (createdAt: unknown): number | null => parseMs(createdA
 
 type Translate = (key: string, fallback?: string) => string;
 
-const DAY_WORDS: Record<string, { today: string; yesterday: string }> = {
-  en: { today: "Today", yesterday: "Yesterday" },
-  es: { today: "Hoy", yesterday: "Ayer" },
-};
-
-const languageOf = (locale: string) => (locale.startsWith("es") ? "es" : "en");
-
 export interface DayMark {
   label: string;
   sub: string;
 }
 
-export function dayMark(createdAt: unknown, locale: string, t: Translate): DayMark {
+export function dayMark(createdAt: unknown, t: Translate): DayMark {
   const ms = historyMs(createdAt);
   if (ms == null) return { label: "", sub: "" };
   const at = new Date(ms);
-  const language = languageOf(locale);
   const sameYear = at.getFullYear() === new Date().getFullYear();
 
-  const date = at.toLocaleDateString(language, {
+  const date = at.toLocaleDateString("en", {
     month: "long",
     day: "numeric",
     ...(sameYear ? {} : { year: "numeric" }),
   });
-  const weekday = at.toLocaleDateString(language, { weekday: "long" });
+  const weekday = at.toLocaleDateString("en", { weekday: "long" });
 
   const bucket = bucketFor(ms);
-  if (bucket === "today") return { label: t("history.today", DAY_WORDS[language].today), sub: date };
+  if (bucket === "today") return { label: t("history.today", "Today"), sub: date };
   if (bucket === "yesterday") {
-    return { label: t("history.yesterday", DAY_WORDS[language].yesterday), sub: date };
+    return { label: t("history.yesterday", "Yesterday"), sub: date };
   }
   return { label: date, sub: weekday };
 }
 
-export function clockLabel(createdAt: unknown, locale: string): string {
+export function clockLabel(createdAt: unknown): string {
   const ms = historyMs(createdAt);
   if (ms == null) return "";
-  return new Date(ms).toLocaleTimeString(languageOf(locale), {
+  return new Date(ms).toLocaleTimeString("en", {
     hour: "numeric",
     minute: "2-digit",
   });

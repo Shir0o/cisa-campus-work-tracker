@@ -93,25 +93,6 @@ describe('AttendanceMobile', () => {
     expect(screen.getByText('Gone quiet — 4 gatherings since Friday Night Gathering')).toBeInTheDocument();
   });
 
-  it('says the same gap in Spanish, keeping both placeholders (#1835)', async () => {
-    const { LanguageProvider } = await import('../components/LanguageProvider');
-    localStorage.setItem('cisa_language', 'es');
-    try {
-      render(
-        <LanguageProvider defaultLanguage="es">
-          <AttendanceMobile
-            {...baseProps}
-            missed={[{ contact: contact(), since: 3, lastSeen: session({ name: 'Bible Study' }) }]}
-          />
-        </LanguageProvider>
-      );
-      expect(screen.getByText('Sin señales — 3 reuniones desde Bible Study')).toBeInTheDocument();
-      expect(screen.queryByText(/Faltó a \d+ reuniones/)).not.toBeInTheDocument();
-    } finally {
-      localStorage.clear();
-    }
-  });
-
   it('messages a missed contact via openMessage', () => {
     render(
       <AttendanceMobile
@@ -628,29 +609,6 @@ describe('AttendanceMobile', () => {
       fireEvent.click(screen.getByText('Bible Study'));
       expect(screen.queryByPlaceholderText('Add attendee or walk-in...')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
-    });
-
-    it('says the walk-in and zero-week controls in Spanish through the shared keys (#1836)', async () => {
-      const { LanguageProvider } = await import('../components/LanguageProvider');
-      localStorage.setItem('cisa_language', 'es');
-      try {
-        render(
-          <LanguageProvider defaultLanguage="es">
-            <AttendanceMobile
-              {...baseProps}
-              sessions={[session({ date: '2020-01-01' })]}
-              contacts={[contact()]}
-              resolvedRosterFor={() => ['c1']}
-              markAttendanceTaken={vi.fn().mockResolvedValue(undefined)}
-            />
-          </LanguageProvider>
-        );
-        fireEvent.click(screen.getByText('Bible Study'));
-        expect(screen.getByPlaceholderText('Añadir asistente o participante...')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Nos reunimos, no vino nadie' })).toBeInTheDocument();
-      } finally {
-        localStorage.clear();
-      }
     });
   });
 });

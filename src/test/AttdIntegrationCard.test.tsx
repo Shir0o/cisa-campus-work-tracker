@@ -36,8 +36,6 @@ vi.mock('../components/NavShellProvider', () => ({
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({
     language: 'en',
-    setLanguage: vi.fn(),
-    isSpanish: false,
     t: (_key: string, fallback?: string) => fallback ?? _key,
   }),
 }));

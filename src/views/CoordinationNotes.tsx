@@ -2705,12 +2705,6 @@ export function DocEditor({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const isSpanish = language === 'es';
-  const { translatedText: translatedTitle } = useTranslate(d.title || '');
-  const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
-  // Translation display is governed directly by global language setting (ADR 0037, #1664):
-  // Spanish mode displays the translated reading view; English mode displays the inline editor.
-  const showReadingView = isSpanish;
   const [shareOpen, setShareOpen] = useState(false);
   // The header button doubles as the sharing indicator: accented + dotted when a
   // live guest link exists, so a Full-timer can see the page is shared at a glance.
@@ -3376,31 +3370,21 @@ export function DocEditor({
       </div>
 
       {/* title */}
-      {showReadingView ? (
-        <div className="flex items-center gap-2 px-5 lg:px-8 pt-3 pb-2">
-          <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight">
-            {translatedTitle}
-          </h1>
-        </div>
-      ) : (
-        <>
-          {/* #1852: the field was named only by its placeholder, so a screen
-              reader read "Untitled page" over a page that already has a title.
-              The label is real and visually hidden; the placeholder stays as
-              the sighted hint. Only one DocEditor is mounted at a time. */}
-          <label htmlFor="coordination-page-title" className="sr-only">
-            {t('coordination.page_title')}
-          </label>
-          <input
-            id="coordination-page-title"
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder={t('coordination.untitled_page')}
-            spellCheck={false}
-            className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
-          />
-        </>
-      )}
+      {/* #1852: the field was named only by its placeholder, so a screen
+          reader read "Untitled page" over a page that already has a title.
+          The label is real and visually hidden; the placeholder stays as
+          the sighted hint. Only one DocEditor is mounted at a time. */}
+      <label htmlFor="coordination-page-title" className="sr-only">
+        {t('coordination.page_title')}
+      </label>
+      <input
+        id="coordination-page-title"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder={t('coordination.untitled_page')}
+        spellCheck={false}
+        className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
+      />
 
       {/* toolbar */}
       <div className="bdoc-fs-toolbar sticky top-0 z-10 flex items-center gap-1 flex-wrap bg-surface border-y border-outline-variant px-4 lg:px-6 py-1.5 mx-1.5">
@@ -3527,12 +3511,6 @@ export function DocEditor({
               className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[160px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20 overflow-hidden"
               title={t('coordination.markdown_source_view')}
             />
-          ) : showReadingView ? (
-            <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
-                {bodyMarkdownForDisplay(translatedMarkdown, translatedTitle) || t('coordination.this_page_empty')}
-              </ReactMarkdown>
-            </div>
           ) : (
             <EditorContent editor={editor as Editor} />
           )}

@@ -320,7 +320,7 @@ export default function HistoryMobile({
                     )}
 
                     <div className="text-[11px] text-on-surface-variant mt-1.5 flex items-center gap-1.5 hist-time">
-                      {clockLabel(a.createdAt, language)}
+                      {clockLabel(a.createdAt)}
                     </div>
                   </div>
                 </div>
