@@ -10,14 +10,15 @@ import type { AppRole } from "./permissions";
 import { pickLandingForRole } from "./permissions";
 import { firstName } from "./history";
 
-export type ShellKind = "queue" | "ft";
+export type ShellKind = "queue" | "ft" | "none";
 
-/** Trainee → the focus queue behind a drawer; everyone else (full-timer, and
- *  any unrecognized role) → the FT tabs. */
+/** Trainee → the focus queue behind a drawer; Full-timer → the FT tabs; no
+ *  role (unapproved, legacy, unknown) → no shell, never the Full-timer's. */
 export function shellForRole(role: AppRole | string | null | undefined): ShellKind {
   const landing = pickLandingForRole(role ?? null);
   if (landing === "trainee") return "queue";
-  return "ft";
+  if (landing === "myday") return "ft";
+  return "none";
 }
 
 export interface ShellTab {
@@ -28,13 +29,13 @@ export interface ShellTab {
 
 /**
  * The tabs a role sees, in the design's order. Empty for the trainee — that
- * shell has no bar at all, so the queue fills the screen.
+ * shell has no bar at all, so the queue fills the screen — and for no role.
  *
  * `views/mobile/ft.jsx` `FT_TABS` (Today · People · Messages · More).
  */
 export function tabsForRole(role: AppRole | string | null | undefined): ShellTab[] {
   const shell = shellForRole(role);
-  if (shell === "queue") return [];
+  if (shell !== "ft") return [];
   return [
     { name: "index", title: "Today" },
     { name: "people", title: "People" },

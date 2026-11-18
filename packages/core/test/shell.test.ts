@@ -19,10 +19,17 @@ describe('shellForRole', () => {
     expect(shellForRole('manager')).toBe('queue');
   });
 
-  it('falls through to the full-timer shell for admin and for no role', () => {
+  it('gives the full-timer the FT shell', () => {
     expect(shellForRole('admin')).toBe('ft');
-    expect(shellForRole(null)).toBe('ft');
-    expect(shellForRole('something-new')).toBe('ft');
+  });
+
+  // No role (unapproved, legacy Student/Community, unknown) is never the
+  // Full-timer shell: it gets no shell and no tabs.
+  it('gives a missing, legacy or unknown role no shell', () => {
+    for (const role of [null, undefined, 'operator', 'viewer', 'something-new']) {
+      expect(shellForRole(role), String(role)).toBe('none');
+      expect(tabsForRole(role), String(role)).toEqual([]);
+    }
   });
 });
 
