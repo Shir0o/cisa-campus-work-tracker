@@ -152,4 +152,16 @@ describe('announcementNotification', () => {
     expect(n.message.length).toBeLessThanOrEqual(200);
     expect(n.message.endsWith('…')).toBe(true);
   });
+
+  it('fits the bell: a long author name is truncated under the 128-character title limit', () => {
+    const n = announcementNotification(announcement({ authorName: 'n'.repeat(200) }), 'ben');
+    expect(n.title.length).toBeLessThanOrEqual(128);
+    expect(n.title.endsWith(' posted an announcement')).toBe(true);
+    expect(n.title).toContain('…');
+  });
+
+  it('leaves a short author name untouched', () => {
+    const n = announcementNotification(announcement({ authorName: 'Ana Admin' }), 'ben');
+    expect(n.title).toBe('Ana Admin posted an announcement');
+  });
 });

@@ -12,6 +12,10 @@ export const ANNOUNCEMENT_MAX_LENGTH = 2000;
  *  less. Cut well under it. */
 const NOTIFICATION_BODY_MAX = 200;
 
+/** The rules cap the bell's title at 128 characters. A long author name is cut
+ *  so the whole title still fits. */
+const NOTIFICATION_TITLE_MAX = 128;
+
 /** `announcements/{id}`. `gotIt` maps a uid to when that person said Got it. */
 export interface Announcement {
   id: string;
@@ -92,9 +96,13 @@ export function announcementNotification(
   userId: string,
 ): AnnouncementNotifyPayload {
   const body = a.body.trim();
+  const postedBy = " posted an announcement";
+  const nameMax = NOTIFICATION_TITLE_MAX - postedBy.length;
+  const author =
+    a.authorName.length > nameMax ? `${a.authorName.slice(0, nameMax - 1)}…` : a.authorName;
   return {
     userId,
-    title: `${a.authorName} posted an announcement`,
+    title: `${author}${postedBy}`,
     message: body.length > NOTIFICATION_BODY_MAX ? `${body.slice(0, NOTIFICATION_BODY_MAX - 1)}…` : body,
     type: "info",
     targetId: a.id,

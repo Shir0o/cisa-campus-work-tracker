@@ -299,7 +299,7 @@ export default function MyDayMobile({
 
       {/* ── Announcements not yet marked Got it: a card is what the team needs
           seen, so it leads. The Full-timer's own box sits below On you, which
-          must start inside the first screen (#1859). ── */}
+          must start inside the first screen (issue 1859). ── */}
       <AnnouncementCards className="px-5 mt-4" />
 
       {/* ── On you + the pointer cards (issue 943). Mobile gets the same On you
