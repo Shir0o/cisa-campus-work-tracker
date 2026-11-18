@@ -159,8 +159,8 @@ const tagOf = (m: StreamMessage): StreamTag | null =>
   m.kind === 'question' ? 'question' : m.kind === 'nudge' ? 'ask' : null;
 
 const isFullTimer = (v: StreamViewer) => v.role === 'admin';
-/** Operator or above may write — the rules' `isOperator()`. */
-const canWrite = (v: StreamViewer) => v.role === 'admin' || v.role === 'manager' || v.role === 'operator';
+/** A Trainee or above may write — the rules' `isManager()`. */
+const canWrite = (v: StreamViewer) => v.role === 'admin' || v.role === 'manager';
 
 function askStateOf(m: StreamMessage, nowMs: number): AskState | null {
   if (m.kind !== 'nudge') return null;

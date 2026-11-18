@@ -16,32 +16,17 @@ jest.mock('../../lib/useMessagesData', () => ({
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { LanguageProvider } from '../../lib/LanguageProvider';
 import { V2TabBar, getMobileTabTitle } from '../../../app/(tabs)/_layout';
-import { tabsForRole } from '@cisa/core';
 
 describe('V2TabBar and Tab Navigation', () => {
   describe('getMobileTabTitle (P0 Tab Labels & i18n)', () => {
-    it('returns "You" for student role on the more route in English and "Tú" in Spanish', () => {
-      const studentTabs = tabsForRole('operator');
-      expect(getMobileTabTitle(studentTabs, 'more', 'en')).toBe('You');
-      expect(getMobileTabTitle(studentTabs, 'more', 'es')).toBe('Tú');
+    it('returns "More" on the more route in English and "Más" in Spanish', () => {
+      expect(getMobileTabTitle('more', 'en')).toBe('More');
+      expect(getMobileTabTitle('more', 'es')).toBe('Más');
     });
 
-    it('returns "What\'s on" for community role on index route in English and "Qué hay" in Spanish', () => {
-      const communityTabs = tabsForRole('viewer');
-      expect(getMobileTabTitle(communityTabs, 'index', 'en')).toBe("What's on");
-      expect(getMobileTabTitle(communityTabs, 'index', 'es')).toBe('Qué hay');
-    });
-
-    it('returns "More" for full-timer role on the more route in English and "Más" in Spanish', () => {
-      const ftTabs = tabsForRole('admin');
-      expect(getMobileTabTitle(ftTabs, 'more', 'en')).toBe('More');
-      expect(getMobileTabTitle(ftTabs, 'more', 'es')).toBe('Más');
-    });
-
-    it('returns "Today" for full-timer role on index route in English and "Hoy" in Spanish', () => {
-      const ftTabs = tabsForRole('admin');
-      expect(getMobileTabTitle(ftTabs, 'index', 'en')).toBe('Today');
-      expect(getMobileTabTitle(ftTabs, 'index', 'es')).toBe('Hoy');
+    it('returns "Today" on the index route in English and "Hoy" in Spanish', () => {
+      expect(getMobileTabTitle('index', 'en')).toBe('Today');
+      expect(getMobileTabTitle('index', 'es')).toBe('Hoy');
     });
   });
 

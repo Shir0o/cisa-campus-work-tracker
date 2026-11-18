@@ -653,29 +653,17 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     await expect(page.getByText('Going out together')).not.toBeVisible();
     await expect(page.getByText("The day's goal")).not.toBeVisible();
   });
-
-  test('Student and Community see only their profile in Settings', async ({ page }) => {
-    for (const role of ['student', 'community'] as const) {
-      await signInAs(page, role);
-      await page.goto('/settings');
-      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByRole('main').getByText('Your account and preferences.')).toBeVisible();
-      await expect(page.getByText('Your team')).not.toBeVisible();
-      await expect(page.getByText('Going out together')).not.toBeVisible();
-      await expect(page.getByText("The day's goal")).not.toBeVisible();
-    }
-  });
 });
 
 /**
  * Folded from `people-directory.spec.ts` and `prayer-carrying.spec.ts`. The
  * Trainee's Directory is already asserted in the Trainee journey (#1475); these
- * are the remaining role-access checks (Student Directory, and the prayer wall
- * for the non-carer roles).
+ * are the remaining role-access checks (the Trainee's Directory, and the prayer
+ * wall for the Full-timer).
  */
 test.describe('Full-timer journey — Directory and On our hearts per role (#1477)', () => {
-  test('the Directory opens for the Student and Trainee roles', async ({ page }) => {
-    for (const role of ['trainee', 'student'] as const) {
+  test('the Directory opens for the Trainee role', async ({ page }) => {
+    for (const role of ['trainee'] as const) {
       await signInAs(page, role);
       await page.goto('/directory');
       await waitForShell(page);
@@ -683,8 +671,8 @@ test.describe('Full-timer journey — Directory and On our hearts per role (#147
     }
   });
 
-  test('On our hearts opens for the full-timer, Student and Community roles', async ({ page }) => {
-    for (const role of ['fulltimer', 'student', 'community'] as const) {
+  test('On our hearts opens for the full-timer role', async ({ page }) => {
+    for (const role of ['fulltimer'] as const) {
       await signInAs(page, role);
       await page.goto('/prayer');
       await waitForShell(page);
@@ -885,16 +873,6 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
     await expect(page.getByRole('main').getByText(t2Question)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('main').getByText('Say hi when they arrive and catch them after.')).toBeVisible({ timeout: 15_000 });
   });
-
-  test('Student and Community cannot reach Questions at all', async ({ page }) => {
-    await signInAs(page, 'student');
-    await page.goto('/questions');
-    await expect(heading(page)).not.toBeVisible();
-
-    await signInAs(page, 'community');
-    await page.goto('/questions');
-    await expect(heading(page)).not.toBeVisible();
-  });
 });
 
 /**
@@ -968,7 +946,7 @@ test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
  */
 test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
   test('every role reaches their Notes page, which is not a composer', async ({ page }) => {
-    for (const role of ['community', 'trainee', 'student'] as const) {
+    for (const role of ['trainee'] as const) {
       await signInAs(page, role);
       await page.goto('/feedback');
       await waitForShell(page);
@@ -985,7 +963,7 @@ test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
     expect(new URL(page.url()).pathname).toBe('/admin/feedback');
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
 
-    for (const role of ['trainee', 'student', 'community'] as const) {
+    for (const role of ['trainee'] as const) {
       await signInAs(page, role);
       await page.goto('/admin/feedback');
       await page.waitForURL((url) => url.pathname !== '/admin/feedback', { timeout: 8_000 });

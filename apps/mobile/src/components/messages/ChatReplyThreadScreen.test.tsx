@@ -112,20 +112,20 @@ describe('a chat Thread on the phone (#1262)', () => {
     const post = msg('p1', { text: 'RETREAT-SIGNUPS', senderId: 'maria', senderName: 'Maria Santos' });
 
     it('can say Got it on the post from its Thread', async () => {
-      const { getByRole, d } = await renderThread('operator', { room: announcement, messages: [post] });
+      const { getByRole, d } = await renderThread('manager', { room: announcement, messages: [post] });
       await fireEvent.press(getByRole('button', { name: 'Got it' }));
       expect(d.acknowledge).toHaveBeenCalledWith(post);
     });
 
     it('can reply, though they cannot post top-level', async () => {
-      const { getByLabelText, getByRole, d } = await renderThread('operator', { room: announcement, messages: [post] });
+      const { getByLabelText, getByRole, d } = await renderThread('manager', { room: announcement, messages: [post] });
       await fireEvent.changeText(getByLabelText('Reply in thread'), 'Can I bring a friend?');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
       expect(d.send).toHaveBeenCalledWith('Can I bring a friend?', 'p1');
     });
 
     it('cannot reply if they are not in the room', async () => {
-      const { queryByLabelText } = await renderThread('operator', {
+      const { queryByLabelText } = await renderThread('manager', {
         room: { ...announcement, memberIds: ['grace'] },
         messages: [post],
       });

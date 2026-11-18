@@ -128,7 +128,7 @@ function People() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
         title="People"
-        action={role !== 'viewer' ? { label: '＋ New', onPress: () => setShowAddSheet(true) } : undefined}
+        action={{ label: '＋ New', onPress: () => setShowAddSheet(true) }}
         onBack={isPushedScreen(role, 'people') ? back : undefined}
       >
         <V2Input

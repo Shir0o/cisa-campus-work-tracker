@@ -220,9 +220,9 @@ describe('findSameDayInteraction', () => {
 });
 
 describe('isContactVisible', () => {
-  it('shows anyone to non-trainees and only tied contacts to a trainee', () => {
+  it('shows anyone to a Full-timer and only tied contacts to anyone else', () => {
     expect(isContactVisible('admin', 'u1', contact({ createdBy: 'other' }))).toBe(true);
-    expect(isContactVisible('operator', 'u1', contact({ createdBy: 'other' }))).toBe(true);
+    expect(isContactVisible('operator', 'u1', contact({ createdBy: 'other' }))).toBe(false);
     expect(isContactVisible('manager', 'u1', contact({ createdBy: 'other' }))).toBe(false);
     expect(isContactVisible('manager', 'u1', contact({ createdBy: 'u1' }))).toBe(true);
     expect(isContactVisible('manager', 'u1', null)).toBe(false);

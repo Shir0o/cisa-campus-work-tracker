@@ -85,7 +85,6 @@ export default function GlobalSearch() {
   const isFullStaff = isAdmin; // Full-timer
   // The rules deny anyone who can't see every person the whole activity feed.
   const seesHistory = canSeeHistory(role);
-  const isOperator = hasMinRole(role as AppRole, 'operator');
   const currentUid = auth.currentUser?.uid || '';
   useFrecency(currentUid);
 
@@ -308,7 +307,7 @@ export default function GlobalSearch() {
       sub: t('search.add_new_person'),
       icon: UserPlus,
       tone: 'accent' as Tone,
-      show: isOperator,
+      show: isStaff,
       run: () => {
         resolvedRef.current = true;
         close();
@@ -321,7 +320,7 @@ export default function GlobalSearch() {
       sub: t('search.record_conversation'),
       icon: Coffee,
       tone: 'amber' as Tone,
-      show: isOperator,
+      show: isStaff,
       run: () => {
         resolvedRef.current = true;
         close();

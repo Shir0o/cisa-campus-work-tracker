@@ -73,7 +73,7 @@ describe("conversationAdapter", () => {
   it.each([
     ["admin", true],
     ["manager", true],
-    ["operator", true],
+    ["operator", false],
     ["viewer", false],
   ])("a %s may post and reply: %s; attachments are not offered", (role, may) => {
     expect(make(role).capabilities).toEqual({ attachments: false, canPost: may, canReply: may });

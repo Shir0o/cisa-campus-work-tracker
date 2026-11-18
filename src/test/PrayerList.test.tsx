@@ -154,7 +154,7 @@ describe('PrayerList', () => {
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
-      role: 'operator',
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -1402,7 +1402,7 @@ describe('PrayerList', () => {
       if (ref?.path === 'contacts') callback({ docs: contacts, size: contacts.length });
       else if (ref?.path === 'prayers') callback({ docs: prayers, size: prayers.length });
       else if (ref?.path === 'users') {
-        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'operator' }) }], size: 1 });
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) }], size: 1 });
       } else callback({ docs: [], size: 0 });
       return vi.fn();
     });
@@ -1479,7 +1479,7 @@ describe('PrayerList — phone card', () => {
       if (ref?.path === 'contacts') callback({ docs: contacts, size: contacts.length });
       else if (ref?.path === 'prayers') callback({ docs: prayers, size: prayers.length });
       else if (ref?.path === 'users') {
-        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'operator' }) }], size: 1 });
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) }], size: 1 });
       } else callback({ docs: [], size: 0 });
       return vi.fn();
     });

@@ -326,10 +326,10 @@ More text
   });
 
   describe('boardLevelForRole', () => {
-    it('maps roles to board levels; community (viewer) is excluded', () => {
+    it('maps roles to board levels; a legacy Student or Community role is excluded', () => {
       expect(boardLevelForRole('admin')).toBe(2);
       expect(boardLevelForRole('manager')).toBe(1);
-      expect(boardLevelForRole('operator')).toBe(0);
+      expect(boardLevelForRole('operator')).toBe(-1);
       expect(boardLevelForRole('viewer')).toBe(-1);
       expect(boardLevelForRole(null)).toBe(-1);
       expect(boardLevelForRole('unknown')).toBe(-1);
@@ -351,13 +351,8 @@ More text
       expect(canSeeBoardDoc('manager', {})).toBe(false);
     });
 
-    it('student (operator) sees only everyone', () => {
-      expect(canSeeBoardDoc('operator', { audience: 'team' })).toBe(false);
-      expect(canSeeBoardDoc('operator', { audience: 'trainees' })).toBe(false);
-      expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(true);
-    });
-
-    it('community (viewer) and unknown roles see nothing', () => {
+    it('a legacy Student or Community role, and unknown roles, see nothing', () => {
+      expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(false);
       expect(canSeeBoardDoc('viewer', { audience: 'everyone' })).toBe(false);
       expect(canSeeBoardDoc(null, { audience: 'everyone' })).toBe(false);
     });
@@ -370,7 +365,7 @@ More text
 
     it('scopes lower roles to the tiers they may read', () => {
       expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
-      expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
+      expect(boardAudiencesForRole('operator')).toEqual([]);
       expect(boardAudiencesForRole('viewer')).toEqual([]);
     });
   });
@@ -386,10 +381,10 @@ More text
   });
 
   describe('canViewBoard / canViewBoardNotes / canEditBoard', () => {
-    it('grants Board view to Student and up only', () => {
+    it('grants Board view to Trainee and up only', () => {
       expect(canViewBoard('admin')).toBe(true);
       expect(canViewBoard('manager')).toBe(true);
-      expect(canViewBoard('operator')).toBe(true);
+      expect(canViewBoard('operator')).toBe(false);
       expect(canViewBoard('viewer')).toBe(false);
     });
 

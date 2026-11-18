@@ -1,8 +1,8 @@
 /**
  * Seed script for Firebase Local Emulator.
  *
- * Populates Auth emulator and Firestore emulator with the 4 default test users
- * (Full-timer, Trainee, Student, Community) and approved /users/{uid} documents.
+ * Populates Auth emulator and Firestore emulator with the default test users
+ * (a Full-timer and two Trainees) and approved /users/{uid} documents.
  *
  * Usage:
  *   npx tsx scripts/seed-emulator.ts
@@ -35,7 +35,7 @@ if (getApps().length === 0) {
 const auth = getAuth();
 const db = getFirestore(getApp());
 
-const KEYS = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'] as const;
+const KEYS = ['fulltimer', 'trainee', 'trainee2'] as const;
 
 export async function seedEmulator() {
   console.log('Seeding Firebase Emulator Auth & Firestore...');
@@ -43,8 +43,8 @@ export async function seedEmulator() {
   const uids: Partial<Record<(typeof KEYS)[number], string>> = {};
 
   // The two Trainees are on teams so Around the team's roster is non-empty
-  // (#1477); the Full-timer, Student and Community are left off any team, so
-  // the roster's teammate select can be asserted to exclude them (row 12).
+  // (#1477); the Full-timer is left off any team, so the roster's teammate
+  // select can be asserted to exclude them (row 12).
   const TEAM_BY_KEY: Partial<Record<(typeof KEYS)[number], string>> = {
     trainee: 'campus',
     trainee2: 'yp',
@@ -378,7 +378,7 @@ export async function seedEmulator() {
   // the journeys meet the shapes the escapes came from: a sign-up's Firestore
   // Timestamp `createdAt`, a quick-add's `email: null`, and an older document
   // with the retired `owner` field (or none at all). Written as-is; the
-  // Full-timer and Student see everyone, so these reach the Directory.
+  // Full-timer sees everyone, so these reach the Directory.
   for (const fixture of Object.values(LEGACY_CONTACT_FIXTURES)) {
     const { id, ...data } = fixture;
     // Fixtures without a `createdAt` must not write one: Firestore rejects an

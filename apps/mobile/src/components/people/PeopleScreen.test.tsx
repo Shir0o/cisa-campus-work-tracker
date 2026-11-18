@@ -133,16 +133,6 @@ describe('PeopleScreen Step pills (#1800)', () => {
     expect(getAllByText('Move a step')).toHaveLength(2);
   });
 
-  it('shows a Student no pills and no Move', async () => {
-    mockRole = 'operator';
-    const { getByText, queryByLabelText, queryByText } = await renderPeople();
-
-    expect(getByText('Ana Lee')).toBeTruthy();
-    expect(queryByLabelText('Everyone, 4')).toBeNull();
-    expect(queryByText('New')).toBeNull();
-    expect(queryByText('Move a step')).toBeNull();
-  });
-
   it('narrows within the selected pill on search, and the counts follow', async () => {
     const { getByLabelText, getByPlaceholderText, getByText, queryByText } = await renderPeople();
 

@@ -27,7 +27,6 @@ describe('ContactHead', () => {
     currentStageInfo: stages[1],
     sinceText: 'Last connected 2 days ago',
     carerNames: ['John'],
-    role: 'admin',
     isAdmin: true,
     showDelete: true,
     showRelease: false,
@@ -189,24 +188,10 @@ describe('ContactHead', () => {
     expect(actions.onRemindMe).toHaveBeenCalledTimes(1);
   });
 
-  it('hides Remind me from a viewer, who cannot write a to-do', () => {
+  it('omits the Delegate item for someone who cannot share', () => {
     render(
       <ContactHead
-        model={{ ...defaultModel, role: 'viewer', isAdmin: false, showDelete: false }}
-        actions={createActions()}
-        isMobile={false}
-        isEditing={false}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    expect(screen.queryByRole('button', { name: 'Remind me' })).not.toBeInTheDocument();
-  });
-
-  it('omits the Delegate item for a viewer who cannot share', () => {
-    render(
-      <ContactHead
-        model={{ ...defaultModel, canDelegate: false, role: 'viewer', isAdmin: false }}
+        model={{ ...defaultModel, canDelegate: false, isAdmin: false }}
         actions={createActions()}
         isMobile={false}
         isEditing={false}

@@ -140,7 +140,7 @@ const mockUsers = [
       email: 'alice@test.com',
       displayName: 'Alice Johnson',
       approved: true,
-      role: 'operator',
+      role: 'admin',
       photoURL: null,
     }),
   },
@@ -151,7 +151,7 @@ const mockUsers = [
       email: 'bob@test.com',
       displayName: 'Bob Smith',
       approved: false,
-      role: 'viewer',
+      role: 'manager',
       photoURL: null,
     }),
   },
@@ -162,7 +162,7 @@ const mockInvitations = [
     id: 'inv1',
     data: () => ({
       email: 'charlie@test.com',
-      role: 'operator',
+      role: 'manager',
       approved: true,
       invitedBy: 'u-admin',
       createdAt: '2026-01-01',
@@ -189,18 +189,18 @@ function setupManagerAuth(overrides: Record<string, any> = {}) {
   });
 }
 
-function setupNonManagerAuth(overrides: Record<string, any> = {}) {
+function setupTraineeAuth(overrides: Record<string, any> = {}) {
   (useAuth as any).mockReturnValue({
     user: {
-      uid: 'u-viewer',
+      uid: 'u-trainee',
       displayName: 'Regular User',
       email: 'regular@test.com',
       photoURL: null,
       getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
     },
     isAdmin: false,
-    isManager: false,
-    role: 'operator',
+    isManager: true,
+    role: 'manager',
     isApproved: true,
     ...overrides,
   });
@@ -232,7 +232,7 @@ describe('Settings', () => {
     window.localStorage.setItem('cisa.settings.devUnlocked', '1');
     window.history.replaceState({}, '', '/settings');
     // Default: non-manager view
-    setupNonManagerAuth();
+    setupTraineeAuth();
     // Default: onSnapshot fires immediately with empty docs so manager
     // Settings can mount (partners/goal subscriptions tolerate empty docs).
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
@@ -254,24 +254,22 @@ describe('Settings', () => {
     });
   });
 
-  // ── 2. Non-manager profile view ──
+  // ── 2. Trainee profile view ──
 
-  describe('non-manager profile view', () => {
+  describe('Trainee profile view', () => {
     it('renders h1, subtitle, approval badge, and role label', () => {
-      setupNonManagerAuth({ role: 'operator', isApproved: true });
+      setupTraineeAuth({ isApproved: true });
 
       render(<Settings />);
 
       expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
       expect(screen.getByText('Your account and preferences.')).toBeInTheDocument();
       expect(screen.getByText('Approved')).toBeInTheDocument();
-      expect(screen.getAllByText('Student')[0]).toBeInTheDocument();
-      // A Student gets no weekly reminder, so the switch is not offered.
-      expect(screen.queryByRole('heading', { level: 2, name: 'Your weekly reminders' })).not.toBeInTheDocument();
+      expect(screen.getAllByText('Trainee')[0]).toBeInTheDocument();
     });
 
     it('gives a Trainee their own preferences and no team administration', () => {
-      setupNonManagerAuth({ role: 'manager', isManager: true, isAdmin: false });
+      setupTraineeAuth();
 
       const { container } = render(<Settings />);
 
@@ -296,11 +294,11 @@ describe('Settings', () => {
     });
   });
 
-  // ── 3. Non-manager pending approval ──
+  // ── 3. Trainee pending approval ──
 
-  describe('non-manager pending approval', () => {
+  describe('Trainee pending approval', () => {
     it('shows "Pending approval" badge when isApproved is false', () => {
-      setupNonManagerAuth({ isApproved: false });
+      setupTraineeAuth({ isApproved: false });
 
       render(<Settings />);
 
@@ -309,7 +307,7 @@ describe('Settings', () => {
     });
 
     it('renders Language section and allows switching language', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
 
       render(<Settings />);
 
@@ -322,19 +320,19 @@ describe('Settings', () => {
   });
 
   it('restores a dismissed getting-started checklist and confirms', () => {
-    setupNonManagerAuth({ role: 'operator' });
-    FirstRunStore.putAway('fr:operator:u-viewer');
+    setupTraineeAuth();
+    FirstRunStore.putAway('fr:manager:u-trainee');
 
     render(<Settings />);
     fireEvent.click(screen.getByRole('button', { name: /Show getting started checklist/i }));
 
-    expect(FirstRunStore.isAway('fr:operator:u-viewer')).toBe(false);
+    expect(FirstRunStore.isAway('fr:manager:u-trainee')).toBe(false);
     expect(screen.getByText(/back on your home screen/i)).toBeInTheDocument();
   });
 
 
   it('restores using the impersonated effectiveUserId, not the raw auth uid', () => {
-    setupNonManagerAuth({ role: 'manager', effectiveUserId: 'cisa-trainee' });
+    setupTraineeAuth({ role: 'manager', effectiveUserId: 'cisa-trainee' });
     FirstRunStore.putAway('fr:manager:cisa-trainee');
 
     render(<Settings />);
@@ -698,7 +696,7 @@ describe('Settings', () => {
             email: 'cisa-test@example.com',
             displayName: 'cisa-test-account',
             approved: true,
-            role: 'viewer',
+            role: 'manager',
             photoURL: null,
           }),
         },
@@ -798,7 +796,7 @@ describe('Settings', () => {
 
   describe('appearance section', () => {
     it('renders Light, Dark, System buttons and calls setTheme on click', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
 
       render(<Settings />);
 
@@ -817,21 +815,19 @@ describe('Settings', () => {
   // ── 9. Roles reference cards ──
 
   describe('roles reference cards', () => {
-    it('renders all 4 role cards: Full-timer, Trainee, Student, Community', () => {
-      setupNonManagerAuth();
+    it('renders the 2 role cards: Full-timer and Trainee, and no Student or Community', () => {
+      setupTraineeAuth();
 
       render(<Settings />);
 
       expect(screen.getByText('FT')).toBeInTheDocument();
       expect(screen.getByText('TR')).toBeInTheDocument();
-      expect(screen.getByText('ST')).toBeInTheDocument();
-      expect(screen.getByText('CM')).toBeInTheDocument();
+      expect(screen.queryByText('ST')).not.toBeInTheDocument();
+      expect(screen.queryByText('CM')).not.toBeInTheDocument();
 
       // Check descriptions are present (partial)
       expect(screen.getByText(/Full-time staff/)).toBeInTheDocument();
       expect(screen.getByText(/Cares for the people they are tied to/)).toBeInTheDocument();
-      expect(screen.getByText(/Can add and update people/)).toBeInTheDocument();
-      expect(screen.getByText(/A read-only window/)).toBeInTheDocument();
     });
   });
 
@@ -839,7 +835,7 @@ describe('Settings', () => {
 
   describe('current role highlighted', () => {
     it('shows "your role" badge on the admin card when role is admin', () => {
-      setupNonManagerAuth({ role: 'admin' });
+      setupTraineeAuth({ role: 'admin' });
 
       render(<Settings />);
 
@@ -847,11 +843,11 @@ describe('Settings', () => {
     });
 
     it('does not show "your role" badge on non-matching cards', () => {
-      setupNonManagerAuth({ role: 'viewer' });
+      setupTraineeAuth();
 
       render(<Settings />);
 
-      // "your role" should appear exactly once (on Community card)
+      // "your role" should appear exactly once (on the Trainee card)
       const badges = screen.getAllByText('your role');
       expect(badges).toHaveLength(1);
     });
@@ -956,8 +952,8 @@ describe('Settings', () => {
       fireEvent.change(nameInput, { target: { value: 'Alice Wonderland' } });
 
       // Change role select
-      const roleSelect = screen.getByDisplayValue('Student');
-      fireEvent.change(roleSelect, { target: { value: 'viewer' } });
+      const roleSelect = screen.getByDisplayValue('Full-timer');
+      fireEvent.change(roleSelect, { target: { value: 'manager' } });
 
       const saveButton = screen.getByRole('button', { name: 'Save' });
       fireEvent.click(saveButton);
@@ -967,7 +963,7 @@ describe('Settings', () => {
           expect.objectContaining({ path: 'users/u1' }),
           expect.objectContaining({
             displayName: 'Alice Wonderland',
-            role: 'viewer',
+            role: 'manager',
             updatedAt: 'mock-timestamp',
           })
         );
@@ -996,7 +992,7 @@ describe('Settings', () => {
     });
 
     it('allows a user to edit their own display name in AccountSection', async () => {
-      setupNonManagerAuth({ role: 'operator', isApproved: true });
+      setupTraineeAuth({ isApproved: true });
 
       render(<Settings />);
 
@@ -1014,7 +1010,7 @@ describe('Settings', () => {
 
       await waitFor(() => {
         expect(updateDoc).toHaveBeenCalledWith(
-          expect.objectContaining({ path: 'users/u-viewer' }),
+          expect.objectContaining({ path: 'users/u-trainee' }),
           expect.objectContaining({
             displayName: 'New Self Name',
             updatedAt: 'mock-timestamp',
@@ -1379,7 +1375,7 @@ describe('Settings', () => {
 
   describe('OwnerViewSection (#362)', () => {
     it('does not render "See it as they do" in Settings even when user is app owner (handled via TopNav eye modal)', () => {
-      setupNonManagerAuth({ isOwner: true });
+      setupTraineeAuth({ isOwner: true });
       render(<Settings />);
       expect(screen.queryByText(/See it as they do/i)).not.toBeInTheDocument();
     });
@@ -1388,7 +1384,7 @@ describe('Settings', () => {
   describe('Account & Session Section', () => {
     it('renders user details and triggers logOut when Log out button is clicked', () => {
       const mockLogOut = vi.fn();
-      setupNonManagerAuth({
+      setupTraineeAuth({
         user: { displayName: 'Testing User', email: 'test@example.com' } as any,
         logOut: mockLogOut,
       });
@@ -1415,7 +1411,7 @@ describe('Settings', () => {
   // `rail | rail-collapsed | topbar` or losing the desktop-only copy.
   describe('navigation section (#666)', () => {
     it('renders all three preference buttons with desktop-only copy', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
 
       render(<Settings />);
 
@@ -1430,7 +1426,7 @@ describe('Settings', () => {
     });
 
     it('clicking each preference calls setPreference with the matching value', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
 
       render(<Settings />);
 
@@ -1442,7 +1438,7 @@ describe('Settings', () => {
     });
 
     it('links to the in-app Help surface', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
 
       render(<Settings />);
 
@@ -1632,7 +1628,7 @@ describe('Settings', () => {
     });
 
     it("stays out of a non-admin's Settings", () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
       render(<Settings />);
       expect(screen.queryByText("Which team they're on")).not.toBeInTheDocument();
     });
@@ -1669,7 +1665,7 @@ describe('Settings', () => {
     });
 
     it('does not display video configuration form for non-admins', () => {
-      setupNonManagerAuth();
+      setupTraineeAuth();
       render(<Settings />);
 
       expect(screen.getByText("What's New")).toBeInTheDocument();
@@ -2222,8 +2218,8 @@ describe('Settings', () => {
       }
     });
 
-    it('is absent from the Student/Community profile branch', () => {
-      setupNonManagerAuth();
+    it("is absent from the Trainee's profile branch", () => {
+      setupTraineeAuth();
       render(<Settings />);
       expect(screen.queryByRole('navigation', { name: 'Section index' })).toBeNull();
     });
@@ -2357,7 +2353,7 @@ describe('Settings', () => {
 
     it('gives a Trainee no version line and no developer sections, even with the flag set', () => {
       window.localStorage.setItem('cisa.settings.devUnlocked', '1');
-      setupNonManagerAuth({ role: 'manager', isManager: true, isAdmin: false });
+      setupTraineeAuth({ role: 'manager', isManager: true, isAdmin: false });
 
       render(<Settings />);
 

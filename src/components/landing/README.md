@@ -34,7 +34,6 @@ Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee
 - [PointerCard.tsx] const unsubInteractions = onSnapshot(
 - [ToAskPointerCard.tsx] const unsub = onSnapshot(
 - [ToAskPointerCard.tsx] const unsub = onSnapshot(
-- [UpcomingEventsRsvp.tsx] const unsub = onSnapshot(query(collection(db, "events")), (snap) =>
 - [WorklistCard.tsx] window.open(`tel:${contact.phone}`);
 
 ## Verification

@@ -307,7 +307,7 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
         const uid = d.id;
         const staff: WeeklyReminderStaff = {
           uid,
-          role: data.role ?? "viewer",
+          role: data.role ?? "",
           team: data.team ?? null,
           weeklyRemindersOff: data.weeklyRemindersOff === true,
           lastWeeklyReminderAt: data.weeklyReminderAt ?? null,

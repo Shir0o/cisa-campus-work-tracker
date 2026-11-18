@@ -11,8 +11,6 @@ adaptive
 - **Primary users**:
   - **Trainees (`manager`)**: On-campus field workers using mobile devices during campus outreach to work through their daily queue (`FocusCard`), log student encounters (`LogSheet`), manage Gospel Partner contacts, and advance contacts along The Journey.
   - **Full-timers (`admin`)**: Ministry leaders using the mobile FT Widgets dashboard (`FtHomeScreen`) for quick team oversight, glance statistics, urgent prayer burdens, and question answering in the field.
-- **Secondary audiences**:
-  - **Student leaders and community members (`operator` / `viewer`)**: Using the member shell (`MemberHomeScreen`) to track upcoming campus gatherings, hospitality homes, and personal prayer lists.
 
 ## Product Purpose
 
@@ -36,7 +34,7 @@ Unlike complex desktop CRMs, the mobile app is built for walking the campus:
 ## Capabilities and Constraints
 
 - **Capabilities**:
-  - Mobile Shells: Role-adaptive navigation (`QueueScreen`, `FtHomeScreen`, `MemberHomeScreen`).
+  - Mobile Shells: Role-adaptive navigation (`QueueScreen`, `FtHomeScreen`).
   - Gesture-Driven Sheets: Bottom sheets via `@gorhom/bottom-sheet` for logging interactions, moving stages, and leaving feedback notes.
   - Offline & Push: `@react-native-async-storage/async-storage` for local caching; `expo-notifications` for deep-linked push notifications.
   - Testing & Deployment: Maestro E2E mobile test suite (`.maestro/`); EAS build pipelines for iOS App Store and Android Google Play.

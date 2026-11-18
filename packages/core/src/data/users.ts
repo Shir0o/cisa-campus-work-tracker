@@ -1,8 +1,7 @@
 // Full-timer roster read, plus the full team-roster (users + invitations)
 // reads/writes for Settings — shared Firestore logic behind an injected
-// `db`. Mirrors src/views/landings/LandingCommunity.tsx's "Reach out"
-// section query (subscribeFullTimers) and src/views/Settings.tsx's "Your
-// team" section (everything else below).
+// `db`. The Full-timer roster query (subscribeFullTimers) and
+// src/views/Settings.tsx's "Your team" section (everything else below).
 import {
   collection,
   deleteDoc,

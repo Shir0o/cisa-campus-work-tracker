@@ -11,7 +11,7 @@ CISA Campus Work Tracker is built to safeguard contact information and honor the
 ## Visibility and Shared Care
 
 - **Founders and Gospel Partners**: Contacts you add with your Gospel Partner are shared between the two of you as co-founders. Both partners can view and care for the contact throughout the term and after.
-- **Role Scoping**: Only Full-timers and assigned team members can view full contact details and interaction histories. Community partners and viewers see high-level gathering schedules and prayer burdens, but do not have access to individual contact profiles.
+- **Role Scoping**: Only Full-timers and assigned team members can view full contact details and interaction histories.
 - **Prayer Lists**: Items placed on `/prayer` respect privacy. Removing someone from your prayer list only hides them from your own personal view in that browser and does not delete records for teammates.
 
 ## Deletion and Removal

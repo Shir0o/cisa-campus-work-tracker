@@ -24,57 +24,34 @@ describe('impGroups — the mobile "See it as they do" roster picker', () => {
     expect(allKeys).toContain('staff:ft-2');
   });
 
-  it('buckets users into the four role groups', () => {
+  it('buckets users into the two role groups', () => {
     const users = [
       user({ uid: 'a', displayName: 'Ana', role: 'admin' }),
       user({ uid: 't', displayName: 'Zion', role: 'manager' }),
-      user({ uid: 's', displayName: 'Timothy', role: 'operator' }),
-      user({ uid: 'c', displayName: 'Philip', role: 'viewer' }),
     ];
     const groups = impGroups(users, 'me-1');
     const byId = Object.fromEntries(groups.map((g) => [g.id, g]));
     expect(byId.ft.items.map((t) => t.name)).toEqual(['Ana']);
     expect(byId.trainee.items.map((t) => t.name)).toEqual(['Zion']);
-    expect(byId.student.items.map((t) => t.name)).toEqual(['Timothy']);
-    expect(byId.community.items.map((t) => t.name)).toEqual(['Philip']);
   });
 
   it("carries the design's exact group labels and notes, in order", () => {
     const users = [
       user({ uid: 'a', role: 'admin' }),
       user({ uid: 't', role: 'manager' }),
-      user({ uid: 's', role: 'operator' }),
-      user({ uid: 'c', role: 'viewer' }),
     ];
     const groups = impGroups(users, 'me-1');
     expect(groups.map((g) => [g.id, g.label, g.note])).toEqual([
       ['ft', 'Full-timers', 'The whole workspace, as they read it.'],
       ['trainee', 'Trainees', 'In training — a smaller window, and only the people they brought in.'],
-      ['student', 'Students', "Club members and officers — what's on, prayer, messages."],
-      ['community', 'Community', 'Friends of the work — host families, alumni, supporters.'],
     ]);
   });
 
-  it('falls back to the synthetic persona when a student/community group is empty', () => {
+  // The Student and Community groups, and their synthetic personas, are cut.
+  it('drops a group entirely when it has no users, with no persona to fall back to', () => {
     const users = [user({ uid: 'a', role: 'admin' })];
     const groups = impGroups(users, 'me-1');
-    const byId = Object.fromEntries(groups.map((g) => [g.id, g]));
-    expect(byId.student.items).toHaveLength(1);
-    expect(byId.student.items[0].key).toBe('persona:student');
-    expect(byId.community.items).toHaveLength(1);
-    expect(byId.community.items[0].key).toBe('persona:community');
-  });
-
-  it('drops a group entirely when it has no real users and no persona fallback applies', () => {
-    // Only a student exists — no full-timers, no trainees, and community falls
-    // back to its persona rather than disappearing.
-    const users = [user({ uid: 's', role: 'operator', displayName: 'Timothy' })];
-    const groups = impGroups(users, 'me-1');
-    const ids = groups.map((g) => g.id);
-    expect(ids).not.toContain('ft');
-    expect(ids).not.toContain('trainee');
-    expect(ids).toContain('student');
-    expect(ids).toContain('community');
+    expect(groups.map((g) => g.id)).toEqual(['ft']);
   });
 
   it('filters by name and sub across a search query', () => {

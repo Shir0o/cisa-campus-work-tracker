@@ -865,8 +865,8 @@ describe('BibleStudyEditor view', () => {
     await screen.findByDisplayValue('Initial Meeting');
 
     // A 44px-tall link holds 16px type in the middle of its box, so the
-    // breadcrumb links also become centred flex boxes.
-    for (const name of ['All weeks', 'Open the study']) {
+    // breadcrumb link also becomes a centred flex box.
+    for (const name of ['All weeks']) {
       const link = screen.getByRole('link', { name });
       expect(link.className, name).toMatch(/(^|\s)pointer-coarse:min-h-11(\s|$)/);
       expect(link.className, name).toMatch(/(^|\s)pointer-coarse:inline-flex(\s|$)/);
@@ -901,14 +901,9 @@ describe('BibleStudyEditor view', () => {
     expect(title.id).not.toBe('');
   });
 
-  it('offers "Open the study" only once an entry point points at this study (#946)', async () => {
-    renderAt();
-    await screen.findByDisplayValue('Initial Meeting');
-    // No entry point in the default fixture: there is no study to open.
-    expect(screen.queryByRole('link', { name: 'Open the study' })).not.toBeInTheDocument();
-  });
-
-  it('closes the fix-during-study loop with a link to This week\'s study (#946)', async () => {
+  // The signed-in reader is cut, so the editor no longer links to it — an
+  // entry point pointing at this study changes nothing in the breadcrumb.
+  it('does not link to the cut signed-in reader', async () => {
     vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
       cb([
         {
@@ -922,13 +917,7 @@ describe('BibleStudyEditor view', () => {
     });
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
-
-    // The reader, not the raw /s/ URL: the public page has no way back, which
-    // is the half of the loop this exists to close.
-    expect(screen.getByRole('link', { name: 'Open the study' })).toHaveAttribute(
-      'href',
-      '/bible-study/read?ep=cisa-wednesday',
-    );
+    expect(screen.queryByRole('link', { name: 'Open the study' })).not.toBeInTheDocument();
   });
 
   it('sizes the preview frame to the scaled phone, not the unscaled one', async () => {

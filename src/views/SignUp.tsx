@@ -67,16 +67,12 @@ interface SignUpProps {
   onBack?: () => void;
   onSubmitted?: (name: string) => void;
   isMobile?: boolean;
-  role?: string;
 }
 
-export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMobileProp, role: roleProp }: SignUpProps) {
+export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMobileProp }: SignUpProps) {
   const navigate = useNavigate();
   const auth = useAuth();
   const season = useSeason();
-
-  const role = roleProp || auth?.role;
-  const isStaffView = role !== 'operator' && role !== 'viewer' && role !== 'student' && role !== 'community';
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptyForm);
@@ -542,7 +538,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   if (isMobile) {
     return (
       <div className="signup-wrap sum min-h-screen bg-surface flex flex-col">
-        {isStaffView && adminStrip}
+        {adminStrip}
 
         {isSubmitted ? (
           <div className="sum-body sum-done-wrap flex-1 flex flex-col justify-center">{successBody}</div>
@@ -652,7 +648,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   // ═══════════════════ DESKTOP — Two-Panel Welcome ═══════════════════
   return (
     <div className="signup-wrap min-h-screen bg-surface flex flex-col">
-      {isStaffView && adminStrip}
+      {adminStrip}
 
       <div className="signup flex-1">
         {/* ── Left: A warm welcome ── */}

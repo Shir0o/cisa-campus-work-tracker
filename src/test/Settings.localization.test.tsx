@@ -130,7 +130,7 @@ const USERS = [
       email: 'alice@test.com',
       displayName: 'Alice Johnson',
       approved: true,
-      role: 'operator',
+      role: 'admin',
       photoURL: null,
     }),
   },
@@ -141,7 +141,7 @@ const USERS = [
       email: 'pending@test.com',
       displayName: null,
       approved: false,
-      role: 'viewer',
+      role: 'manager',
       photoURL: null,
     }),
   },
@@ -152,7 +152,7 @@ const INVITES = [
     id: 'inv1',
     data: () => ({
       email: 'charlie@test.com',
-      role: 'operator',
+      role: 'manager',
       approved: true,
       invitedBy: 'u-admin',
       createdAt: '2026-01-01',
@@ -435,7 +435,7 @@ describe('Settings in Spanish (#1818)', () => {
 
       // Pending approval block — one person, a role, and an unnamed account.
       expect(screen.getByText('1 persona pide unirse')).toBeInTheDocument();
-      expect(screen.getByText(/quiere ser Comunidad/)).toBeInTheDocument();
+      expect(screen.getByText(/quiere ser Aprendiz/)).toBeInTheDocument();
       expect(screen.getAllByText('Sin nombre').length).toBeGreaterThan(0);
       expect(screen.getByRole('button', { name: 'Aprobar' })).toBeInTheDocument();
 
@@ -462,8 +462,6 @@ describe('Settings in Spanish (#1818)', () => {
       // The picker used to render ROLE_OPTIONS[].label — literal English.
       const options = within(screen.getByLabelText('Rol')).getAllByRole('option');
       expect(options.map((o) => o.textContent)).toEqual([
-        'Comunidad',
-        'Estudiante',
         'Aprendiz',
         'Tiempo completo',
       ]);
@@ -498,8 +496,6 @@ describe('Settings in Spanish (#1818)', () => {
 
       const options = within(screen.getByLabelText('Rol')).getAllByRole('option');
       expect(options.map((o) => o.textContent)).toEqual([
-        'Comunidad',
-        'Estudiante',
         'Aprendiz',
         'Tiempo completo',
       ]);

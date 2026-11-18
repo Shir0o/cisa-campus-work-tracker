@@ -36,6 +36,7 @@ vi.mock('firebase/firestore', () => {
     collection: vi.fn().mockReturnValue({ id: 'mock-collection-id' }),
     query: vi.fn(),
     orderBy: vi.fn(),
+    where: vi.fn(),
     onSnapshot: vi.fn(),
     doc: vi.fn().mockReturnValue({ id: 'mock-doc-id' }),
     writeBatch: vi.fn(() => mockBatch),
@@ -65,8 +66,8 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     vi.clearAllMocks();
     (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false);
     (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Test Operator' },
-      role: 'operator',
+      user: { uid: 'user-123', displayName: 'Test Full-timer' },
+      role: 'admin',
     });
   });
 
@@ -84,15 +85,6 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
       return vi.fn(); // Unsubscribe
     });
   };
-
-  it('does not render if role is viewer', () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Test Viewer' },
-      role: 'viewer',
-    });
-    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
-    expect(screen.queryByText('Log interaction')).not.toBeInTheDocument();
-  });
 
   it('renders as a labelled dialog in the frame with the people list', async () => {
     setupOnSnapshot(mockContacts);
@@ -286,7 +278,7 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     setupOnSnapshot(mockContacts);
     (useAuth as any).mockReturnValue({
       user: { uid: 'JfcxyTTTFuNUYMLQTisyq2ppoy82', displayName: 'Sam Trainee' },
-      role: 'trainee',
+      role: 'manager',
     });
     render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
 

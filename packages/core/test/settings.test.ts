@@ -18,13 +18,13 @@ const user = (overrides: Partial<AppUser> = {}): AppUser => ({
   displayName: 'Person Name',
   photoURL: '',
   approved: true,
-  role: 'operator',
+  role: 'manager',
   ...overrides,
 });
 
 const invite = (overrides: Partial<Invitation> = {}): Invitation => ({
   email: 'grace@example.com',
-  role: 'operator',
+  role: 'manager',
   approved: true,
   invitedBy: 'u1',
   createdAt: null,
@@ -58,7 +58,7 @@ describe('roleOptionsFor', () => {
   it('excludes the admin option when the actor is not an admin', () => {
     const values = roleOptionsFor(false).map((o) => o.value);
     expect(values).not.toContain('admin');
-    expect(values).toEqual(['viewer', 'operator', 'manager']);
+    expect(values).toEqual(['manager']);
   });
 
   it('includes the admin option when the actor is an admin', () => {

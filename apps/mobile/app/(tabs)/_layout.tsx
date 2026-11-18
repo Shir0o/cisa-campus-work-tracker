@@ -2,7 +2,7 @@ import { useEffect, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { tabsForRole, type ShellTab } from '@cisa/core';
+import { tabsForRole } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
 import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -10,13 +10,11 @@ import { useLanguage } from '../../src/lib/LanguageProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
 import { translate } from '../../src/lib/i18n';
 
-// The shell — one of three, chosen by role, from the design project
-// (`MOBILE-V2.md`; `views/mobile/{m2,member,ft}.jsx`):
+// The shell — one of two, chosen by role, from the design project
+// (`MOBILE-V2.md`; `views/mobile/{m2,ft}.jsx`):
 //
 //   Trainee    no bar at all — the queue fills the screen and ☰ opens a drawer
 //              (src/components/queue/QueueDrawer.tsx)
-//   Student    Today · Prayer · Messages · You
-//   Community  What's on · Prayer · Messages · You
 //   Full-timer Today · People · Messages · More
 //
 // Which route each tab sits on lives in @cisa/core's `tabsForRole`, so the
@@ -27,16 +25,9 @@ import { translate } from '../../src/lib/i18n';
 // bar: words, not invented icons, and the active tab is a high-contrast PILL
 // behind the word following the Inversion Rule (solid ink inversion).
 
-/**
- * Resolves the localized display title for a tab route based on role-configured
- * tabs from `tabsForRole` (e.g. Student "You" vs Full-timer "More", Community
- * "What's on" vs Student "Today").
- */
-export function getMobileTabTitle(tabs: ShellTab[], name: string, language: string = 'en'): string {
-  const tab = tabs.find((t) => t.name === name);
+/** Resolves the localized display title for a tab route. */
+export function getMobileTabTitle(name: string, language: string = 'en'): string {
   const lang = language === 'es' ? 'es' : 'en';
-  if (tab?.title === "What's on") return translate('mobile.nav.whats_on', lang);
-  if (tab?.title === 'You') return translate('mobile.nav.you', lang);
   return translate(`mobile.nav.${name === 'index' ? 'today' : name}`, lang);
 }
 
@@ -163,10 +154,8 @@ const styles = StyleSheet.create({
 
 export default function TabsLayout() {
   const { role } = useAuth();
-  // The full-timer stands in the paper/navy room; members stand in the trainee's
-  // green one and take their own look from `V2Palette.widget`, not from a room
-  // of their own (see theme/v2.ts). Screens that set their own Room still win
-  // inside.
+  // The full-timer stands in the paper/navy room, the trainee in the green
+  // one (see theme/v2.ts). Screens that set their own Room still win inside.
   return (
     <Room room={roomForRole(role)}>
       <RoleTabs />
@@ -180,7 +169,7 @@ function RoleTabs() {
   const messages = useMessagesData();
 
   const tabs = tabsForRole(role);
-  const mobileTitle = (name: string) => getMobileTabTitle(tabs, name, language);
+  const mobileTitle = (name: string) => getMobileTabTitle(name, language);
 
   // A tab this role doesn't have drops out of the bar — `href: null` keeps the
   // route reachable by push and by deep link, which is how the drawer and the
@@ -202,7 +191,6 @@ function RoleTabs() {
     >
       <Tabs.Screen name="index" options={{ title: mobileTitle('index') }} />
       <Tabs.Screen name="people" options={slot('people', mobileTitle('people'))} />
-      <Tabs.Screen name="prayer" options={slot('prayer', mobileTitle('prayer'))} />
       <Tabs.Screen
         name="messages"
         options={{

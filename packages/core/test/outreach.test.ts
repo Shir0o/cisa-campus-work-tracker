@@ -136,14 +136,12 @@ describe('outreachStats', () => {
   });
 });
 
-describe('outreach permissions — full-timers + community', () => {
-  it('admin and community (viewer) can see and log outreach', () => {
-    for (const role of ['admin', 'viewer']) {
-      expect(canSeeOutreach(role)).toBe(true);
-      expect(canLogOutreach(role)).toBe(true);
-    }
-    // Trainees and students don't see it at all.
-    for (const role of ['manager', 'operator', null]) {
+describe('outreach permissions — full-timers only', () => {
+  it('a Full-timer can see and log outreach', () => {
+    expect(canSeeOutreach('admin')).toBe(true);
+    expect(canLogOutreach('admin')).toBe(true);
+    // Trainees, and any legacy Student or Community role, don't see it at all.
+    for (const role of ['manager', 'operator', 'viewer', null]) {
       expect(canSeeOutreach(role)).toBe(false);
       expect(canLogOutreach(role)).toBe(false);
     }

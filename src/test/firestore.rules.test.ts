@@ -78,7 +78,7 @@ describeRules('Firestore Security Rules', () => {
           email: 'user@example.com',
           displayName: 'User One',
           photoURL: null,
-          role: 'viewer',
+          role: 'manager',
           approved: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -113,7 +113,7 @@ describeRules('Firestore Security Rules', () => {
           email: 'user3@example.com',
           displayName: 'User Three',
           photoURL: null,
-          role: 'viewer',
+          role: 'manager',
           approved: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -133,7 +133,7 @@ describeRules('Firestore Security Rules', () => {
           email: 'user4@example.com',
           displayName: 'User Four',
           photoURL: null,
-          role: 'viewer',
+          role: 'manager',
           approved: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -147,14 +147,16 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'user5', email: 'user5@example.com' });
       const userRef = doc(db, 'users', 'user5');
 
+      // Unapproved, so only the owner branch applies: there is no non-staff
+      // approved role left to stand in for a plain owner.
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const adminDb = context.firestore();
         await setDoc(doc(adminDb, 'users', 'user5'), {
           email: 'user5@example.com',
           displayName: 'User Five',
           photoURL: null,
-          role: 'viewer',
-          approved: true,
+          role: 'manager',
+          approved: false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -198,19 +200,18 @@ describeRules('Firestore Security Rules', () => {
       await seedUser('traineeA');
       const db = getFirestore({ uid: 'traineeA', email: 'traineeA@example.com' });
       await assertFails(updateDoc(doc(db, 'users', 'traineeA'), { role: 'admin' }));
-      await assertFails(updateDoc(doc(db, 'users', 'traineeA'), { role: 'operator' }));
+      await assertFails(updateDoc(doc(db, 'users', 'traineeA'), { approved: false }));
     });
 
     it('A trainee cannot promote someone to, or demote someone from, Full-timer', async () => {
       await seedUser('traineeB');
-      await seedUser('studentB', { role: 'operator' });
+      await seedUser('traineeB2');
       await seedUser('adminB', { role: 'admin' });
       const db = getFirestore({ uid: 'traineeB', email: 'traineeB@example.com' });
-      await assertFails(updateDoc(doc(db, 'users', 'studentB'), { role: 'admin' }));
-      await assertFails(updateDoc(doc(db, 'users', 'adminB'), { role: 'viewer' }));
-      // Managing Students and Community still works.
-      await assertSucceeds(updateDoc(doc(db, 'users', 'studentB'), { role: 'viewer' }));
-      await assertSucceeds(updateDoc(doc(db, 'users', 'studentB'), { approved: false }));
+      await assertFails(updateDoc(doc(db, 'users', 'traineeB2'), { role: 'admin' }));
+      await assertFails(updateDoc(doc(db, 'users', 'adminB'), { role: 'manager' }));
+      // Managing another Trainee's approval still works.
+      await assertSucceeds(updateDoc(doc(db, 'users', 'traineeB2'), { approved: false }));
     });
 
     it('A trainee cannot invite a Full-timer; a Full-timer can', async () => {
@@ -219,7 +220,7 @@ describeRules('Firestore Security Rules', () => {
       const trainee = getFirestore({ uid: 'traineeC', email: 'traineeC@example.com' });
       const admin = getFirestore({ uid: 'adminC', email: 'adminC@example.com' });
       await assertFails(setDoc(doc(trainee, 'invitations', 'new@example.com'), { email: 'new@example.com', role: 'admin', approved: true }));
-      await assertSucceeds(setDoc(doc(trainee, 'invitations', 'student@example.com'), { email: 'student@example.com', role: 'operator', approved: true }));
+      await assertSucceeds(setDoc(doc(trainee, 'invitations', 'trainee@example.com'), { email: 'trainee@example.com', role: 'manager', approved: true }));
       await assertSucceeds(setDoc(doc(admin, 'invitations', 'new@example.com'), { email: 'new@example.com', role: 'admin', approved: true }));
     });
 
@@ -265,7 +266,7 @@ describeRules('Firestore Security Rules', () => {
         email: 'newbie@example.com',
         displayName: 'Newbie',
         photoURL: null,
-        role: 'viewer',
+        role: 'manager',
         approved: false,
         team: 'yp',
         createdAt: new Date().toISOString(),
@@ -280,6 +281,94 @@ describeRules('Firestore Security Rules', () => {
 
       await assertFails(updateDoc(doc(db, 'users', 'trainee5'), { team: 12345 }));
       await assertFails(updateDoc(doc(db, 'users', 'trainee5'), { team: 'x'.repeat(65) }));
+    });
+  });
+
+  // Cut-or-keep §1: Student (`operator`) and Community (`viewer`) are no
+  // longer roles. A stored legacy role is denied everything the role used to
+  // be granted; only Full-timer and Trainee can be signed up, invited or set.
+  describe('Student and Community roles are cut', () => {
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { email: 'admin1@example.com', displayName: 'admin1', role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'student1'), { email: 'student1@example.com', displayName: 'student1', role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'community1'), { email: 'community1@example.com', displayName: 'community1', role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'users', 'legacy1'), { email: 'legacy1@example.com', displayName: 'legacy1', photoURL: null, role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts', 'c-untied'), { name: 'Untied Person', email: 'untied@example.com', visibleTo: ['admin1'] });
+        await setDoc(doc(fs, 'outreach', 'o1'), { date: '2026-10-01', where: 'Park', went: [], others: 0, handed: {}, how: '', photoCount: 0, names: [] });
+      });
+    };
+
+    it('self-registration lands as an unapproved Trainee, never as Community', async () => {
+      const user = (uid: string, role: string) => ({
+        email: `${uid}@example.com`, displayName: uid, photoURL: null, role, approved: false,
+      });
+      await assertFails(setDoc(doc(getFirestore({ uid: 'newA', email: 'newA@example.com' }), 'users', 'newA'), user('newA', 'viewer')));
+      await assertSucceeds(setDoc(doc(getFirestore({ uid: 'newB', email: 'newB@example.com' }), 'users', 'newB'), user('newB', 'manager')));
+    });
+
+    // Self-registration and the downgrade script both leave an unapproved
+    // Trainee. Until a Full-timer approves them, the role must open nothing:
+    // no approving someone else, no invitations, no deletes.
+    it('an unapproved Trainee passes no Trainee gate', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        const pending = (uid: string) => ({ email: `${uid}@example.com`, displayName: uid, photoURL: null, role: 'manager', approved: false });
+        await setDoc(doc(fs, 'users', 'pendingA'), pending('pendingA'));
+        await setDoc(doc(fs, 'users', 'pendingB'), pending('pendingB'));
+        await setDoc(doc(fs, 'tasks', 't1'), { title: 'Call', status: 'pending', priority: 'low' });
+      });
+      const db = getFirestore({ uid: 'pendingA', email: 'pendingA@example.com' });
+      await assertFails(updateDoc(doc(db, 'users', 'pendingB'), { approved: true }));
+      await assertFails(setDoc(doc(db, 'invitations', 'friend@example.com'), { email: 'friend@example.com', role: 'manager', approved: true }));
+      await assertFails(deleteDoc(doc(db, 'tasks', 't1')));
+    });
+
+    it('nobody can invite or set a Student or Community role, a Full-timer included', async () => {
+      await seedRoles();
+      const admin = getFirestore({ uid: 'admin1', email: 'admin1@example.com' });
+      await assertFails(setDoc(doc(admin, 'invitations', 'a@example.com'), { email: 'a@example.com', role: 'operator', approved: true }));
+      await assertFails(setDoc(doc(admin, 'invitations', 'b@example.com'), { email: 'b@example.com', role: 'viewer', approved: true }));
+      await assertFails(updateDoc(doc(admin, 'users', 'legacy1'), { role: 'viewer' }));
+      // Moving the one legacy account onto a real role still works.
+      await assertSucceeds(updateDoc(doc(admin, 'users', 'legacy1'), { role: 'manager', approved: false }));
+    });
+
+    it('a Student account no longer reads the whole roster', async () => {
+      await seedRoles();
+      await assertFails(getDoc(doc(getFirestore({ uid: 'student1' }), 'contacts', 'c-untied')));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'community1' }), 'contacts', 'c-untied')));
+    });
+
+    it('a Student account no longer writes to-dos, prayers or a contact\'s stream', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'student1' });
+      await assertFails(setDoc(doc(db, 'tasks', 't1'), { title: 'Call', status: 'pending', priority: 'low' }));
+      await assertFails(updateDoc(doc(db, 'contacts', 'c-untied'), {
+        lastSeen: '2026-08-08',
+        lastContactedBy: 'Student One',
+        lastContactedById: 'student1',
+        lastContactedDate: '2026-08-08',
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('a Community account no longer reads or logs Outreach', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'community1' });
+      await assertFails(getDoc(doc(db, 'outreach', 'o1')));
+      await assertFails(getDocs(collection(db, 'outreach')));
+      await assertFails(setDoc(doc(db, 'outreach', 'o2'), { date: '2026-10-02', where: 'Park', went: [], others: 0, handed: {}, how: '', photoCount: 0, names: [] }));
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'admin1' }), 'outreach', 'o1')));
+    });
+
+    it('nobody RSVPs to an event any more', async () => {
+      await seedRoles();
+      const rsvp = (uid: string) => ({ uid, name: uid, status: 'going', createdAt: serverTimestamp() });
+      await assertFails(setDoc(doc(getFirestore({ uid: 'community1' }), 'events/ev1/rsvps/community1'), rsvp('community1')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'admin1' }), 'events/ev1/rsvps/admin1'), rsvp('admin1')));
+      await assertFails(getDocs(query(collectionGroup(getFirestore({ uid: 'admin1' }), 'rsvps'), where('uid', '==', 'admin1'))));
     });
   });
 
@@ -363,38 +452,38 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('lets an operator stamp the last-contacted trio when logging an interaction', async () => {
+    it('lets a Full-timer stamp the last-contacted trio when logging an interaction', async () => {
       // Mirrors the contact update inside LogInteractionModal's writeBatch and
       // ContactDetailsModal.handleAddInteraction: both stamp lastContactedBy /
       // lastContactedById / lastContactedDate alongside lastSeen.
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'teammate1' });
 
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'admin', approved: true });
         await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
 
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
         lastSeen: '2026-08-08',
-        lastContactedBy: 'Operator One',
-        lastContactedById: 'operator1',
+        lastContactedBy: 'Teammate One',
+        lastContactedById: 'teammate1',
         lastContactedDate: '2026-08-08',
         updatedAt: serverTimestamp(),
       }));
     });
 
-    it('lets an operator stamp the reach with the trio when logging an interaction (#1335)', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+    it('lets a Full-timer stamp the reach with the trio when logging an interaction (#1335)', async () => {
+      const db = getFirestore({ uid: 'teammate1' });
 
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'admin', approved: true });
         await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
 
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
         lastSeen: '2026-08-08',
-        lastContactedBy: 'Operator One',
-        lastContactedById: 'operator1',
+        lastContactedBy: 'Teammate One',
+        lastContactedById: 'teammate1',
         lastContactedDate: '2026-08-08',
         reachedAt: '2026-08-08',
         hasNewActivity: true,
@@ -472,26 +561,27 @@ describeRules('Firestore Security Rules', () => {
   });
 
   it("lets an existing co-creator update coCreators to add or remove collaborators", async () => {
-    const db = getFirestore({ uid: "operator2" });
+    const db = getFirestore({ uid: "teammate2" });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      await setDoc(doc(context.firestore(), "users", "operator1"), { role: "operator", approved: true });
-      await setDoc(doc(context.firestore(), "users", "operator2"), { role: "operator", approved: true });
-      await setDoc(doc(context.firestore(), "users", "operator3"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "teammate1"), { role: "manager", approved: true });
+      await setDoc(doc(context.firestore(), "users", "teammate2"), { role: "manager", approved: true });
+      await setDoc(doc(context.firestore(), "users", "teammate3"), { role: "manager", approved: true });
       await setDoc(doc(context.firestore(), "contacts", "contact_shared"), {
         name: "Shared Contact",
         email: "shared@example.com",
-        createdBy: "operator1",
-        coCreators: ["operator2"],
+        createdBy: "teammate1",
+        coCreators: ["teammate2"],
+        visibleTo: ["teammate1", "teammate2"],
       });
     });
 
-    // operator2 is in coCreators: should be able to add operator3 to coCreators
+    // teammate2 is in coCreators: should be able to add teammate3 to coCreators
     await assertSucceeds(updateDoc(doc(db, "contacts", "contact_shared"), {
-      coCreators: ["operator2", "operator3"],
+      coCreators: ["teammate2", "teammate3"],
       updatedAt: serverTimestamp(),
-      updatedBy: "operator2",
-      updatedByName: "Operator Two",
+      updatedBy: "teammate2",
+      updatedByName: "Teammate Two",
     }));
   });
 
@@ -526,13 +616,13 @@ describeRules('Firestore Security Rules', () => {
       const seed = async (contact: Record<string, unknown> = {}) => {
         await testEnv.withSecurityRulesDisabled(async (context) => {
           const adminDb = context.firestore();
-          await setDoc(doc(adminDb, 'users', 'operator1'), { role: 'operator', approved: true });
-          await setDoc(doc(adminDb, 'users', 'operator2'), { role: 'operator', approved: true });
-          await setDoc(doc(adminDb, 'users', 'viewer1'), { role: 'viewer', approved: true });
+          await setDoc(doc(adminDb, 'users', 'teammate1'), { role: 'manager', approved: true });
+          await setDoc(doc(adminDb, 'users', 'teammate2'), { role: 'manager', approved: true });
+          await setDoc(doc(adminDb, 'users', 'admin1'), { role: 'admin', approved: true });
           await setDoc(doc(adminDb, 'contacts', 'contact1'), {
             name: 'Test',
             email: 'test@example.com',
-            visibleTo: ['operator1'],
+            visibleTo: ['teammate1'],
             ...contact,
           });
         });
@@ -542,63 +632,63 @@ describeRules('Firestore Security Rules', () => {
         prayerListRemoved: {
           at: '2026-10-22T00:00:00.000Z',
           by,
-          byName: 'Operator One',
+          byName: 'Teammate One',
         },
         updatedAt: serverTimestamp(),
         updatedBy: by,
-        updatedByName: 'Operator One',
+        updatedByName: 'Teammate One',
       });
 
-      it('lets an operator set the removal naming themselves', async () => {
+      it('lets a teammate set the removal naming themselves', async () => {
         await seed();
-        const db = getFirestore({ uid: 'operator1' });
-        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator1')));
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('teammate1')));
       });
 
-      it('lets an operator who is not in visibleTo set it, because Students see everyone', async () => {
+      it('lets a Full-timer who is not in visibleTo set it, because Full-timers see everyone', async () => {
         await seed();
-        const db = getFirestore({ uid: 'operator2' });
-        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator2')));
+        const db = getFirestore({ uid: 'admin1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), removal('admin1')));
       });
 
       it('denies a removal that names someone else', async () => {
         await seed();
-        const db = getFirestore({ uid: 'operator1' });
-        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('operator2')));
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('teammate2')));
       });
 
       it('denies a removal carrying a fifth key', async () => {
         await seed();
-        const db = getFirestore({ uid: 'operator1' });
+        const db = getFirestore({ uid: 'teammate1' });
         await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), {
           prayerListRemoved: {
             at: '2026-10-22T00:00:00.000Z',
-            by: 'operator1',
-            byName: 'Operator One',
+            by: 'teammate1',
+            byName: 'Teammate One',
             extra: 'nope',
           },
           updatedAt: serverTimestamp(),
-          updatedBy: 'operator1',
-          updatedByName: 'Operator One',
+          updatedBy: 'teammate1',
+          updatedByName: 'Teammate One',
         }));
       });
 
-      it('denies a viewer, even naming themselves', async () => {
+      it('denies a teammate who cannot see the person, even naming themselves', async () => {
         await seed();
-        const db = getFirestore({ uid: 'viewer1' });
-        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('viewer1')));
+        const db = getFirestore({ uid: 'teammate2' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), removal('teammate2')));
       });
 
-      it('lets an operator who can see the person clear it', async () => {
+      it('lets a teammate who can see the person clear it', async () => {
         await seed({
-          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'operator2', byName: 'Operator Two' },
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'teammate2', byName: 'Teammate Two' },
         });
-        const db = getFirestore({ uid: 'operator1' });
+        const db = getFirestore({ uid: 'teammate1' });
         await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
           prayerListRemoved: deleteField(),
           updatedAt: serverTimestamp(),
-          updatedBy: 'operator1',
-          updatedByName: 'Operator One',
+          updatedBy: 'teammate1',
+          updatedByName: 'Teammate One',
         }));
       });
 
@@ -617,9 +707,9 @@ describeRules('Firestore Security Rules', () => {
     const seed = async (contactId: string, contact: Record<string, unknown>) => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const fs = context.firestore();
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate3'), { role: 'manager', approved: true });
         await setDoc(doc(fs, 'contacts', contactId), {
           name: 'Test', email: 'test@example.com', ...contact,
         });
@@ -627,59 +717,59 @@ describeRules('Firestore Security Rules', () => {
     };
 
     it('lets a reader who already sees the person take them into their sheep', async () => {
-      await seed('c_take_on', { createdBy: 'operator1', visibleTo: ['operator1', 'operator2'] });
-      const db = getFirestore({ uid: 'operator2' });
+      await seed('c_take_on', { createdBy: 'teammate1', visibleTo: ['teammate1', 'teammate2'] });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_take_on'), {
-        carers: ['operator2'],
-        visibleTo: ['operator1', 'operator2'],
+        carers: ['teammate2'],
+        visibleTo: ['teammate1', 'teammate2'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses taking on a person the reader cannot already see', async () => {
-      await seed('c_no_reach', { createdBy: 'operator1', visibleTo: ['operator1'] });
-      const db = getFirestore({ uid: 'operator2' });
+      await seed('c_no_reach', { createdBy: 'teammate1', visibleTo: ['teammate1'] });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_no_reach'), {
-        carers: ['operator2'],
-        visibleTo: ['operator1', 'operator2'],
+        carers: ['teammate2'],
+        visibleTo: ['teammate1', 'teammate2'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses adding someone else as a carer', async () => {
-      await seed('c_other', { createdBy: 'operator1', visibleTo: ['operator1', 'operator2'] });
-      const db = getFirestore({ uid: 'operator2' });
+      await seed('c_other', { createdBy: 'teammate1', visibleTo: ['teammate1', 'teammate2'] });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_other'), {
-        carers: ['operator2', 'operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        carers: ['teammate2', 'teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses removing someone else from the carers', async () => {
       await seed('c_drop_other', {
-        createdBy: 'operator1',
-        carers: ['operator2', 'operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        carers: ['teammate2', 'teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_drop_other'), {
         carers: [],
-        visibleTo: ['operator1'],
+        visibleTo: ['teammate1'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('lets a carer give the person up', async () => {
       await seed('c_give_up', {
-        createdBy: 'operator1',
-        carers: ['operator2'],
-        visibleTo: ['operator1', 'operator2'],
+        createdBy: 'teammate1',
+        carers: ['teammate2'],
+        visibleTo: ['teammate1', 'teammate2'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_give_up'), {
         carers: [],
-        visibleTo: ['operator1'],
+        visibleTo: ['teammate1'],
         updatedAt: serverTimestamp(),
       }));
     });
@@ -807,9 +897,9 @@ describeRules('Firestore Security Rules', () => {
     const seed = async (contactId: string, contact: Record<string, unknown>) => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const fs = context.firestore();
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate3'), { role: 'manager', approved: true });
         await setDoc(doc(fs, 'contacts', contactId), {
           name: 'Test', email: 'test@example.com', ...contact,
         });
@@ -818,77 +908,77 @@ describeRules('Firestore Security Rules', () => {
 
     it('removing a collaborator also drops their carer tie and access in the same write', async () => {
       await seed('c_rm_carer_collab', {
-        createdBy: 'operator1',
-        coCreators: ['operator2', 'operator3'],
-        carers: ['operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        coCreators: ['teammate2', 'teammate3'],
+        carers: ['teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_rm_carer_collab'), {
-        coCreators: arrayRemove('operator3'),
-        carers: arrayRemove('operator3'),
-        visibleTo: ['operator1', 'operator2'],
+        coCreators: arrayRemove('teammate3'),
+        carers: arrayRemove('teammate3'),
+        visibleTo: ['teammate1', 'teammate2'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('lets a collaborator be removed with no carer tie to drop', async () => {
       await seed('c_rm_plain', {
-        createdBy: 'operator1',
-        coCreators: ['operator2', 'operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        coCreators: ['teammate2', 'teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_rm_plain'), {
-        coCreators: arrayRemove('operator3'),
-        visibleTo: ['operator1', 'operator2'],
+        coCreators: arrayRemove('teammate3'),
+        visibleTo: ['teammate1', 'teammate2'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses to grant a carer tie while removing a collaborator', async () => {
       await seed('c_rm_selfgrant', {
-        createdBy: 'operator1',
-        coCreators: ['operator2', 'operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        coCreators: ['teammate2', 'teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_selfgrant'), {
-        coCreators: arrayRemove('operator3'),
-        carers: arrayUnion('operator2'),
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        coCreators: arrayRemove('teammate3'),
+        carers: arrayUnion('teammate2'),
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses to drop a carer tie that is not the removed collaborator\'s', async () => {
       await seed('c_rm_wrong_carer', {
-        createdBy: 'operator1',
-        coCreators: ['operator2', 'operator3'],
-        carers: ['operator2', 'operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        coCreators: ['teammate2', 'teammate3'],
+        carers: ['teammate2', 'teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_wrong_carer'), {
-        coCreators: arrayRemove('operator3'),
-        carers: arrayRemove('operator2'),
-        visibleTo: ['operator1'],
+        coCreators: arrayRemove('teammate3'),
+        carers: arrayRemove('teammate2'),
+        visibleTo: ['teammate1'],
         updatedAt: serverTimestamp(),
       }));
     });
 
     it('refuses to revoke access for anyone but the removed collaborator', async () => {
       await seed('c_rm_extra_revoke', {
-        createdBy: 'operator1',
-        coCreators: ['operator2', 'operator3'],
-        carers: ['operator3'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
+        createdBy: 'teammate1',
+        coCreators: ['teammate2', 'teammate3'],
+        carers: ['teammate3'],
+        visibleTo: ['teammate1', 'teammate2', 'teammate3'],
       });
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_extra_revoke'), {
-        coCreators: arrayRemove('operator3'),
-        carers: arrayRemove('operator3'),
-        visibleTo: ['operator1'],
+        coCreators: arrayRemove('teammate3'),
+        carers: arrayRemove('teammate3'),
+        visibleTo: ['teammate1'],
         updatedAt: serverTimestamp(),
       }));
     });
@@ -1244,21 +1334,6 @@ describeRules('Firestore Security Rules', () => {
         visibleTo: ['manager1', 'manager2'], ...updated('admin1'),
       }));
     });
-
-    it('lets a Student remove a collaborator and their carer tie on someone whose list does not name them (expression budget)', async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-      });
-      await seed('c_op_rm', {
-        createdBy: 'manager1', coCreators: ['operator1', 'manager2', 'manager3'], carers: ['manager3'],
-        visibleTo: ['manager2', 'manager3'],
-      });
-      const student = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(updateDoc(doc(student, 'contacts/c_op_rm'), {
-        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
-        visibleTo: ['manager2'], ...updated('operator1'),
-      }));
-    });
   });
 
   // #1298: Add to story. Anyone who can see the person may take a message into
@@ -1270,7 +1345,6 @@ describeRules('Firestore Security Rules', () => {
         const fs = context.firestore();
         await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(fs, 'contacts', contactId), { name: 'Test', ...contact });
       });
     };
@@ -1285,10 +1359,9 @@ describeRules('Firestore Security Rules', () => {
       await addThenRemove('manager1', 'c_story');
     });
 
-    it('lets a Full-timer and a Student do it for someone not on their list', async () => {
+    it('lets a Full-timer do it for someone not on their list', async () => {
       await seed('c_story_all', { createdBy: 'manager2', visibleTo: ['manager2'] });
       await addThenRemove('admin1', 'c_story_all');
-      await addThenRemove('operator1', 'c_story_all');
     });
 
     it('refuses a Trainee who cannot see the person', async () => {
@@ -1307,8 +1380,6 @@ describeRules('Firestore Security Rules', () => {
         const fs = context.firestore();
         await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
         await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
         const entry = (targetId: string, targetType: string, createdAt: string) => ({
@@ -1343,9 +1414,9 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDocs(feed(trainee)));
     });
 
-    it('keeps the whole feed readable for roles that see every person', async () => {
+    it('keeps the whole feed readable for a Full-timer, who sees every person', async () => {
       await seedActivities();
-      for (const uid of ['admin1', 'operator1', 'viewer1']) {
+      for (const uid of ['admin1']) {
         const db = getFirestore({ uid });
         const all = await assertSucceeds(getDocs(feed(db)));
         expect(all.docs.map((d) => d.id)).toEqual(['a_event', 'a_untied', 'a_tied']);
@@ -1451,8 +1522,6 @@ describeRules('Firestore Security Rules', () => {
         const fs = context.firestore();
         await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
         await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
         for (const contactId of ['tied', 'untied']) {
@@ -1488,9 +1557,9 @@ describeRules('Firestore Security Rules', () => {
         await assertFails(getDocs(feed(getFirestore({ uid: 'manager1' }), sub)));
       });
 
-      it(`keeps every person's ${sub} readable for roles that see every person`, async () => {
+      it(`keeps every person's ${sub} readable for a Full-timer, who sees every person`, async () => {
         await seedSubcollections();
-        for (const uid of ['admin1', 'operator1', 'viewer1']) {
+        for (const uid of ['admin1']) {
           const db = getFirestore({ uid });
           const all = await assertSucceeds(getDocs(feed(db, sub)));
           expect(all.docs.map((d) => d.ref.path).sort()).toEqual([`contacts/tied/${sub}/${one}`, `contacts/untied/${sub}/${one}`]);
@@ -1541,8 +1610,6 @@ describeRules('Firestore Security Rules', () => {
         const fs = context.firestore();
         await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
         await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
         for (const contactId of ['tied', 'untied']) {
@@ -1572,9 +1639,9 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDocs(feed(getFirestore({ uid: 'manager1' }))));
     });
 
-    it('keeps every person\'s threads listable for roles that see every person', async () => {
+    it('keeps every person\'s threads listable for a Full-timer, who sees every person', async () => {
       await seedThreads();
-      for (const uid of ['admin1', 'operator1', 'viewer1']) {
+      for (const uid of ['admin1']) {
         const all = await assertSucceeds(getDocs(feed(getFirestore({ uid }))));
         expect(all.docs.map((d) => d.ref.path).sort()).toEqual(['contacts/tied/threads/t1', 'contacts/untied/threads/t1']);
       }
@@ -1591,7 +1658,6 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
         await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: ['manager2'] });
         await setDoc(doc(fs, 'contacts/unlisted'), { name: 'Unlisted', email: 'n@example.com' });
@@ -1606,14 +1672,14 @@ describeRules('Firestore Security Rules', () => {
           });
           await setDoc(doc(fs, `contacts/${contactId}/threads/mine`), message('manager1'));
           await setDoc(doc(fs, `contacts/${contactId}/threads/ask`), message('manager2', { kind: 'nudge' }));
-          // What a Student, who sees everyone, wrote on each person.
+          // What a Full-timer, who sees everyone, wrote on each person.
           await setDoc(doc(fs, `contacts/${contactId}/interactions/theirs`), {
-            userId: 'operator1', userName: 'O1', content: 'Coffee', dateTime: '2026-10-01', createdAt: '2026-10-01',
+            userId: 'admin1', userName: 'A1', content: 'Coffee', dateTime: '2026-10-01', createdAt: '2026-10-01',
           });
           await setDoc(doc(fs, `contacts/${contactId}/comments/theirs`), {
-            userId: 'operator1', userName: 'O1', text: 'Note', createdAt: '2026-10-01', parentId: null,
+            userId: 'admin1', userName: 'A1', text: 'Note', createdAt: '2026-10-01', parentId: null,
           });
-          await setDoc(doc(fs, `contacts/${contactId}/threads/theirs`), message('operator1'));
+          await setDoc(doc(fs, `contacts/${contactId}/threads/theirs`), message('admin1'));
         }
         await setDoc(doc(fs, 'contacts/untied/teamThreads/team'), message('admin1', { scope: 'team' }));
         // Left behind under a person who has since been deleted.
@@ -1694,15 +1760,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(fullTimer, 'contacts/untied/teamThreads/new'), message('admin1', { scope: 'team' })));
     });
 
-    it('lets a Student, who sees everyone, write on a person they are not listed on', async () => {
-      await seed();
-      const student = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(setDoc(doc(student, 'contacts/untied/interactions/new'), interaction('operator1')));
-      await assertSucceeds(setDoc(doc(student, 'contacts/untied/comments/new'), comment('operator1')));
-      await assertSucceeds(setDoc(doc(student, 'contacts/untied/threads/new'), message('operator1')));
-      await assertSucceeds(updateDoc(doc(student, 'contacts/untied/threads/ask'), closed('operator1')));
-    });
-
     it('refuses an untied Trainee removing someone else\'s interaction or comment', async () => {
       await seed();
       const trainee = getFirestore({ uid: 'manager1' });
@@ -1742,14 +1799,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/threads/theirs')));
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/teamThreads/team')));
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/nobody/interactions/orphan')));
-    });
-
-    it('lets a Student remove their own entries on a person they are not listed on', async () => {
-      await seed();
-      const student = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/interactions/theirs')));
-      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/comments/theirs')));
-      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/threads/theirs')));
     });
   });
 
@@ -1905,10 +1954,10 @@ describeRules('Firestore Security Rules', () => {
   });
 
   describe('Prayers', () => {
-    it('lets an operator store up to 4 answeredPhotos on an answered prayer', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+    it('lets a teammate store up to 4 answeredPhotos on an answered prayer', async () => {
+      const db = getFirestore({ uid: 'teammate1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
         await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
 
@@ -1927,10 +1976,10 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('lets an operator edit a prayer burden, and denies a role below operator (#1674)', async () => {
+    it('lets a teammate edit a prayer burden, and denies an unapproved account (#1674)', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
         await setDoc(doc(context.firestore(), 'prayers', 'prayer-edit'), {
           contactId: 'contact1',
           burden: 'For her interview',
@@ -1941,17 +1990,17 @@ describeRules('Firestore Security Rules', () => {
       const edit = {
         burden: 'For her interview on Tuesday\n\nShe is nervous.',
         updatedAt: '2026-10-19T00:00:00.000Z',
-        updatedBy: 'operator1',
+        updatedBy: 'teammate1',
         updatedByName: 'Op',
       };
-      await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'operator1' }), 'prayers', 'prayer-edit'), edit));
-      await assertFails(updateDoc(doc(getFirestore({ uid: 'viewer1' }), 'prayers', 'prayer-edit'), edit));
+      await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'teammate1' }), 'prayers', 'prayer-edit'), edit));
+      await assertFails(updateDoc(doc(getFirestore({ uid: 'pending1' }), 'prayers', 'prayer-edit'), edit));
     });
 
-    it('lets an operator toggle teamPrayer, rejects a non-boolean, and denies a viewer', async () => {
+    it('lets a teammate toggle teamPrayer, rejects a non-boolean, and denies an unapproved account', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
         await setDoc(doc(context.firestore(), 'prayers', 'prayer-team'), {
           contactId: 'contact1',
           burden: 'Peace',
@@ -1962,24 +2011,24 @@ describeRules('Firestore Security Rules', () => {
       });
       const flip = (teamPrayer: unknown) => ({ teamPrayer, updatedAt: '2026-10-19T00:00:00.000Z' });
       const ref = (uid: string) => doc(getFirestore({ uid }), 'prayers', 'prayer-team');
-      await assertSucceeds(updateDoc(ref('operator1'), flip(true)));
-      await assertSucceeds(updateDoc(ref('operator1'), flip(false)));
-      await assertFails(updateDoc(ref('operator1'), flip('yes')));
-      await assertFails(updateDoc(ref('viewer1'), flip(true)));
+      await assertSucceeds(updateDoc(ref('teammate1'), flip(true)));
+      await assertSucceeds(updateDoc(ref('teammate1'), flip(false)));
+      await assertFails(updateDoc(ref('teammate1'), flip('yes')));
+      await assertFails(updateDoc(ref('pending1'), flip(true)));
     });
 
     // "Bring to team prayer" is one batch: the prayer flag plus clearing the
     // contact's team-wide removal, stamped with ISO strings (setPrayerTeamPrayer).
-    it('lets an operator bring a prayer to the team and clear the contact removal in one batch; denies a viewer', async () => {
+    it('lets a teammate bring a prayer to the team and clear the contact removal in one batch; denies an unapproved account', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const fs = context.firestore();
-        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'pending1'), { role: 'manager', approved: false });
         await setDoc(doc(fs, 'contacts', 'contact-batch'), {
           name: 'Test',
           email: 'test@example.com',
-          visibleTo: ['operator1'],
-          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'operator2', byName: 'Operator Two' },
+          visibleTo: ['teammate1'],
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'teammate2', byName: 'Teammate Two' },
         });
         await setDoc(doc(fs, 'prayers', 'prayer-batch'), {
           contactId: 'contact-batch', burden: 'Peace', status: 'pending', teamPrayer: false,
@@ -1994,14 +2043,14 @@ describeRules('Firestore Security Rules', () => {
         batch.update(doc(fs, 'contacts', 'contact-batch'), { prayerListRemoved: deleteField(), ...stamp });
         return batch.commit();
       };
-      await assertFails(run('viewer1'));
-      await assertSucceeds(run('operator1'));
+      await assertFails(run('pending1'));
+      await assertSucceeds(run('teammate1'));
     });
 
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'teammate1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
         await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
 
@@ -2041,11 +2090,11 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('lets an operator create the interaction shape LogInteractionModal writes', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+    it('lets a Full-timer create the interaction shape LogInteractionModal writes', async () => {
+      const db = getFirestore({ uid: 'teammate1' });
 
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'admin', approved: true });
         await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
 
@@ -2054,8 +2103,8 @@ describeRules('Firestore Security Rules', () => {
         dateTime: '2026-08-08',
         content: 'Coffee after class',
         createdAt: serverTimestamp(),
-        userId: 'operator1',
-        userName: 'Operator One',
+        userId: 'teammate1',
+        userName: 'Teammate One',
         contactId: 'contact1',
         contactName: 'Test',
       }));
@@ -2125,10 +2174,10 @@ describeRules('Firestore Security Rules', () => {
     it('lets the person who logged an interaction, or a manager, delete it', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const adb = context.firestore();
-        await setDoc(doc(adb, 'users', 'owner1'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'users', 'owner1'), { role: 'manager', approved: true });
         await setDoc(doc(adb, 'users', 'manager1'), { role: 'manager', approved: true });
-        // The Trainee is tied: removing on a person needs seeing them (#1350).
-        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['manager1'] });
+        // Both are tied: removing on a person needs seeing them (#1350).
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['manager1', 'owner1'] });
         await setDoc(doc(adb, 'contacts/contact1/interactions/int-owner'), {
           userId: 'owner1',
           userName: 'Owner',
@@ -2190,11 +2239,11 @@ describeRules('Firestore Security Rules', () => {
     it('rejects an interaction update containing updatedAt, accepts permitted fields', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const adb = context.firestore();
-        await setDoc(doc(adb, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'users', 'teammate1'), { role: 'admin', approved: true });
         await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
         await setDoc(doc(adb, 'contacts/contact1/interactions/int1'), {
-          userId: 'operator1',
-          userName: 'Operator One',
+          userId: 'teammate1',
+          userName: 'Teammate One',
           content: 'Original content',
           dateTime: '2026-08-08',
           type: 'meeting',
@@ -2202,7 +2251,7 @@ describeRules('Firestore Security Rules', () => {
         });
       });
 
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'teammate1' });
       const ref = doc(db, 'contacts/contact1/interactions/int1');
 
       // Fails when attempting to update with updatedAt (server timestamp or string)
@@ -2238,27 +2287,26 @@ describeRules('Firestore Security Rules', () => {
 
     it('DD11: Approved members may read peers; unapproved users cannot, and no one may tamper', async () => {
       // The directory is intentionally readable by any *approved* member: the
-      // messaging member picker (CreateChatModal) and the Community landing page
-      // (LandingCommunity lists full-timers) both query the users collection as a
-      // plain approved user, including viewers. The protections that remain are
-      // that unapproved users can't scrape PII, and a viewer can't tamper with
-      // another member's profile (role/approval are manager-only).
+      // messaging member picker (CreateChatModal) queries the users collection
+      // as a plain approved user. The protections that remain are that
+      // unapproved users can't scrape PII, and a Trainee can't escalate another
+      // member's profile to Full-timer.
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
+        await setDoc(doc(context.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
         await setDoc(doc(context.firestore(), 'users', 'other-user'), {
           email: 'other@example.com',
           displayName: 'Other Member',
-          role: 'operator',
+          role: 'manager',
           approved: true,
         });
       });
 
-      const viewer = getFirestore({ uid: 'viewer1' });
-      // Approved viewer may look up another member (needed by messaging + community home)…
-      await assertSucceeds(getDoc(doc(viewer, 'users', 'other-user')));
-      // …but cannot escalate or otherwise tamper with that member's profile.
-      await assertFails(updateDoc(doc(viewer, 'users', 'other-user'), { role: 'admin' }));
+      const trainee = getFirestore({ uid: 'trainee1' });
+      // An approved Trainee may look up another member (needed by messaging)…
+      await assertSucceeds(getDoc(doc(trainee, 'users', 'other-user')));
+      // …but cannot escalate that member's profile.
+      await assertFails(updateDoc(doc(trainee, 'users', 'other-user'), { role: 'admin' }));
 
       // An unapproved user cannot scrape user PII at all.
       const pending = getFirestore({ uid: 'pending1' });
@@ -2395,17 +2443,6 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(db, 'board_docs', 'bd-legacy')));
     });
 
-    it('BD10: Student (operator) reads only everyone pages', async () => {
-      await seedRoles();
-      await seedBoardDoc('bd-team', 'team');
-      await seedBoardDoc('bd-trainees', 'trainees');
-      await seedBoardDoc('bd-everyone', 'everyone');
-      const db = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-everyone')));
-      await assertFails(getDoc(doc(db, 'board_docs', 'bd-trainees')));
-      await assertFails(getDoc(doc(db, 'board_docs', 'bd-team')));
-    });
-
     it('BD11: Trainee/Student can read but never write board pages', async () => {
       await seedRoles();
       await seedBoardDoc('bd-everyone', 'everyone');
@@ -2437,7 +2474,7 @@ describeRules('Firestore Security Rules', () => {
       dueDate: '2026-05-15',
       status: 'pending',
       priority: 'medium',
-      assigneeId: 'operator1',
+      assigneeId: 'manager1',
       createdById: 'admin1',
       createdByName: 'Tony',
       sourceDocId: 'bd-wed',
@@ -2447,15 +2484,14 @@ describeRules('Firestore Security Rules', () => {
     const seedRoles = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
       });
     };
 
-    it('TD1: Operator can create a to-do with creator + source-doc fields', async () => {
+    it('TD1: A Trainee can create a to-do with creator + source-doc fields', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'manager1' });
       await assertSucceeds(setDoc(doc(db, 'tasks', 'td1'), validTask));
     });
 
@@ -2465,25 +2501,23 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(db, 'tasks', 'td2'), { ...validTask, dueDate: null }));
     });
 
-    it('TD3: Approved viewer can read but not create a to-do', async () => {
+    it('TD3: An unapproved account can neither read nor create a to-do', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'tasks', 'td1'), validTask);
       });
-      const db = getFirestore({ uid: 'viewer1' });
-      await assertSucceeds(getDoc(doc(db, 'tasks', 'td1')));
+      const db = getFirestore({ uid: 'pending1' });
+      await assertFails(getDoc(doc(db, 'tasks', 'td1')));
       await assertFails(setDoc(doc(db, 'tasks', 'tdX'), validTask));
     });
 
-    it('TD4: Operator can mark a to-do done; only manager+ can delete it', async () => {
+    it('TD4: A Trainee can mark a to-do done and delete it', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'tasks', 'td1'), validTask);
       });
-      const opDb = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(updateDoc(doc(opDb, 'tasks', 'td1'), { status: 'completed' }));
-      await assertFails(deleteDoc(doc(opDb, 'tasks', 'td1')));
       const mgrDb = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(mgrDb, 'tasks', 'td1'), { status: 'completed' }));
       await assertSucceeds(deleteDoc(doc(mgrDb, 'tasks', 'td1')));
     });
 
@@ -2842,75 +2876,6 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(dbStudent, 'users/u1/personalPrayers/pp3'), {
         title: 'intruder', contactId: null, date: '2026-05-15', status: 'open',
       }));
-    });
-  });
-
-  describe('Event RSVPs', () => {
-    const seedUsers = async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
-      });
-    };
-    const rsvp = { uid: 'viewer1', name: 'Phil', status: 'going', createdAt: serverTimestamp() };
-
-    it('RSVP1: an approved member can create, read and delete their own RSVP', async () => {
-      await seedUsers();
-      const db = getFirestore({ uid: 'viewer1' });
-      const ref = doc(db, 'events/ev1/rsvps/viewer1');
-      await assertSucceeds(setDoc(ref, rsvp));
-      await assertSucceeds(getDoc(ref));
-      await assertSucceeds(deleteDoc(ref));
-    });
-
-    it('RSVP2: a member cannot create an RSVP keyed to someone else', async () => {
-      await seedUsers();
-      const db = getFirestore({ uid: 'viewer1' });
-      await assertFails(
-        setDoc(doc(db, 'events/ev1/rsvps/admin1'), { ...rsvp, uid: 'admin1', name: 'Imposter' }),
-      );
-    });
-
-    it('RSVP3: any approved user can read who is coming', async () => {
-      await seedUsers();
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'events/ev1/rsvps/viewer1'), {
-          uid: 'viewer1', name: 'Phil', status: 'going',
-        });
-      });
-      const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(getDoc(doc(db, 'events/ev1/rsvps/viewer1')));
-    });
-
-    it('RSVP4: an unapproved user cannot RSVP', async () => {
-      await seedUsers();
-      const db = getFirestore({ uid: 'pending1' });
-      await assertFails(setDoc(doc(db, 'events/ev1/rsvps/pending1'), { ...rsvp, uid: 'pending1' }));
-    });
-
-    const seedRsvps = async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'events/ev1/rsvps/viewer1'), { uid: 'viewer1', name: 'Phil', status: 'going' });
-        await setDoc(doc(context.firestore(), 'events/ev2/rsvps/admin1'), { uid: 'admin1', name: 'Tony', status: 'going' });
-      });
-    };
-
-    it('RSVP5: a member can collection-group list their own RSVPs (events I am going to)', async () => {
-      await seedUsers();
-      await seedRsvps();
-      const db = getFirestore({ uid: 'viewer1' });
-      await assertSucceeds(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'viewer1'))));
-    });
-
-    it('RSVP6: a collection-group RSVP list not scoped to self is denied', async () => {
-      await seedUsers();
-      await seedRsvps();
-      const db = getFirestore({ uid: 'viewer1' });
-      // No uid filter → would expose other people's RSVPs → denied.
-      await assertFails(getDocs(query(collectionGroup(db, 'rsvps'))));
-      // Filtered to someone else → denied.
-      await assertFails(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'admin1'))));
     });
   });
 
@@ -3726,15 +3691,15 @@ describeRules('Firestore Security Rules', () => {
   describe('Walking-together threads', () => {
     const seedThreadUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(c.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'teammate2'), { role: 'manager', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(c.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(c.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['teammate1', 'teammate2'] });
       });
     };
     const newMsg = (over: Record<string, unknown> = {}) => ({
-      from: 'operator1',
+      from: 'teammate1',
       fromName: 'Op One',
       kind: 'comment',
       body: 'walking with you',
@@ -3757,11 +3722,11 @@ describeRules('Firestore Security Rules', () => {
     describe('closing a follow-up ask', () => {
       it('lets someone other than the asker record that they followed up', async () => {
         await seedThreadUsers();
-        await seedMsg('ask1', { kind: 'nudge', from: 'operator1' });
-        const db = getFirestore({ uid: 'operator2' });
+        await seedMsg('ask1', { kind: 'nudge', from: 'teammate1' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertSucceeds(
           updateDoc(doc(db, 'contacts/contact1/threads/ask1'), {
-            closedBy: 'operator2',
+            closedBy: 'teammate2',
             closedByName: 'Op Two',
             closedAt: new Date().toISOString(),
           }),
@@ -3770,11 +3735,11 @@ describeRules('Firestore Security Rules', () => {
 
       it('lets the asker retract their own ask', async () => {
         await seedThreadUsers();
-        await seedMsg('ask2', { kind: 'nudge', from: 'operator1' });
-        const db = getFirestore({ uid: 'operator1' });
+        await seedMsg('ask2', { kind: 'nudge', from: 'teammate1' });
+        const db = getFirestore({ uid: 'teammate1' });
         await assertSucceeds(
           updateDoc(doc(db, 'contacts/contact1/threads/ask2'), {
-            closedBy: 'operator1',
+            closedBy: 'teammate1',
             closedByName: 'Op One',
             closedAt: new Date().toISOString(),
           }),
@@ -3785,11 +3750,11 @@ describeRules('Firestore Security Rules', () => {
         await seedThreadUsers();
         await seedMsg('ask3', {
           kind: 'nudge',
-          closedBy: 'operator2',
+          closedBy: 'teammate2',
           closedByName: 'Op Two',
           closedAt: new Date().toISOString(),
         });
-        const db = getFirestore({ uid: 'operator2' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertSucceeds(
           updateDoc(doc(db, 'contacts/contact1/threads/ask3'), {
             closedBy: null,
@@ -3802,10 +3767,10 @@ describeRules('Firestore Security Rules', () => {
       it('refuses to record someone else as having followed up', async () => {
         await seedThreadUsers();
         await seedMsg('ask4', { kind: 'nudge' });
-        const db = getFirestore({ uid: 'operator2' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertFails(
           updateDoc(doc(db, 'contacts/contact1/threads/ask4'), {
-            closedBy: 'operator1',
+            closedBy: 'teammate1',
             closedByName: 'Op One',
             closedAt: new Date().toISOString(),
           }),
@@ -3815,10 +3780,10 @@ describeRules('Firestore Security Rules', () => {
       it('refuses to close anything that is not a follow-up ask', async () => {
         await seedThreadUsers();
         await seedMsg('note1', { kind: 'comment' });
-        const db = getFirestore({ uid: 'operator2' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertFails(
           updateDoc(doc(db, 'contacts/contact1/threads/note1'), {
-            closedBy: 'operator2',
+            closedBy: 'teammate2',
             closedByName: 'Op Two',
             closedAt: new Date().toISOString(),
           }),
@@ -3828,10 +3793,10 @@ describeRules('Firestore Security Rules', () => {
       it('refuses to smuggle a body edit in alongside the close', async () => {
         await seedThreadUsers();
         await seedMsg('ask5', { kind: 'nudge' });
-        const db = getFirestore({ uid: 'operator2' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertFails(
           updateDoc(doc(db, 'contacts/contact1/threads/ask5'), {
-            closedBy: 'operator2',
+            closedBy: 'teammate2',
             closedByName: 'Op Two',
             closedAt: new Date().toISOString(),
             body: 'rewritten',
@@ -3850,73 +3815,73 @@ describeRules('Firestore Security Rules', () => {
 
       it('lets a mentioned person close it (Done, or by replying)', async () => {
         await seedThreadUsers();
-        await seedMsg('mn1', { from: 'operator1', mentionedUserIds: ['manager1', 'operator2'] });
-        await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'operator2' }), 'contacts/contact1/threads/mn1'), close('operator2')));
+        await seedMsg('mn1', { from: 'teammate1', mentionedUserIds: ['manager1', 'teammate2'] });
+        await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'teammate2' }), 'contacts/contact1/threads/mn1'), close('teammate2')));
       });
 
       it('lets the sender withdraw it with Never mind, and undo a close', async () => {
         await seedThreadUsers();
-        await seedMsg('mn2', { from: 'operator1', mentionedUserIds: ['operator2'] });
-        const db = getFirestore({ uid: 'operator1' });
-        await assertSucceeds(updateDoc(doc(db, 'contacts/contact1/threads/mn2'), close('operator1')));
+        await seedMsg('mn2', { from: 'teammate1', mentionedUserIds: ['teammate2'] });
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts/contact1/threads/mn2'), close('teammate1')));
         await assertSucceeds(updateDoc(doc(db, 'contacts/contact1/threads/mn2'), { closedBy: null, closedByName: null, closedAt: null }));
       });
 
       it('refuses anyone it does not name, and a comment that names nobody', async () => {
         await seedThreadUsers();
-        await seedMsg('mn3', { from: 'operator1', mentionedUserIds: ['operator2'] });
+        await seedMsg('mn3', { from: 'teammate1', mentionedUserIds: ['teammate2'] });
         await assertFails(updateDoc(doc(getFirestore({ uid: 'admin1' }), 'contacts/contact1/threads/mn3'), close('admin1')));
-        await seedMsg('plain', { from: 'operator1' });
-        await assertFails(updateDoc(doc(getFirestore({ uid: 'operator1' }), 'contacts/contact1/threads/plain'), close('operator1')));
+        await seedMsg('plain', { from: 'teammate1' });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'teammate1' }), 'contacts/contact1/threads/plain'), close('teammate1')));
       });
 
       it('refuses recording someone else as the closer', async () => {
         await seedThreadUsers();
-        await seedMsg('mn4', { from: 'operator1', mentionedUserIds: ['operator2'] });
-        await assertFails(updateDoc(doc(getFirestore({ uid: 'operator2' }), 'contacts/contact1/threads/mn4'), close('manager1')));
+        await seedMsg('mn4', { from: 'teammate1', mentionedUserIds: ['teammate2'] });
+        await assertFails(updateDoc(doc(getFirestore({ uid: 'teammate2' }), 'contacts/contact1/threads/mn4'), close('manager1')));
       });
     });
 
     it('lets the author create a message (from == uid)', async () => {
       await seedThreadUsers();
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'teammate1' });
       await assertSucceeds(setDoc(doc(db, 'contacts/contact1/threads/th1'), newMsg()));
     });
 
     it('rejects creating a message attributed to someone else', async () => {
       await seedThreadUsers();
-      const db = getFirestore({ uid: 'operator1' });
-      await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th2'), newMsg({ from: 'operator2' })));
+      const db = getFirestore({ uid: 'teammate1' });
+      await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th2'), newMsg({ from: 'teammate2' })));
     });
 
     it('rejects creating with an oversized body', async () => {
       await seedThreadUsers();
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'teammate1' });
       await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th4'), newMsg({ body: 'a'.repeat(6000) })));
     });
 
     it('rejects reaction writes — the reactions field is gone', async () => {
       await seedThreadUsers();
       await seedMsg('th10');
-      const db = getFirestore({ uid: 'operator2' });
+      const db = getFirestore({ uid: 'teammate2' });
       await assertFails(
-        updateDoc(doc(db, 'contacts/contact1/threads/th10'), { reactions: [{ by: 'operator2', emoji: '🙏' }] }),
+        updateDoc(doc(db, 'contacts/contact1/threads/th10'), { reactions: [{ by: 'teammate2', emoji: '🙏' }] }),
       );
     });
 
     it('allows body edits by the author only', async () => {
       await seedThreadUsers();
       await seedMsg('th20');
-      const other = getFirestore({ uid: 'operator2' });
+      const other = getFirestore({ uid: 'teammate2' });
       await assertFails(updateDoc(doc(other, 'contacts/contact1/threads/th20'), { body: 'hijacked' }));
-      const author = getFirestore({ uid: 'operator1' });
+      const author = getFirestore({ uid: 'teammate1' });
       await assertSucceeds(updateDoc(doc(author, 'contacts/contact1/threads/th20'), { body: 'edited' }));
     });
 
     it('rejects changing immutable fields (from/kind) via update', async () => {
       await seedThreadUsers();
       await seedMsg('th30');
-      const author = getFirestore({ uid: 'operator1' });
+      const author = getFirestore({ uid: 'teammate1' });
       await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th30'), { kind: 'nudge' }));
       // `remindedAt` is written only by the reminder function (admin SDK); a
       // client may not mark its own ask or question reminded.
@@ -3928,7 +3893,7 @@ describeRules('Firestore Security Rules', () => {
     it('lets the author rewrite the body and stamp editedAt in one update', async () => {
       await seedThreadUsers();
       await seedMsg('th31');
-      const author = getFirestore({ uid: 'operator1' });
+      const author = getFirestore({ uid: 'teammate1' });
       await assertSucceeds(
         updateDoc(doc(author, 'contacts/contact1/threads/th31'), {
           body: 'edited',
@@ -3940,8 +3905,8 @@ describeRules('Firestore Security Rules', () => {
     it('refuses an edit that moves from or at, and an oversized editedAt', async () => {
       await seedThreadUsers();
       await seedMsg('th32');
-      const author = getFirestore({ uid: 'operator1' });
-      await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th32'), { from: 'operator2' }));
+      const author = getFirestore({ uid: 'teammate1' });
+      await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th32'), { from: 'teammate2' }));
       await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th32'), { at: new Date().toISOString() }));
       await assertFails(
         updateDoc(doc(author, 'contacts/contact1/threads/th32'), { body: 'x', editedAt: 'y'.repeat(41) }),
@@ -3954,7 +3919,7 @@ describeRules('Firestore Security Rules', () => {
     it('refuses a non-author rewrite that also stamps editedAt', async () => {
       await seedThreadUsers();
       await seedMsg('th33');
-      const other = getFirestore({ uid: 'operator2' });
+      const other = getFirestore({ uid: 'teammate2' });
       await assertFails(
         updateDoc(doc(other, 'contacts/contact1/threads/th33'), {
           body: 'hijacked',
@@ -3984,7 +3949,7 @@ describeRules('Firestore Security Rules', () => {
       const adminDb = getFirestore({ uid: 'admin1' });
       await assertSucceeds(getDoc(doc(adminDb, 'contacts/contact1/threads/team1')));
 
-      const operatorDb = getFirestore({ uid: 'operator1' });
+      const operatorDb = getFirestore({ uid: 'teammate1' });
       await assertFails(getDoc(doc(operatorDb, 'contacts/contact1/threads/team1')));
     });
 
@@ -3996,7 +3961,7 @@ describeRules('Firestore Security Rules', () => {
     it('refuses team-scope Discussion in the open threads collection, even from a Full-timer', async () => {
       await seedThreadUsers();
 
-      const operatorDb = getFirestore({ uid: 'operator1' });
+      const operatorDb = getFirestore({ uid: 'teammate1' });
       await assertFails(setDoc(doc(operatorDb, 'contacts/contact1/threads/team2'), newMsg({ scope: 'team' })));
 
       const adminDb = getFirestore({ uid: 'admin1' });
@@ -4007,7 +3972,6 @@ describeRules('Firestore Security Rules', () => {
       await seedThreadUsers();
       await testEnv.withSecurityRulesDisabled(async (c) => {
         const fs = c.firestore();
-        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
         await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/tied/threads/open1'), newMsg());
       });
@@ -4021,10 +3985,6 @@ describeRules('Firestore Security Rules', () => {
       await setDoc(doc(adminDb, 'contacts/tied/teamThreads/team1'), teamMsg).catch(() => undefined);
 
       const unfiltered = [
-        ['operator1', (db: ReturnType<typeof getFirestore>) => query(collectionGroup(db, 'threads'), orderBy('at', 'desc'))],
-        ['viewer1', (db: ReturnType<typeof getFirestore>) => query(collectionGroup(db, 'threads'), orderBy('at', 'desc'))],
-        ['operator1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
-        ['viewer1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
         ['manager1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
       ] as const;
       for (const [uid, q] of unfiltered) {
@@ -4061,7 +4021,7 @@ describeRules('Firestore Security Rules', () => {
         await seedThreadUsers();
         await seedTeam('seeded');
         const adminDb = getFirestore({ uid: 'admin1' });
-        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t2'), teamMsg({ from: 'operator1' })));
+        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t2'), teamMsg({ from: 'teammate1' })));
         await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t3'), teamMsg({ scope: null })));
         await assertFails(updateDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded'), { body: 'edited' }));
       });
@@ -4084,7 +4044,7 @@ describeRules('Firestore Security Rules', () => {
       it('keeps every other role out, even a Trainee tied to the person', async () => {
         await seedThreadUsers();
         await seedTeam('seeded');
-        for (const uid of ['operator1', 'viewer1', 'manager1']) {
+        for (const uid of ['manager1']) {
           const db = getFirestore({ uid });
           await assertFails(getDoc(doc(db, 'contacts/tied/teamThreads/seeded')));
           await assertFails(getDocs(query(collection(db, 'contacts', 'tied', 'teamThreads'))));
@@ -4106,18 +4066,11 @@ describeRules('Firestore Security Rules', () => {
       expect(adminIds).toContain('open4');
       expect(adminIds).toContain('team4');
 
-      // A Trainee (manager1) may not list the collection group at all; see
-      // 'Threads follow their contact's visibility'.
-      for (const nonAdminUid of ['operator1']) {
-        const nonAdminDb = getFirestore({ uid: nonAdminUid });
-        // Non-admins are denied when attempting to query team-scoped messages
-        await assertFails(getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', 'team'))));
-        // Non-admins can query general threads (scope null) and team-scoped messages are excluded
-        const nonAdminSnap = await getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', null)));
-        const nonAdminIds = nonAdminSnap.docs.map((d) => d.id);
-        expect(nonAdminIds).toContain('open4');
-        expect(nonAdminIds).not.toContain('team4');
-      }
+      // A Trainee may not list the collection group at all, team scope or not;
+      // see 'Threads follow their contact's visibility'.
+      const traineeDb = getFirestore({ uid: 'manager1' });
+      await assertFails(getDocs(query(collectionGroup(traineeDb, 'threads'), where('scope', '==', 'team'))));
+      await assertFails(getDocs(query(collectionGroup(traineeDb, 'threads'), where('scope', '==', null))));
     });
 
     // #1126 — a viewer may delete their own message; an admin may delete any.
@@ -4125,35 +4078,35 @@ describeRules('Firestore Security Rules', () => {
     describe('deleting a message', () => {
       it('lets the author delete their own message', async () => {
         await seedThreadUsers();
-        await seedMsg('del1', { from: 'operator1' });
-        const db = getFirestore({ uid: 'operator1' });
+        await seedMsg('del1', { from: 'teammate1' });
+        const db = getFirestore({ uid: 'teammate1' });
         await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del1')));
       });
 
       it('lets an admin delete anyone else\'s message', async () => {
         await seedThreadUsers();
-        await seedMsg('del2', { from: 'operator1' });
+        await seedMsg('del2', { from: 'teammate1' });
         const db = getFirestore({ uid: 'admin1' });
         await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del2')));
       });
 
       it('lets an admin delete a team-scope Full-timers message', async () => {
         await seedThreadUsers();
-        await seedMsg('del3', { from: 'operator1', scope: 'team' });
+        await seedMsg('del3', { from: 'teammate1', scope: 'team' });
         const db = getFirestore({ uid: 'admin1' });
         await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del3')));
       });
 
-      it('refuses another operator deleting a colleague\'s message', async () => {
+      it('refuses another teammate deleting a colleague\'s message', async () => {
         await seedThreadUsers();
-        await seedMsg('del4', { from: 'operator1' });
-        const db = getFirestore({ uid: 'operator2' });
+        await seedMsg('del4', { from: 'teammate1' });
+        const db = getFirestore({ uid: 'teammate2' });
         await assertFails(deleteDoc(doc(db, 'contacts/contact1/threads/del4')));
       });
 
       it('refuses a manager (Trainee) deleting a colleague\'s message', async () => {
         await seedThreadUsers();
-        await seedMsg('del5', { from: 'operator1' });
+        await seedMsg('del5', { from: 'teammate1' });
         const db = getFirestore({ uid: 'manager1' });
         await assertFails(deleteDoc(doc(db, 'contacts/contact1/threads/del5')));
       });
@@ -4194,44 +4147,40 @@ describeRules('Firestore Security Rules', () => {
     const seedRoles = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
       });
     };
 
-    it('R1: Operator can create a valid Rhythm', async () => {
+    it('R1: A Trainee can create a valid Rhythm', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'manager1' });
       await assertSucceeds(setDoc(doc(db, 'rhythms', 'r1'), validRhythm));
     });
 
-    it('R2: Approved viewer can read but not create', async () => {
+    it('R2: An unapproved account can neither read nor create', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'rhythms', 'r1'), validRhythm);
       });
-      const db = getFirestore({ uid: 'viewer1' });
-      await assertSucceeds(getDoc(doc(db, 'rhythms', 'r1')));
+      const db = getFirestore({ uid: 'pending1' });
+      await assertFails(getDoc(doc(db, 'rhythms', 'r1')));
       await assertFails(setDoc(doc(db, 'rhythms', 'rX'), validRhythm));
     });
 
-    it('R3: Operator can update a Rhythm, but only a manager can delete it', async () => {
+    it('R3: A Trainee can update and delete a Rhythm', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'rhythms', 'r1'), validRhythm);
       });
-      const opDb = getFirestore({ uid: 'operator1' });
-      await assertSucceeds(updateDoc(doc(opDb, 'rhythms', 'r1'), { roster: ['c1'] }));
-      await assertFails(deleteDoc(doc(opDb, 'rhythms', 'r1')));
-
       const mgrDb = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(mgrDb, 'rhythms', 'r1'), { roster: ['c1'] }));
       await assertSucceeds(deleteDoc(doc(mgrDb, 'rhythms', 'r1')));
     });
 
     it('R4: Rejects an invalid Rhythm (bad cadence / missing roster or term)', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'operator1' });
+      const db = getFirestore({ uid: 'manager1' });
       await assertFails(setDoc(doc(db, 'rhythms', 'rBad'), { ...validRhythm, cadence: { type: 'daily', days: [] } }));
       await assertFails(setDoc(doc(db, 'rhythms', 'rBad2'), { name: 'No roster', cadence: { type: 'weekly', days: [3] }, termStart: '2026-09-09', termEnd: '2026-12-23' }));
       await assertFails(setDoc(doc(db, 'rhythms', 'rBad3'), { name: '', cadence: { type: 'weekly', days: [3] }, roster: [], termStart: '2026-09-09', termEnd: '2026-12-23' }));
@@ -5656,10 +5605,9 @@ describeRules('Firestore Security Rules', () => {
         const fs = context.firestore();
         await setDoc(doc(fs, 'users', 'ft1'), { role: 'admin', approved: true });
         await setDoc(doc(fs, 'users', 'tr1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'op1'), { role: 'operator', approved: true });
         await setDoc(doc(fs, 'contacts', 'k1'), {
           name: 'Kind Test', email: 'kind@example.com',
-          createdBy: 'op1', coCreators: [], carers: [], visibleTo: ['ft1', 'tr1', 'op1'],
+          createdBy: 'tr1', coCreators: [], carers: [], visibleTo: ['ft1', 'tr1'],
         });
       });
     };
@@ -5701,7 +5649,7 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
       await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
         inChurchLife: true, isStudent: false,
-        kindSetBy: 'op1', kindSetAt: '2026-09-23T00:00:00.000Z',
+        kindSetBy: 'tr1', kindSetAt: '2026-09-23T00:00:00.000Z',
         updatedAt: serverTimestamp(), updatedBy: 'ft1', updatedByName: 'ft1',
       }));
     });
@@ -5711,14 +5659,6 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
       await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
         inChurchLife: true, isStudent: false, ...stamp('tr1'),
-      }));
-    });
-
-    it('refuses an operator', async () => {
-      await seedKind();
-      const db = getFirestore({ uid: 'op1', email: 'op1@test.com' });
-      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
-        inChurchLife: true, isStudent: true, ...stamp('op1'),
       }));
     });
 
@@ -5738,12 +5678,12 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('still lets an operator make an ordinary profile edit (expression budget)', async () => {
+    it('still lets a Trainee make an ordinary profile edit (expression budget)', async () => {
       await seedKind();
-      const db = getFirestore({ uid: 'op1', email: 'op1@test.com' });
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'k1'), {
         notes: 'an ordinary edit', updatedAt: serverTimestamp(),
-        updatedBy: 'op1', updatedByName: 'Op One',
+        updatedBy: 'tr1', updatedByName: 'Tr One',
       }));
     });
 

@@ -190,7 +190,7 @@ describe('AuthProvider', () => {
         return Promise.resolve({
           exists: () => true,
           data: () => ({
-            role: 'operator',
+            role: 'manager',
             approved: true,
           }),
         });
@@ -212,16 +212,16 @@ describe('AuthProvider', () => {
           displayName: 'Invited User',
           photoURL: 'photo.jpg',
           approved: true,
-          role: 'operator',
+          role: 'manager',
         })
       );
       expect(deleteDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'invitations/invited@example.com' })
       );
       expect(screen.getByText('User: invited@example.com')).toBeInTheDocument();
-      expect(screen.getByText('role: operator')).toBeInTheDocument();
+      expect(screen.getByText('role: manager')).toBeInTheDocument();
       expect(screen.getByText('isApproved: true')).toBeInTheDocument();
-      expect(screen.getByText('isManager: false')).toBeInTheDocument();
+      expect(screen.getByText('isManager: true')).toBeInTheDocument();
       expect(screen.getByText('isAdmin: false')).toBeInTheDocument();
     });
   });
@@ -242,7 +242,7 @@ describe('AuthProvider', () => {
     (getDoc as any).mockResolvedValue({
       exists: () => true,
       data: () => ({
-        role: 'operator', // not admin in firestore
+        role: 'manager', // not admin in firestore
         approved: false,   // not approved in firestore
       })
     });
@@ -284,8 +284,8 @@ describe('AuthProvider', () => {
     (getDoc as any).mockResolvedValue({
       exists: () => true,
       data: () => ({
-        role: 'viewer',
-        approved: true,
+        role: 'manager',
+        approved: false,
       })
     });
 
@@ -296,12 +296,13 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('role: viewer')).toBeInTheDocument();
+      expect(screen.getByText('role: manager')).toBeInTheDocument();
+      expect(screen.getByText('isApproved: false')).toBeInTheDocument();
     });
 
     expect(mockOnSnapshotCallback).not.toBeNull();
 
-    // Trigger onSnapshot update changing role to manager, wrapped in act
+    // Trigger onSnapshot update approving them, wrapped in act
     act(() => {
       mockOnSnapshotCallback({
         exists: () => true,
@@ -314,8 +315,52 @@ describe('AuthProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByText('role: manager')).toBeInTheDocument();
+      expect(screen.getByText('isApproved: true')).toBeInTheDocument();
       expect(screen.getByText('isManager: true')).toBeInTheDocument();
       expect(screen.getByText('isAdmin: false')).toBeInTheDocument();
+    });
+  });
+
+  // Student and Community are cut. A stored legacy role reads as no role, and
+  // with no role there is nothing to be approved for: the person lands on the
+  // pending-approval screen instead of an app with no routes (no crash).
+  it.each(['operator', 'viewer'])('reads a stored legacy %s role as no role, unapproved', async (legacy) => {
+    const mockUser = {
+      uid: 'legacy-uid',
+      email: 'legacy@example.com',
+      displayName: 'Legacy User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} })
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(mockUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({ role: legacy, approved: true }),
+    });
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('User: legacy@example.com')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/^role:/).textContent).toBe('role: ');
+    expect(screen.getByText('isApproved: false')).toBeInTheDocument();
+
+    // The live listener reads the same way.
+    act(() => {
+      mockOnSnapshotCallback({ exists: () => true, data: () => ({ role: legacy, approved: true }) });
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/^role:/).textContent).toBe('role: ');
+      expect(screen.getByText('isApproved: false')).toBeInTheDocument();
     });
   });
 
@@ -434,7 +479,7 @@ describe('AuthProvider', () => {
           <div>role: {role}</div>
           <div>actualRole: {actualRole}</div>
           <div>ownerViewRole: {ownerViewRole || 'none'}</div>
-          <button onClick={() => setOwnerViewRole('operator')}>Set Student</button>
+          <button onClick={() => setOwnerViewRole('manager')}>Set Trainee</button>
           <button onClick={() => setOwnerViewRole(null)}>Reset</button>
         </div>
       );
@@ -452,13 +497,13 @@ describe('AuthProvider', () => {
       expect(screen.getByText('actualRole: admin')).toBeInTheDocument();
     });
 
-    // Switch view to operator (Student)
-    fireEvent.click(screen.getByRole('button', { name: 'Set Student' }));
+    // Switch view to manager (Trainee)
+    fireEvent.click(screen.getByRole('button', { name: 'Set Trainee' }));
 
     await waitFor(() => {
-      expect(screen.getByText('role: operator')).toBeInTheDocument();
+      expect(screen.getByText('role: manager')).toBeInTheDocument();
       expect(screen.getByText('actualRole: admin')).toBeInTheDocument();
-      expect(screen.getByText('ownerViewRole: operator')).toBeInTheDocument();
+      expect(screen.getByText('ownerViewRole: manager')).toBeInTheDocument();
     });
 
     // Reset view
@@ -543,7 +588,7 @@ describe('AuthProvider', () => {
     (getDoc as any).mockResolvedValue({
       exists: () => true,
       data: () => ({
-        role: 'viewer',
+        role: 'manager',
         approved: true,
       })
     });
@@ -578,8 +623,8 @@ describe('AuthProvider', () => {
   });
 
   it('clears impersonation and ownerViewRole from localStorage on logOut', async () => {
-    localStorage.setItem('cisa.impersonate.v1', 'persona:student');
-    localStorage.setItem('cisa_owner_view_role', 'operator');
+    localStorage.setItem('cisa.impersonate.v1', 'staff:cisa-trainee');
+    localStorage.setItem('cisa_owner_view_role', 'manager');
 
     const adminUser = {
       uid: 'admin-uid',

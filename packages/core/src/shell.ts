@@ -1,25 +1,22 @@
 // The mobile app's SHELL — which navigation frame a role opens into, and the
 // copy the trainee's queue chrome wears.
 //
-// The design project (`MOBILE-V2.md`, `views/mobile/{m2,member,ft}.jsx`) builds
-// three shells, not one: the trainee has NO tab bar (a ☰ drawer over a
-// full-screen queue), members get four tabs, and the full-timer gets four
-// different ones. Deciding that here — beside `pickLandingForRole`, which
-// decides which HOME each role sees — keeps the tab bar and the screens that
-// need a back row reading from one source.
+// The design project (`MOBILE-V2.md`, `views/mobile/{m2,ft}.jsx`) builds two
+// shells, not one: the trainee has NO tab bar (a ☰ drawer over a full-screen
+// queue), and the full-timer gets four tabs. Deciding that here — beside
+// `pickLandingForRole`, which decides which HOME each role sees — keeps the
+// tab bar and the screens that need a back row reading from one source.
 import type { AppRole } from "./permissions";
 import { pickLandingForRole } from "./permissions";
-import { MEMBER_TABS, memberRoleOf } from "./memberHome";
 import { firstName } from "./history";
 
-export type ShellKind = "queue" | "member" | "ft";
+export type ShellKind = "queue" | "ft";
 
-/** Trainee → the focus queue behind a drawer; student/community → the member
- *  tabs; everyone else (full-timer, and any unrecognized role) → the FT tabs. */
+/** Trainee → the focus queue behind a drawer; everyone else (full-timer, and
+ *  any unrecognized role) → the FT tabs. */
 export function shellForRole(role: AppRole | string | null | undefined): ShellKind {
   const landing = pickLandingForRole(role ?? null);
   if (landing === "trainee") return "queue";
-  if (landing === "student" || landing === "community") return "member";
   return "ft";
 }
 
@@ -33,27 +30,18 @@ export interface ShellTab {
  * The tabs a role sees, in the design's order. Empty for the trainee — that
  * shell has no bar at all, so the queue fills the screen.
  *
- * `views/mobile/member.jsx` (Today/What's on · Prayer · Messages · You) and
  * `views/mobile/ft.jsx` `FT_TABS` (Today · People · Messages · More).
  */
 export function tabsForRole(role: AppRole | string | null | undefined): ShellTab[] {
   const shell = shellForRole(role);
   if (shell === "queue") return [];
-  if (shell === "ft") {
-    return [
-      { name: "index", title: "Today" },
-      { name: "people", title: "People" },
-      { name: "messages", title: "Messages" },
-      { name: "more", title: "More" },
-    ];
-  }
-  // The labels ("Today" vs "What's on") already live in MEMBER_TABS; this only
-  // says which route each one sits on.
-  const memberRole = memberRoleOf(role as AppRole) ?? "student";
-  return MEMBER_TAB_ROUTES.map((name, i) => ({ name, title: MEMBER_TABS[memberRole][i] }));
+  return [
+    { name: "index", title: "Today" },
+    { name: "people", title: "People" },
+    { name: "messages", title: "Messages" },
+    { name: "more", title: "More" },
+  ];
 }
-
-const MEMBER_TAB_ROUTES = ["index", "prayer", "messages", "more"];
 
 /** True when the role reaches this screen by pushing onto it rather than by
  *  tapping a tab — i.e. it needs its own back row. */

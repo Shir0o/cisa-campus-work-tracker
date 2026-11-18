@@ -246,7 +246,7 @@ export default function FeedbackFAB() {
     scope: 'compose',
     description: 'Send your note',
     shortcut: { key: 'Enter', mod: true },
-    minRole: 'viewer',
+    minRole: 'manager',
     when: (e) => e.target === areaRef.current,
     available: () => isOpen,
     handler: () => submit(),

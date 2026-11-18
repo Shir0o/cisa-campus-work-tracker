@@ -759,7 +759,7 @@ export default function ContactDetailsModal({
       }),
     [currentContact, interactions, prayers, stages, teamMembers, isAdmin, role, t],
   );
-  const canUpdatePrayers = isAdmin || hasMinRole(role, "operator");
+  const canUpdatePrayers = isAdmin || hasMinRole(role, "manager");
 
   if (isOpen && !hasAccess) {
     return (
@@ -907,7 +907,6 @@ export default function ContactDetailsModal({
     currentStageInfo,
     sinceText,
     carerNames,
-    role,
     isAdmin,
     showDelete: canDelete,
     showRelease: canReleaseContact(currentUid, currentContact),

@@ -4,9 +4,9 @@ import { render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { Sheet } from './Sheet';
 import { Screen } from './index';
-import { MemberScreen, MemberRoom } from '../member/MemberScreen';
+import { MemberScreen } from '../member/MemberScreen';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
-import { V2TextArea } from '../v2/Widget';
+import { Room, V2TextArea } from '../v2/Widget';
 import { MULTILINE_FIELD_MAX_HEIGHT, useFieldReveal } from './KeyboardField';
 
 jest.mock('./KeyboardAvoidingView', () => {
@@ -75,14 +75,14 @@ describe('General Mobile Keyboard Avoidance (#1704)', () => {
     expect(queryByTestId('keyboard-avoiding-view')).toBeTruthy();
   });
 
-  it('MemberScreen provides KeyboardAvoidingView so member flows (notes, open your home) are pushed up', async () => {
+  it('MemberScreen provides KeyboardAvoidingView so its flows (Your reports) are pushed up', async () => {
     const { queryByTestId } = await render(
       <ThemeProvider>
-        <MemberRoom>
+        <Room room="queue">
           <MemberScreen>
             <TextInput placeholder="Member input" />
           </MemberScreen>
-        </MemberRoom>
+        </Room>
       </ThemeProvider>,
     );
 
@@ -121,11 +121,11 @@ describe('Keyboard reveal, not just padding (#1943)', () => {
   it('MemberScreen hands the fields inside it a reveal', async () => {
     const { queryByTestId } = await render(
       <ThemeProvider>
-        <MemberRoom>
+        <Room room="queue">
           <MemberScreen>
             <RevealProbe />
           </MemberScreen>
-        </MemberRoom>
+        </Room>
       </ThemeProvider>,
     );
 

@@ -168,7 +168,6 @@ The spatial model is strictly designed for handheld ergonomics and vertical scro
 - **Role Shells:**
   - **Queue Shell (`queue`):** For Trainees. Focused single-card queue view (`QueueScreen`) with on-campus status strip.
   - **Full-Timer Shell (`ft`):** For Administrators. Compact overview dashboard (`FtHomeScreen`) featuring widget tiles and stats glance.
-  - **Member Shell:** For Students. Rhythms feed (`MemberHomeScreen`) displaying gatherings and prayer burdens.
 - **Touch Target Floor:** Every interactive button, chip, and list row satisfies at least **44×44 pt** on iOS (and 48×48 dp on Android).
 - **Padding & Gutters:** Screen containers use 16px (`lg`) horizontal margins; card interiors use 20px padding.
 

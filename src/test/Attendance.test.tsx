@@ -145,6 +145,7 @@ describe('Attendance', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
       isAdmin: true,
+      role: 'admin',
     });
 
     (useLayout as any).mockReturnValue({
@@ -452,9 +453,12 @@ describe('Attendance', () => {
     });
 
     it('hides add-to-roster from people who are not Full-timers but still shows the walk-in tag', async () => {
+      // The roster button is gated on isAdmin, not on the role that scopes
+      // which people load; keep the roster visible and drop isAdmin alone.
       (useAuth as any).mockReturnValue({
         user: { uid: 'u-test', displayName: 'Test User' },
         isAdmin: false,
+        role: 'admin',
       });
       await openFirstGathering();
       expect(screen.getByText('walk-in')).toBeInTheDocument();

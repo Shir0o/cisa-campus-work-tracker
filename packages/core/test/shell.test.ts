@@ -19,11 +19,6 @@ describe('shellForRole', () => {
     expect(shellForRole('manager')).toBe('queue');
   });
 
-  it('gives both member roles the member shell', () => {
-    expect(shellForRole('operator')).toBe('member');
-    expect(shellForRole('viewer')).toBe('member');
-  });
-
   it('falls through to the full-timer shell for admin and for no role', () => {
     expect(shellForRole('admin')).toBe('ft');
     expect(shellForRole(null)).toBe('ft');
@@ -45,28 +40,6 @@ describe('tabsForRole', () => {
     ]);
   });
 
-  it('gives a student Today · Prayer · Messages · You', () => {
-    expect(tabsForRole('operator')).toEqual([
-      { name: 'index', title: 'Today' },
-      { name: 'prayer', title: 'Prayer' },
-      { name: 'messages', title: 'Messages' },
-      { name: 'more', title: 'You' },
-    ]);
-  });
-
-  it("opens Community on What's on instead of Today", () => {
-    expect(tabsForRole('viewer')[0]).toEqual({ name: 'index', title: "What's on" });
-  });
-
-  it('keeps the directory and the logging tab away from members', () => {
-    for (const role of ['operator', 'viewer']) {
-      const names = tabsForRole(role).map((t) => t.name);
-      expect(names).not.toContain('people');
-      expect(names).not.toContain('log');
-      expect(names).not.toContain('journey');
-    }
-  });
-
   it('drops the prayer tab for both staff roles', () => {
     expect(tabsForRole('admin').map((t) => t.name)).not.toContain('prayer');
     expect(tabsForRole('manager').map((t) => t.name)).not.toContain('prayer');
@@ -83,7 +56,6 @@ describe('isPushedScreen', () => {
 
   it('is false for a screen the role has as a tab', () => {
     expect(isPushedScreen('admin', 'people')).toBe(false);
-    expect(isPushedScreen('operator', 'prayer')).toBe(false);
   });
 });
 

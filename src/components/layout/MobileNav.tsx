@@ -3,14 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Contact,
-  HeartHandshake,
   MessageSquare,
   MessageCircleQuestion,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
-import { hasMinRole, canAccessRoute, AppRole } from '../../lib/permissions';
+import { canAccessRoute } from '../../lib/permissions';
 import { sectionHrefFor } from '../../lib/navTrail';
 import { useI18n } from '../LanguageProvider';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
@@ -106,10 +105,9 @@ export default function MobileNav() {
   const { t } = useI18n();
   const { pathname } = useLocation();
   const section = sectionHrefFor(pathname);
-  const isOperator = hasMinRole(role as AppRole, 'operator');
   const isAdmin = role === 'admin';
   // The route allowlist, not a role rung: Questions opens to a trainee manager
-  // and above, and a Student never sees it (#1806).
+  // and above (#1806).
   const canSeeQuestions = canAccessRoute(role, '/questions');
   const uid = effectiveUserId || user?.uid || null;
 
@@ -160,21 +158,12 @@ export default function MobileNav() {
         />
       )}
 
-      {isOperator ? (
-        <Destination
-          to="/directory"
-          label={t('nav.directory', 'People')}
-          icon={Contact}
-          active={section === '/directory'}
-        />
-      ) : (
-        <Destination
-          to="/prayer"
-          label={t('nav.prayers', 'On our hearts')}
-          icon={HeartHandshake}
-          active={section === '/prayer'}
-        />
-      )}
+      <Destination
+        to="/directory"
+        label={t('nav.directory', 'People')}
+        icon={Contact}
+        active={section === '/directory'}
+      />
     </nav>
   );
 }

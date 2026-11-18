@@ -27,8 +27,8 @@
  * "exactly the trainee's visible set".
  *
  * Folds in `impersonation-personas.spec.ts` (deleted): the owner-only eye
- * button, the four role-preview chips, and chip -> nav scoping with Back to my
- * view.
+ * button, the two role-preview chips (Student and Community are cut), and
+ * chip -> nav scoping with Back to my view.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -98,19 +98,7 @@ test.describe('Impersonation journey (#1476)', () => {
     await expect(page.getByRole('button', { name: EYE_BTN })).toHaveCount(0);
   });
 
-  test('a student has no "See as their view" eye', async ({ page }) => {
-    await signInAs(page, 'student');
-    await gotoHome(page);
-    await expect(page.getByRole('button', { name: EYE_BTN })).toHaveCount(0);
-  });
-
-  test('a community member has no "See as their view" eye', async ({ page }) => {
-    await signInAs(page, 'community');
-    await gotoHome(page);
-    await expect(page.getByRole('button', { name: EYE_BTN })).toHaveCount(0);
-  });
-
-  test('the modal shows the four role-preview chips', async ({ page }) => {
+  test('the modal shows exactly the two role-preview chips', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await gotoHome(page);
     await openImpersonation(page);
@@ -120,8 +108,9 @@ test.describe('Impersonation journey (#1476)', () => {
     const chipBar = page.getByRole('dialog').getByText(/^role preview:$/i).locator('xpath=ancestor::div[.//button][1]');
     await expect(chipBar.getByRole('button', { name: /^full-timer$/i })).toBeVisible();
     await expect(chipBar.getByRole('button', { name: /^trainee$/i })).toBeVisible();
-    await expect(chipBar.getByRole('button', { name: /^student$/i })).toBeVisible();
-    await expect(chipBar.getByRole('button', { name: /^community$/i })).toBeVisible();
+    // Negative: the cut Student and Community chips are gone.
+    await expect(chipBar.getByRole('button', { name: /^student$/i })).toHaveCount(0);
+    await expect(chipBar.getByRole('button', { name: /^community$/i })).toHaveCount(0);
   });
 
   test('the Trainee role chip scopes the nav and Back to my view resets it', async ({ page }) => {
@@ -152,19 +141,6 @@ test.describe('Impersonation journey (#1476)', () => {
     await page.keyboard.press('Escape');
     const navReset = await nav.getByRole('link').allInnerTexts();
     expect(navReset.some((l) => /coordination notes/i.test(l))).toBe(true);
-  });
-
-  test('the Student role chip scopes the nav', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await gotoHome(page);
-    await openImpersonation(page);
-    const chipBar = page.getByRole('dialog').getByText(/^role preview:$/i).locator('xpath=ancestor::div[.//button][1]');
-    await chipBar.getByRole('button', { name: /^student$/i }).click();
-    await page.keyboard.press('Escape');
-
-    const navAsText = (await page.getByLabel('Main Navigation').getByRole('link').allInnerTexts()).join(' | ');
-    expect(navAsText).toMatch(/people/i);
-    expect(navAsText).toMatch(/on our hearts|prayer/i);
   });
 
   // ── The journey ─────────────────────────────────────────────────────────

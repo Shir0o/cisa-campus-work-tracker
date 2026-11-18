@@ -9,7 +9,7 @@ export interface TestUser {
   email: string;
   displayName: string;
   photoURL: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
+  role: 'admin' | 'manager';
   isAdmin: boolean;
   isManager: boolean;
   isApproved: boolean;
@@ -48,23 +48,5 @@ export const TEST_USERS = {
     role: 'manager' as const,
     isAdmin: false,
     isManager: true,
-  },
-  operator: {
-    ...base,
-    uid: 'test-uid-operator',
-    email: 'operator@test.cisa',
-    displayName: 'Test Operator',
-    role: 'operator' as const,
-    isAdmin: false,
-    isManager: false,
-  },
-  viewer: {
-    ...base,
-    uid: 'test-uid-viewer',
-    email: 'viewer@test.cisa',
-    displayName: 'Test Viewer',
-    role: 'viewer' as const,
-    isAdmin: false,
-    isManager: false,
   },
 } satisfies Record<string, TestUser>;

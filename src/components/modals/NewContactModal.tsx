@@ -33,7 +33,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   const { user, isAdmin, role } = useAuth();
   const { t } = useLanguage();
   const standardTags = useStandardTags();
-  if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({

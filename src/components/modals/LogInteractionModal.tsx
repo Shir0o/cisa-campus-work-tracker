@@ -44,7 +44,6 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
   const { t } = useLanguage();
   const isPhone = useMediaQuery('(max-width: 768px)');
   const [saveError, setSaveError] = useState<'offline' | 'failed' | null>(null);
-  if (role === 'viewer') return null;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);

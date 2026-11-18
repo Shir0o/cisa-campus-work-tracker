@@ -33,7 +33,7 @@ export interface HelpManifest {
   pages: HelpPage[];
 }
 
-const CANONICAL_ROLES: AppRole[] = ['admin', 'manager', 'operator', 'viewer'];
+const CANONICAL_ROLES: AppRole[] = ['admin', 'manager'];
 
 /** Parses a help page's minimal YAML frontmatter and its markdown body. */
 export function parseHelpMarkdown(raw: string): HelpParsedPage {

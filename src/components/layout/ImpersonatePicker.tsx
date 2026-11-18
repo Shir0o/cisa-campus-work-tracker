@@ -6,8 +6,6 @@ import { ImpersonateTarget } from '../../types';
 import {
   DEFAULT_TEST_ACCOUNTS,
   impStaffTarget,
-  impPersonaTarget,
-  impContactTarget,
   impScope,
 } from '../../lib/impersonate';
 import { visibleContacts as calcVisibleContacts } from '../../lib/permissions';
@@ -80,7 +78,6 @@ export default function ImpersonatePicker({
 }: ImpersonatePickerProps) {
   const { user } = useAuth();
   const [q, setQ] = useState('');
-  const [openAllRoster, setOpenAllRoster] = useState(false);
   const [fetchedUsers, setFetchedUsers] = useState<any[]>([]);
   const [fetchedContacts, setFetchedContacts] = useState<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,21 +155,6 @@ export default function ImpersonatePicker({
       note: 'Staff, trainees, and cisa-* test accounts — the workspace as they see it.',
       items: filteredTeam.map(impStaffTarget),
     },
-    {
-      id: 'members',
-      label: 'Students & friends',
-      note: 'The two member views.',
-      items: [impPersonaTarget('student'), impPersonaTarget('community')].filter(
-        Boolean,
-      ) as ImpersonateTarget[],
-    },
-    {
-      id: 'roster',
-      label: 'Anyone on the roster',
-      note: "A real student's own small window into CISA.",
-      items: rosterSource.map(impContactTarget),
-      collapse: 6,
-    },
   ];
 
   const needle = q.trim().toLowerCase();
@@ -183,10 +165,7 @@ export default function ImpersonatePicker({
         ? g.items.filter((t) => (t.name + ' ' + t.sub + ' ' + t.note).toLowerCase().includes(needle))
         : g.items;
 
-      const shown =
-        !needle && g.collapse && !openAllRoster ? items.slice(0, g.collapse) : items;
-
-      return { ...g, items, shown };
+      return { ...g, items };
     })
     .filter((g) => g.items.length > 0);
 
@@ -222,7 +201,7 @@ export default function ImpersonatePicker({
             <p className="text-xs text-on-surface-variant">{g.note}</p>
           </div>
           <div className="space-y-2">
-            {g.shown.map((t) => {
+            {g.items.map((t) => {
               const staffId = t.persona?.staffId;
               const visibleCount = t.role === 'manager' ? calcVisibleContacts('manager', staffId, rosterSource).length : undefined;
               return (
@@ -237,15 +216,6 @@ export default function ImpersonatePicker({
               );
             })}
           </div>
-
-          {g.shown.length < g.items.length && (
-            <button
-              onClick={() => setOpenAllRoster(true)}
-              className="text-xs font-medium text-accent hover:underline pt-1"
-            >
-              Show the rest of the roster ({g.items.length - g.shown.length} more)
-            </button>
-          )}
         </div>
       ))}
 
