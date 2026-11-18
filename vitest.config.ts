@@ -12,8 +12,9 @@ export default defineConfig({
     // e2e/ holds Playwright specs — run those via `npm run test:e2e`, not Vitest.
     // apps/** and packages/** are separate projects with their own test runners
     // (e.g. `cd packages/core && npm test`) — don't pull them into the web app's
-    // run or they'd skew its coverage totals.
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'apps/**', 'packages/**', '.worktrees/**', '.dsh-worktrees/**'],
+    // run or they'd skew its coverage totals. mcp/ is likewise its own package:
+    // run its suite with `npm --prefix mcp test`.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'apps/**', 'packages/**', 'mcp/**', '.worktrees/**', '.dsh-worktrees/**'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },

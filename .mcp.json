@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "cisa-work-tracker": {
+      "command": "./mcp/node_modules/.bin/tsx",
+      "args": ["mcp/src/stdio.ts"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}",
+        "FIREBASE_PROJECT_ID": "sac-campus-hub",
+        "FIREBASE_DATABASE_ID": "prod"
+      }
+    }
+  }
+}

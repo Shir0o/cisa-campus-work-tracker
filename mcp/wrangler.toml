@@ -1,0 +1,23 @@
+name = "cisa-work-tracker-mcp"
+main = "worker/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Created via: npx wrangler kv namespace create cisa-work-tracker-mcp-OAUTH_KV
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "e0effbecd72c43e88aef892d80fb0f1a"
+
+[vars]
+FIREBASE_PROJECT_ID = "sac-campus-hub"
+FIREBASE_DATABASE_ID = "prod"
+MCP_MEMBER_ID = "cisa-team"
+
+# Secrets (never in this file):
+#   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT   # the service-account JSON, one line
+#   npx wrangler secret put MCP_ACCESS_PASSWORD        # the consent-screen password
+#
+# For local `wrangler dev`, put the same two values in mcp/.dev.vars.
+
+[observability]
+enabled = true
