@@ -9,8 +9,7 @@
     "src/lib/combineContactsPlan.ts",
     "src/lib/duplicateContact.ts",
     "src/lib/permissions.ts",
-    "src/lib/attention.ts",
-    "src/lib/asks.ts"
+    "src/lib/attention.ts"
   ],
   "reporters": [
     "html",

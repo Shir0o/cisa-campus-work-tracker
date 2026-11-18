@@ -2,17 +2,12 @@
  * The Impersonation journey (#1476).
  *
  * A Full-timer uses "See as their view" to step into a real Trainee's view and
- * must see EXACTLY that Trainee's visible set — the same People, My Day and
- * Questions the trainee journey asserts — and opening a contact there must not
- * crash. "Back to my view" restores the Full-timer.
+ * must see EXACTLY that Trainee's visible set — the same People and My Day the
+ * trainee journey asserts — and opening a contact there must not crash. "Back
+ * to my view" restores the Full-timer.
  *
  * Escape rows (docs/research/e2e-coverage-audit.md):
- *  - row 4  — Questions channel permission-denied under "See as their view"
- *             (#603). The staff asks feed is read unscoped, so an impersonated
- *             trainee still reads the team's questions and a post round-trips.
- *             Reverting `Questions.tsx` to scope the read to the impersonated
- *             uid (subscribeStaffAsks with `{ isStaff: false }`) empties the
- *             feed, so the question the Full-timer just posted is absent.
+ *  - row 4  — retired with Questions for the team (cut-or-keep §5).
  *  - row 7  — "See as their view" showed people the trainee can't see, and the
  *             owner's own name (#559 / #679). Directory and My Day scope by the
  *             EFFECTIVE uid, and the "seeing as" banner names the impersonated
@@ -206,30 +201,5 @@ test.describe('Impersonation journey (#1476)', () => {
     await page.getByRole('button', { name: /back to my view/i }).click();
     await expect(page.getByText(/seeing CISA as/i)).toHaveCount(0);
     await expect(page.getByRole('main').getByText(UNTIED_CONTACT)).toBeVisible({ timeout: 10_000 });
-  });
-
-  test('the Questions feed round-trips under impersonation without a permission error', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await gotoHome(page);
-    await impersonateTrainee(page);
-
-    // Row 4: the staff asks feed is read unscoped, so the route loads and a
-    // question posted here commits and reads back.
-    await clickNavLink(page, 'Questions');
-    await expect(page).toHaveURL(/\/questions$/);
-    await expect(page.getByRole('heading', { name: 'Questions for Full-timers' })).toBeVisible({ timeout: 15_000 });
-
-    const question = `E2E impersonated-trainee question ${Date.now()}: who covers Friday?`;
-    await page.getByRole('button', { name: 'Ask a Full-timer', exact: true }).click();
-    const composer = page.getByPlaceholder(/What do you want to ask/i);
-    await expect(composer).toBeVisible({ timeout: 5_000 });
-    await composer.fill(question);
-    await composer.press('Meta+Enter');
-    // The panel only closes after the write resolves.
-    await expect(composer).toBeHidden({ timeout: 10_000 });
-
-    await page.getByRole('button', { name: /^All/ }).click();
-    await expect(page.getByRole('article').filter({ hasText: question })).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 });

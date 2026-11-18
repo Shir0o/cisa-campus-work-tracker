@@ -15,22 +15,25 @@ const ask = (over: Partial<ReminderCandidate> = {}): ReminderCandidate => ({
   at: "2026-06-01T18:00:00.000Z",
   closedAt: null,
   remindedAt: null,
-  replies: [],
   ...over,
 });
 
-const question = (over: Partial<ReminderCandidate> = {}): ReminderCandidate => ({
-  contactId: "c1",
-  messageId: "q1",
-  kind: "question",
-  from: "asker",
-  body: "Did he come to the appointment?",
-  at: "2026-06-01T18:00:00.000Z",
-  closedAt: null,
-  remindedAt: null,
-  replies: [],
-  ...over,
-});
+// Questions for the team is cut (cut-or-keep §5): an old Thread question can
+// still sit in the data, but it is no longer reminded. The kind is gone from the
+// type, so the fixture says it with a cast.
+const legacyQuestion = (over: Partial<ReminderCandidate> = {}): ReminderCandidate =>
+  ({
+    contactId: "c1",
+    messageId: "q1",
+    kind: "question",
+    from: "asker",
+    body: "Did he come to the appointment?",
+    at: "2026-06-01T18:00:00.000Z",
+    closedAt: null,
+    remindedAt: null,
+    replies: [],
+    ...over,
+  }) as unknown as ReminderCandidate;
 
 describe("campusCalendarDaysSince", () => {
   it("counts whole calendar days in campus time", () => {
@@ -61,29 +64,19 @@ describe("remindersDue", () => {
     expect(remindersDue([reminded], new Date("2026-06-05T18:00:00.000Z"))).toEqual([]);
   });
 
-  it("reminds a question with no Thread reply after three days", () => {
-    const due = remindersDue([question()], new Date("2026-06-04T18:00:00.000Z"));
-    expect(due).toHaveLength(1);
-    expect(due[0].notification.userId).toBe("asker");
+  it("no longer reminds a question, however long it has gone unanswered", () => {
+    expect(remindersDue([legacyQuestion()], new Date("2026-06-04T18:00:00.000Z"))).toEqual([]);
+    expect(remindersDue([legacyQuestion()], new Date("2026-07-04T18:00:00.000Z"))).toEqual([]);
   });
 
-  it("does not remind a question that someone has replied to", () => {
-    const answered = question({ replies: [{ from: "teammate", at: "2026-06-02T18:00:00.000Z" }] });
-    expect(remindersDue([answered], new Date("2026-06-04T18:00:00.000Z"))).toEqual([]);
-  });
-
-  it("does not count the asker's own reply as an answer", () => {
-    const selfReply = question({ replies: [{ from: "asker", at: "2026-06-02T18:00:00.000Z" }] });
-    expect(remindersDue([selfReply], new Date("2026-06-04T18:00:00.000Z"))).toHaveLength(1);
-  });
-
-  it("does not remind a question before three days", () => {
-    expect(remindersDue([question()], new Date("2026-06-03T18:00:00.000Z"))).toEqual([]);
+  it("still reminds an ask alongside a question that is skipped", () => {
+    const due = remindersDue([legacyQuestion(), ask()], new Date("2026-06-04T18:00:00.000Z"));
+    expect(due.map((d) => d.source.messageId)).toEqual(["m1"]);
   });
 
   it("addresses the bell entry to the asker alone", () => {
     const [due] = remindersDue(
-      [ask({ from: "asker" }), question({ messageId: "q2", from: "other" })],
+      [ask({ from: "asker" }), ask({ messageId: "m2", from: "other" })],
       new Date("2026-06-04T18:00:00.000Z"),
     );
     expect(due.notification.userId).toBe("asker");
@@ -96,13 +89,10 @@ describe("remindersDue", () => {
     expect(due.notification.link).toBe("/people/c1?tab=thread");
   });
 
-  it("says nobody followed up on an ask, and no reply yet on a question", () => {
+  it("says nobody followed up on an ask", () => {
     const [askDue] = remindersDue([ask()], new Date("2026-06-04T18:00:00.000Z"));
-    const [qDue] = remindersDue([question()], new Date("2026-06-04T18:00:00.000Z"));
     expect(askDue.notification.title).toMatch(/nobody followed up/i);
-    expect(qDue.notification.title).toMatch(/no reply/i);
     expect(askDue.notification.message).toContain("Rio");
-    expect(qDue.notification.message).toContain("appointment");
   });
 
   it("still counts three calendar days across a daylight-saving boundary", () => {

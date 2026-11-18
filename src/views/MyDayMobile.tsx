@@ -24,7 +24,6 @@ import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/pr
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 import OnYouCard from '../components/landing/OnYouCard';
 import PointerCard from '../components/landing/PointerCard';
-import QuestionsPointerCard from '../components/landing/QuestionsPointerCard';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { greetingKey } from '../components/landing/helpers';
 import { useLanguage } from '../components/LanguageProvider';
@@ -296,16 +295,12 @@ export default function MyDayMobile({
         </div>
       )}
 
-      {/* ── Questions for the team — a door, not a stack (issue 1859,
-          ADR 0015), and On you + the pointer cards (issue 943). The 1,691px of
-          inline trainee questions now lives on /questions; the phone keeps one
-          44px line so the reader's own work starts in the first screen. Mobile
-          gets the same On you and pointer cards as desktop and loses its inline
-          team section; the bottom nav bar is unchanged, and each pointer card is
-          the only door to its page on mobile. ── */}
+      {/* ── On you + the pointer cards (issue 943). Mobile gets the same On you
+          and pointer cards as desktop and loses its inline team section; the
+          bottom nav bar is unchanged, and each pointer card is the only door to
+          its page on mobile. ── */}
       {uid && (
         <div className="px-5 mt-2 flex flex-col gap-3">
-          {role === 'admin' && <QuestionsPointerCard />}
           <OnYouCard
             contacts={contacts}
             personalContactIds={personalContactIds}

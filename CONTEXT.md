@@ -80,10 +80,6 @@ _Avoid_: Channel, broadcast
 The Interaction type for reaching a person by text, DM, or any other written message outside the app.
 _Avoid_: Chat / Message, Message
 
-**Questions for Full-timers**:
-The Full-timer destination for trainee questions that aren't about one person, at `/questions`. A Trainee raises one through **Ask a Full-timer**; page and button both name who answers, because "the team" also means the YP and Campus teams. My Day's "Questions for Full-timers" stack is a summary that points here — answering happens in exactly one place, on the page's question cards.
-_Avoid_: Questions for the team, Ask the team, Ask the team board
-
 **`--accent` (CSS token)**:
 The interactive-text signal — links, clickable names, and `hover:text-*`
 affordances resolve to it via the Tailwind utility. Invariant: in every
@@ -97,7 +93,7 @@ headroom instead — the regression test in `src/test/accentToken.test.ts`
 will fail otherwise.
 
 **First-Run Checklist (Getting started card)**:
-The role-aware onboarding card (`FirstRunCard`) on the home screen and role landings. Each step is reactively derived from live records — contacts added, conversations logged, questions asked, prayers offered — never manually ticked, so the card always tells the truth about progress. Shows an accessible progress meter and an "X of Y complete" count; dismissed with "Put this away" (persisted per user + role in localStorage) and restored from Settings > Getting started. It disappears quietly once every step is done (ADR 0010 — reactive in-situ checklists, no overlay tours).
+The role-aware onboarding card (`FirstRunCard`) on the home screen and role landings. Each step is reactively derived from live records — contacts added, conversations logged, messages sent, prayers offered — never manually ticked, so the card always tells the truth about progress. Shows an accessible progress meter and an "X of Y complete" count; dismissed with "Put this away" (persisted per user + role in localStorage) and restored from Settings > Getting started. It disappears quietly once every step is done (ADR 0010 — reactive in-situ checklists, no overlay tours).
 _Avoid_: Onboarding tour, walkthrough, tutorial overlay
 
 **Help**:
@@ -114,7 +110,7 @@ _Avoid_: Arbitrary px radii on inputs, lozenge inputs
 
 
 **In-app Notification**:
-An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
+An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId` or the chat conversation at `/messages/:roomId`).
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
@@ -159,7 +155,7 @@ The one sentence a Section turns on, lifted out and set large on its own — eit
 _Avoid_: Highlight, pull quote, takeaway, big idea
 
 **Prompt**:
-The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to **Questions for Full-timers** at `/questions`, which is trainees asking Full-timers.
+The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one.
 _Avoid_: Question (bare), exercise, discussion question
 
 **Blank**:
@@ -210,7 +206,7 @@ _Avoid_: The reader, scan view, bible study page, the study (bare)
 The Full-timers-only stream of messages on a contact, where staff reason together about how to care for that person. It shares the side pane of the contact detail page with **Conversation**, behind a switch, and a Trainee's pane has no switch because they cannot see it. It is named for its audience on purpose: **Conversation** is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat
 
-Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for Full-timers** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
+Two other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; and a **Coordination note** is neither.
 
 **Mention**:
 Explicitly tagging a teammate in a Conversation, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.

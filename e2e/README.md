@@ -9,8 +9,8 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | Spec | Area |
 | --- | --- |
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
-| `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
-| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; plus the retired Settings & partners, Directory roles, On our hearts roles, Announcements, Questions, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
+| `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day), contact open without a crash, back-to-my-view (#1476) |
+| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; plus the retired Settings & partners, Directory roles, On our hearts roles, Announcements, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
 | `journeys/signup.spec.ts` | Public sign-up journey: a signed-out visitor submits the intake form, the lead appears for a Full-timer in Around the team and My Day, the sidebar carries the Sign-up form link; plus the retired /outreach route and the #1493 phone-preservation pair (#1478) |
 | `journeys/notification.spec.ts` | Notification journey: a reply raises a bell entry that opens its Thread (row 15, #1303), a contact notification opens the contact, plus the retired bell deep-linking (#682) and push-transport checks (#1479) |
 | `journeys/messages-keyboard.spec.ts` | Messages on a phone at 375×812: with a stubbed `visualViewport` standing in for the soft keyboard, the composer's bottom edge stays inside the visual viewport and the message stream shrinks by the keyboard's height (#1790). |
@@ -90,7 +90,7 @@ emulator.
 | ------------ | ------------- | ----------------------------------------------------------- |
 | Community    | `viewer`      | Home, Gospel, On our hearts, Answered, Messages, Your reports, Bible study |
 | Student      | `operator`    | Home, People, Gatherings, Coordination Notes, On our hearts, Answered, Messages, Your reports, Bible study |
-| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Questions, Messages, Your reports, Bible study |
+| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Messages, Your reports, Bible study |
 | Full-timer   | `admin`       | All of the above, plus My Day (the home item), Visits, Around the team, and the Bible-study index |
 
 Every approved role lands on `/`; a guarded route (`/board`, `/directory`,

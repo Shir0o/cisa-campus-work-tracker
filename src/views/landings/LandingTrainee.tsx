@@ -35,7 +35,6 @@ import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
 import { subscribeTiedSubcollection } from "../../lib/contactQueries";
 import FirstRunCard from "../../components/landing/FirstRunCard";
-import AskTheTeam from "../../components/landing/AskTheTeam";
 import { useLayout } from "../../App";
 import { useI18n } from "../../components/LanguageProvider";
 
@@ -545,9 +544,6 @@ export default function LandingTrainee() {
           />
         </div>
       </section>
-
-      {/* ── Ask the team (#545) — questions that aren't about a person ── */}
-      <AskTheTeam meUid={uid} />
     </PageContainer>
   );
 }

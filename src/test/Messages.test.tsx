@@ -36,22 +36,6 @@ vi.mock('../lib/todos', async (importOriginal) => {
   };
 });
 
-// Mock Asks
-vi.mock('../lib/asks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/asks')>();
-  return {
-    ...actual,
-    subscribeAsks: vi.fn((cb: any) => {
-      cb([]);
-      return () => {};
-    }),
-    subscribeStaffAsks: vi.fn((_uid: any, cb: any) => {
-      cb([]);
-      return () => {};
-    }),
-  };
-});
-
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -2260,7 +2244,7 @@ describe('Messages View Component', () => {
       }
     });
 
-    it('no longer carries the Questions for the team channel — it moved to /questions (#646)', () => {
+    it('carries no Questions for the team channel (moved out in #646, cut in cut-or-keep §5)', () => {
       // The channel row used the chat grammar: selecting it swapped in a composer
       // that POSTED A NEW QUESTION rather than replying. It is gone from every
       // role's rail, and so is the trap.

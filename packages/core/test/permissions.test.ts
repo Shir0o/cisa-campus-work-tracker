@@ -89,6 +89,14 @@ describe('permissions', () => {
     expect('canLogOutreach' in permissions).toBe(false);
   });
 
+  // Questions for the team is cut (cut-or-keep §5): no route, no nav entry.
+  it('has no Questions destination', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/questions')).toBe(false);
+    for (const role of ['manager', 'viewer', null]) {
+      expect(canAccessRoute(role, '/questions'), String(role)).toBe(false);
+    }
+  });
+
   it('closes the signed-in study reader to a Trainee', () => {
     expect(canAccessRoute('manager', '/bible-study/read')).toBe(false);
     expect(canAccessRoute('manager', '/bible-study/present')).toBe(true);

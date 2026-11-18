@@ -16,7 +16,7 @@ Core Cloud Functions triggers, notification transport dispatchers, Expo receipt 
 - `expoReceiptFetcher(fetchImpl, accessToken)`: Expo delivery receipt batch retrieval (`transports.ts`)
 - `webPushSender(client)`: Standard Web Push protocol sender (`transports.ts`)
 - `processExpoReceipts(deps, now)`: Periodic Expo ticket and delivery receipt reconciler (`receipts.ts`)
-- `runAskReminders(deps)` / `firestoreReminderDeps(db)`: Follow-up ask and unanswered question reminders (`reminders.ts`)
+- `runAskReminders(deps)` / `firestoreReminderDeps(db)`: Follow-up ask and @mention reminders (`reminders.ts`)
 - `runWeeklyReminders(deps)` / `firestoreWeeklyDeps(db)`: Weekly staff reminders on campus schedule (`reminders.ts`)
 
 ## Invariants

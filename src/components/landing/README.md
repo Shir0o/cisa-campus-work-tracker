@@ -4,8 +4,6 @@
 Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee Landing, Student Landing).
 
 ## Interface
-- `AskStack` (`AskStack.tsx`)
-- `AskTheTeam` (`AskTheTeam.tsx`)
 - `useCardThread` (`CardConversation.tsx`)
 - `CardConversation` (`CardConversation.tsx`)
 - `FirstRunCardProps` (`FirstRunCard.tsx`)
@@ -16,7 +14,6 @@ Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee
 - `TeamPrayerRow` (`PrayerRows.tsx`)
 - `PersonalPrayerRow` (`PrayerRows.tsx`)
 - `AddPersonalPrayer` (`PrayerRows.tsx`)
-- `QuestionsPointerCard` (`QuestionsPointerCard.tsx`)
 - `ReachCard` (`ReachCard.tsx`)
 
 ## Invariants
@@ -28,7 +25,6 @@ Cockpit widgets and dashboard cards rendered on role home pages (My Day, Trainee
 - [OnYouCard.tsx] {showAll && onYou.length > COLLAPSED_LIMIT && (
 
 ## Side Effects
-- [AskTheTeam.tsx] const unsub = onSnapshot(q, (snap) => {
 - [OnYouCard.tsx] const unsubInteractions = onSnapshot(
 - [PointerCard.tsx] const unsubInteractions = onSnapshot(
 - [ToAskPointerCard.tsx] const unsub = onSnapshot(

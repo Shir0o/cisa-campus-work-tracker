@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor, TRAINEE_ROUTES } from '../lib/permissions';
 import * as permissionsModule from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
@@ -121,8 +121,8 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
-    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/board', '/messages', '/feedback', '/settings', '/bible-study/present'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/visits', '/admin/feedback', '/coordination', '/messages', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -283,7 +283,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/messages', '/questions', '/around']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/visits', '/answered', '/messages', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -295,7 +295,6 @@ describe('TopNav primary tabs per role', () => {
       'Looking back',
       'Messages',
       'My Day',
-      'Questions',
       'The Journey',
       'Visits',
       'Your reports',
@@ -322,29 +321,29 @@ describe('TopNav primary tabs per role', () => {
 
 // ─── 5. MobileNav per role ───────────────────────────────────────────────────
 //
-// #1806 / ADR 0049: Messages and Questions are destinations, so the bar reads
-// four for a trainee and for a Full-timer. The centred
-// search FAB gave up its slot — the phone header already carries a search
-// button, so nothing left the shell's reach.
+// #1806 / ADR 0049: Messages is a destination, so the bar reads three for a
+// trainee and for a Full-timer (Questions shared the bar until it was cut,
+// cut-or-keep §5). The centred search FAB gave up its slot — the phone header
+// already carries a search button, so nothing left the shell's reach.
 
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('manager (trainee): shows all four destinations', () => {
+  it('manager (trainee): shows all three destinations', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Messages')).toBeInTheDocument();
-    expect(screen.getByText('Questions')).toBeInTheDocument();
+    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
   });
 
-  it('admin: shows My Day and the same three others', () => {
+  it('admin: shows My Day and the same two others', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
     expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('Messages')).toBeInTheDocument();
-    expect(screen.getByText('Questions')).toBeInTheDocument();
+    expect(screen.queryByText('Questions')).not.toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
   });
 
@@ -579,44 +578,21 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
   });
 });
 
-// ─── Questions for the team, moved out of Messages (#646/#647) ──────────────
+// ─── Questions for the team is cut (cut-or-keep §5) ──────────────────────────
 
-describe('Questions for the team as its own destination', () => {
-  it('is reachable by staff only — Full-timers and Trainees, never Students or Community', () => {
-    expect(canAccessRoute('admin', '/questions')).toBe(true);
-    expect(canAccessRoute('manager', '/questions')).toBe(true);
-    expect(canAccessRoute('operator', '/questions')).toBe(false);
-    expect(canAccessRoute('viewer', '/questions')).toBe(false);
-    expect(canAccessRoute(null, '/questions')).toBe(false);
+describe('Questions for the team is gone', () => {
+  it('is no longer a route for a Trainee or anyone below (an admin passes any unlisted path; App sends it home)', () => {
+    for (const role of ['manager', 'operator', 'viewer', null]) {
+      expect(canAccessRoute(role, '/questions'), String(role)).toBe(false);
+    }
   });
 
-  it('is labelled "Questions" — the long form does not fit the 224px More menu', () => {
-    const item = NAV_ITEMS.find((i) => i.href === '/questions');
-    expect(item).toBeDefined();
-    expect(item!.label).toBe('Questions');
-  });
-
-  it('lands in the More menu, not the primary tabs, for a Full-timer', () => {
-    expect(primaryNavFor('admin').map((i) => i.href)).not.toContain('/questions');
-    expect(moreNavFor('admin').map((i) => i.href)).toContain('/questions');
-  });
-
-  it('sits beside Messages in the More menu, which is where Messages already lives', () => {
-    // moreNavFor sorts on the *displayed* label, and '/' displays as "My Day"
-    // for a Full-timer even though its NavItem.label is still "Home".
-    const labels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
-    expect(labels).toContain('Messages');
-    expect(labels).toContain('Questions');
-    // … Messages, My Day, Questions, The Journey …
-    expect(labels.indexOf('Questions')).toBeGreaterThan(labels.indexOf('Messages'));
-    expect([...labels].sort((a, b) => a.localeCompare(b))).toEqual(labels);
-  });
-
-  it('is reachable from a Trainee\'s navigation, whose whole job here is asking', () => {
+  it('is not a nav destination, nor on a Trainee\'s allowlist', () => {
+    expect(NAV_ITEMS.some((i) => i.href === '/questions')).toBe(false);
+    expect(TRAINEE_ROUTES).not.toContain('/questions');
     const trainee = [...primaryNavFor('manager'), ...moreNavFor('manager')].map((i) => i.href);
-    expect(trainee).toContain('/questions');
-    // and it does not displace The Journey from their primary tabs
-    expect(primaryNavFor('manager').map((i) => i.href)).toContain('/board');
+    expect(trainee).not.toContain('/questions');
+    expect(moreNavFor('admin').map((i) => i.href)).not.toContain('/questions');
   });
 });
 
@@ -702,13 +678,13 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   // the hrefs inside each. Empty groups are omitted from the output.
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
-      { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around', '/feedback'] },
+      { label: 'Today', hrefs: ['/', '/coordination', '/around', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
-      { label: 'Today', hrefs: ['/', '/questions', '/feedback'] },
+      { label: 'Today', hrefs: ['/', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory'] },
       { label: 'Gatherings', hrefs: ['/messages'] },
     ],

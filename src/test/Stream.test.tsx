@@ -314,6 +314,25 @@ describe("Stream — kinds and Follow-up asks (K1–K3)", () => {
     expect(within(row("Can someone text Daniel?")).getByText("Follow-up ask")).toBeInTheDocument();
   });
 
+  // Questions for the team is cut (cut-or-keep §5), and the Question chip went
+  // before it: nothing writes one any more. An old open one still reads and can
+  // still be answered where the Conversation already shows it, until it closes.
+  it("an open legacy Question still renders and can be answered", async () => {
+    const adapter = fakeAdapter({
+      messages: [message({ id: "oldq", kind: "question", from: "grace", fromName: "Grace Liu", body: "Does he want a ride?", at: yesterdayAt(11) })],
+    });
+    renderStream(adapter, { viewer: RUTH_FT });
+    const q = row("Does he want a ride?");
+    expect(within(q).getByText("Question")).toBeInTheDocument();
+    fireEvent.click(within(q).getByRole("button", { name: "Reply in thread" }));
+    await userEvent.type(screen.getByPlaceholderText("Reply…"), "Yes, Friday");
+    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
+    expect(adapter.reply).toHaveBeenCalledWith(expect.objectContaining({ id: "oldq", kind: "question" }), {
+      body: "Yes, Friday",
+      mentionedUserIds: [],
+    });
+  });
+
   it("the asker sees how long it has been open, I followed up and Never mind, and each closes the ask", () => {
     const adapter = fakeAdapter({ messages: [openAsk()] });
     renderStream(adapter);

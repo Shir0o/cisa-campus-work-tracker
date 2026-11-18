@@ -1,12 +1,12 @@
-// Reminder rule (#1289): which Follow-up ask or question is due its one
+// Reminder rule (#1289): which Follow-up ask or @mention is due its one
 // reminder at a tick. Pure — a fixed clock in, the bell entries due out — so
 // the scheduled function stays a thin writer and this is the behaviour oracle.
 //
-// A **Follow-up ask** still open three campus calendar days after it was raised,
-// and a **question** with no reply in its Thread after the same three days, each
-// tell the asker once — "nobody followed up" — and never anyone else. The asker
+// A **Follow-up ask** still open three campus calendar days after it was raised
+// tells the asker once — "nobody followed up" — and never anyone else. The asker
 // is the only recipient on purpose: a reminder that made the errand someone
 // else's would hand out the obligation the Follow-up ask exists to avoid.
+// Questions are no longer reminded (cut-or-keep §5): @mentions replace them.
 //
 // "Three calendar days" is three days on the campus clock
 // (`America/Los_Angeles`), not three 24-hour periods: raised late on the eve of
@@ -21,12 +21,7 @@ export const REMIND_AFTER_CALENDAR_DAYS = 3;
 
 const DAY_MS = 86_400_000;
 
-export type ReminderKind = "ask" | "question" | "mention";
-
-export interface ReminderReply {
-  from: string;
-  at: string;
-}
+export type ReminderKind = "ask" | "mention";
 
 export interface ReminderCandidate {
   contactId: string;
@@ -35,14 +30,12 @@ export interface ReminderCandidate {
   /** The asker's uid — the one and only recipient. */
   from: string;
   body: string;
-  /** ISO timestamp the ask or question was raised. */
+  /** ISO timestamp the ask or mention was raised. */
   at: string;
-  /** Follow-up asks and mentions: set once it was closed or withdrawn. */
+  /** Set once it was closed or withdrawn. */
   closedAt?: string | null;
-  /** Set once this ask or question has been reminded; it is never reminded twice. */
+  /** Set once this ask or mention has been reminded; it is never reminded twice. */
   remindedAt?: string | null;
-  /** A question's Thread replies, oldest first. */
-  replies?: ReminderReply[];
 }
 
 export interface ReminderNotification {
@@ -84,19 +77,20 @@ const excerpt = (body: string) =>
 
 const REMINDER_TITLE: Record<ReminderKind, string> = {
   ask: "Nobody followed up",
-  question: "No reply yet on your question",
   mention: "No reply yet on your mention",
 };
 
 function isDue(c: ReminderCandidate, now: number | Date): boolean {
   if (c.remindedAt) return false;
-  if ((c.kind === "ask" || c.kind === "mention") && c.closedAt) return false;
-  if (c.kind === "question" && (c.replies ?? []).some((r) => r.from !== c.from)) return false;
+  // Only an ask or a mention is reminded. A Thread question still in the data
+  // (nothing writes one any more) is skipped, whatever its age.
+  if (c.kind !== "ask" && c.kind !== "mention") return false;
+  if (c.closedAt) return false;
   return campusCalendarDaysSince(c.at, now) >= REMIND_AFTER_CALENDAR_DAYS;
 }
 
 /**
- * The reminder bell entries due at `now`. One per ask or question, addressed to
+ * The reminder bell entries due at `now`. One per ask or mention, addressed to
  * its asker, carrying the source doc the scheduled function marks reminded.
  */
 export function remindersDue(candidates: ReminderCandidate[], now: number | Date): DueReminder[] {
