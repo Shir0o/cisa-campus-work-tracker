@@ -447,8 +447,12 @@ describe('placeholder prayer burdens (#1691, #1765)', () => {
     expect(isPlaceholderPrayerBurden(undefined)).toBe(false);
   });
 
+  it('still treats the removed Spanish locale\'s stored stand-in as a placeholder', () => {
+    expect(isPlaceholderPrayerBurden('Sosteniendo en oración')).toBe(true);
+  });
+
   it('stays in step with the locale string', () => {
-    expect(PRAYER_PLACEHOLDER_BURDENS).toEqual([(en as any).prayers.holding_in_prayer]);
+    expect(PRAYER_PLACEHOLDER_BURDENS).toContain((en as any).prayers.holding_in_prayer);
   });
 });
 

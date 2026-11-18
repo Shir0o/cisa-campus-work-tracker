@@ -264,11 +264,15 @@ export function prayerCarrySummary(
 }
 
 /**
- * The string the picker and `startHolding` write as a stand-in burden
- * ("Holding in prayer", #1691). A card that sees it renders a prompt instead of
- * printing it as prose (#1765).
+ * The strings the picker and `startHolding` write as a stand-in burden
+ * ("Holding in prayer", #1691). A card that sees one renders a prompt instead
+ * of printing it as prose (#1765). The Spanish value is a legacy sentinel:
+ * the Spanish locale is gone, but rows it stored remain.
  */
-export const PRAYER_PLACEHOLDER_BURDENS = ['Holding in prayer'];
+export const PRAYER_PLACEHOLDER_BURDENS = [
+  'Holding in prayer',
+  'Sosteniendo en oración', // stored by the removed Spanish locale
+];
 
 export function isPlaceholderPrayerBurden(text: string | undefined | null): boolean {
   if (!text) return false;
