@@ -89,10 +89,9 @@ describe('the drawer and More lists', () => {
   it("matches the design's full-timer More, in order", () => {
     // Outreach (the monthly park outing log) is cut (cut-or-keep §2), "How this
     // works" is cut (§16), the phone Gatherings screen is cut (§8; /attendance
-    // stays only as a redirect), and the phone Board went with the Board's
-    // Trainee read access (§19).
+    // stays only as a redirect), the phone Board went with the Board's Trainee
+    // read access (§19), and the separate Prayer log is cut (§21).
     expect(FT_MORE.map((l) => l.label)).toEqual([
-      'Prayer log',
       'Sign-up form',
       'Settings',
     ]);

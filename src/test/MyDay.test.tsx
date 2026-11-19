@@ -6,7 +6,6 @@ import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
-import AroundTheTeam from '../views/AroundTheTeam';
 import { useAuth } from '../components/AuthProvider';
 import { format } from 'date-fns';
 import { MemoryRouter } from 'react-router-dom';
@@ -229,43 +228,19 @@ describe('MyDay', () => {
     expect(screen.getByTestId('announcement-composer')).toBeInTheDocument();
   });
 
-  it('renders greeting, all sections and the quiet figures footer', async () => {
+  it('renders greeting and every kept section, with no number strip (§25)', async () => {
     render(<MyDay />);
     await waitFor(() => {
       expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
-      expect(screen.getByText('On the horizon')).toBeInTheDocument();
+      expect(screen.getByText('To-dos')).toBeInTheDocument();
       expect(screen.getByText('Your sheep')).toBeInTheDocument();
       expect(screen.getByText('Your week')).toBeInTheDocument();
       expect(screen.getByText('Your prayers')).toBeInTheDocument();
-      expect(screen.getByText('Numbers are just a way of noticing people.')).toBeInTheDocument();
     });
-  });
-
-  it('shows the day’s goal figure to a full-timer when someone is new today (#544)', async () => {
-    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'admin' });
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({
-        contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
-      }),
-    );
-    render(<MyDay />);
-    await waitFor(() => {
-      expect(screen.getByText('new people today, across the team')).toBeInTheDocument();
-    });
-  });
-
-  it('never shows the day’s goal figure to a trainee', async () => {
-    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'manager' });
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({
-        contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
-      }),
-    );
-    render(<MyDay />);
-    await waitFor(() => {
-      expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
-    });
-    expect(screen.queryByText('new people today, across the team')).toBeNull();
+    // The figures card and its line are cut everywhere (§ cross-cutting).
+    expect(screen.queryByText('Numbers are just a way of noticing people.')).not.toBeInTheDocument();
+    expect(screen.queryByText('contacts in care')).not.toBeInTheDocument();
+    expect(screen.queryByText('On the horizon')).not.toBeInTheDocument();
   });
 
   it('hides the day’s goal figure once no until-date is set (#544, Nov 2026)', async () => {
@@ -287,7 +262,7 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => {
       expect(
-        screen.getByText('Nothing on the horizon right now — a rare, quiet moment.'),
+        screen.getByText('Nothing needs doing right now.'),
       ).toBeInTheDocument();
       expect(
         screen.getByText("No one's in your care yet — pick your contacts to gather them here."),
@@ -1125,7 +1100,7 @@ describe('MyDay', () => {
       }),
     );
 
-  it('renders On the horizon and Your prayers exactly once, in the bento, on a busy team day', async () => {
+  it('renders To-dos and Your prayers exactly once, in the bento, on a busy team day', async () => {
     (useAuth as unknown as Mock).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
@@ -1134,11 +1109,11 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
-    expect(screen.getAllByText('On the horizon')).toHaveLength(1);
+    expect(screen.getAllByText('To-dos')).toHaveLength(1);
     expect(screen.getAllByText('Your prayers')).toHaveLength(1);
     // The personal column stays in the bento — nothing is lent to the feed.
     const onYou = screen.getByRole('region', { name: 'On you' });
-    expect(onYou.parentElement!.textContent).not.toContain('On the horizon');
+    expect(onYou.parentElement!.textContent).not.toContain('To-dos');
     expect(onYou.parentElement!.textContent).not.toContain('Your prayers');
     // Your sheep and Your week stay paired in the same column.
     const sheep = screen.getByText('Your sheep').closest('section')!;
@@ -1146,7 +1121,7 @@ describe('MyDay', () => {
     expect(sheep.parentElement).toBe(week.parentElement);
   });
 
-  it('renders On the horizon and Your prayers exactly once, in the bento, on a quiet day', async () => {
+  it('renders To-dos and Your prayers exactly once, in the bento, on a quiet day', async () => {
     (useAuth as unknown as Mock).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
@@ -1155,10 +1130,10 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
-    expect(screen.getAllByText('On the horizon')).toHaveLength(1);
+    expect(screen.getAllByText('To-dos')).toHaveLength(1);
     expect(screen.getAllByText('Your prayers')).toHaveLength(1);
     const onYou = screen.getByRole('region', { name: 'On you' });
-    expect(onYou.parentElement!.textContent).not.toContain('On the horizon');
+    expect(onYou.parentElement!.textContent).not.toContain('To-dos');
     const sheep = screen.getByText('Your sheep').closest('section')!;
     const week = screen.getByText('Your week').closest('section')!;
     expect(sheep.parentElement).toBe(week.parentElement);
@@ -1173,7 +1148,7 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
-    const horizon = screen.getByText('On the horizon').closest('section')!;
+    const horizon = screen.getByText('To-dos').closest('section')!;
     const prayers = screen.getByText('Your prayers').closest('section')!;
     const sheep = screen.getByText('Your sheep').closest('section')!;
     const week = screen.getByText('Your week').closest('section')!;
@@ -1213,62 +1188,6 @@ describe('MyDay', () => {
     expect(pointer.textContent).not.toMatch(/haven.t looked at/i);
     // No "Around the team" region on My Day — the team column is gone.
     expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
-  });
-
-  // A Full-timers-only question on a person with no contact card is a card on
-  // Around, so the pointer card must count it too — else a Full-timer sees one
-  // number on My Day and another on the page it opens (#1339). My Day reads
-  // `teamThreads` for a Full-timer, and Around, fed the same message, shows the
-  // same number.
-  it('counts a Full-timers-only message the same as Around (#1339)', async () => {
-    (useAuth as unknown as Mock).mockReturnValue({
-      user: { displayName: 'Test User', uid: 'u-test' },
-      role: 'admin',
-    });
-    const at = new Date().toISOString();
-    // A Full-timers-only question on a person with no contact doc: only the
-    // `teamThreads` read can make this a card.
-    const teamThread = {
-      id: 'm1',
-      ref: { path: 'contacts/c1/teamThreads/m1' },
-      data: () => ({
-        from: 'ft2',
-        fromName: 'Mei',
-        kind: 'question',
-        body: 'Who is following up with this person?',
-        at,
-        interactionId: null,
-        scope: 'team',
-      }),
-    };
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({ contacts: [], interactions: [], threads: [], teamThreads: [teamThread] }),
-    );
-    render(<MyDay />);
-    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
-
-    const teamMsg = {
-      id: 'm1',
-      contactId: 'c1',
-      from: 'ft2',
-      fromName: 'Mei',
-      kind: 'question',
-      at,
-      interactionId: null,
-      scope: 'team',
-    };
-    const pointer = screen.getByRole('link', { name: /Around the team/ });
-    expect(pointer.textContent).toContain('1');
-    expect(pointer.textContent).toContain('to work through');
-
-    const around = render(
-      <MemoryRouter>
-        <AroundTheTeam contacts={[]} interactions={[]} threads={[teamMsg as any]} staffNameMap={{}} />
-      </MemoryRouter>,
-    );
-    await waitFor(() =>
-      expect(within(around.container).getByText('1 to work through')).toBeInTheDocument(),
-    );
   });
 
   it('shows a Trainee the On you card and no pointer card', async () => {
@@ -1422,55 +1341,4 @@ describe('MyDay', () => {
     expect(within(card).getByText('Person 5')).toBeInTheDocument();
   });
 
-  describe('first-run checklist counts only this reader\'s own work', () => {
-    const threadDoc = (id: string, data: any): DocLike => ({
-      id,
-      ref: { path: `contacts/c1/threads/${id}` },
-      data: () => ({ kind: 'question', body: 'x', at: new Date().toISOString(), interactionId: null, scope: null, ...data }),
-    });
-    const logged = (id: string, userId: string): DocLike =>
-      interactionDoc(id, 'c1', {
-        userId,
-        content: 'talked',
-        createdAt: new Date().toISOString(),
-        dateTime: new Date().toISOString(),
-        type: 'visit',
-        title: 't',
-      });
-    // The mocked board_docs snapshot has no `empty`, so "learn" is always ticked: baseline 1.
-    const complete = () => screen.queryByText(/of 5 complete/)?.textContent;
-
-    beforeEach(() => {
-      localStorage.clear();
-      (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'admin' });
-    });
-
-    it("leaves every step open when only other people have logged, prayed, or closed asks", async () => {
-      vi.mocked(onSnapshot).mockImplementation(
-        byPath({
-          interactions: [logged('i1', 'someone-else')],
-          prayers: [prayerDoc('p1', { contactId: 'c1', status: 'pending', updatedBy: 'someone-else' })],
-          tasks: [taskDoc('t1', { status: 'completed', assigneeId: 'u-test', createdById: 'someone-else' })],
-          threads: [threadDoc('m1', { from: 'ft1', closedBy: 'ft2' })],
-        }),
-      );
-      render(<MyDay />);
-      await waitFor(() => expect(complete()).toBe('1 of 5 complete'));
-    });
-
-    it('ticks log, prayer and follow-up from the reader\'s own records', async () => {
-      vi.mocked(onSnapshot).mockImplementation(
-        byPath({
-          interactions: [logged('i1', 'someone-else'), logged('i2', 'u-test')],
-          prayers: [prayerDoc('p1', { contactId: 'c1', status: 'pending', updatedBy: 'u-test' })],
-          threads: [
-            threadDoc('m1', { from: 'ft1', closedBy: 'u-test' }),
-            threadDoc('m2', { from: 'u-test', closedBy: 'u-test' }), // retracted own ask
-          ],
-        }),
-      );
-      render(<MyDay />);
-      await waitFor(() => expect(complete()).toBe('4 of 5 complete'));
-    });
-  });
 });

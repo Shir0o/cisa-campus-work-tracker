@@ -6,7 +6,6 @@ import * as firestore from 'firebase/firestore';
 import { TEST_USERS } from './fixtures/users';
 import GlobalSearch from '../components/layout/GlobalSearch';
 import MobileNav from '../components/layout/MobileNav';
-import { registerCommand } from '../lib/commands';
 import { Frecency, __resetFrecencyCache } from '../lib/frecency';
 
 // Hoisted shared spies + mutable dataset so the firestore/auth/layout mocks and
@@ -16,6 +15,7 @@ const h = vi.hoisted(() => ({
   mockData: {
     contacts: [] as any[],
     interactions: [] as any[],
+    board_notes: [] as any[],
     activities: [] as any[],
   } as Record<string, any[]>,
   mockAuth: { value: null as any },
@@ -103,6 +103,18 @@ function seedData() {
       { ref: { parent: { parent: { id: 'c1' } } } },
     ),
   ];
+  h.mockData.board_notes = [
+    docOf('b1', {
+      type: 'record',
+      title: 'Semester plan',
+      body: 'kickoff notes',
+      series: 'Team',
+      tags: ['kickoff'],
+      date: '2026-06-12',
+      contributorIds: ['u1'],
+      updatedByName: 'Sam',
+    }),
+  ];
   h.mockData.activities = [
     docOf('a1', {
       action: 'updated',
@@ -115,7 +127,7 @@ function seedData() {
 }
 
 const typeDesktop = (value: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or jump to…'), {
+  fireEvent.change(screen.getByPlaceholderText('Search people…'), {
     target: { value },
   });
 
@@ -136,41 +148,6 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
   });
 
-  it('lists registry commands in Shortcuts, filtered by role', () => {
-    h.mockLayout.searchOpen = true;
-    const unManager = registerCommand({
-      id: 'test.shortcut.manager',
-      scope: 'global',
-      description: 'Manager-and-up shortcut',
-      shortcut: { key: 'o', mod: true },
-      minRole: 'manager',
-      handler: vi.fn(),
-    });
-    const unAdmin = registerCommand({
-      id: 'test.shortcut.admin',
-      scope: 'global',
-      description: 'Admin-only shortcut',
-      shortcut: { key: 'a', mod: true },
-      minRole: 'admin',
-      handler: vi.fn(),
-    });
-
-    h.mockAuth.value = TEST_USERS.admin;
-    const { unmount } = render(<GlobalSearch />);
-    expect(screen.getAllByText('Shortcuts').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Manager-and-up shortcut').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Admin-only shortcut').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('⌘O').length).toBeGreaterThan(0);
-    unmount();
-
-    h.mockAuth.value = TEST_USERS.manager;
-    render(<GlobalSearch />);
-    expect(screen.getAllByText('Manager-and-up shortcut').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Admin-only shortcut')).not.toBeInTheDocument();
-
-    unManager();
-    unAdmin();
-  });
 
   it('renders recent people when a contact has a Firestore Timestamp stamp (issue #354)', () => {
     // `serverTimestamp()` fields arrive as Timestamp objects, not strings; the
@@ -188,17 +165,25 @@ describe('GlobalSearch', () => {
     expect(screen.getAllByText('Tim Latency').length).toBeGreaterThan(0);
   });
 
-  it('empty state shows recent people + role-aware quick actions', () => {
+
+  it('returns only people — no jump-to, quick actions, conversations, notes or history (cut-or-keep §27)', () => {
     render(<GlobalSearch />);
+    // Recent people stay.
     expect(screen.getAllByText('Recent people').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Quick actions').length).toBeGreaterThan(0);
-    // recency proxy: most-recently-updated contact first
-    expect(screen.getAllByText('Alice Wong').length).toBeGreaterThan(0);
-    for (const label of ['New contact', 'Log a visit', 'Sign-up form (for someone new)']) {
-      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
-    }
-    // The Journey board is cut (§22): no quick action jumps to it.
-    expect(screen.queryAllByText('The Journey').length).toBe(0);
+    // Everything else is gone.
+    expect(screen.queryAllByText('Go to')).toHaveLength(0);
+    expect(screen.queryAllByText('Quick actions')).toHaveLength(0);
+    expect(screen.queryAllByText('Shortcuts')).toHaveLength(0);
+
+    // A query that only matches a logged conversation, a coordination note and
+    // the activity feed returns nothing — those result kinds are cut.
+    typeDesktop('kickoff');
+    expect(screen.queryAllByText('Conversations')).toHaveLength(0);
+    expect(screen.queryAllByText('Coordination notes')).toHaveLength(0);
+    expect(screen.queryAllByText('History')).toHaveLength(0);
+    expect(screen.queryAllByText('Search history too')).toHaveLength(0);
+    expect(screen.queryAllByText('Semester plan')).toHaveLength(0);
+    expect(screen.queryAllByText(/Discussed the plan for next term/)).toHaveLength(0);
   });
 
   // #1345: the stored role is retired; a person is described by year · major.
@@ -282,46 +267,14 @@ describe('GlobalSearch', () => {
     expect(fieldIdx).toBeGreaterThan(nameIdx);
   });
 
-  it('admin sees Conversations and an opt-in History group', () => {
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    expect(screen.getAllByText('People').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Interactions').length).toBeGreaterThan(0);
-    // The Board's notes archive is cut (cut-or-keep §19), so search has no
-    // Coordination Notes group to show.
-    expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
 
-    // History is opt-in behind a pill toggle.
-    expect(screen.queryAllByText('History').length).toBe(0);
-    fireEvent.click(screen.getAllByRole('button', { name: /search history too/i })[0]);
-    expect(screen.getAllByText('History').length).toBeGreaterThan(0);
-  });
 
-  it('Trainee gets no history toggle and never reads the activity feed', () => {
-    // The rules deny a Trainee the whole feed — History entries follow their
-    // contact's visibility — so the unscoped listener must not start.
-    h.mockAuth.value = TEST_USERS.manager;
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
-    const reads = vi.mocked(firestore.onSnapshot).mock.calls.map(([ref]) => (ref as any).__c);
-    expect(reads).not.toContain('activities');
-  });
 
-  it('Trainee searches conversations through their visible contacts, never the collection group', () => {
-    // The rules deny a Trainee the interactions collection group — it spans
-    // people outside their visibleTo — so each visible person's are read.
-    h.mockAuth.value = TEST_USERS.manager;
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    expect(firestore.collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'interactions');
-    expect(screen.getAllByText('Interactions').length).toBeGreaterThan(0);
-  });
 
   it('↓ then ↵ opens the focused contact', () => {
     render(<GlobalSearch />);
     typeDesktop('alice');
-    const input = screen.getByPlaceholderText('Search or jump to…');
+    const input = screen.getByPlaceholderText('Search people…');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
@@ -335,12 +288,6 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
   });
 
-  it('quick action "New contact" opens the new-contact modal', () => {
-    render(<GlobalSearch />);
-    fireEvent.click(screen.getAllByRole('button', { name: /New contact/i })[0]);
-    expect(h.mockLayout.openNewContact).toHaveBeenCalled();
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
-  });
 
   it('the phone bar carries destinations, not a search button (#1806)', () => {
     // ADR 0049: the centred FAB was a duplicate of the header's own search
@@ -360,14 +307,14 @@ describe('GlobalSearch', () => {
     const { rerender } = render(<GlobalSearch />);
 
     // Closed: the trigger is the only way in, and there is no field to type into.
-    expect(screen.queryByPlaceholderText('Search or jump to\u2026')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Search people\u2026')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open search' }));
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
 
     h.mockLayout.searchOpen = true;
     rerender(<GlobalSearch />);
 
-    const desktopInput = screen.getByPlaceholderText('Search or jump to\u2026') as HTMLInputElement;
+    const desktopInput = screen.getByPlaceholderText('Search people\u2026') as HTMLInputElement;
     typeDesktop('alice');
     expect(desktopInput.value).toBe('alice');
 
@@ -382,7 +329,7 @@ describe('GlobalSearch', () => {
   it('handles mobile overlay input, clear, and cancel functionality', () => {
     render(<GlobalSearch />);
     
-    const mobileInput = screen.getByPlaceholderText('Search people, interactions, notes…') as HTMLInputElement;
+    const mobileInput = screen.getByPlaceholderText('Search for a person…') as HTMLInputElement;
     
     // Type query in mobile input
     fireEvent.change(mobileInput, { target: { value: 'bob' } });
@@ -400,24 +347,8 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
   });
 
-  it('quick action "Log a visit" opens the log-interaction modal', () => {
-    render(<GlobalSearch />);
-    fireEvent.click(screen.getAllByRole('button', { name: /Log a visit/i })[0]);
-    expect(h.mockLayout.openLogInteraction).toHaveBeenCalled();
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
-  });
 
-  it('quick action "Sign-up form" navigates to /signup', () => {
-    render(<GlobalSearch />);
-    fireEvent.click(screen.getAllByRole('button', { name: /Sign-up form/i })[0]);
-    expect(h.mockNavigate).toHaveBeenCalledWith('/signup', undefined);
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
-  });
 
-  it('quick action "The Journey" is gone with the board (§22)', () => {
-    render(<GlobalSearch />);
-    expect(screen.queryAllByRole('button', { name: /The Journey/i }).length).toBe(0);
-  });
 
   it('clicking a recent person in the empty state opens the contact', () => {
     render(<GlobalSearch />);
@@ -438,30 +369,13 @@ describe('GlobalSearch', () => {
     );
   });
 
-  it('clicking a Conversation result row opens the contact it belongs to', () => {
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    const row = screen.getAllByText('Interactions')[0]
-      .closest('div')!.parentElement!.querySelector('button')!;
-    fireEvent.click(row);
-    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
-    );
-  });
 
-  it('toggling history on and clicking a History result navigates to /history', () => {
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    fireEvent.click(screen.getAllByRole('button', { name: /search history too/i })[0]);
-    const row = screen.getAllByText(/changed the plan/i)[0].closest('button')!;
-    fireEvent.click(row);
-    expect(h.mockNavigate).toHaveBeenCalledWith('/history', undefined);
-  });
+
 
   it('keyboard ArrowUp clamps the cursor at -1 from the first result', () => {
     render(<GlobalSearch />);
     typeDesktop('alice');
-    const input = screen.getByPlaceholderText('Search or jump to…');
+    const input = screen.getByPlaceholderText('Search people…');
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     // Cursor -1 means Enter does nothing — the contact stays unopened.
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -474,22 +388,13 @@ describe('GlobalSearch', () => {
     );
   });
 
-  it('keyboard nav runs the quick-action at the cursor from the empty state', () => {
-    render(<GlobalSearch />);
-    const input = screen.getByPlaceholderText('Search or jump to…');
-    // Move the cursor onto the "Log a visit" quick action, then ↵ runs it.
-    const logRow = screen.getAllByRole('button', { name: /Log a visit/i })[0];
-    fireEvent.mouseEnter(logRow);
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(h.mockLayout.openLogInteraction).toHaveBeenCalled();
-  });
 
   it('mouse-over (mouseEnter) a result row moves the keyboard cursor to it', () => {
     render(<GlobalSearch />);
     typeDesktop('alice');
     const row = screen.getAllByText('Alice Wong')[0].closest('button')!;
     fireEvent.mouseEnter(row);
-    fireEvent.keyDown(screen.getByPlaceholderText('Search or jump to…'), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByPlaceholderText('Search people…'), { key: 'Enter' });
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
     );
@@ -505,7 +410,7 @@ describe('GlobalSearch', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     render(<GlobalSearch />);
     await new Promise((r) => setTimeout(r, 80));
-    expect(screen.getByPlaceholderText('Search or jump to\u2026')).toHaveFocus();
+    expect(screen.getByPlaceholderText('Search people\u2026')).toHaveFocus();
     delete (window as any).matchMedia;
   });
 
@@ -516,7 +421,7 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     await new Promise((r) => setTimeout(r, 80));
     expect(matchMediaMock).toHaveBeenCalledWith('(min-width: 1024px)');
-    expect(screen.getByPlaceholderText('Search people, interactions, notes…')).toHaveFocus();
+    expect(screen.getByPlaceholderText('Search for a person…')).toHaveFocus();
     window.matchMedia = origMatchMedia;
   });
 
@@ -627,15 +532,6 @@ describe('GlobalSearch', () => {
     expect(Frecency.getScore('u1', 'c1')).toBeGreaterThan(0);
   });
 
-  it('records open event when selecting destination in search results', () => {
-    render(<GlobalSearch />);
-    typeDesktop('people');
-    const peopleRow = screen.getAllByText('People')[0].closest('button')!;
-    fireEvent.click(peopleRow);
-
-    expect(h.mockNavigate).toHaveBeenCalledWith('/directory', undefined);
-    expect(Frecency.getScore('u1', 'dest:/directory')).toBeGreaterThan(0);
-  });
 
   // ── visual contract — PICKED shell design (issue #653) ────────────────
   // The desktop trigger keeps the Bento SearchBar look from #653 — fixed 300px,
@@ -691,7 +587,7 @@ describe('GlobalSearch', () => {
 
   it("the palette's field row shows an esc chip while empty and the clear × while typing", () => {
     render(<GlobalSearch />);
-    const fieldRow = screen.getByPlaceholderText('Search or jump to…').closest('div')!;
+    const fieldRow = screen.getByPlaceholderText('Search people…').closest('div')!;
 
     expect(within(fieldRow).getByText('esc')).toBeInTheDocument();
     expect(within(fieldRow).queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
@@ -738,7 +634,7 @@ describe('GlobalSearch', () => {
   it('leaves the mobile overlay a separate full-screen surface, not the desktop dialog', () => {
     render(<GlobalSearch />);
     const mobileOverlay = screen
-      .getByPlaceholderText('Search people, interactions, notes\u2026')
+      .getByPlaceholderText('Search for a person\u2026')
       .closest('.fixed')!;
 
     expect(mobileOverlay.className).toContain('lg:hidden');

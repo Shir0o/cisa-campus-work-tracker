@@ -555,12 +555,12 @@ export function newToAskUpdate(
 }
 
 /** Where a `"thread"` update is posted: a reply to the message the line's
- *  signal is about, in that message's own stream (`scope`) and interaction.
- *  Null for any other kind of line, or when the message is not in hand. */
+ *  signal is about, on that message's own interaction. Null for any other kind
+ *  of line, or when the message is not in hand. */
 export function toAskThreadTarget(
   key: string,
   messages: readonly ToAskThreadMessage[],
-): { contactId: string; parentId: string; interactionId: string | null; scope: "team" | null } | null {
+): { contactId: string; parentId: string; interactionId: string | null } | null {
   const parsed = parseToAskKey(key);
   if (!parsed || (parsed.kind !== "ask" && parsed.kind !== "question" && parsed.kind !== "mention") || !parsed.messageId) return null;
   const message = messages.find((m) => m.id === parsed.messageId);
@@ -569,7 +569,6 @@ export function toAskThreadTarget(
     contactId: message.contactId,
     parentId: message.id,
     interactionId: message.interactionId ?? null,
-    scope: message.scope === "team" ? "team" : null,
   };
 }
 

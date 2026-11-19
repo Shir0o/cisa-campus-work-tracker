@@ -22,10 +22,8 @@ import { useAuth } from "../AuthProvider";
 import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, canReleaseContact } from "../../lib/permissions";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { conversationAdapter } from "../stream/conversationAdapter";
-import { fullTimersAdapter } from "../stream/fullTimersAdapter";
-import { interactionAdapter } from "../stream/interactionAdapter";
 import { contactStakeholdersOf } from "../../lib/threads";
-import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
+import { useThreads, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
 import { isTrainee as isTraineeUid } from "../../lib/walking";
 import AddToAskModal from "../contact/AddToAskModal";
@@ -40,7 +38,6 @@ import { UndoSnackbar } from "../UndoSnackbar";
 import { cancelInteractionRemoval } from "../../lib/interactionRemoval";
 import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKind";
 import AboutSheet from "../contact/AboutSheet";
-import DelegateSheet from "../contact/DelegateSheet";
 import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
 import { announceInteraction, useContactStory, type UseContactStoryResult } from "../../hooks/useContactStory";
 import { logInteraction } from "../../lib/logInteraction";
@@ -50,8 +47,7 @@ import CombinedFromBanner from "../contact/CombinedFromBanner";
 import ContactEditForm from "../contact/ContactEditForm";
 import ContactStorySection from "../contact/ContactStorySection";
 import ContactComposer from "../contact/ContactComposer";
-import ContactReachPrompt from "../contact/ContactReachPrompt";
-import ContactStreamPane, { type ContactPaneView } from "../contact/ContactStreamPane";
+import ContactStreamPane from "../contact/ContactStreamPane";
 import ContactAboutContent from "../contact/ContactAboutContent";
 import ContactEditFooter from "../contact/ContactEditFooter";
 import { executeContactUpdate, executePersistTags, splitName } from "../../lib/contactUpdate";
@@ -60,11 +56,10 @@ interface ContactDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   contact: Contact | null;
-  // Deep-link the modal to the pane on open (e.g. the My Day inbox "Comment"
-  // action). When initialInteractionId is set, opens that interaction's inline
-  // thread; otherwise honours initialTab — "discussion" lands on Full-timers,
-  // anything else on the Conversation.
-  initialTab?: "thread" | "discussion";
+  // Deep-link the modal to the Conversation pane on open (e.g. the My Day
+  // inbox "Comment" action). initialInteractionId still scrolls the story to
+  // the interaction an old bell entry named.
+  initialTab?: "thread";
   initialInteractionId?: string | null;
   /** A deep link onto one Conversation or Full-timers message's Thread, from a
    * notification (#1303). */
@@ -89,12 +84,11 @@ export default function ContactDetailsModal({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const liveThreads = useThreads(contact?.id, { includeTeam: isAdmin });
+  const liveThreads = useThreads(contact?.id);
 
   // Deep reactive hook encapsulates subscriptions for all 9 collections & story timeline
   const storyHook = useContactStory(contact, {
     enabled: isOpen && !storyModel,
-    includeTeam: isAdmin,
     threadMessages: liveThreads,
     t,
   });
@@ -114,19 +108,10 @@ export default function ContactDetailsModal({
   const [sharing, setSharing] = useState(false);
   const [reassigningCreator, setReassigningCreator] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [delegateOpen, setDelegateOpen] = useState(false);
   const [addToAskOpen, setAddToAskOpen] = useState(false);
 
   // Pinned pane (ADR 0034)
-  const [paneView, setPaneView] = useState<ContactPaneView>("conversation");
   const [paneOpen, setPaneOpen] = useState(false);
-  const [openThread, setOpenThread] = useState<string | null>(null);
-
-  const [fullTimersSeenAt, setFullTimersSeenAt] = useState("");
-  useEffect(() => {
-    if (!contact?.id) return;
-    setFullTimersSeenAt(localStorage.getItem(`cisa.contactFullTimersSeen.${contact.id}`) || "");
-  }, [contact?.id]);
 
   const [todoFrom, setTodoFrom] = useState<ThreadMessage | null>(null);
   // #1802: a dated reminder opened from the head's More actions, over the to-do
@@ -139,10 +124,6 @@ export default function ContactDetailsModal({
   const [composer, setComposer] = useState<ComposerValue>(() => emptyComposer());
   const [composerOpen, setComposerOpen] = useState(false);
   const [submittingComposer, setSubmittingComposer] = useState(false);
-
-  const [reachPromptType, setReachPromptType] = useState<null | "call" | "chat">(null);
-  const reachPendingRef = useRef<null | "call" | "chat">(null);
-  const reachPageHiddenRef = useRef(false);
 
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
@@ -188,26 +169,6 @@ export default function ContactDetailsModal({
     };
   }, [isOpen, isMobile]);
 
-  // Reach prompt on return from phone/chat app
-  useEffect(() => {
-    if (!isOpen) return;
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        if (reachPendingRef.current) reachPageHiddenRef.current = true;
-        return;
-      }
-      if (
-        document.visibilityState === "visible" &&
-        reachPendingRef.current &&
-        reachPageHiddenRef.current
-      ) {
-        setReachPromptType(reachPendingRef.current);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [isOpen]);
-
   const handleClose = () => {
     if (
       !hasActionRef.current &&
@@ -227,16 +188,14 @@ export default function ContactDetailsModal({
       // itself, or asking before it discards). The page must not also close
       // underneath it (#1802).
       if (reminderOpen) return;
-      if (openThread && !isMobile) setOpenThread(null);
-      else if (paneOpen) setPaneOpen(false);
-      else if (openThread) setOpenThread(null);
+      if (paneOpen) setPaneOpen(false);
       else handleClose();
     };
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, handleClose, openThread, paneOpen, isMobile, reminderOpen]);
+  }, [isOpen, handleClose, paneOpen, reminderOpen]);
 
   useEffect(() => {
     if (contact) {
@@ -265,8 +224,6 @@ export default function ContactDetailsModal({
     if (!isOpen) return;
     setComposerOpen(false);
     setEditTagInput("");
-    setOpenThread(initialInteractionId ?? null);
-    setPaneView(initialTab === "discussion" ? "fullTimers" : "conversation");
     setPaneOpen(Boolean(initialInteractionId || initialTab || initialThreadId));
   }, [contact?.id, isOpen, initialTab, initialInteractionId, initialThreadId]);
 
@@ -293,11 +250,6 @@ export default function ContactDetailsModal({
     t,
   };
   const conversation = conversationAdapter(adapterBase);
-  const fullTimers = fullTimersAdapter(adapterBase);
-  const interactionAdapterFor = (interaction: Interaction) =>
-    interactionAdapter({ ...adapterBase, interaction, locale: "en-US" });
-  const openInteraction = interactions.find((i) => i.id === openThread) ?? null;
-  const interactionThread = openInteraction ? interactionAdapterFor(openInteraction) : null;
 
   const founders = currentContact.founders || [];
   const coCreators = currentContact.coCreators || [];
@@ -330,13 +282,6 @@ export default function ContactDetailsModal({
 
   const handleRemoveInteraction = (interaction: Interaction) => {
     if (!contact) return;
-    const threadCount = countFor(threadMessages, interaction.id);
-    if (threadCount > 0) {
-      const ok = window.confirm(
-        t('modals.contactDetails.remove_interaction_confirm').replace('{count}', String(threadCount)),
-      );
-      if (!ok) return;
-    }
     showUndoSnack(t('modals.contactDetails.interaction_removed'), () =>
       cancelInteractionRemoval(interaction.id),
     );
@@ -418,15 +363,6 @@ export default function ContactDetailsModal({
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "contacts");
     }
-  };
-
-  const handleDelegate = async (staffId: string, note: string) => {
-    if (!contact || !staffId) return;
-    const member = teamMembers.find((m) => m.id === staffId);
-    await addShare(staffId);
-    const body = note ? `@${member?.name ?? ""} ${note}`.trim() : `@${member?.name ?? ""}`.trim();
-    await conversation.post({ body, mentionedUserIds: [staffId] });
-    setDelegateOpen(false);
   };
 
   const handlePhoneBlur = () => {
@@ -683,44 +619,15 @@ export default function ContactDetailsModal({
 
 
   const callContact = () => {
-    if (contact.phone) {
-      reachPendingRef.current = "call";
-      reachPageHiddenRef.current = false;
-      window.open(`tel:${contact.phone}`);
-    }
+    if (contact.phone) window.open(`tel:${contact.phone}`);
   };
 
   const textContact = () => {
-    if (contact.phone) {
-      reachPendingRef.current = "chat";
-      reachPageHiddenRef.current = false;
-      window.open(`sms:${contact.phone}`);
-    }
+    if (contact.phone) window.open(`sms:${contact.phone}`);
   };
 
   const emailContact = () => {
     if (contact.email) window.open(`mailto:${contact.email}`);
-  };
-
-  const acceptReachPrompt = () => {
-    const type = reachPromptType;
-    setReachPromptType(null);
-    reachPendingRef.current = null;
-    reachPageHiddenRef.current = false;
-    if (!type) return;
-    setComposer((prev) => ({
-      ...prev,
-      mode: "interaction",
-      type,
-      dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    }));
-    setComposerOpen(true);
-  };
-
-  const dismissReachPrompt = () => {
-    setReachPromptType(null);
-    reachPendingRef.current = null;
-    reachPageHiddenRef.current = false;
   };
 
   const startComposer = (mode: ComposerValue["mode"]) => {
@@ -813,7 +720,6 @@ export default function ContactDetailsModal({
     />
   );
 
-  const canSeeTeamThread = role === "admin" || isAdmin;
   const storyMessageIds = new Set(currentContact.storyMessageIds ?? []);
 
   const storySection = (
@@ -828,14 +734,7 @@ export default function ContactDetailsModal({
       user={user}
       isAdmin={isAdmin}
       canUpdatePrayers={canUpdatePrayers}
-      openThread={openThread}
-      onOpenThread={(id) => {
-        setOpenThread(id);
-        setPaneOpen(true);
-      }}
       onOpenConversation={(messageId) => {
-        setOpenThread(null);
-        setPaneView("conversation");
         setPaneOpen(true);
         if (messageId) {
           setTimeout(() => {
@@ -848,8 +747,6 @@ export default function ContactDetailsModal({
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
       onSetPrayerTeamPrayer={handleSetPrayerTeamPrayer}
       onUpdatePrayerBurden={handleUpdatePrayerBurden}
-      interactionAdapterFor={interactionAdapterFor}
-      streamViewer={streamViewer}
       teamMembers={teamMembers}
     />
   );
@@ -859,7 +756,6 @@ export default function ContactDetailsModal({
     (m) => !m.parentId && ((m.kind === "nudge" && !m.closedAt) || isOpenMention(m)),
   );
   const jumpToOpenAsk = () => {
-    setPaneView("conversation");
     setPaneOpen(true);
     const first = openAsks[0];
     if (!first) return;
@@ -868,34 +764,12 @@ export default function ContactDetailsModal({
     }, 0);
   };
 
-  // Only someone else's post counts as unread — the stream's own rule: your own
-  // messages are read by definition (see src/lib/stream.ts's New divider).
-  const latestTeamAt = threadMessages
-    .filter((m) => m.scope === "team" && !m.parentId && m.from !== currentUid)
-    .reduce((max, m) => (m.at > max ? m.at : max), "");
-  const fullTimersUnread = !!latestTeamAt && latestTeamAt > fullTimersSeenAt;
-  const markFullTimersSeen = () => {
-    const stamp = new Date().toISOString();
-    setFullTimersSeenAt(stamp);
-    if (contact?.id) localStorage.setItem(`cisa.contactFullTimersSeen.${contact.id}`, stamp);
-  };
-  const selectPaneView = (view: ContactPaneView) => {
-    setPaneView(view);
-    if (view === "fullTimers") markFullTimersSeen();
-  };
-
   const streamPane = (
     <ContactStreamPane
       isMobile={isMobile}
       open={paneOpen}
-      view={paneView}
-      onViewChange={selectPaneView}
       conversation={conversation}
-      fullTimers={fullTimers}
-      interactionThread={interactionThread}
       viewer={streamViewer}
-      isFullTimer={canSeeTeamThread}
-      onBack={() => setOpenThread(null)}
       onClose={() => setPaneOpen(false)}
       onMakeTodo={(m) => setTodoFrom(m)}
       onAddToStory={toggleStoryMessage}
@@ -908,7 +782,6 @@ export default function ContactDetailsModal({
       meName={user?.displayName || "Someone"}
       openAskCount={openAsks.length}
       onJumpToAsk={jumpToOpenAsk}
-      fullTimersUnread={fullTimersUnread}
       initialThreadId={initialThreadId}
     />
   );
@@ -926,8 +799,6 @@ export default function ContactDetailsModal({
     showRelease: canReleaseContact(currentUid, currentContact),
     canEditKind: isAdmin && !isImpersonating,
     openPrayerCount: openPrayers.length,
-    canDelegate: canShare,
-    conversationUnread: fullTimersUnread,
     showAddToAsk: isAdmin && !isImpersonating,
   };
 
@@ -943,7 +814,6 @@ export default function ContactDetailsModal({
     onMoveStage: moveStage,
     onOpenMoveSheet: () => setMovingStage(true),
     onOpenAbout: () => setAboutOpen(true),
-    onOpenDelegate: () => setDelegateOpen(true),
     onAddToAsk: () => setAddToAskOpen(true),
     onRemindMe: () => setReminderOpen(true),
     onChangeKind: changeKind,
@@ -962,10 +832,7 @@ export default function ContactDetailsModal({
           ?.scrollIntoView?.({ block: "center" }),
       );
     },
-    onOpenConversation: () => {
-      setPaneView("conversation");
-      setPaneOpen(true);
-    },
+    onOpenConversation: () => setPaneOpen(true),
   };
 
   // AnimatePresence identifies its children by their keys, so every direct
@@ -988,14 +855,6 @@ export default function ContactDetailsModal({
               <CombinedFromBanner
                 combinedFrom={currentContact.combinedFrom}
                 isFullTimer={isAdmin && !isImpersonating}
-              />
-            )}
-
-            {reachPromptType && (
-              <ContactReachPrompt
-                name={firstName}
-                onAccept={acceptReachPrompt}
-                onDismiss={dismissReachPrompt}
               />
             )}
 
@@ -1075,15 +934,6 @@ export default function ContactDetailsModal({
           />
         </AboutSheet>
       )}
-
-      <DelegateSheet
-        key="delegate"
-        open={delegateOpen}
-        name={contact.name}
-        members={shareOptions}
-        onClose={() => setDelegateOpen(false)}
-        onDelegate={handleDelegate}
-      />
 
       <AddToAskModal
         key="add-to-ask"

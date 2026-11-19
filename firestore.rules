@@ -671,11 +671,10 @@ service cloud.firestore {
 
       // Walking-together threads (trainee <-> full-timer). A light conversation
       // attached to the contact (interactionId null) or to one interaction.
-      // Full-timers Discussion (`scope: "team"`) may not be written here: a
-      // list rule cannot drop single documents from an unfiltered query, and
-      // every approved role lists this collection unfiltered. It lives in
-      // teamThreads below. The scope clauses that remain guard legacy docs
-      // until scripts/migrate-team-threads.ts has moved them.
+      // Legacy Full-timers Discussion documents (`scope: "team"`) may still sit
+      // here; the scope clauses below keep them out of a Trainee's read. The
+      // `teamThreads` collection itself is cut (cut-or-keep §24) and its
+      // documents stay in Firestore, unreachable.
       match /threads/{threadId} {
         // Reading a person's Alongside thread requires being able to read the
         // person. The collection-group rule above still governs the inbox read.
@@ -705,21 +704,6 @@ service cloud.firestore {
         allow delete: if isValidId(threadId) && isApprovedUser() && seesParentContact() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isAdmin() || existing().from == request.auth.uid);
       }
 
-      // Full-timers Discussion — the contact tab only Full-timers see. Its own
-      // subcollection so no non-admin list query can ever reach it. Messages
-      // are posted and removed, never edited (the tab offers no edit).
-      match /teamThreads/{threadId} {
-        allow read, delete: if isApprovedUser() && isAdmin();
-        // Only an @mention's close moves here (the stream has no edit).
-        allow update: if isValidId(threadId) && isApprovedUser() && isAdmin() &&
-                        existing().kind != 'nudge' &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['closedBy', 'closedByName', 'closedAt']) &&
-                        isCloseOfAsk(existing(), incoming());
-        allow create: if isValidId(threadId) && isApprovedUser() && isAdmin() &&
-                        isValidThread(incoming()) &&
-                        incoming().get('scope', null) == 'team' &&
-                        incoming().from == request.auth.uid;
-      }
     }
 
     // 5. Stages Collection
@@ -1324,10 +1308,6 @@ service cloud.firestore {
     match /{path=**}/threads/{threadId} {
       allow list: if isApprovedUser() && seesAllContacts() &&
                      (resource.data.get('scope', '') != 'team' || isAdmin());
-    }
-    // Full-timers Discussion across every contact, for a Full-timer's feed.
-    match /{path=**}/teamThreads/{threadId} {
-      allow list: if isApprovedUser() && isAdmin();
     }
   }
 }

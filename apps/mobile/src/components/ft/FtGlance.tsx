@@ -22,7 +22,7 @@ function Tile({
   value: string;
   caption: string;
   detail: string;
-  onPress: () => void;
+  onPress?: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
@@ -100,7 +100,7 @@ export function FtGlance({
 }: {
   carrying: FtCarrying;
   next: FtNextGathering | null;
-  onOpenPrayers: () => void;
+  onOpenPrayers?: () => void;
   onOpenGatherings: () => void;
 }) {
   const { c, fs } = useV2Theme();

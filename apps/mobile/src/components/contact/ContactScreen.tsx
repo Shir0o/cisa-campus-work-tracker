@@ -5,8 +5,8 @@
 //
 // Conversation is the contact-level open stream in the one written-stream
 // grammar (ADR 0033, #1261): rows from the core stream model, the composer
-// pinned at the foot, the stream opening on its newest message. A Full-timer
-// switches between it and the staff-only Full-timers stream; a Trainee never
+// pinned at the foot, the stream opening on its newest message. The staff-only
+// Full-timers stream is cut (cut-or-keep §24).
 // sees the switch. An Interaction's Thread hangs off its Story entry and opens
 // as a pushed screen — it is not part of the Conversation.
 //
@@ -29,7 +29,6 @@ import {
   buildStream,
   contactCareLine,
   contactConnectedLine,
-  countFor,
   daysSince,
   feedVisibleThreads,
   firstName,
@@ -49,12 +48,11 @@ import {
   type PrayerRecord,
   type StreamRow,
   type ThreadMessage,
-  type ThreadSummary,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useContactDetailData } from '../../lib/useContactDetailData';
-import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
+import { conversationMessages } from '../../lib/contactStreams';
 import { addTodo } from '../../lib/data/todos';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
@@ -83,27 +81,17 @@ import { FtTodoSheet } from '../ft/FtTodoSheet';
 import { StreamList } from '../stream/StreamList';
 import { StreamComposer } from '../stream/StreamComposer';
 import { StreamActionSheet } from '../stream/StreamActionSheet';
-import { ThreadChip } from '../stream/StreamRow';
 
 export type ContactV2Tab = 'story' | 'prayers' | 'conversation';
-/** Which of a contact's two streams the Conversation tab is showing. */
-type ContactStream = 'open' | 'team';
 
 interface ContactScreenProps {
   contactId: string;
   initialTab: ContactV2Tab;
-  /** A deep link into one logged conversation's own Thread (a queue card's
-   * "Open the conversation"), pushed over Story on arrival. */
-  initialInteractionId?: string | null;
-  /** A deep link onto the Full-timers side of the Conversation (#1303); only a
-   * Full-timer actually sees that side. */
-  initialStream?: ContactStream;
 }
 
-/** Where a Thread opens: a pushed screen over this one (T2). */
-export const threadHref = (contactId: string, q: { parent?: string; interaction?: string; team?: boolean }) =>
-  `/contact/${contactId}/thread?` +
-  (q.interaction ? `interaction=${q.interaction}` : `parent=${q.parent}${q.team ? '&stream=team' : ''}`);
+/** Where a message's Thread opens: a pushed screen over this one (T2). */
+export const threadHref = (contactId: string, q: { parent?: string }) =>
+  `/contact/${contactId}/thread?parent=${q.parent}`;
 
 export function ContactScreen(props: ContactScreenProps) {
   const { role } = useAuth();
@@ -114,7 +102,7 @@ export function ContactScreen(props: ContactScreenProps) {
   );
 }
 
-function Person({ contactId, initialTab, initialInteractionId, initialStream }: ContactScreenProps) {
+function Person({ contactId, initialTab }: ContactScreenProps) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
   const { uid, user, role, isImpersonating } = useAuth();
@@ -123,7 +111,6 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   const queueState = useQueueState(uid ?? null);
 
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
-  const [stream, setStream] = useState<ContactStream>(initialStream ?? 'open');
   const [held, setHeld] = useState<StreamRow<ThreadMessage> | null>(null);
   // The message being rewritten, if any (author-only; ADR 0033).
   const [editingMessage, setEditingMessage] = useState<ThreadMessage | null>(null);
@@ -149,16 +136,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   );
 
   const canWrite = !isImpersonating;
-  // The Full-timers switch is cut on the EFFECTIVE role, as feedVisibleThreads
-  // is, so "See it as they do" shows a Trainee's screen (#1024 phase 2).
-  const isFullTimer = role === 'admin';
   const canShare = !isImpersonating && canManageCollaborators(role, uid, data.contact);
-
-  useEffect(() => {
-    if (initialInteractionId) router.push(threadHref(contactId, { interaction: initialInteractionId }) as never);
-    // Once, on arrival.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Newest first, and the newest is what the hero quotes.
   const story = useMemo(
@@ -176,23 +154,18 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   // role so the preview hides it (#1024 phase 2).
   const visibleThreads = useMemo(() => feedVisibleThreads(data.threadMessages, role), [data.threadMessages, role]);
   const conversation = useMemo(() => conversationMessages(visibleThreads), [visibleThreads]);
-  const fullTimers = useMemo(
-    () => (isFullTimer ? fullTimersMessages(visibleThreads) : []),
-    [visibleThreads, isFullTimer],
-  );
-  const showing = isFullTimer && stream === 'team' ? 'team' : 'open';
   // Read once per visit: "Today" and "Open N days" are said against it.
   const [now] = useState(Date.now);
   // A viewer who may not write gets no ask actions from the model.
   const viewer = { uid: uid ?? '', role: canWrite ? role : null };
-  const items = buildStream({ messages: showing === 'team' ? fullTimers : conversation, viewer, now });
-  // Seeing a stream reads it (#1793), so Today drops its card: whichever side
-  // is showing, replies included — Today groups them in the same stream.
+  const items = buildStream({ messages: conversation, viewer, now });
+  // Seeing a stream reads it (#1793), so Today drops its card: replies
+  // included — Today groups them in the same stream.
   const reads = useInboxReads();
   useEffect(() => {
     if (!uid || tab !== 'conversation') return;
-    reads.markAll(uid, (showing === 'team' ? fullTimers : conversation).map((m) => 'thread:' + m.id));
-  }, [uid, tab, showing, conversation, fullTimers, reads]);
+    reads.markAll(uid, conversation.map((m) => 'thread:' + m.id));
+  }, [uid, tab, conversation, reads]);
   const topLevel = (list: ThreadMessage[]) => list.filter((m) => !m.parentId).length;
   const { open: openPrayers, closed: closedPrayers } = useMemo(
     () => splitContactPrayers(data.prayers),
@@ -212,19 +185,12 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
   }, [data.stages, currentContact]);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const openThread = (q: Parameters<typeof threadHref>[1]) => router.push(threadHref(contactId, q) as never);
   const openRowThread = (row: StreamRow<ThreadMessage>) =>
-    openThread({ parent: row.message.id, team: row.message.scope === 'team' });
+    router.push(threadHref(contactId, { parent: row.message.id }) as never);
   const canRemoveInteraction = (interaction: Interaction) =>
     uid === interaction.userId || hasMinRole(role, 'manager');
 
   const handleRemoveInteraction = (interaction: Interaction) => {
-    // Match the web gate: team-scoped discussion messages don't count toward
-    // the warning (web's countFor filters them by default scope).
-    const threadCount = countFor(
-      visibleThreads.filter((m) => m.scope !== 'team'),
-      interaction.id,
-    );
     const doRemove = () => {
       scheduleInteractionRemoval(interaction.id, () => {
         void data.deleteInteraction(interaction);
@@ -237,18 +203,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
         },
       });
     };
-    if (threadCount > 0) {
-      Alert.alert(
-        t('mobile.contact.remove_interaction'),
-        t('mobile.contact.remove_interaction_confirm').replace('{count}', String(threadCount)),
-        [
-          { text: t('actions.cancel'), style: 'cancel' },
-          { text: t('actions.remove'), style: 'destructive', onPress: doRemove },
-        ],
-      );
-    } else {
-      doRemove();
-    }
+    doRemove();
   };
 
   if (data.error || (!data.loading && !data.contact)) {
@@ -414,9 +369,6 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
                   key={interaction.id}
                   interaction={interaction}
                   meUid={uid ?? ''}
-                  thread={interactionThread({ interaction, messages: visibleThreads, viewer, now }).parent.thread}
-                  now={now}
-                  onOpenThread={() => openThread({ interaction: interaction.id })}
                   canRemove={canRemoveInteraction(interaction)}
                   onRemove={() => handleRemoveInteraction(interaction)}
                 />
@@ -470,7 +422,6 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
                 onPrayed={() => queueState.handle(prayerCardId(prayer.id))}
                 onAnswered={() => void data.markPrayerAnswered(prayer)}
                 onSetTeamPrayer={canWrite ? (team) => void data.setPrayerTeamPrayer(prayer, team) : undefined}
-                onOpenTeamPrayers={isFullTimer ? () => router.push('/prayer-log' as never) : undefined}
               />
             ))}
 
@@ -490,20 +441,8 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
         {/* ── Conversation ─────────────────────────────────────────────── */}
         {tab === 'conversation' && (
           <View style={{ gap: 10 }}>
-            {isFullTimer && (
-              <StreamSwitch
-                value={showing}
-                onChange={setStream}
-                items={[
-                  { id: 'open', label: t('mobile.contact.conversation'), count: topLevel(conversation) },
-                  { id: 'team', label: t('mobile.contact.full_timers'), count: topLevel(fullTimers) },
-                ]}
-              />
-            )}
             {items.length === 0 ? (
-              <V2Empty>
-                {showing === 'team' ? t('mobile.contact.empty_full_timers') : t('mobile.contact.empty_conversation')}
-              </V2Empty>
+              <V2Empty>{t('mobile.contact.empty_conversation')}</V2Empty>
             ) : (
               <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 8 }}>
                 <StreamList
@@ -531,24 +470,13 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
 
       {tab === 'conversation' && canWrite && (
         <StreamComposer
-          key={showing}
-          audience={
-            showing === 'team'
-              ? t('mobile.contact.audience_full_timers')
-              : t('mobile.contact.audience_conversation').replace('{name}', first)
-          }
-          locked={showing === 'team'}
-          placeholder={showing === 'team' ? t('mobile.contact.placeholder_full_timers') : t('mobile.stream.placeholder_comment')}
-          candidates={showing === 'team' ? mentionCandidates.filter((m) => m.role === 'admin') : mentionCandidates}
-          label={
-            showing === 'team'
-              ? t('mobile.contact.compose_full_timers')
-              : t('mobile.contact.compose_conversation').replace('{name}', first)
-          }
+          audience={t('mobile.contact.audience_conversation').replace('{name}', first)}
+          placeholder={t('mobile.stream.placeholder_comment')}
+          candidates={mentionCandidates}
+          label={t('mobile.contact.compose_conversation').replace('{name}', first)}
           onSend={({ body, mentionedUserIds }) =>
             void data.postThreadMessage({
               interactionId: null,
-              scope: showing === 'team' ? 'team' : null,
               kind: 'comment',
               body,
               mentionedUserIds,
@@ -573,7 +501,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
         // Author-only, and only the open Conversation — Full-timers messages are
         // posted and removed, never edited (firestore.rules).
         onEdit={
-          canWrite && showing === 'open' && held?.message.from === uid && !held?.message.scope
+          canWrite && held?.message.from === uid && !held?.message.scope
             ? (row) => setEditingMessage(row.message)
             : undefined
         }
@@ -787,17 +715,11 @@ function HeroAction({
 function StoryCard({
   interaction,
   meUid,
-  thread,
-  now,
-  onOpenThread,
   canRemove,
   onRemove,
 }: {
   interaction: Interaction;
   meUid: string;
-  thread: ThreadSummary | null;
-  now: number;
-  onOpenThread: () => void;
   canRemove?: boolean;
   onRemove?: () => void;
 }) {
@@ -820,78 +742,13 @@ function StoryCard({
           </Pressable>
         )}
       </View>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.card.said, marginTop: 10 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.card.said, marginTop: 10, marginBottom: 8 }}>
         {interaction.content}
       </Text>
-
-      {thread ? (
-        <View style={{ marginTop: 6, marginBottom: 6 }}>
-          <ThreadChip thread={thread} now={now} onPress={onOpenThread} />
-        </View>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('mobile.contact.think_it_through')}
-          onPress={onOpenThread}
-          style={({ pressed }) => ({ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.6 : 1 })}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={15} color={c.card.ink2} />
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>{t('mobile.contact.think_it_through')}</Text>
-        </Pressable>
-      )}
     </View>
   );
 }
 
-/** The Conversation / Full-timers switch at the top of the tab — a Full-timer's
- * only. The count sits on the stream you are not reading. */
-function StreamSwitch({
-  value,
-  onChange,
-  items,
-}: {
-  value: ContactStream;
-  onChange: (next: ContactStream) => void;
-  items: { id: ContactStream; label: string; count: number }[];
-}) {
-  const { c, font, fs } = useV2Theme();
-  const { t } = useLanguage();
-  return (
-    <View
-      accessibilityRole="tablist"
-      accessibilityLabel={t('mobile.contact.which_stream')}
-      style={{ flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 3, borderRadius: 999, backgroundColor: c.room.chip }}
-    >
-      {items.map((item) => {
-        const on = item.id === value;
-        return (
-          <Pressable
-            key={item.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            onPress={() => onChange(item.id)}
-            style={({ pressed }) => ({
-              minHeight: 44,
-              paddingHorizontal: 16,
-              borderRadius: 999,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              backgroundColor: on ? c.card.bg : 'transparent',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            {item.id === 'team' && <Ionicons name="lock-closed" size={12} color={on ? c.card.ink : c.room.ink2} />}
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: on ? c.card.ink : c.room.ink2 }}>{item.label}</Text>
-            {!on && item.count > 0 && (
-              <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink3 }}>{item.count}</Text>
-            )}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
 
 /** An open or set-down prayer (`.m2c-pr`). */
 function PrayerCard({
@@ -903,7 +760,6 @@ function PrayerCard({
   onPrayed,
   onAnswered,
   onSetTeamPrayer,
-  onOpenTeamPrayers,
 }: {
   prayer: PrayerRecord;
   /** First name for the "Prayed for {name}" button. */
@@ -915,8 +771,6 @@ function PrayerCard({
   onAnswered?: () => void;
   /** Bring to / take off team prayer. Only the open cards, and only for a writer. */
   onSetTeamPrayer?: (teamPrayer: boolean) => void;
-  /** Where the "On our hearts" line goes; absent when this role has no such page. */
-  onOpenTeamPrayers?: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -993,17 +847,12 @@ function PrayerCard({
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
           {isTeamPrayer(prayer) ? (
             <>
-              <Pressable
-                onPress={onOpenTeamPrayers}
-                disabled={!onOpenTeamPrayers}
-                accessibilityRole={onOpenTeamPrayers ? 'link' : 'text'}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}
-              >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}>
                 <Ionicons name="people-outline" size={15} color={c.card.tones.pray.text} />
                 <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.tones.pray.text }}>
                   {t('answered.on_our_hearts')} · {t('myDay.team_prayers')}
                 </Text>
-              </Pressable>
+              </View>
               {onSetTeamPrayer && (
                 <Pressable onPress={() => onSetTeamPrayer(false)} style={({ pressed }) => ({ minHeight: 32, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
                   <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink2 }}>{t('mobile.contact.take_off_team_prayer')}</Text>

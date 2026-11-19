@@ -37,7 +37,7 @@ function fakeAdapter(over: Partial<StreamAdapter> = {}): StreamAdapter {
     name: "Conversation",
     where: "Conversation · Daniel Reyes",
     audience: "Everyone tied to Daniel sees this.",
-    capabilities: { attachments: false, canPost: true, canReply: true },
+    capabilities: { canPost: true, canReply: true },
     composer: { placeholder: "Write something…" },
     mentionCandidates: [
       { uid: "josh", name: "Josh Park", role: "Trainee" },
@@ -293,7 +293,7 @@ describe("Stream — Threads (T1–T3)", () => {
   });
 
   it("offers no reply box where the viewer may not reply", () => {
-    renderStream(fakeAdapter({ ...withReplies(), capabilities: { attachments: false, canPost: true, canReply: false } }));
+    renderStream(fakeAdapter({ ...withReplies(), capabilities: { canPost: true, canReply: false } }));
     expect(screen.queryByRole("button", { name: "Reply in thread" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /2 replies/ }));
     expect(screen.queryByPlaceholderText("Reply…")).toBeNull();
@@ -465,7 +465,7 @@ describe("Stream — the composer (C1–C3)", () => {
   });
 
   it("shows no composer where the viewer may not post", () => {
-    renderStream(fakeAdapter({ capabilities: { attachments: false, canPost: false, canReply: false } }));
+    renderStream(fakeAdapter({ capabilities: { canPost: false, canReply: false } }));
     expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
   });
 
@@ -639,7 +639,7 @@ describe("Stream — optional adapter capabilities", () => {
       renderStream(
         fakeAdapter({
           composer: { placeholder: "Ask a follow-up…", label: "Ask someone to follow up", submitLabel: "Send", hint: "⌘↵ to send" },
-          capabilities: { attachments: false, canPost: true, canReply: false },
+          capabilities: { canPost: true, canReply: false },
         }),
         { footer: <p>Replies are public.</p> },
       );
@@ -660,7 +660,7 @@ describe("Stream — optional adapter capabilities", () => {
       fakeAdapter({
         post,
         failure: { post: "That didn't send.", edit: "That didn't save." },
-        capabilities: { attachments: false, canPost: true, canReply: false },
+        capabilities: { canPost: true, canReply: false },
         composer: { placeholder: "Ask a follow-up…" },
       }),
     );
@@ -686,7 +686,7 @@ describe("Stream — optional adapter capabilities", () => {
         fakeAdapter({
           post,
           failure: { post: "That didn't send.", edit: "That didn't save." },
-          capabilities: { attachments: false, canPost: true, canReply: false },
+          capabilities: { canPost: true, canReply: false },
           composer: { placeholder: "Ask a follow-up…" },
         }),
       );
@@ -732,7 +732,7 @@ describe("Stream — what a source can set (#1258)", () => {
   it("uses the adapter's own placeholder where there are no kind chips, and locks the audience line", () => {
     renderStream(
       fakeAdapter({
-        capabilities: { attachments: false, canPost: true, canReply: true },
+        capabilities: { canPost: true, canReply: true },
         composer: { placeholder: "Write something only Full-timers will see…" },
         audience: "Only Full-timers see this — Trainees can't.",
         locked: true,
@@ -774,71 +774,6 @@ describe("Stream — what a source can set (#1258)", () => {
   });
 });
 
-describe("Stream — an adapter that is itself one Thread (an Interaction's)", () => {
-  const PARENT = "interaction:i1";
-  const interactionAdapter = (over: Partial<StreamAdapter> = {}) =>
-    fakeAdapter({
-      name: "Thread",
-      where: "Interaction · Daniel Reyes",
-      capabilities: { attachments: false, canPost: true, canReply: true },
-      replyPlaceholder: "Think it through together…",
-      empty: "No comments on this interaction yet.",
-      thread: {
-        parentId: PARENT,
-        subtitle: "On an interaction · everyone tied to Daniel sees this.",
-        quote: { label: "Josh's conversation · Thu, Sep 17", body: "Sat with Daniel at the Thursday gathering." },
-      },
-      messages: [
-        message({ id: PARENT, from: "josh", fromName: "Josh Park", body: "Sat with Daniel at the Thursday gathering.", at: yesterdayAt(9) }),
-        message({ id: "r1", parentId: PARENT, from: "maria", fromName: "Maria Santos", body: "Film photography — good second friend.", at: yesterdayAt(21) }),
-      ],
-      ...over,
-    });
-
-  it("opens straight on the Thread: the Interaction quoted as its parent, the replies below, no way back to a stream", () => {
-    renderStream(interactionAdapter());
-    const thread = screen.getByRole("region", { name: "Thread" });
-    expect(within(thread).getByText("On an interaction · everyone tied to Daniel sees this.")).toBeInTheDocument();
-    expect(within(thread).getByText("Josh's conversation · Thu, Sep 17")).toBeInTheDocument();
-    // The quote is not a message row: only the one reply is.
-    expect(thread.querySelectorAll("[data-stream-row]")).toHaveLength(1);
-    expect(within(thread).getByText("Sat with Daniel at the Thursday gathering.")).toBeInTheDocument();
-    expect(within(thread).getByText("1 reply")).toBeInTheDocument();
-    expect(within(thread).getByText("Film photography — good second friend.")).toBeInTheDocument();
-    expect(within(thread).queryByRole("button", { name: /^Back to/ })).toBeNull();
-  });
-
-  it("closes the surface, and replies to the Interaction with the adapter's placeholder", async () => {
-    const adapter = interactionAdapter();
-    const onClose = vi.fn();
-    renderStream(adapter, { onClose });
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(onClose).toHaveBeenCalled();
-
-    const box = screen.getByPlaceholderText("Think it through together…");
-    await userEvent.type(box, "I will mention the scholarship");
-    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
-    expect(adapter.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ id: PARENT }),
-      { body: "I will mention the scholarship", mentionedUserIds: [] },
-    );
-  });
-
-  it("says so when nobody has replied yet", () => {
-    renderStream(interactionAdapter({ messages: [message({ id: PARENT, body: "Sat with Daniel." })] }));
-    expect(screen.getByText("No comments on this interaction yet.")).toBeInTheDocument();
-  });
-
-  it("offers no reply box to a viewer who may not reply", () => {
-    renderStream(
-      interactionAdapter({ capabilities: { attachments: false, canPost: false, canReply: false } }),
-    );
-    expect(screen.queryByPlaceholderText("Think it through together…")).toBeNull();
-  });
-});
-
-// The adapter's optional hooks a chat room needs (#1259). Each is generic: a
-// source that leaves one out keeps the behaviour above.
 describe("Stream — a message's actions without a pointer (#1764)", () => {
   it("reveals the row's toolbar on a tap, because a phone has no hover", () => {
     renderStream(fakeAdapter({ messages: [message({ body: "tap me" })] }));
@@ -898,36 +833,15 @@ describe("Stream — reading history while new messages arrive (#1764)", () => {
   });
 });
 
-describe("Stream — what a chat room adds", () => {
-  const chat = (over: Partial<StreamAdapter> = {}) =>
-    fakeAdapter({ capabilities: { attachments: true, canPost: true, canReply: true }, audience: "", ...over });
+describe("Stream — optional surface extras", () => {
+  const extras = (over: Partial<StreamAdapter> = {}) =>
+    fakeAdapter({ capabilities: { canPost: true, canReply: true }, audience: "", ...over });
 
-  it("holds a pinned message first under its strip, out of date order", () => {
-    renderStream(
-      chat({
-        messages: [
-          message({ id: "a", body: "older", at: yesterdayAt(9) }),
-          message({ id: "b", body: "pinned one", at: yesterdayAt(10), from: "grace", fromName: "Grace Liu" }),
-          message({ id: "c", body: "newer", at: ago(60_000), from: "ruth", fromName: "Ruth Chen" }),
-        ],
-        pinnedLabel: (m) => (m.id === "b" ? "Pinned by Grace Liu · stays at the top until they unpin it" : null),
-      }),
-    );
-    const rows = Array.from(document.querySelectorAll("[data-stream-row]")).map((el) => el.getAttribute("data-stream-row"));
-    expect(rows).toEqual(["b", "a", "c"]);
-    const strip = screen.getByText("Pinned by Grace Liu · stays at the top until they unpin it");
-    expect(strip.compareDocumentPosition(row("pinned one")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
 
-  it("a stream of only a pinned message is not empty", () => {
-    renderStream(chat({ messages: [message({ id: "p", body: "only" })], pinnedLabel: () => "Pinned", empty: "Nothing yet" }));
-    expect(screen.queryByText("Nothing yet")).toBeNull();
-    expect(row("only")).toBeInTheDocument();
-  });
 
   it("draws a badge beside the name, and a system notice centred rather than as a row", () => {
     renderStream(
-      chat({
+      extras({
         messages: [
           message({ id: "n", from: "system", fromName: "System", body: "Josh joined the group", at: yesterdayAt(8) }),
           message({ id: "p", body: "post" }),
@@ -941,26 +855,15 @@ describe("Stream — what a chat room adds", () => {
     expect(screen.queryByText("System")).toBeNull();
   });
 
-  it("a taken-back message reads as its gone line, with no body and no actions", () => {
-    renderStream(chat({ messages: [message({ id: "g", body: "secret" })], goneLabel: () => "You took this message back." }));
-    expect(screen.queryByText("secret")).toBeNull();
-    const gone = row("You took this message back.");
-    expect(within(gone).queryByRole("toolbar")).toBeNull();
-  });
 
-  it("More carries the source's own actions, and a soft delete with its words and a confirm step", () => {
-    const pin = vi.fn();
-    const adapter = chat({
+  it("More carries a soft delete with its words and a confirm step", () => {
+    const adapter = extras({
       messages: [message({ id: "mine", from: "maria", body: "oops" })],
-      moreActions: () => [{ label: "Pin", run: pin }],
       deleteLabel: () => "Take back for everyone",
       deleteConfirm: { prompt: "Take this back?", yes: "Yes, remove it", no: "Keep it" },
     });
     renderStream(adapter);
     const more = () => fireEvent.click(within(row("oops")).getByRole("button", { name: "More actions" }));
-    more();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Pin" }));
-    expect(pin).toHaveBeenCalled();
     more();
     fireEvent.click(screen.getByRole("menuitem", { name: "Take back for everyone" }));
     expect(screen.getByText("Take this back?")).toBeInTheDocument();
@@ -975,7 +878,7 @@ describe("Stream — what a chat room adds", () => {
 
   it("renders the surface's extra under the body and its actions beside the Thread chip, which can open the Thread", () => {
     renderStream(
-      chat({ messages: [message({ id: "p", body: "retreat" })] }),
+      extras({ messages: [message({ id: "p", body: "retreat" })] }),
       {
         threadMode: "beside",
         renderExtra: (m) => <span>attachment of {m.id}</span>,
@@ -992,42 +895,14 @@ describe("Stream — what a chat room adds", () => {
   });
 
   it("a viewer who may not post reads the surface's footer in the composer's place", () => {
-    renderStream(chat({ capabilities: { attachments: true, canPost: false, canReply: true } }), {
+    renderStream(extras({ capabilities: { canPost: false, canReply: true } }), {
       footer: <div>Only Full-timers post here. Anyone can reply in a thread.</div>,
     });
     expect(screen.getByText("Only Full-timers post here. Anyone can reply in a thread.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
   });
 
-  it("stages files and cards above the text, each removable; the paperclip asks the source; a post may be only attachments (C5)", () => {
-    const attach = vi.fn();
-    const unstage = vi.fn();
-    const adapter = chat({
-      staged: [
-        { key: "0", label: "Retreat packing list", kind: "file" },
-        { key: "1", label: "Daniel Reyes", kind: "contact" },
-      ],
-      attach,
-      unstage,
-    });
-    renderStream(adapter);
-    fireEvent.click(screen.getByRole("button", { name: "Attach" }));
-    expect(attach).toHaveBeenCalled();
-    const staged = screen.getByRole("list", { name: "Staged to send" });
-    expect(within(staged).getByText("Retreat packing list")).toBeInTheDocument();
-    expect(within(staged).getByText("DR")).toBeInTheDocument();
-    fireEvent.click(within(staged).getByRole("button", { name: "Remove Daniel Reyes" }));
-    expect(unstage).toHaveBeenCalledWith("1");
-    const send = screen.getByRole("button", { name: "Post" });
-    expect(send).not.toBeDisabled();
-    fireEvent.click(send);
-    expect(adapter.post).toHaveBeenCalledWith({ body: "", mentionedUserIds: [] });
-  });
 
-  it("no paperclip where the source takes no attachments", () => {
-    renderStream(fakeAdapter());
-    expect(screen.queryByRole("button", { name: "Attach" })).toBeNull();
-  });
 });
 
 // G1 with a face (#1259): a row shows the sender's photo where the source has

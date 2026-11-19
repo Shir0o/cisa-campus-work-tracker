@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { quickActionsFor, recentPeople, searchHistory, searchPeople, snippet } from '../src/search';
+import * as search from '../src/search';
+import { recentPeople, searchPeople } from '../src/search';
 import type { Contact } from '../src/types';
-import type { Hist } from '../src/history';
 
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
@@ -15,26 +15,9 @@ const contact = (overrides: Partial<Contact> = {}): Contact => ({
   ...overrides,
 });
 
-const hist = (overrides: Partial<Hist> = {}): Hist => ({
-  id: 'h1',
-  user: 'Grace Hopper',
-  action: 'created a new contact',
-  target: 'Ada Lovelace',
-  type: 'create',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  ...overrides,
-});
-
-describe('snippet', () => {
-  it('collapses whitespace and trims', () => {
-    expect(snippet('  hello   world  ')).toBe('hello world');
-  });
-
-  it('truncates with an ellipsis past the max length', () => {
-    const long = 'a'.repeat(80);
-    const s = snippet(long, 10);
-    expect(s.length).toBe(11); // 10 chars + ellipsis
-    expect(s.endsWith('…')).toBe(true);
+describe('people only (cut-or-keep §27)', () => {
+  it('exposes no history or quick-action results — a search only finds people', () => {
+    expect(Object.keys(search).sort()).toEqual(['GS_MAX', 'recentPeople', 'searchPeople']);
   });
 });
 
@@ -109,45 +92,5 @@ describe('searchPeople', () => {
       contact({ id: 'field-1', name: 'X', notes: 'Ian Studies' }),
     ];
     expect(searchPeople(contacts, 'ian', 2).map((c) => c.id)).toEqual(['name-1', 'name-2']);
-  });
-});
-
-describe('searchHistory', () => {
-  it('returns nothing for an empty query', () => {
-    expect(searchHistory([hist()], '', 'manager')).toEqual([]);
-  });
-
-  it('returns nothing for a legacy or missing role, regardless of match', () => {
-    expect(searchHistory([hist({ action: 'created a new contact' })], 'created', 'operator')).toEqual([]);
-    expect(searchHistory([hist({ action: 'created a new contact' })], 'created', null)).toEqual([]);
-  });
-
-  it('matches across action/description/target for manager+', () => {
-    const activities = [
-      hist({ id: 'by-action', action: 'logged an interaction for' }),
-      hist({ id: 'by-description', action: 'x', description: 'called about club rush' }),
-      hist({ id: 'by-target', action: 'x', target: 'Grace Hopper' }),
-      hist({ id: 'no-match', action: 'y', target: 'z' }),
-    ];
-    expect(searchHistory(activities, 'interaction', 'manager').map((a) => a.id)).toEqual(['by-action']);
-    expect(searchHistory(activities, 'club rush', 'admin').map((a) => a.id)).toEqual(['by-description']);
-    expect(searchHistory(activities, 'grace', 'manager').map((a) => a.id)).toEqual(['by-target']);
-  });
-});
-
-describe('quickActionsFor', () => {
-  it('hides "New contact" for a legacy role', () => {
-    const keys = quickActionsFor('viewer').map((a) => a.key);
-    expect(keys).not.toContain('new-contact');
-    expect(keys).toContain('signup');
-  });
-
-  it('shows "New contact" for a Trainee and above', () => {
-    expect(quickActionsFor('manager').map((a) => a.key)).toContain('new-contact');
-    expect(quickActionsFor('admin').map((a) => a.key)).toContain('new-contact');
-  });
-
-  it('always shows "Open sign-up form", even for a null role', () => {
-    expect(quickActionsFor(null).map((a) => a.key)).toEqual(['signup']);
   });
 });

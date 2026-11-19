@@ -172,7 +172,6 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     expect(closeBody, '.cd-pane-close rule should exist').not.toBeNull();
     expect(closeBody!).toMatch(/width:\s*44px/);
     expect(closeBody!).toMatch(/height:\s*44px/);
-    fourtyFour('.cdm-page .cd-pane-tab');
     fourtyFour('.cdm-page .cd-pane-asks');
     // The composer's controls: mention/attach tools and send.
     fourtyFour('.cdm-page .strm-tool');

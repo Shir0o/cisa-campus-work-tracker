@@ -50,17 +50,6 @@ describe('StreamRowView — what a chat adds to the row', () => {
     expect(getByText('Full-timer')).toBeTruthy();
   });
 
-  it('draws a taken-back message as its label, with no body, no long-press and no Thread chip', async () => {
-    const onLongPress = jest.fn();
-    const { getByText, queryByText, queryByHintText } = await wrap(
-      <StreamRowView row={rowOf(m('a'))} now={NOW} goneLabel={() => 'Maria took this message back.'} onLongPress={onLongPress} />,
-    );
-    expect(getByText('Maria took this message back.')).toBeTruthy();
-    expect(queryByText('body-a')).toBeNull();
-    // A live row invites the long-press; a gone one does not.
-    expect(queryByHintText('Message actions')).toBeNull();
-  });
-
   it('invites a long-press on a live row', async () => {
     const { getByHintText } = await wrap(<StreamRowView row={rowOf(m('a'))} now={NOW} onLongPress={jest.fn()} />);
     expect(getByHintText('Message actions')).toBeTruthy();

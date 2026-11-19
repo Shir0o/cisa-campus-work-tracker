@@ -30,8 +30,6 @@ describe('ContactHead', () => {
     showRelease: false,
     canEditKind: true,
     openPrayerCount: 2,
-    canDelegate: true,
-    conversationUnread: false,
   };
 
   const createActions = (): ContactHeaderActions => ({
@@ -46,7 +44,6 @@ describe('ContactHead', () => {
     onMoveStage: vi.fn(),
     onOpenMoveSheet: vi.fn(),
     onOpenAbout: vi.fn(),
-    onOpenDelegate: vi.fn(),
     onChangeKind: vi.fn(),
     onChangeCreator: vi.fn(),
     onDelete: vi.fn(),
@@ -107,24 +104,6 @@ describe('ContactHead', () => {
     expect(screen.getByText('Sarah Connor')).toBeInTheDocument();
   });
 
-  // #1671: Delegate moved from a header button into More actions, in both heads.
-  it.each([false, true])('keeps Delegate behind More actions (isMobile=%s)', (isMobile) => {
-    const actions = createActions();
-    render(
-      <ContactHead
-        model={defaultModel}
-        actions={actions}
-        isMobile={isMobile}
-        isEditing={false}
-      />,
-    );
-
-    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
-    expect(actions.onOpenDelegate).toHaveBeenCalled();
-  });
-
   // #1761: on a phone the More menu is a layer over the page, so Escape is
   // the menu's to answer — not the page's.
   it('announces the More trigger as a menu and reflects its open state', () => {
@@ -154,23 +133,6 @@ describe('ContactHead', () => {
     expect(trigger).toHaveFocus();
   });
 
-  // #1761: a 7px dot is not an accessible signal — the unread state has to be
-  // in the Conversation button's name.
-  it('names the unread state of the Conversation button on a phone', () => {
-    render(
-      <ContactHead
-        model={{ ...defaultModel, conversationUnread: true }}
-        actions={createActions()}
-        isMobile={true}
-        isEditing={false}
-      />,
-    );
-
-    expect(
-      screen.getByRole('button', { name: 'Conversation, New in Full-timers' }),
-    ).toBeInTheDocument();
-  });
-
   // #1802: the reminder lives in More actions, beside Add prayer — never as a
   // third full-width button on the phone head, which has a height budget.
   it.each([false, true])('offers Remind me inside More actions (isMobile=%s)', (isMobile) => {
@@ -186,18 +148,4 @@ describe('ContactHead', () => {
     expect(actions.onRemindMe).toHaveBeenCalledTimes(1);
   });
 
-  it('omits the Delegate item for someone who cannot share', () => {
-    render(
-      <ContactHead
-        model={{ ...defaultModel, canDelegate: false, isAdmin: false }}
-        actions={createActions()}
-        isMobile={false}
-        isEditing={false}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    expect(screen.getByText('Log interaction')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
-  });
 });

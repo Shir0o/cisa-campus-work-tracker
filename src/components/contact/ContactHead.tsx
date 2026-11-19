@@ -13,7 +13,6 @@ import {
   Trash2,
   UserCog,
   UserMinus,
-  UserPlus,
   X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -108,8 +107,6 @@ function MoreMenu({
   onRelease,
   showAddToAsk,
   onAddToAsk,
-  showDelegate,
-  onDelegate,
 }: {
   contact: Contact;
   onLogInteraction: () => void;
@@ -126,8 +123,6 @@ function MoreMenu({
   onRelease?: () => void;
   showAddToAsk?: boolean;
   onAddToAsk?: () => void;
-  showDelegate?: boolean;
-  onDelegate?: () => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -217,12 +212,6 @@ function MoreMenu({
               <NotebookPen className="w-4 h-4" /> {t('toAsk.menu_item', 'Add to To ask')}
             </button>
           )}
-          {/* #1671: Delegate sits with the other hand-offs, not in the head. */}
-          {showDelegate && onDelegate && (
-            <button onClick={() => { setOpen(false); onDelegate(); }} className={item}>
-              <UserPlus className="w-4 h-4" /> {t('modals.contactDetails.delegate')}
-            </button>
-          )}
           {showChangeCreator && (
             <button onClick={() => { setOpen(false); onChangeCreator(); }} className={item}>
               <UserCog className="w-4 h-4" /> {t('modals.contactDetails.change_creator')}
@@ -258,8 +247,6 @@ export interface ContactHeaderModel {
   showRelease?: boolean;
   canEditKind: boolean;
   openPrayerCount: number;
-  canDelegate: boolean;
-  conversationUnread?: boolean;
   /** To ask (#1649): a Full-timer may note a question to ask in person. */
   showAddToAsk?: boolean;
 }
@@ -278,7 +265,6 @@ export interface ContactHeaderActions {
   onMoveStage: (label: string) => void;
   onOpenMoveSheet: () => void;
   onOpenAbout: () => void;
-  onOpenDelegate: () => void;
   onChangeKind: (kind: ContactKind) => void;
   onChangeCreator: () => void;
   onDelete: () => void;
@@ -323,8 +309,6 @@ export default function ContactHead(props: ContactHeadProps) {
     showRelease,
     canEditKind,
     openPrayerCount,
-    canDelegate,
-    conversationUnread,
     showAddToAsk,
   } = model;
 
@@ -341,7 +325,6 @@ export default function ContactHead(props: ContactHeadProps) {
     onMoveStage,
     onOpenMoveSheet,
     onOpenAbout,
-    onOpenDelegate,
     onChangeKind,
     onChangeCreator,
     onDelete,
@@ -423,8 +406,6 @@ export default function ContactHead(props: ContactHeadProps) {
                   onRelease={onRelease}
                   showAddToAsk={showAddToAsk}
                   onAddToAsk={onAddToAsk}
-                  showDelegate={canDelegate}
-                  onDelegate={onOpenDelegate}
                 />
               </div>
             </div>
@@ -438,21 +419,10 @@ export default function ContactHead(props: ContactHeadProps) {
               <button
                 type="button"
                 onClick={onOpenConversation}
-                aria-label={
-                  conversationUnread
-                    ? `${t('modals.contactDetails.follow_up')}, ${t('modals.contactDetails.full_timers_unread')}`
-                    : undefined
-                }
                 className="relative inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full border border-outline text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 {t('modals.contactDetails.follow_up')}
-                {conversationUnread && (
-                  <span
-                    className="cd-pane-dot"
-                    aria-hidden="true"
-                  />
-                )}
               </button>
               <div className="cdm-reach-actions ml-auto flex items-center gap-1">
                 {contact.phone && (
@@ -674,8 +644,6 @@ export default function ContactHead(props: ContactHeadProps) {
                   onRelease={onRelease}
                   showAddToAsk={showAddToAsk}
                   onAddToAsk={onAddToAsk}
-                  showDelegate={canDelegate}
-                  onDelegate={onOpenDelegate}
                 />
                 <button
                   onClick={onClose}

@@ -82,46 +82,12 @@ describe('StreamComposer — the list line', () => {
   });
 });
 
-describe('StreamComposer — chat attachments (C5)', () => {
-  it('stages a card above the text, removable before sending', async () => {
-    const onUnstage = jest.fn();
-    const { getByLabelText, getByText } = await wrap(
-      <StreamComposer
-        label="Write"
-        onSend={jest.fn()}
-        staged={[{ key: '0', label: 'Daniel Reyes', kind: 'contact' }]}
-        onAttach={jest.fn()}
-        onUnstage={onUnstage}
-      />,
-    );
-    expect(getByLabelText('Attach')).toBeTruthy();
-    expect(getByText('Daniel Reyes')).toBeTruthy();
-    await fireEvent.press(getByLabelText('Remove Daniel Reyes'));
-    expect(onUnstage).toHaveBeenCalledWith('0');
-  });
-
-  it('sends a staged card even with no words', async () => {
-    const onSend = jest.fn();
-    const { getByRole } = await wrap(
-      <StreamComposer
-        label="Write"
-        onSend={onSend}
-        staged={[{ key: '0', label: 'Daniel Reyes', kind: 'contact' }]}
-        onAttach={jest.fn()}
-        onUnstage={jest.fn()}
-      />,
-    );
-    await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(onSend).toHaveBeenCalledWith({ body: '', mentionedUserIds: [] });
-  });
-});
-
 describe('StreamComposer — every tap target at least 44px', () => {
   it('sizes the tools and send', async () => {
     const { getByLabelText, getByRole } = await wrap(
-      <StreamComposer label="Write" candidates={roster} onSend={jest.fn()} onAttach={jest.fn()} />,
+      <StreamComposer label="Write" candidates={roster} onSend={jest.fn()} />,
     );
-    for (const label of ['Attach', 'Mention someone']) {
+    for (const label of ['Mention someone']) {
       expect(StyleSheet.flatten(getByLabelText(label).props.style).height).toBeGreaterThanOrEqual(44);
     }
     expect(StyleSheet.flatten(getByRole('button', { name: 'Send' }).props.style).height).toBeGreaterThanOrEqual(44);

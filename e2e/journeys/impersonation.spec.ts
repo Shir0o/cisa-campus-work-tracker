@@ -215,7 +215,8 @@ test.describe('Impersonation journey (#1476)', () => {
       `contact page threw while impersonating: ${reactErrors.join(' | ')}`,
     ).toEqual([]);
 
-    // The trainee's view hides the Full-timers-only stream (the scope held).
+    // The trainee's view has no Full-timers pane (the cut held), and the
+    // team-confidential post is never shown.
     await expect(contactPage.getByRole('button', { name: /^full-timers/i })).toHaveCount(0);
     await expect(contactPage.getByText(/confidential staff note/i)).toHaveCount(0);
 

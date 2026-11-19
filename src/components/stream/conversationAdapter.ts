@@ -52,23 +52,23 @@ export function conversationAdapter({
     where: t("stream.where_conversation").replace("{name}", contactName),
     audience: t("stream.audience_conversation").replace("{name}", first),
     empty: t("thread.empty_conversation"),
-    capabilities: { attachments: false, canPost: mayWrite, canReply: mayWrite },
+    capabilities: { canPost: mayWrite, canReply: mayWrite },
     composer: { placeholder: t("thread.placeholder_comment") },
     // Any teammate, as before (ADR 0007): an @mention can pull in someone not
     // yet tied to the person.
     mentionCandidates: teamMembers.map((m) => ({ uid: m.id, name: m.name, role: m.role })),
     post: ({ body, mentionedUserIds }) =>
-      write({ interactionId: null, scope: null, parentId: null, kind: "comment", body, mentionedUserIds }),
+      write({ interactionId: null, parentId: null, kind: "comment", body, mentionedUserIds }),
     // A reply never closes a Follow-up ask: only I followed up or Never mind
     // does (#813). It does close an @mention it answers when the replier is
     // one of the people named (the data layer does that).
     reply: (parent, { body, mentionedUserIds }) =>
-      write({ interactionId: null, scope: null, parentId: parent.id, kind: "comment", body, mentionedUserIds }),
+      write({ interactionId: null, parentId: parent.id, kind: "comment", body, mentionedUserIds }),
     // Every close is as the viewer. Only the asker (or sender) is offered
     // Never mind, and one closed by its own author is what reads as withdrawn.
     closeAsk: (m) => closeFollowUpAsk(contactId, m.id, { uid: me.uid, name: me.name }),
     reopenAsk: mayWrite ? (m) => reopenFollowUpAsk(contactId, m.id) : undefined,
-    delete: (m) => deleteThreadMessage(contactId, m.id, m.scope),
+    delete: (m) => deleteThreadMessage(contactId, m.id),
     // A rewrite is the author's alone — unlike delete, which a Full-timer may
     // also do. The rule enforces the same; the control must not promise more.
     canEdit: (m) => m.from === me.uid,

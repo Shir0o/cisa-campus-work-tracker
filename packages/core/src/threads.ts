@@ -17,7 +17,8 @@ export interface ThreadMessage {
   interactionId: string | null;
   /** A reply in a Thread (ADR 0033): the message it answers. One level deep. */
   parentId?: string | null;
-  /** Team-scoped discussion is a Full-timer surface; undefined/null = walking-together thread. */
+  /** Legacy Full-timers Discussion scope; its pane is cut and no reader here
+   *  surfaces these documents. Undefined/null = a walking-together thread. */
   scope?: 'team' | null;
   from: string; // staff uid
   fromName: string;
@@ -83,10 +84,6 @@ export const THREAD_NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: stri
   encouragement: (who, c) => `${who} encouraged you about ${c}`,
   nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
 };
-
-/** The bell title for a Full-timers message, whatever its kind. */
-export const TEAM_THREAD_NOTIFY_TITLE = (who: string, contact: string) =>
-  `${who} posted in the Full-timers thread on ${contact}`;
 
 /** Everyone tied to a contact: they added them, they are the adder's gospel
  *  partner, or they are a co-creator. The fourth tie — teammates keeping this
@@ -160,8 +157,8 @@ export interface ConversationMessage {
   scope?: "team" | null;
 }
 
-/** Each stream stands alone: a person's Conversation, their Full-timers
- *  stream, and each Interaction's thread. */
+/** Each stream stands alone: a person's Conversation, and each Interaction's
+ *  thread. */
 export function sameStream(a: ConversationMessage, b: ConversationMessage): boolean {
   return (
     (a.contactId ?? null) === (b.contactId ?? null) &&

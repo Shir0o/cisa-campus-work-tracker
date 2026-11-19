@@ -75,8 +75,8 @@ describe("conversationAdapter", () => {
     ["manager", true],
     ["operator", false],
     ["viewer", false],
-  ])("a %s may post and reply: %s; attachments are not offered", (role, may) => {
-    expect(make(role).capabilities).toEqual({ attachments: false, canPost: may, canReply: may });
+  ])("a %s may post and reply: %s", (role, may) => {
+    expect(make(role).capabilities).toEqual({ canPost: may, canReply: may });
   });
 
   it("offers any teammate as a mention (ADR 0007)", () => {
@@ -93,7 +93,6 @@ describe("conversationAdapter", () => {
       {
         interactionId: null,
         parentId: null,
-        scope: null,
         from: "maria",
         fromName: "Maria Santos",
         kind: "comment",
@@ -109,7 +108,7 @@ describe("conversationAdapter", () => {
     make().reply(ask, { body: "I can", mentionedUserIds: [] });
     expect(addThreadMessage).toHaveBeenCalledWith(
       "c1",
-      expect.objectContaining({ parentId: "ask", kind: "comment", body: "I can", interactionId: null, scope: null }),
+      expect.objectContaining({ parentId: "ask", kind: "comment", body: "I can", interactionId: null }),
       { to: "ruth", contactName: "Daniel Reyes", stakeholders },
     );
     expect(closeFollowUpAsk).not.toHaveBeenCalled();
@@ -128,7 +127,7 @@ describe("conversationAdapter", () => {
 
   it("deletes the one message", () => {
     make().delete(msg({ id: "gone" }));
-    expect(deleteThreadMessage).toHaveBeenCalledWith("c1", "gone", null);
+    expect(deleteThreadMessage).toHaveBeenCalledWith("c1", "gone");
   });
 
   it("lets the author rewrite their own message", () => {

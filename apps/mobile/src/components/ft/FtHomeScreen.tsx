@@ -239,7 +239,6 @@ function FtHome() {
         <FtGlance
           carrying={data.carrying}
           next={data.nextGathering}
-          onOpenPrayers={() => router.push('/prayer-log')}
           onOpenGatherings={() => router.push('/attendance')}
         />
 
@@ -280,7 +279,6 @@ function FtHome() {
             if (row.requestId) void data.markRequestAnswered(row.requestId);
             setToast('Thank God. They’ll see it’s answered.');
           }}
-          onOpenPrayers={() => router.push('/prayer-log')}
         />
 
         <HomesOpen offers={data.homesOpen} />

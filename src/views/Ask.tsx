@@ -128,7 +128,6 @@ export default function Ask() {
         markArrived("threads");
       },
       undefined,
-      { includeTeam: true },
     );
     return () => {
       unsubContacts();
@@ -330,7 +329,6 @@ export default function Ask() {
         {
           interactionId: target.interactionId,
           parentId: target.parentId,
-          scope: target.scope,
           from: user.uid,
           fromName: loggerName,
           kind: "comment",

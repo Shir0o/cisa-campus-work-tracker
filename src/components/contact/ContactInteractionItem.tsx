@@ -1,10 +1,5 @@
 import React from "react";
-import { Clock, Footprints, UserCircle } from "lucide-react";
-import { interactionAdapter, interactionThreadSummary } from "../stream/interactionAdapter";
-
-type InteractionStreamAdapter = ReturnType<typeof interactionAdapter>;
-import { ThreadChip } from "../stream/Stream";
-import type { StreamViewer } from "../../lib/stream";
+import { Clock, UserCircle } from "lucide-react";
 import type { Interaction } from "../../types";
 import { useLanguage } from "../LanguageProvider";
 import ContactComposer from "./ContactComposer";
@@ -24,10 +19,6 @@ export default function ContactInteractionItem({
   onUpdate,
   updating,
   onRemove,
-  adapterFor,
-  viewer,
-  threadOpen,
-  onOpenThread,
   firstName = "",
   teamMembers,
 }: {
@@ -42,10 +33,6 @@ export default function ContactInteractionItem({
   onUpdate: (e: React.FormEvent) => void;
   updating: boolean;
   onRemove: () => void;
-  adapterFor: (interaction: Interaction) => InteractionStreamAdapter;
-  viewer: StreamViewer;
-  threadOpen: boolean;
-  onOpenThread: () => void;
   firstName?: string;
   /** The roster the reacher's portrait is resolved from (#1669). */
   teamMembers: ContactTeamMember[];
@@ -169,25 +156,6 @@ export default function ContactInteractionItem({
                   )}
                 </span>
               )}
-            </div>
-            {/* The team's Thread on this interaction: a replies chip, or an
-                invitation to start one. Either opens the Thread in the drawer. */}
-            <div className="mt-2">
-              {(() => {
-                const summary = interactionThreadSummary(adapterFor(interaction), viewer, Date.now());
-                return summary ? (
-                  <ThreadChip summary={summary} open={threadOpen} onClick={onOpenThread} />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onOpenThread}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant/60 hover:text-accent transition-colors"
-                  >
-                    <Footprints className="w-3.5 h-3.5" />
-                    {t('stream.think_together')}
-                  </button>
-                );
-              })()}
             </div>
           </>
         )}

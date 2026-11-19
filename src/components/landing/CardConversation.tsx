@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
 import Stream from "../stream/Stream";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { conversationAdapter } from "../stream/conversationAdapter";
-import { fullTimersAdapter } from "../stream/fullTimersAdapter";
 import type { TeamMemberLike } from "../stream/types";
-import { contactStakeholdersOf, countFor, type ThreadMessage } from "../../lib/threads";
+import { contactStakeholdersOf, type ThreadMessage } from "../../lib/threads";
 import { useAuth } from "../AuthProvider";
 import { useLanguage } from "../LanguageProvider";
 
@@ -23,19 +21,13 @@ import { useLanguage } from "../LanguageProvider";
 // and `partitionAttentionStacks` are untouched, so no stack moves between
 // "On you" and "Around the team" (ADR 0015 decision 6, ADR 0022 decision 7).
 //
-// It carries both of the contact's staff threads as tabs, in the order the
-// contact detail page uses, and reuses that page's renderer rather than
-// growing a second one — so mentions and the compose-kind picker
-// come along unchanged. The composer writes into whichever tab is open, which
-// is the one genuinely new capability and the one risk worth naming: the two
-// audiences differ in exactly the way that matters, so the strip says whose
-// eyes a message will reach before Post is pressed.
+// It reuses the contact page's Conversation renderer rather than growing a
+// second one, so mentions come along unchanged. The Full-timers tab is cut
+// (cut-or-keep §24).
 
 /** How long a just-posted message wears its marker. Long enough to find it,
  *  short enough that it is not a second unread state. */
 const JUST_POSTED_MS = 8_000;
-
-type Tab = "conversation" | "team";
 
 /**
  * What a card knows about a contact's threads: the messages the page holds,
@@ -117,16 +109,12 @@ export function CardConversation({
 }) {
   const { t } = useLanguage();
   const { user, role } = useAuth();
-  const [tab, setTab] = useState<Tab>("conversation");
   // The message a to-do is being made from (the row toolbar).
   const [todoFrom, setTodoFrom] = useState<string | null>(null);
 
-  const conversationCount = countFor(messages, null, null);
-  const teamCount = countFor(messages, null, "team");
-
-  // The strip reads through the same adapters as the contact page, over the
+  // The strip reads through the same adapter as the contact page, over the
   // messages this card was handed — no second subscription (#1012).
-  const adapterInput = {
+  const adapter = conversationAdapter({
     contactId: contact.id,
     contactName: contact.name,
     messages,
@@ -135,67 +123,19 @@ export function CardConversation({
     teamMembers: teamMembers ?? [],
     onPosted,
     t,
-  };
-  const adapter = tab === "team" ? fullTimersAdapter(adapterInput) : conversationAdapter(adapterInput);
-
-  const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "conversation", label: t("modals.contactDetails.follow_up"), count: conversationCount },
-    { id: "team", label: t("modals.contactDetails.discussion"), count: teamCount },
-  ];
-
-  const segment = (
-    <div className="pb-2">
-      <div
-        role="tablist"
-        aria-label={t("whatsNew.which_thread")}
-        className="inline-flex gap-1 p-1 rounded-full bg-surface-variant"
-      >
-        {tabs.map((tb) => (
-          <button
-            key={tb.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === tb.id}
-            onClick={() => setTab(tb.id)}
-            className={cn(
-              // A comfortable target on a phone, where the page renders the
-              // same strip on the same card, and the compact pill from the
-              // width the filter row uses upward.
-              "rounded-full text-[11.5px] transition-colors cursor-pointer px-3 whitespace-nowrap min-h-11 sm:min-h-0 sm:py-1.5",
-              // The tab you are on turns inside out, as every selected control
-              // in the product does. `bg-surface` on the track is a lighter
-              // step in light and a darker one in dark, so in the theme this
-              // card is used most it read as a dent rather than a selection.
-              tab === tb.id
-                ? "bg-primary text-on-primary font-semibold"
-                : "text-on-surface-variant font-medium hover:text-on-surface",
-            )}
-          >
-            {tb.label}
-            {tb.count > 0 && <span className="ml-1.5 tabular-nums opacity-70">{tb.count}</span>}
-          </button>
-        ))}
-      </div>
-
-    </div>
-  );
+  });
 
   return (
     <div className="mt-3 pt-3 border-t border-outline-variant/60">
-      {/* Keyed on the tab, so switching audience starts a fresh composer: a
-          half-written note for staff must not follow the reader into the
-          thread everyone tied to the person can read. The audience line sits
-          above the box, where it is read before Post rather than after. A
-          Thread replaces the strip (segment and all) with a back arrow. */}
+      {/* A Thread replaces the strip with a back arrow. The audience line sits
+          above the box, where it is read before Post rather than after. */}
       <Stream
-        key={tab}
         adapter={adapter}
         viewer={{ uid, role }}
         threadMode="replace"
         compact
         highlightIds={justPosted}
         onMakeTodo={(m) => setTodoFrom(m.body)}
-        header={segment}
       />
       {todoFrom !== null && (
         <FromEntryTodoComposer

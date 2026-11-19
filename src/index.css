@@ -3959,8 +3959,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prt-prayer-edit--m:hover { color: var(--accent); border-color: var(--accent-line); }
   /* Everything in the prayer's tool row is a 40px target; these are the
      controls that change or clear a prayer (#1765). */
-  .prt-prayer-tools button,
-  .prt-log-interaction { min-height: 40px; display: inline-flex; align-items: center; }
+  .prt-prayer-tools button { min-height: 40px; display: inline-flex; align-items: center; }
   .prt-filter { min-height: 40px; }
   .prt-prayer-placeholder { display: flex; flex-direction: column; align-items: flex-start; }
   /* Mobile: one native status control instead of a cramped 3-up row */
@@ -4321,18 +4320,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   color: var(--on-surface-variant);
 }
 .cd-pane-close:hover { background: var(--surface-container-high); }
-.cd-pane-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--surface-container-low); }
-.cd-pane-tab {
-  position: relative; height: 28px; padding: 0 12px; border-radius: 999px; border: 0;
-  background: transparent; color: var(--on-surface-variant);
-  font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
-/* Selection inverts (The Inversion Rule), the same as the People filter and
-   the card's Reviewed. A lighter thumb on a light track — or a darker one on
-   the dark track, which is what `--surface` resolved to in dark — reads as a
-   hole, not as the tab you are on. */
-.cd-pane-tab.on { background: var(--accent-strong); color: var(--accent-on); }
-.cd-pane-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--danger); display: inline-block; margin-left: 5px; vertical-align: middle; }
 .cd-pane-asks {
   margin-left: auto; height: 28px; padding: 0 12px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--panel); color: var(--text);
@@ -4351,7 +4338,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 @media (max-width: 720px) {
   .cdm-page .strm-tool,
   .cdm-page .strm-send { width: 44px; height: 44px; }
-  .cdm-page .cd-pane-tab,
   .cdm-page .cd-pane-asks { height: 44px; min-height: 44px; }
 }
 .cd-story { padding: 24px 28px; min-width: 0; }
@@ -4774,9 +4760,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 
 /* An Interaction's Thread quotes the Interaction as its parent
    (threads/Interaction-Thread.dc.html). */
-.strm-quote { margin: 4px 0 2px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border-left: 3px solid var(--border); }
-.strm-qh { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
-.strm-quote .strm-tx { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 /* The chip also sits on a story entry, outside any .strm. */
 .strm-last { color: var(--strm-mute, var(--text-dim)); }
 
@@ -4803,9 +4786,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-av-photo { overflow: hidden; background: var(--panel-2); }
 .strm-av-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .strm-tag-role { background: var(--panel); color: var(--text-dim); border: 1px solid var(--border); }
-.strm-tx.strm-gone { font-style: italic; color: var(--strm-mute); }
 .strm-notice { align-self: center; margin: 8px 0; padding: 2px 12px; border-radius: 999px; background: var(--panel); font-size: 11.5px; font-weight: 500; color: var(--text-dim); }
-.strm-pinstrip { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-dim); margin: 8px 0 2px; }
 .strm-acts { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .strm-acts .strm-thr { margin-top: 0; }
 .strm-btn-done { background: var(--success-soft); border-color: var(--success-soft); color: var(--success); }
@@ -4821,12 +4802,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-file-sub { display: block; font-size: 11.5px; font-weight: 400; color: var(--strm-mute); }
 .msgs-postnote { padding: 14px 24px; border-top: 1px solid var(--border-soft); background: var(--panel); font-size: 13px; color: var(--text-dim); flex: none; }
 .strm-menu-note { margin: 4px 10px 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); max-width: 220px; }
-.strm-staged { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
-.strm-stg { display: inline-flex; align-items: center; gap: 8px; padding: 3px 3px 3px 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); font-size: 12.5px; font-weight: 500; max-width: 240px; }
-.strm-stg .strm-tool { width: 24px; height: 24px; }
-.strm-stg-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.strm-stg-av, .strm-stg-fi { width: 26px; height: 26px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--panel-2); color: var(--text-dim); font-size: 9px; font-weight: 600; }
-.strm-stg-av { border-radius: 50%; }
 
 /* Messages: the channel and its Thread are two compartments, as the rail is. */
 .msgs-thread.msgs-streamed { background: transparent; }

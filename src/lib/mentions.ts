@@ -37,22 +37,10 @@ export function extractMentionCandidate(
   };
 }
 
-/**
- * Filter users based on query and scope (in team scope, only admin/full-timers).
- */
-export function filterMentionCandidates(
-  users: MentionUser[],
-  query: string,
-  isTeamScope: boolean,
-): MentionUser[] {
+/** Filter users by the typed query. */
+export function filterMentionCandidates(users: MentionUser[], query: string): MentionUser[] {
   const q = query.trim().toLowerCase();
-  return users.filter((u) => {
-    if (isTeamScope && u.role !== "admin") {
-      return false;
-    }
-    if (!q) return true;
-    return u.name.toLowerCase().includes(q);
-  });
+  return users.filter((u) => !q || u.name.toLowerCase().includes(q));
 }
 
 /**

@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { ChevronRight, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { ChevronRight, Clock, Image as ImageIcon, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
@@ -35,7 +35,6 @@ import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
-import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -161,7 +160,6 @@ export default function PrayerList() {
 
   // Team for the "make a to-do" affordance — who can be assigned the follow-up.
   const [team, setTeam] = useState<TodoPerson[]>([]);
-  const [todoFor, setTodoFor] = useState<{ prayer: PrayerRecord; contact: Contact } | null>(null);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -303,17 +301,6 @@ export default function PrayerList() {
     } catch (error) {
       console.error('Error updating status:', error);
     }
-  };
-
-  const openTodoFor = (prayer: PrayerRecord) => {
-    const contact = contacts.find((c) => c.id === prayer.contactId);
-    if (!contact) return;
-    // The stand-in burden is not content, so it must not pre-fill the composer
-    // as if a teammate had written "Holding in prayer" (#1691).
-    setTodoFor({
-      prayer: isPlaceholderPrayerBurden(prayer.burden) ? { ...prayer, burden: '' } : prayer,
-      contact,
-    });
   };
 
   const handleUpdateBurden = async (prayer: PrayerRecord, burden: string): Promise<boolean> => {
@@ -537,23 +524,10 @@ export default function PrayerList() {
           setComposeFor={setComposeFor}
           onRemoveFromPrayerList={removeFromPrayerList}
           isOperator={isOperator}
-          onMakeTodo={openTodoFor}
           isManager={isManager}
           onClearPrayer={handleClearPrayer}
           onPickHeld={applyPick}
          />
-        {todoFor && (
-          <FromEntryTodoComposer
-            text={todoFor.prayer.burden}
-            contactId={todoFor.contact.id}
-            contactName={todoFor.contact.name}
-            source={{ interactionId: todoFor.prayer.id, interactionTitle: t('prayers.prayer_for_name').replace('{name}', todoFor.contact.name.split(' ')[0]) }}
-            team={team}
-            meUid={user?.uid ?? ''}
-            meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
-            onClose={() => setTodoFor(null)}
-          />
-        )}
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
        </>
     );
@@ -702,7 +676,6 @@ export default function PrayerList() {
                 onOpenProfile={() => openContact(e.contact)}
                 onRemoveFromPrayerList={removeFromPrayerList}
                 isOperator={isOperator}
-                onMakeTodo={openTodoFor}
                 meUid={user?.uid ?? ''}
                 isManager={isManager}
                />
@@ -719,18 +692,6 @@ export default function PrayerList() {
         onApply={applyPick}
       />
 
-      {todoFor && (
-        <FromEntryTodoComposer
-          text={todoFor.prayer.burden}
-          contactId={todoFor.contact.id}
-          contactName={todoFor.contact.name}
-          source={{ interactionId: todoFor.prayer.id, interactionTitle: t('prayers.prayer_for_name').replace('{name}', todoFor.contact.name.split(' ')[0]) }}
-          team={team}
-          meUid={user?.uid ?? ''}
-          meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
-          onClose={() => setTodoFor(null)}
-        />
-      )}
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
      </PageContainer>
   );
@@ -750,7 +711,6 @@ function PrayerThread({
   onOpenProfile,
   onRemoveFromPrayerList,
   isOperator,
-  onMakeTodo,
   meUid,
   isManager,
   onClearPrayer,
@@ -765,14 +725,12 @@ function PrayerThread({
   onOpenProfile: () => void;
   onRemoveFromPrayerList: (contact: Contact) => void;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   meUid?: string;
   isManager: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
   const { t } = useLanguage();
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
-  const { openLogInteraction } = useLayout();
    const [showEarlier, setShowEarlier] = useState(false);
 
   const isStale = isContactStale(contact);
@@ -854,10 +812,6 @@ function PrayerThread({
               ...buildContactRowActions({
                 contact,
                 onOpen: onOpenProfile,
-                onMakeTodo: () => {
-                  const latest = weekItem || lastItem || sorted[0];
-                  if (latest) onMakeTodo?.(latest);
-                },
                 onFollowUp: () => {
                   if (!meUid) return;
                   const undo = followUpContact(meUid, contact.id);
@@ -885,33 +839,6 @@ function PrayerThread({
         </div>
       </div>
 
-      {/* Stale Contact Quick Actions */}
-      {isStale && isOperator && (
-        <div
-          data-testid="stale-quick-actions"
-          className="mt-3 p-3 bg-surface-container-low/60 rounded-2xl border border-outline-variant/60 flex items-center justify-between gap-3 flex-wrap text-xs"
-        >
-          <div className="text-on-surface-variant font-medium flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>
-              {daysSinceInteraction !== null
-                ? t('prayers.no_interaction_days', `No contact in ${daysSinceInteraction}d`).replace('{n}', String(daysSinceInteraction))
-                : t('prayers.no_interaction_recorded', 'No interactions')}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={() => openLogInteraction(contact.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── The thread, on one spine (#709) ──────────────────────────────────
          Was: three sections, each a full-width hairline rule over a prayer
          wearing its own 2px left rail. The rail was carrying two unrelated
@@ -934,7 +861,6 @@ function PrayerThread({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
-            onMakeTodo={onMakeTodo}
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
@@ -967,7 +893,6 @@ function PrayerThread({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
-            onMakeTodo={onMakeTodo}
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
@@ -1004,8 +929,7 @@ function PrayerThread({
                     onUpdateStatus={onUpdateStatus}
                     onUpdateBurden={onUpdateBurden}
                     isOperator={isOperator}
-                    onMakeTodo={onMakeTodo}
-                    isManager={isManager}
+                            isManager={isManager}
                     onClearPrayer={onClearPrayer}
                   />
                 ))}
@@ -1072,7 +996,6 @@ function EarlierRow({
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
-  onMakeTodo,
   isManager,
   onClearPrayer,
 }: {
@@ -1081,7 +1004,6 @@ function EarlierRow({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager?: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
@@ -1135,7 +1057,6 @@ function EarlierRow({
           onUpdateStatus={onUpdateStatus}
           onUpdateBurden={onUpdateBurden}
           isOperator={isOperator}
-          onMakeTodo={onMakeTodo}
           isManager={isManager}
           onClearPrayer={onClearPrayer}
         />
@@ -1155,7 +1076,6 @@ function PrayerItem({
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
-  onMakeTodo,
   isManager,
   onClearPrayer,
 }: {
@@ -1172,7 +1092,6 @@ function PrayerItem({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager?: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
@@ -1286,15 +1205,6 @@ function PrayerItem({
         {!editing && isOperator && !isPlaceholder && (
           <button onClick={startEdit} className={cn('text-[13px] text-on-surface-variant hover:text-accent transition-colors', !inFold && 'ml-auto')}>
             {t('actions.edit')}
-          </button>
-        )}
-        {!editing && onMakeTodo && (
-          <button
-            onClick={() => onMakeTodo(prayer)}
-            title={t('prayers.make_todo_from_prayer')}
-            className="text-[13px] text-on-surface-variant hover:text-accent transition-colors"
-          >
-            {t('prayers.make_a_todo')}
           </button>
         )}
         {!editing && isManager && onClearPrayer && (

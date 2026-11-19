@@ -6,13 +6,12 @@ import type { ThreadKind, ThreadMessage, ThreadMessageWithContact } from '@cisa/
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
 
 /** Live subscription to every thread message across all contacts, tagged with
- * contactId. `includeTeam` adds the Full-timers stream (a Full-timer only). */
+ * contactId. */
 export function subscribeAllThreads(
   cb: (messages: ThreadMessageWithContact[]) => void,
   onError?: (e: unknown) => void,
-  options?: core.ThreadSubscribeOptions,
 ): () => void {
-  return core.subscribeAllThreads(db, cb, onError, options);
+  return core.subscribeAllThreads(db, cb, onError);
 }
 
 /** A Trainee's thread messages across the people they can see (the rules deny
@@ -26,29 +25,24 @@ export function subscribeTiedThreads(
 }
 
 /** Live subscription to a single contact's thread messages — the person
- * screen's Conversation and Story Threads, plus the Full-timers stream when
- * `includeTeam` (a Full-timer only; the rules refuse anyone else). */
+ * screen's Conversation and the story. */
 export function subscribeThreads(
   contactId: string,
   cb: (messages: ThreadMessage[]) => void,
   onError?: (e: unknown) => void,
-  options?: core.ThreadSubscribeOptions,
 ): () => void {
-  return core.subscribeThreads(db, contactId, cb, onError, options);
+  return core.subscribeThreads(db, contactId, cb, onError);
 }
-
-const sub = (scope?: 'team' | null) => (scope === 'team' ? 'teamThreads' : 'threads');
 
 /** Delete a single thread message — the author or an admin (per firestore.rules). */
 export async function deleteThreadMessage(
   contactId: string,
   messageId: string,
-  scope?: 'team' | null,
 ): Promise<void> {
   try {
-    await core.deleteThreadMessage(db, contactId, messageId, scope);
+    await core.deleteThreadMessage(db, contactId, messageId);
   } catch (e) {
-    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/${sub(scope)}/${messageId}`);
+    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/threads/${messageId}`);
   }
 }
 
@@ -72,12 +66,11 @@ export async function closeFollowUpAsk(
   contactId: string,
   messageId: string,
   by: { uid: string; name?: string | null },
-  scope?: 'team' | null,
 ): Promise<void> {
   try {
-    await core.closeFollowUpAsk(db, contactId, messageId, by, scope);
+    await core.closeFollowUpAsk(db, contactId, messageId, by);
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/${sub(scope)}/${messageId}`);
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/threads/${messageId}`);
   }
 }
 
@@ -85,11 +78,10 @@ export async function closeFollowUpAsk(
  *  read. Mirrors the web app's `threadNotificationLink` (#1303). */
 export function threadNotificationLink(
   contactId: string,
-  input: { interactionId?: string | null; parentId?: string | null; scope?: 'team' | null },
+  input: { interactionId?: string | null; parentId?: string | null },
 ): string {
   if (input.interactionId) return `/people/${contactId}?interaction=${input.interactionId}`;
-  const tab = input.scope === 'team' ? 'discussion' : 'thread';
-  return `/people/${contactId}?tab=${tab}${input.parentId ? `&parent=${input.parentId}` : ''}`;
+  return `/people/${contactId}?tab=thread${input.parentId ? `&parent=${input.parentId}` : ''}`;
 }
 
 /** Post a new message to a contact; pings everyone tied to it. The bell entry
@@ -101,7 +93,6 @@ export async function addThreadMessage(
   input: {
     interactionId?: string | null;
     parentId?: string | null;
-    scope?: 'team' | null;
     from: string;
     fromName: string;
     kind: ThreadKind;
@@ -124,6 +115,6 @@ export async function addThreadMessage(
       });
     });
   } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/${sub(input.scope)}`);
+    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
 }

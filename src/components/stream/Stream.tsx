@@ -1,12 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Pin, Quote, Reply, SquareCheckBig, X } from "lucide-react";
+import { ArrowLeft, Check, Ellipsis, Loader2, Pencil, Quote, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import { buildStream, buildThread, type StreamRow, type StreamViewer, type ThreadSummary } from "../../lib/stream";
 import type { MentionUser } from "../../lib/mentions";
 import { joinNames } from "../../../packages/core/src/mentions";
 import StreamComposer from "./StreamComposer";
-import type { StreamAdapter, StreamMenuAction, StreamSourceMessage } from "./types";
+import type { StreamAdapter, StreamSourceMessage } from "./types";
 
 // One written stream in the grammar ADR 0033 settled: Slack-literal rows,
 // everyone left-aligned, day dividers, a hover toolbar, a Thread chip, and the
@@ -25,9 +25,6 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   header?: React.ReactNode;
   /** Shut the whole surface — the replacing Thread's close control. */
   onClose?: () => void;
-  /** A pinned Thread (an Interaction's) replaces the stream with no stream
-   *  behind it to return to, so its back control is supplied from outside. */
-  back?: { label: string; onClick: () => void };
   /** Drawn under the composer — a line the composer can't say alone. */
   footer?: React.ReactNode;
   onMakeTodo?: (message: M) => void;
@@ -41,7 +38,7 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   compact?: boolean;
   /** Messages to mark "Just posted" — the viewer's own, for a moment. */
   highlightIds?: ReadonlySet<string> | null;
-  /** What the surface draws under a message's body — a chat's attachments. */
+  /** What the surface draws under a message's body. */
   renderExtra?: (message: M) => React.ReactNode;
   /** What the surface draws beside a message's Thread chip — an
    *  announcement's Got it and read receipts. */
@@ -219,10 +216,8 @@ interface RowProps<M extends StreamSourceMessage> {
   /** Source extras (#1259): each optional, each off by default. */
   badge?: string | null;
   photo?: string | null;
-  gone?: string | null;
   deleteLabel?: string;
   deleteConfirm?: { prompt: string; yes: string; no: string };
-  moreActions?: StreamMenuAction[];
   extra?: React.ReactNode;
   actions?: React.ReactNode;
 }
@@ -251,10 +246,8 @@ function Row<M extends StreamSourceMessage>({
   me,
   badge,
   photo,
-  gone,
   deleteLabel,
   deleteConfirm,
-  moreActions,
   extra,
   actions,
 }: RowProps<M>) {
@@ -323,15 +316,15 @@ function Row<M extends StreamSourceMessage>({
           <div className="strm-mh">
             <span className="strm-who">{m.fromName}</span>
             {badge && <span className="strm-tag strm-tag-role">{badge}</span>}
-            {!gone && tag === "question" && <span className="strm-tag strm-tag-q">{t("stream.tag_question")}</span>}
-            {!gone && tag === "ask" && (
+            {tag === "question" && <span className="strm-tag strm-tag-q">{t("stream.tag_question")}</span>}
+            {tag === "ask" && (
               <span className={cn("strm-tag", ask?.status === "withdrawn" ? "strm-tag-muted" : "strm-tag-ask")}>
                 {t("stream.tag_ask")}
               </span>
             )}
             {justPosted && <span className="strm-tag strm-tag-just">{t("stream.just_posted")}</span>}
             <span className="strm-when">{when}</span>
-            {m.editedAt && !editing && !gone && <span className="strm-edited">· {t("stream.edited")}</span>}
+            {m.editedAt && !editing && <span className="strm-edited">· {t("stream.edited")}</span>}
           </div>
         )}
         {editing ? (
@@ -360,8 +353,6 @@ function Row<M extends StreamSourceMessage>({
               </button>
             </div>
           </div>
-        ) : gone ? (
-          <p className="strm-tx strm-gone">{gone}</p>
         ) : (
           <>
             {m.body && (
@@ -372,7 +363,7 @@ function Row<M extends StreamSourceMessage>({
             {extra}
           </>
         )}
-        {!gone && ask && (
+        {ask && (
           <div className="strm-status">
             {ask.status === "open" && (
               <>
@@ -422,7 +413,7 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {!gone && mention && (mention.status !== "open" || mentionActions.length > 0) && (
+        {mention && (mention.status !== "open" || mentionActions.length > 0) && (
           <div className="strm-status" data-stream-mention-status={mention.status}>
             {mention.status === "open" && mentionActions.includes("done") && (
               <button type="button" className="strm-btn strm-btn-pri" onClick={() => onCloseAsk("done")}>
@@ -457,12 +448,12 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {continuation && m.editedAt && !editing && !gone && (
+        {continuation && m.editedAt && !editing && (
           <div className="strm-status">
             <span className="strm-edited">{t("stream.edited")}</span>
           </div>
         )}
-        {!gone && actions ? (
+        {actions ? (
           <div className="strm-acts">
             {actions}
             {chip}
@@ -471,7 +462,7 @@ function Row<M extends StreamSourceMessage>({
           chip
         )}
       </div>
-      {!gone && (
+      {(
       <div className="strm-tools" role="toolbar" aria-label={t("stream.message_actions")} ref={menuRef}>
         {canReply && onOpenThread && (
           <button type="button" className="strm-tool" aria-label={t("stream.reply_in_thread")} title={t("stream.reply_in_thread")} onClick={() => onOpenThread(true)}>
@@ -542,19 +533,6 @@ function Row<M extends StreamSourceMessage>({
               </>
             ) : (
               <>
-                {moreActions?.map((a) => (
-                  <button
-                    key={a.label}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      a.run();
-                      closeMenu();
-                    }}
-                  >
-                    {a.label}
-                  </button>
-                ))}
                 {canCopy && (
                   <button
                     type="button"
@@ -597,7 +575,6 @@ export default function Stream<M extends StreamSourceMessage>({
   threadMode,
   header,
   onClose,
-  back,
   footer,
   onMakeTodo,
   onAddToStory,
@@ -624,10 +601,7 @@ export default function Stream<M extends StreamSourceMessage>({
   }, [initialThreadId]);
   const listRef = useRef<HTMLDivElement>(null);
   const { messages, capabilities: can, mentionCandidates } = adapter;
-  // An adapter that is one Thread (an Interaction's) is always open on it, and
-  // there is no stream behind it to go back to.
-  const pinned = adapter.thread ?? null;
-  const openId = pinned ? pinned.parentId : (open?.id ?? null);
+  const openId = open?.id ?? null;
 
   // "Today" and "Open N days" are read against a clock that ticks each
   // minute, so a drawer left open across midnight relabels itself.
@@ -636,22 +610,15 @@ export default function Stream<M extends StreamSourceMessage>({
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
   }, []);
-  // Messages the source holds first leave date order, each under its strip
-  // (an announcement's pinned post, #1243).
-  const held = adapter.pinnedLabel
-    ? messages.filter((m) => !m.parentId && adapter.pinnedLabel!(m)).sort((a, b) => a.at.localeCompare(b.at))
-    : [];
-  const heldIds = new Set(held.map((m) => m.id));
   const items = buildStream({
-    messages: held.length ? messages.filter((m) => !heldIds.has(m.id)) : messages,
+    messages,
     viewer,
     now,
     lastReadAt: adapter.lastReadAt,
   });
-  const heldRows = held.map((m) => buildThread({ messages, viewer, now }, m.id)!.parent);
   const thread = openId ? buildThread({ messages, viewer, now }, openId) : null;
-  const replacing = (threadMode === "replace" || !!pinned) && !!thread;
-  const topCount = items.length + heldRows.length;
+  const replacing = threadMode === "replace" && !!thread;
+  const topCount = items.length;
 
   // Open on — and stay with — the newest message (G4). "Stay with" is a
   // promise only while the reader is already there: someone scrolled up into
@@ -702,10 +669,8 @@ export default function Stream<M extends StreamSourceMessage>({
     me: viewer.uid,
     onReopenAsk: adapter.reopenAsk ? () => void adapter.reopenAsk!(row.message) : undefined,
     photo: adapter.avatarUrl?.(row.message) ?? null,
-    gone: adapter.goneLabel?.(row.message) ?? null,
     deleteLabel: adapter.deleteLabel?.(row.message),
     deleteConfirm: adapter.deleteConfirm,
-    moreActions: adapter.moreActions?.(row.message),
     extra: renderExtra?.(row.message),
   });
 
@@ -735,30 +700,30 @@ export default function Stream<M extends StreamSourceMessage>({
     );
   };
 
-  const replaceMode = threadMode === "replace" || !!pinned;
+  const replaceMode = threadMode === "replace";
   const threadPane = thread && (
     <section className="strm-thread" aria-label={t("stream.thread_title")}>
-      <div className={cn("strm-th-head", replaceMode && (!pinned || back) && "back")}>
-        {replaceMode && (!pinned || back) && (
+      <div className={cn("strm-th-head", replaceMode && "back")}>
+        {replaceMode && (
           <button
             type="button"
             className="strm-icon-btn"
-            aria-label={pinned && back ? back.label : t("stream.back_to").replace("{name}", adapter.name)}
-            title={pinned && back ? back.label : t("stream.back_to").replace("{name}", adapter.name)}
-            onClick={() => (pinned && back ? back.onClick() : setOpen(null))}
+            aria-label={t("stream.back_to").replace("{name}", adapter.name)}
+            title={t("stream.back_to").replace("{name}", adapter.name)}
+            onClick={() => setOpen(null)}
           >
             <ArrowLeft className="w-[18px] h-[18px]" />
           </button>
         )}
         <div className="strm-th-title">
           <h3>{t("stream.thread_title")}</h3>
-          <p>{pinned ? pinned.subtitle : t("stream.thread_where").replace("{where}", adapter.where)}</p>
+          <p>{t("stream.thread_where").replace("{where}", adapter.where)}</p>
         </div>
         {!replaceMode ? (
           <button type="button" className="strm-icon-btn" aria-label={t("stream.close_thread")} title={t("stream.close_thread")} onClick={() => setOpen(null)}>
             <X className="w-[18px] h-[18px]" />
           </button>
-        ) : pinned && back ? null : (
+        ) : (
           onClose && (
             <button type="button" className="strm-icon-btn" aria-label={t("stream.close")} title={t("stream.close")} onClick={onClose}>
               <X className="w-[18px] h-[18px]" />
@@ -767,18 +732,7 @@ export default function Stream<M extends StreamSourceMessage>({
         )}
       </div>
       <div className="strm-list strm-top" data-stream-list="">
-        {pinned ? (
-          <div className="strm-quote">
-            <div className="strm-qh">
-              <Footprints className="w-3.5 h-3.5" aria-hidden />
-              {pinned.quote.label}
-            </div>
-            <p className="strm-tx">{pinned.quote.body}</p>
-          </div>
-        ) : (
-          <Row row={thread.parent} when={f.dateTime(thread.parent.message.at)} canReply={false} showChip={false} {...rowProps(thread.parent)} />
-        )}
-        {pinned && thread.replies.length === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
+        <Row row={thread.parent} when={f.dateTime(thread.parent.message.at)} canReply={false} showChip={false} {...rowProps(thread.parent)} />
         {thread.replies.length > 0 && (
           <div className="strm-rc">
             {thread.replies.length === 1
@@ -798,7 +752,7 @@ export default function Stream<M extends StreamSourceMessage>({
           label={t("stream.reply_label")}
           submitLabel={t("stream.send_reply")}
           candidates={mentionCandidates}
-          autoFocus={pinned ? thread.replies.length === 0 : open?.focus}
+          autoFocus={open?.focus}
           onSubmit={({ body, mentionedUserIds }) => void adapter.reply(thread.parent.message, { body, mentionedUserIds })}
         />
       )}
@@ -821,15 +775,6 @@ export default function Stream<M extends StreamSourceMessage>({
       >
         <div className="strm-flow">
           {topCount === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
-          {heldRows.map((row) => (
-            <React.Fragment key={`pin:${row.message.id}`}>
-              <div className="strm-pinstrip">
-                <Pin className="w-3.5 h-3.5" aria-hidden />
-                {adapter.pinnedLabel!(row.message)}
-              </div>
-              {streamRow(row, f.dateTime(row.message.at))}
-            </React.Fragment>
-          ))}
           {items.map((item) =>
             item.type === "day" ? (
               <div key={`day:${item.day}`} role="separator" className="strm-day">
@@ -874,9 +819,6 @@ export default function Stream<M extends StreamSourceMessage>({
             submitLabel={words?.submitLabel ?? t("stream.post")}
             candidates={mentionCandidates}
             maxLength={words?.maxLength}
-            staged={can.attachments ? adapter.staged : undefined}
-            onAttach={can.attachments ? adapter.attach : undefined}
-            onUnstage={adapter.unstage}
             onSubmit={(input) => {
               if (!failure) {
                 void adapter.post(input);

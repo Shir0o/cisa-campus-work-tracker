@@ -74,18 +74,6 @@ describe("CardConversation", () => {
     expect(container.querySelector(".strm-compact")).toBeTruthy();
   });
 
-  it("offers Full-timers with no kinds, a lock, its own placeholder and only Full-timers to @mention", () => {
-    renderStrip();
-    fireEvent.click(screen.getByRole("tab", { name: /Full-timers/ }));
-
-    expect(screen.queryByRole("group", { name: "What are you writing" })).not.toBeInTheDocument();
-    expect(screen.getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
-    const box = screen.getByPlaceholderText("Write something only Full-timers will see…");
-    fireEvent.change(box, { target: { value: "@" , selectionStart: 1 } });
-    const list = screen.getByRole("listbox", { name: "Teammate mentions" });
-    expect(list).toHaveTextContent("Ruth Chen");
-    expect(list).not.toHaveTextContent("Josh Park");
-  });
 
   it("makes a to-do from a message on the card", () => {
     const messages = [

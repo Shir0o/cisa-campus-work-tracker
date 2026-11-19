@@ -407,9 +407,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { contactId } = useParams();
   const queryParams = new URLSearchParams(location.search);
   const tabParam = queryParams.get("tab");
-  const initialTab = tabParam === "thread" || tabParam === "discussion" ? tabParam : undefined;
-  // A notification about a reply carries its parent; one about an Interaction's
-  // Thread carries the interaction id (#1303).
+  // An old `?tab=discussion` link lands on the Conversation: the Full-timers
+  // pane is cut (cut-or-keep §24).
+  const initialTab = tabParam === "thread" || tabParam === "discussion" ? "thread" : undefined;
+  // A notification about a reply carries its parent; an old one about an
+  // Interaction's Thread still carries its id and scrolls the story to it.
   const initialParentId = queryParams.get("parent");
   const initialInteractionId = queryParams.get("interaction");
   const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
