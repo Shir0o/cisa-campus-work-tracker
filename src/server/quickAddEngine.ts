@@ -240,11 +240,15 @@ export function parseQuickAddModelResponse(raw: string): QuickAddModelResult {
   }
 }
 
-/** The whole parse with the model call injected — the route passes Gemini,
- *  tests pass a canned response. */
+/** The model call: the route passes Gemini, tests pass a canned response. */
+export interface QuickAddGenerate {
+  (prompt: string): Promise<string>;
+}
+
+/** The whole parse with the model call injected. */
 export async function runQuickAddParse(
   input: { text: string; contacts: QuickAddExistingContact[] },
-  generate: (prompt: string) => Promise<string>,
+  generate: QuickAddGenerate,
 ): Promise<QuickAddParseResponse> {
   const prompt = buildQuickAddPrompt(input.text, input.contacts);
   const raw = await generate(prompt);
