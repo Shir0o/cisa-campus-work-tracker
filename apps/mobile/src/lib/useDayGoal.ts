@@ -12,7 +12,7 @@ export interface DayGoalView {
 }
 
 export function useDayGoal(): DayGoalView {
-  const [goal, setGoal] = useState<DayGoal>({ on: true, count: GOAL_DEFAULT_COUNT });
+  const [goal, setGoal] = useState<DayGoal>({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
   useEffect(
     () => subscribeDayGoal(setGoal, (e) => console.warn('Could not read the day goal', e)),
     [],

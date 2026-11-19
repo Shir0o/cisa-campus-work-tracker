@@ -71,7 +71,7 @@ import {
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
-import { useDayGoal, goalNewToday } from "../lib/goal";
+import { useDayGoal, goalNewToday, isDayGoalShowing } from "../lib/goal";
 import { reachByContact } from "../lib/reach";
 import {
   parseMs,
@@ -1334,7 +1334,7 @@ export default function MyDay() {
               <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
               <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
               <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
-              {role === 'admin' && goal.on && newPeopleToday > 0 && (
+              {role === 'admin' && goal.on && isDayGoalShowing(goal.dayGoalUntil) && newPeopleToday > 0 && (
                 <Figure
                   n={newPeopleToday}
                   label={t('myDay.new_people_today_across_team', 'new people today, across the team')}

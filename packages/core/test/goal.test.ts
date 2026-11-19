@@ -9,6 +9,7 @@ import {
   goalMet,
   goalFill,
   goalShow,
+  isDayGoalShowing,
   type DayGoal,
 } from '../src/goal';
 
@@ -31,23 +32,57 @@ const contact = (over: Record<string, unknown> = {}) =>
   ({ id: 'c', name: 'Ana', ...over }) as { id: string; name: string; createdBy?: string; addedBy?: string; createdAt?: string };
 
 describe('normalizeDayGoal', () => {
-  it('defaults to on with 5 when nothing is set', () => {
-    expect(normalizeDayGoal(null)).toEqual({ on: true, count: GOAL_DEFAULT_COUNT });
-    expect(normalizeDayGoal(undefined)).toEqual({ on: true, count: GOAL_DEFAULT_COUNT });
-    expect(normalizeDayGoal({})).toEqual({ on: true, count: GOAL_DEFAULT_COUNT });
+  it('defaults to on with 5 and no until-date when nothing is set', () => {
+    expect(normalizeDayGoal(null)).toEqual({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
+    expect(normalizeDayGoal(undefined)).toEqual({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
+    expect(normalizeDayGoal({})).toEqual({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
   });
 
   it('keeps a valid on/count pair', () => {
-    expect(normalizeDayGoal({ on: false, count: 7 })).toEqual({ on: false, count: 7 });
+    expect(normalizeDayGoal({ on: false, count: 7 })).toEqual({ on: false, count: 7, dayGoalUntil: null });
   });
 
   it('clamps count to the 1..20 band and rounds non-integers', () => {
-    expect(normalizeDayGoal({ count: 99 })).toEqual({ on: true, count: GOAL_MAX });
-    expect(normalizeDayGoal({ count: 0 })).toEqual({ on: true, count: GOAL_MIN });
-    expect(normalizeDayGoal({ count: -3 })).toEqual({ on: true, count: GOAL_MIN });
-    expect(normalizeDayGoal({ count: 2.6 })).toEqual({ on: true, count: 3 });
-    expect(normalizeDayGoal({ count: '5' })).toEqual({ on: true, count: GOAL_DEFAULT_COUNT });
-    expect(normalizeDayGoal({ on: 'yes' })).toEqual({ on: true, count: GOAL_DEFAULT_COUNT });
+    expect(normalizeDayGoal({ count: 99 })).toEqual({ on: true, count: GOAL_MAX, dayGoalUntil: null });
+    expect(normalizeDayGoal({ count: 0 })).toEqual({ on: true, count: GOAL_MIN, dayGoalUntil: null });
+    expect(normalizeDayGoal({ count: -3 })).toEqual({ on: true, count: GOAL_MIN, dayGoalUntil: null });
+    expect(normalizeDayGoal({ count: 2.6 })).toEqual({ on: true, count: 3, dayGoalUntil: null });
+    expect(normalizeDayGoal({ count: '5' })).toEqual({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
+    expect(normalizeDayGoal({ on: 'yes' })).toEqual({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
+  });
+
+  it('keeps a yyyy-MM-dd until-date and drops anything else', () => {
+    expect(normalizeDayGoal({ dayGoalUntil: '2026-12-01' }).dayGoalUntil).toBe('2026-12-01');
+    expect(normalizeDayGoal({ dayGoalUntil: null }).dayGoalUntil).toBeNull();
+    expect(normalizeDayGoal({ dayGoalUntil: 'soon' }).dayGoalUntil).toBeNull();
+    expect(normalizeDayGoal({ dayGoalUntil: '2026-2-1' }).dayGoalUntil).toBeNull();
+    expect(normalizeDayGoal({ dayGoalUntil: 42 }).dayGoalUntil).toBeNull();
+  });
+});
+
+describe('isDayGoalShowing', () => {
+  // Local noon on 25 Aug 2026 — the app's day is the local one.
+  const now = new Date(2026, 7, 25, 12, 0, 0).getTime();
+
+  it('shows on the until-date itself', () => {
+    expect(isDayGoalShowing('2026-08-25', now)).toBe(true);
+    expect(isDayGoalShowing('2026-08-26', now)).toBe(true);
+  });
+
+  it('hides the day after', () => {
+    const dayAfter = new Date(2026, 7, 26, 0, 0, 1).getTime();
+    expect(isDayGoalShowing('2026-08-25', dayAfter)).toBe(false);
+  });
+
+  it('hides when null', () => {
+    expect(isDayGoalShowing(null, now)).toBe(false);
+    expect(isDayGoalShowing(undefined, now)).toBe(false);
+    expect(isDayGoalShowing('', now)).toBe(false);
+  });
+
+  it('hides on a malformed date', () => {
+    expect(isDayGoalShowing('soon', now)).toBe(false);
+    expect(isDayGoalShowing('2026-13-01', now)).toBe(false);
   });
 });
 
@@ -86,7 +121,8 @@ describe('goalNewToday', () => {
 });
 
 describe('goalMet / goalFill / goalShow', () => {
-  const goal: DayGoal = { on: true, count: 5 };
+  const now = new Date(2026, 7, 25, 12, 0, 0).getTime();
+  const goal: DayGoal = { on: true, count: 5, dayGoalUntil: '2026-08-25' };
 
   it('goalMet is only true once the count reaches the number', () => {
     expect(goalMet(4, goal)).toBe(false);
@@ -101,11 +137,13 @@ describe('goalMet / goalFill / goalShow', () => {
     expect(goalFill(9, goal)).toBe(1);
   });
 
-  it('goalShow gates on on, in-window and not-yet-met', () => {
-    expect(goalShow(goal, 3, true)).toBe(true);
-    expect(goalShow(goal, 5, true)).toBe(false); // met — the ring reverts
-    expect(goalShow(goal, 3, false)).toBe(false); // outside the window
-    expect(goalShow({ on: false, count: 5 }, 3, true)).toBe(false); // turned off
+  it('goalShow gates on on, in-window, until-date and not-yet-met', () => {
+    expect(goalShow(goal, 3, true, now)).toBe(true);
+    expect(goalShow(goal, 5, true, now)).toBe(false); // met — the ring reverts
+    expect(goalShow(goal, 3, false, now)).toBe(false); // outside the window
+    expect(goalShow({ on: false, count: 5, dayGoalUntil: '2026-08-25' }, 3, true, now)).toBe(false); // turned off
+    expect(goalShow(goal, 3, true, new Date(2026, 7, 26, 9, 0, 0).getTime())).toBe(false); // past the date
+    expect(goalShow({ on: true, count: 5, dayGoalUntil: null }, 3, true, now)).toBe(false); // no date set
   });
 });
 // The Day's Goal counts new campus connections (#1152, ADR 0030). A Local

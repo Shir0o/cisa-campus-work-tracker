@@ -797,9 +797,13 @@ service cloud.firestore {
       }
 
       function isValidGoalSettings(data) {
-        return data.keys().hasOnly(['on', 'count']) &&
+        return data.keys().hasOnly(['on', 'count', 'dayGoalUntil']) &&
                (!('on' in data) || data.on is bool) &&
-               (!('count' in data) || (data.count is int && data.count >= 1 && data.count <= 20));
+               (!('count' in data) || (data.count is int && data.count >= 1 && data.count <= 20)) &&
+               // The goal switches itself off after this local day (#544,
+               // Nov 2026); clearing the date stores null, which hides it.
+               (!('dayGoalUntil' in data) || data.dayGoalUntil == null ||
+                 (data.dayGoalUntil is string && data.dayGoalUntil.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
       }
 
       // The weekly reminder schedule (#1301): one time (campus weekdays + hour)

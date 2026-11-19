@@ -1132,7 +1132,7 @@ function ReminderScheduleSection() {
 
 function DayGoalSection() {
   const { t } = useLanguage();
-  const { goal, setOn, setCount } = useDayGoal();
+  const { goal, setOn, setCount, setUntil } = useDayGoal();
   return (
     <section className="mt-10">
       <SectionHeader
@@ -1192,6 +1192,24 @@ onClick={() => setCount(goal.count - 1)}
               <Plus className="w-4 h-4" />
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="font-serif text-base text-on-surface leading-tight">
+              {t('settings.day_goal_until', 'Show the goal until')}
+            </h3>
+            <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+              {t('settings.day_goal_until_sub', 'It switches itself off after this day. Clear the date to hide it now.')}
+            </p>
+          </div>
+          <input
+            type="date"
+            value={goal.dayGoalUntil ?? ''}
+            onChange={(e) => setUntil(e.target.value || null)}
+            aria-label={t('settings.day_goal_until', 'Show the goal until')}
+            className="shrink-0 rounded-sm border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface pointer-coarse:min-h-11"
+          />
         </div>
       </div>
     </section>

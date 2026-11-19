@@ -644,6 +644,42 @@ describe('Settings', () => {
         { merge: true },
       );
     });
+
+    it('the until-date field writes dayGoalUntil', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+      await waitFor(() => expect(screen.getByText('5')).toBeInTheDocument());
+
+      const until = screen.getByLabelText('Show the goal until');
+      fireEvent.change(until, { target: { value: '2027-05-01' } });
+      expect(setDoc).toHaveBeenLastCalledWith(
+        expect.anything(),
+        { dayGoalUntil: '2027-05-01' },
+        { merge: true },
+      );
+    });
+
+    it('clearing the until-date writes null', async () => {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'settings/goal') {
+          callback({ data: () => ({ on: true, count: 5, dayGoalUntil: '2027-05-01' }) });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+      setupManagerAuth();
+      render(<Settings />);
+
+      const until = await screen.findByLabelText('Show the goal until');
+      expect(until).toHaveValue('2027-05-01');
+      fireEvent.change(until, { target: { value: '' } });
+      expect(setDoc).toHaveBeenLastCalledWith(
+        expect.anything(),
+        { dayGoalUntil: null },
+        { merge: true },
+      );
+    });
   });
 
   // ── 5. Search filtering ──
