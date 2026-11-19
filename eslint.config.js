@@ -68,6 +68,23 @@ export default [
     },
   },
   {
+    // Expo config plugins and their tests run in Node, not in the app bundle.
+    files: ['apps/mobile/plugins/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        module: 'writable',
+        require: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        jest: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.rules'],
     plugins: { '@firebase/security-rules': firebaseRulesPlugin },
     languageOptions: {

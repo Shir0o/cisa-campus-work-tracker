@@ -85,7 +85,8 @@
           "backgroundColor": "#5c5595"
         }
       ],
-      "./plugins/withGradleJvmArgs"
+      "./plugins/withGradleJvmArgs",
+      "./plugins/withQuickAddWidget"
     ],
     "experiments": {
       "typedRoutes": false
@@ -96,7 +97,19 @@
         "origin": false
       },
       "eas": {
-        "projectId": "17af80aa-7612-4442-ba7a-8332dbb466b9"
+        "projectId": "17af80aa-7612-4442-ba7a-8332dbb466b9",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "QuickAddWidget",
+                  "bundleIdentifier": "com.cisa.campus.QuickAddWidget"
+                }
+              ]
+            }
+          }
+        }
       }
     },
     "runtimeVersion": {
