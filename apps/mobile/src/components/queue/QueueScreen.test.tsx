@@ -31,7 +31,7 @@ jest.mock('../../lib/data/interactions', () => ({
 }));
 
 jest.mock('../../lib/useDayGoal', () => ({
-  useDayGoal: () => ({ goal: { on: true, count: 5 }, setOn: jest.fn(), setCount: jest.fn() }),
+  useDayGoal: () => ({ goal: { on: true, count: 5, dayGoalUntil: '2099-12-31' }, setOn: jest.fn(), setCount: jest.fn() }),
 }));
 
 jest.mock('../../lib/data/threads', () => ({

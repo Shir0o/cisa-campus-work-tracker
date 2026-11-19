@@ -5,10 +5,10 @@
 // copy of the shared logic in packages/core/src/{goal,data/goal}.ts.
 //
 // Stored at settings/goal, the same team-wide singleton shape as settings/season:
-// one doc, readable by everyone, writable by a full-timer. Everything beyond
-// on/off and the number is derived — the count comes from the contacts record
-// (createdBy doubles as "added by", createdAt is the day they went in), so
-// deleting a person un-counts them.
+// one doc, readable by everyone, writable by a full-timer. Beyond on/off, the
+// number and the last day it shows (`dayGoalUntil`), everything is derived —
+// the count comes from the contacts record (createdBy doubles as "added by",
+// createdAt is the day they went in), so deleting a person un-counts them.
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
@@ -18,11 +18,20 @@ import { contactKind } from './contactKind';
 export interface DayGoal {
   on: boolean;
   count: number;
+  /** The last local day the goal shows, as 'yyyy-MM-dd'. Null = hidden. */
+  dayGoalUntil: string | null;
 }
 
 export const GOAL_MIN = 1;
 export const GOAL_MAX = 20;
 export const GOAL_DEFAULT_COUNT = 5;
+
+const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A stored 'yyyy-MM-dd' date, or null for anything else (including absent). */
+function normalizeDayGoalUntil(raw: unknown): string | null {
+  return typeof raw === 'string' && DATE_KEY.test(raw) ? raw : null;
+}
 
 /** Clamp/round a possibly-hostile read into the 1..20 band, default 5, on. */
 export function normalizeDayGoal(raw: unknown): DayGoal {
@@ -31,10 +40,26 @@ export function normalizeDayGoal(raw: unknown): DayGoal {
   return {
     on: typeof src.on === 'boolean' ? src.on : true,
     count: Math.min(GOAL_MAX, Math.max(GOAL_MIN, n)),
+    dayGoalUntil: normalizeDayGoalUntil(src.dayGoalUntil),
   };
 }
 
 const startOfLocalDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+
+/** Whether the goal still shows on the local day `now` falls on: it shows up
+ *  to and including its until-date, and never without one. */
+export function isDayGoalShowing(until: string | null | undefined, now: number = Date.now()): boolean {
+  if (typeof until !== 'string') return false;
+  const m = DATE_KEY.exec(until);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const last = new Date(y, month - 1, day);
+  // Reject dates the calendar rolls over (2026-13-01, 2026-02-31).
+  if (last.getFullYear() !== y || last.getMonth() !== month - 1 || last.getDate() !== day) return false;
+  return startOfLocalDay(now) <= last.getTime();
+}
 
 type AddableContact = Pick<Contact, 'createdBy' | 'addedBy' | 'createdAt' | 'inChurchLife' | 'isStudent'>;
 
@@ -82,9 +107,15 @@ export function goalFill(count: number, goal: DayGoal): number {
   return Math.min(1, count / goal.count);
 }
 
-/** THE gate every surface calls: on, inside the window, and not there yet. */
-export function goalShow(goal: DayGoal, count: number, inWindow: boolean): boolean {
-  return goal.on && inWindow && !goalMet(count, goal);
+/** THE gate every surface calls: on, inside the window, still before its
+ *  until-date, and not there yet. */
+export function goalShow(
+  goal: DayGoal,
+  count: number,
+  inWindow: boolean,
+  now: number = Date.now(),
+): boolean {
+  return goal.on && inWindow && isDayGoalShowing(goal.dayGoalUntil, now) && !goalMet(count, goal);
 }
 
 const goalDoc = () => doc(db, 'settings', 'goal');
@@ -117,16 +148,18 @@ export interface DayGoalView {
   goal: DayGoal;
   setOn: (on: boolean) => void;
   setCount: (count: number) => void;
+  setUntil: (until: string | null) => void;
 }
 
 /** Live team-wide goal. Setters write through; rules gate them to full-timers. */
 export function useDayGoal(): DayGoalView {
-  const [goal, setGoal] = useState<DayGoal>({ on: true, count: GOAL_DEFAULT_COUNT });
+  const [goal, setGoal] = useState<DayGoal>({ on: true, count: GOAL_DEFAULT_COUNT, dayGoalUntil: null });
   useEffect(() => subscribeDayGoal(setGoal), []);
 
   return {
     goal,
     setOn: (on) => void saveDayGoal({ on }),
     setCount: (count) => void saveDayGoal({ count }),
+    setUntil: (dayGoalUntil) => void saveDayGoal({ dayGoalUntil }),
   };
 }

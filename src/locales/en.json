@@ -127,6 +127,8 @@
     "day_goal_lower": "Lower the day's goal",
     "day_goal_raise": "Raise the day's goal",
     "day_goal_value": "The day's goal is {n}",
+    "day_goal_until": "Show the goal until",
+    "day_goal_until_sub": "It switches itself off after this day. Clear the date to hide it now.",
     "pairs_title": "Going out together",
     "pairs_sub": "The trainees who go out as one, kept as dated stretches of time. Set who's paired and when it began or ended — the earlier arrangements stay readable.",
     "pairs_two_together": "Two trainees going out together",

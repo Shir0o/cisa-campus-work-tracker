@@ -3662,6 +3662,19 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5, evil: true }));
     });
 
+    it('SG5: a goal may carry a yyyy-MM-dd until-date, or null (#544, Nov 2026)', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5, dayGoalUntil: '2026-12-01' }),
+      );
+      await assertSucceeds(setDoc(doc(db, 'settings', 'goal'), { dayGoalUntil: null }));
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { dayGoalUntil: 'next spring' }));
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { dayGoalUntil: 20261201 }));
+    });
+
     it('SP1: settings/partners needs an approved member to read (Nov 2026)', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {

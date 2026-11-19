@@ -94,6 +94,7 @@ const h = vi.hoisted(() => ({
   openMessage: vi.fn(),
   prefsData: {} as any,
   personalPrayersData: [] as any[],
+  goalData: { on: true, count: 5, dayGoalUntil: '2099-12-31' } as any,
 }));
 vi.mock('../lib/userPreferences', () => ({
   subscribeUserPreferences: (_uid: string, cb: any) => {
@@ -121,6 +122,15 @@ vi.mock('../lib/prayers', async (importOriginal) => {
 vi.mock('../lib/messaging', () => ({
   openMessage: (...a: any[]) => h.openMessage(...a),
 }));
+// The day's goal (#544): MyDay only ever reads it, so drive the until-date from
+// a hoisted fixture and leave the rest of the module (goalNewToday) real.
+vi.mock('../lib/goal', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useDayGoal: () => ({ goal: h.goalData, setOn: vi.fn(), setCount: vi.fn(), setUntil: vi.fn() }),
+  };
+});
 
 const soonISO = new Date(Date.now() + 2 * 86_400_000).toISOString();
 
@@ -180,6 +190,7 @@ describe('MyDay', () => {
     mockNavigate.mockClear();
     h.prefsData = {};
     h.personalPrayersData = [];
+    h.goalData = { on: true, count: 5, dayGoalUntil: '2099-12-31' };
     vi.mocked(onSnapshot).mockImplementation((_: any, callback: any) => {
       callback({ docs: [], size: 0 });
       return vi.fn();
@@ -245,6 +256,21 @@ describe('MyDay', () => {
 
   it('never shows the day’s goal figure to a trainee', async () => {
     (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'manager' });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('new people today, across the team')).toBeNull();
+  });
+
+  it('hides the day’s goal figure once no until-date is set (#544, Nov 2026)', async () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'admin' });
+    h.goalData = { on: true, count: 5, dayGoalUntil: null };
     vi.mocked(onSnapshot).mockImplementation(
       byPath({
         contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
