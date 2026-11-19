@@ -525,13 +525,17 @@ service cloud.firestore {
           ]) && admin && keys.hasAny(['founders', 'createdBy'])) ||
 
           // #1351: Moving up a year. A Full-timer confirms a student's year for
-          // the school year, with a marker naming them — the marker Years to
-          // confirm counts. Its own branch, like the kind, so a profile edit
-          // cannot carry it; last, so no other write pays for it.
+          // the school year — the marker Years to confirm counts. Its own
+          // branch, like the kind, so a profile edit cannot carry it; last, so
+          // no other write pays for it. The confirmed-by stamp is cut (cut-or-
+          // keep §13): it is no longer written or required, but an old-style
+          // write that still sets one keeps working, and if it names someone
+          // else it is still refused. Presence in the change set, not in the
+          // document: an old stamp the write leaves alone is not its business.
           (keys.hasOnly([
             'year', 'yearConfirmedFor', 'yearConfirmedBy', 'yearConfirmedAt',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && incoming().get('yearConfirmedBy', null) == uid && admin);
+          ]) && (!keys.hasAny(['yearConfirmedBy']) || incoming().get('yearConfirmedBy', null) == uid) && admin);
       }
 
       // #1350: who can see a person is who can change them. This is

@@ -1559,18 +1559,22 @@ describe('Directory — Moving up a year', () => {
     person('m6', 'Local Saint', { isStudent: false, inChurchLife: true }),
   ];
 
+  const seed = (people: Record<string, unknown>[]) => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: people, size: people.length });
+      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 15, 12, 0));
     __resetDirectoryFilters();
     (useLayout as any).mockReturnValue({ openNewContact: vi.fn(), setSelectedContact: vi.fn() });
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') callback({ docs: students, size: students.length });
-      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
-      else callback({ docs: [], size: 0 });
-      return vi.fn();
-    });
+    seed(students);
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -1581,18 +1585,43 @@ describe('Directory — Moving up a year', () => {
     effectiveUserId: 'ft1', role: 'admin', isAdmin: true,
   } as any);
 
-  const openFilters = async () => {
+  const review = async () => {
     render(<Directory />);
-    fireEvent.click(await screen.findByText('Filters'));
+    fireEvent.click(await screen.findByRole('button', { name: "Review students' years to confirm" }));
   };
+
+  it('shows the count in a one-line banner at the top for a Full-timer', async () => {
+    asFullTimer();
+    render(<Directory />);
+
+    const banner = await screen.findByTestId('years-to-confirm-banner');
+    expect(banner).toHaveTextContent("4 students' years to confirm");
+    expect(within(banner).getByText('Review')).toBeInTheDocument();
+  });
+
+  it('says it in the singular for one student', async () => {
+    asFullTimer();
+    seed([students[0]]);
+    render(<Directory />);
+
+    expect(await screen.findByTestId('years-to-confirm-banner')).toHaveTextContent("1 student's year to confirm");
+  });
+
+  it('is not shown when every year is confirmed', async () => {
+    asFullTimer();
+    seed([students[4], students[5]]);
+    render(<Directory />);
+
+    await waitFor(() => expect(screen.getByText('Done Already')).toBeInTheDocument());
+    expect(screen.queryByTestId('years-to-confirm-banner')).toBeNull();
+  });
 
   it('moves everyone up at once, keeps the exceptions, and graduates a Senior into a Local saint', async () => {
     asFullTimer();
-    await openFilters();
+    await review();
 
     // Four students are unconfirmed for 2026–27; the confirmed one and the
     // non-student are not counted.
-    fireEvent.click(screen.getByRole('button', { name: /Years to confirm\s*4/ }));
     const dialog = screen.getByRole('dialog', { name: 'Moving up a year' });
     expect(within(dialog).queryByText('Done Already')).toBeNull();
     expect(within(dialog).queryByText('Local Saint')).toBeNull();
@@ -1610,9 +1639,14 @@ describe('Directory — Moving up a year', () => {
     await waitFor(() => expect(mockCommit).toHaveBeenCalled());
     const writes = Object.fromEntries(mockUpdate.mock.calls.map(([ref, data]) => [ref.id, data]));
     expect(Object.keys(writes).sort()).toEqual(['m1', 'm2', 'm3']);
-    expect(writes.m1).toMatchObject({ year: 'Sophomore', yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1' });
-    expect(writes.m2).toMatchObject({ yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1' });
+    expect(writes.m1).toMatchObject({ year: 'Sophomore', yearConfirmedFor: '2026-27' });
+    expect(writes.m2).toMatchObject({ yearConfirmedFor: '2026-27' });
     expect(writes.m2).not.toHaveProperty('year');
+    // The confirmed-by stamp is cut: confirming writes no who/when.
+    expect(writes.m1).not.toHaveProperty('yearConfirmedBy');
+    expect(writes.m1).not.toHaveProperty('yearConfirmedAt');
+    expect(writes.m2).not.toHaveProperty('yearConfirmedBy');
+    expect(writes.m2).not.toHaveProperty('yearConfirmedAt');
     expect(writes.m3).toMatchObject({ isStudent: false, year: '', kindSetBy: 'ft1' });
     expect(writes.m3.kindSetAt).toEqual(expect.any(String));
     expect(writes.m3).not.toHaveProperty('inChurchLife');
@@ -1623,13 +1657,18 @@ describe('Directory — Moving up a year', () => {
     expect(logged.find((a) => a.targetId === 'm2')).toBeUndefined();
   });
 
-  it('is not there for a Trainee', async () => {
+  it('is not there for a Trainee, in the banner or the filter panel', async () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { uid: 'tr1', displayName: 'Trainee' }, effectiveUserId: 'tr1', role: 'manager', isAdmin: false,
     } as any);
-    await openFilters();
+    render(<Directory />);
+
+    await waitFor(() => expect(screen.getByText('Filters')).toBeInTheDocument());
+    expect(screen.queryByTestId('years-to-confirm-banner')).toBeNull();
+
+    fireEvent.click(screen.getByText('Filters'));
     expect(screen.getByTestId('filter-unsorted')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Years to confirm/ })).toBeNull();
+    expect(screen.queryByText('Years to confirm')).toBeNull();
   });
 });
 

@@ -2017,6 +2017,10 @@
   "movingUpAYear": {
     "title": "Moving up a year",
     "years_to_confirm": "Years to confirm",
+    "banner_one": "1 student's year to confirm",
+    "banner_many": "{n} students' years to confirm",
+    "review": "Review",
+    "review_label": "Review students' years to confirm",
     "subtitle": "{n} to confirm for {year}. Each starts on the next year where there is one; change anyone who isn't moving up.",
     "no_year": "No year",
     "choose": "Choose…",

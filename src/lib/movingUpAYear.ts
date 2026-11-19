@@ -14,7 +14,6 @@ export interface YearConfirmable {
   /** An ISO string, or a Firestore Timestamp — sign-up stores one. */
   createdAt?: string | { seconds: number };
   yearConfirmedFor?: string;
-  yearConfirmedBy?: string;
 }
 
 /** What a Full-timer decides for one person: a year (moving up, the same
@@ -23,6 +22,8 @@ export type YearChoice = { type: 'year'; year: string } | { type: 'graduated' };
 
 /** The one step up from each year that has one; a Senior's is graduating. */
 const NEXT: Record<string, YearChoice> = {
+  'High school junior': { type: 'year', year: 'High school senior' },
+  'High school senior': { type: 'year', year: 'Freshman' },
   Freshman: { type: 'year', year: 'Sophomore' },
   Sophomore: { type: 'year', year: 'Junior' },
   Junior: { type: 'year', year: 'Senior' },
@@ -60,10 +61,11 @@ function gaveYearThisSchoolYear(c: YearConfirmable, now: Date): boolean {
   return !!(c.year ?? '').trim() && addedMs(c.createdAt) >= new Date(startYearOf(now), 7, 1).getTime();
 }
 
-/** Whether someone's year was confirmed for this school year. Both the school
- *  year and who confirmed it are required, as with the kind stamp. */
+/** Whether someone's year was confirmed for this school year. The school-year
+ *  marker is all it takes: the confirmed-by stamp is cut (spec §13), so an old
+ *  document that carries one simply matches, and nothing writes one again. */
 function isConfirmed(c: YearConfirmable, schoolYear: string): boolean {
-  return c.yearConfirmedFor === schoolYear && !!c.yearConfirmedBy;
+  return c.yearConfirmedFor === schoolYear;
 }
 
 /** Years to confirm: every student whose year nobody has confirmed for the
@@ -83,12 +85,13 @@ interface Confirming {
   now: Date;
 }
 
-/** The fields one confirmation writes. A year is confirmed with the marker of
- *  who confirmed it and for which school year. Graduating or leaving school is
- *  a kind decision (ADR 0030, #1349): the person stops being a student, with
- *  the kind stamp, and keeps no year — an Our own becomes a Local saint, and a
- *  Contact stays a Contact. Once they are not a student they are off Years to
- *  confirm, so graduating needs no year marker. */
+/** The fields one confirmation writes. A year is confirmed with the school
+ *  year it is for — the marker Years to confirm counts; the confirmed-by stamp
+ *  is cut (spec §13), so nothing writes who or when. Graduating or leaving
+ *  school is a kind decision (ADR 0030, #1349): the person stops being a
+ *  student, with the kind stamp, and keeps no year — an Our own becomes a Local
+ *  saint, and a Contact stays a Contact. Once they are not a student they are
+ *  off Years to confirm, so graduating needs no year marker. */
 export function planYearConfirmation(
   c: Pick<YearConfirmable, 'year'>,
   choice: YearChoice,
@@ -98,8 +101,6 @@ export function planYearConfirmation(
   return {
     ...(choice.year !== (c.year ?? '') && { year: choice.year }),
     yearConfirmedFor: schoolYearOf(now),
-    yearConfirmedBy: by,
-    yearConfirmedAt: at,
   };
 }
 

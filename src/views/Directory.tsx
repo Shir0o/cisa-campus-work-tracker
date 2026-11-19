@@ -835,6 +835,31 @@ export default function Directory() {
         </div>
       </header>
 
+      {/* Years to confirm (#1351, §13): a one-line prompt at the top of the
+          Directory for a Full-timer, replacing the button that used to sit in
+          the filter menu. It is there only while years are due. */}
+      {isAdmin && toConfirm.length > 0 && (
+        <div
+          data-testid="years-to-confirm-banner"
+          className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-primary/30 bg-primary-container px-4 py-2 text-sm"
+        >
+          <span className="font-medium text-on-surface">
+            {toConfirm.length === 1
+              ? t('movingUpAYear.banner_one')
+              : t('movingUpAYear.banner_many').replace('{n}', String(toConfirm.length))}
+          </span>
+          <span aria-hidden="true" className="text-on-surface-variant">·</span>
+          <button
+            type="button"
+            onClick={() => setMovingUpAt(new Date())}
+            aria-label={t('movingUpAYear.review_label')}
+            className="inline-flex min-h-[44px] items-center font-medium text-accent hover:underline"
+          >
+            {t('movingUpAYear.review')}
+          </button>
+        </div>
+      )}
+
       {/* ── Kind segments (#1296) ── */}
       <div
         role="group"
@@ -988,20 +1013,6 @@ export default function Directory() {
                         />
                         <span className="text-sm text-on-surface">{t('contactKind.not_sorted_yet')}</span>
                       </label>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          disabled={toConfirm.length === 0}
-                          onClick={() => {
-                            setShowFilterMenu(false);
-                            setMovingUpAt(new Date());
-                          }}
-                          className="w-full flex items-center justify-between gap-2 min-h-[44px] sm:min-h-[40px] px-1 text-sm text-on-surface hover:text-accent disabled:text-on-surface-variant disabled:cursor-default transition-colors"
-                        >
-                          <span>{t('movingUpAYear.years_to_confirm')}</span>
-                          <span className="tabular-nums text-on-surface-variant">{toConfirm.length}</span>
-                        </button>
-                      )}
                     </div>
 
                     <div className="space-y-1.5">

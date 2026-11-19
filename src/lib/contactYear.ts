@@ -3,7 +3,10 @@
 // SIGNUP_YEARS / signUpYearToForm in @cisa/core (the web app has no @cisa/core
 // dependency); the stored value is the typed text, exactly as sign-up stores it.
 
-export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+export const YEARS = [
+  'High school junior', 'High school senior',
+  'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other',
+];
 
 export interface YearFormState {
   year: string;

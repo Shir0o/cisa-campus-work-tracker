@@ -50,6 +50,10 @@ describe('SIGNUP_YEARS, SIGNUP_GENDERS, and SIGNUP_INTERESTS', () => {
     expect(SIGNUP_YEARS).toContain('Other');
   });
 
+  it('lists the two high school years before Freshman', () => {
+    expect(SIGNUP_YEARS.slice(0, 3)).toEqual(['High school junior', 'High school senior', 'Freshman']);
+  });
+
   it('provides Male, Female, Other in gender options', () => {
     expect(SIGNUP_GENDERS).toEqual(['Male', 'Female', 'Other']);
   });

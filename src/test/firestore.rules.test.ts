@@ -4958,9 +4958,10 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  // Moving up a year (#1351). Confirming a year carries a marker of who
-  // confirmed it and for which school year; graduating is a kind decision. Both
-  // are a Full-timer's alone.
+  // Moving up a year (#1351). Confirming a year carries the school year it was
+  // confirmed for — the marker Years to confirm counts; the confirmed-by stamp
+  // is cut (§13), so a write without it is allowed. Graduating is a kind
+  // decision. Both are a Full-timer's alone.
   describe('Moving up a year', () => {
     const seedStudent = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -4977,17 +4978,24 @@ describeRules('Firestore Security Rules', () => {
       });
     };
     const updated = (uid: string) => ({ updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: uid });
-    const confirmed = (uid: string) => ({
-      yearConfirmedFor: '2026-27', yearConfirmedBy: uid, yearConfirmedAt: '2026-08-03T00:00:00.000Z', ...updated(uid),
-    });
+    const confirmed = (uid: string) => ({ yearConfirmedFor: '2026-27', ...updated(uid) });
     const graduated = (uid: string) => ({
       isStudent: false, year: '', kindSetBy: uid, kindSetAt: '2026-08-03T00:00:00.000Z', ...updated(uid),
     });
 
-    it('lets a Full-timer confirm a new year', async () => {
+    it('lets a Full-timer confirm a new year, writing no confirmed-by stamp', async () => {
       await seedStudent();
       const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'y1'), { year: 'Graduate', ...confirmed('ft1') }));
+    });
+
+    it('still accepts an old-style confirmation that carries the stamp', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'y1'), {
+        year: 'Graduate', yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1',
+        yearConfirmedAt: '2026-08-03T00:00:00.000Z', ...updated('ft1'),
+      }));
     });
 
     it('lets a Full-timer confirm the same year', async () => {
