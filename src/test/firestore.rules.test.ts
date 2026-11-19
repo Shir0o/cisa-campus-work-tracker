@@ -21,6 +21,7 @@ import {
   where,
   orderBy,
   limit,
+  writeBatch,
 } from 'firebase/firestore';
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
