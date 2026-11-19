@@ -73,7 +73,7 @@ test.describe('Notification journey (#1479)', () => {
 
     const box = writerPage.getByPlaceholder(/Write something…/).first();
     await expect(box).toBeVisible({ timeout: 15_000 });
-    await box.fill(`@Zion ${comment}`);
+    await box.fill(`${comment} @Zion`);
     await writerPage.getByRole('option', { name: /Zion Adeyemi/ }).click();
     await box.press('Meta+Enter');
     await expect(writerPage.locator('[data-stream-row]').getByText(comment)).toBeVisible({ timeout: 10_000 });
@@ -118,7 +118,7 @@ test.describe('Notification journey (#1479)', () => {
     await expect(thread).toBeVisible({ timeout: 10_000 });
     await expect(thread.getByText(comment).first()).toBeVisible({ timeout: 10_000 });
     const replyBox = thread.locator('textarea').first();
-    await replyBox.fill(`@Full ${reply}`);
+    await replyBox.fill(`${reply} @Full`);
     await writerPage.getByRole('option', { name: /Full-timer Test User/ }).click();
     await replyBox.press('Meta+Enter');
     await expect(thread.getByText(reply).first()).toBeVisible({ timeout: 10_000 });
@@ -251,7 +251,7 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
   test('an @mention on a trainee\'s person buzzes the person named', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     const box = await openThread(page, PRIYA);
-    await box.fill('Looping in @Zion about Priya');
+    await box.fill('Looping in about Priya @Zion');
     await page.getByRole('option', { name: /Zion Adeyemi/ }).click();
     await box.press('Meta+Enter');
 
