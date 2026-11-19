@@ -1,11 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { YEARS, yearToForm, yearFromForm } from '../lib/contactYear';
+// Direct relative import into the workspace package — resolved for tests only,
+// like the other mirror-parity suites (the web app has no @cisa/core dependency).
+import { SIGNUP_YEARS } from '../../packages/core/src/signup';
 
 // Edit a contact's Year (#1348): a select over the sign-up list, with free text
 // after "Other". A stored value that isn't on the list edits as Other + text.
 describe('contactYear', () => {
-  it('offers the sign-up list', () => {
-    expect(YEARS).toEqual(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other']);
+  it('offers the sign-up list, the two high school years first', () => {
+    expect(YEARS).toEqual([
+      'High school junior', 'High school senior',
+      'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other',
+    ]);
+  });
+
+  it('matches the sign-up list in @cisa/core, which the phone also picks from', () => {
+    expect(YEARS).toEqual(SIGNUP_YEARS);
   });
 
   it('reads a listed year as itself', () => {

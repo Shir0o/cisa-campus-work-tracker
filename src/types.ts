@@ -91,8 +91,9 @@ export interface Contact {
   kindSetBy?: string;
   kindSetAt?: string;
   /** The school year (e.g. "2026-27") a Full-timer confirmed this person's
-   *  `year` for, with who and when (#1351). A student without one for the
-   *  current school year is among Years to confirm. */
+   *  `year` for (#1351). A student without one for the current school year is
+   *  among Years to confirm. The confirmed-by stamp is cut (cut-or-keep §13):
+   *  old documents still carry it, but nothing writes or reads it now. */
   yearConfirmedFor?: string;
   yearConfirmedBy?: string;
   yearConfirmedAt?: string;

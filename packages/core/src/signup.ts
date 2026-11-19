@@ -9,7 +9,10 @@ export const SIGNUP_MAJORS = [
   'English Lit', 'Business', 'Architecture', 'Music', 'Math', 'Nursing',
   'Linguistics', 'Civil Eng.', 'Sociology',
 ];
-export const SIGNUP_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+export const SIGNUP_YEARS = [
+  'High school junior', 'High school senior',
+  'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other',
+];
 export const SIGNUP_GENDERS = ['Male', 'Female', 'Other'];
 export const SIGNUP_HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flyer', 'Instagram', 'Other'];
 export const SIGNUP_INTERESTS = [

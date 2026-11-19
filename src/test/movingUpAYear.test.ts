@@ -21,9 +21,7 @@ describe('the school year', () => {
 });
 
 describe('Years to confirm', () => {
-  const confirmedFor = (schoolYear: string) => ({
-    yearConfirmedFor: schoolYear, yearConfirmedBy: 'ft1', yearConfirmedAt: '2026-08-02T00:00:00.000Z',
-  });
+  const confirmedFor = (schoolYear: string) => ({ yearConfirmedFor: schoolYear });
 
   it('counts every student whose year nobody has confirmed', () => {
     const people = [
@@ -70,14 +68,25 @@ describe('Years to confirm', () => {
     expect(yearsToConfirm([person], august1)).toEqual([person]);
   });
 
-  it('needs both who and which school year — a half-written marker confirms nothing', () => {
+  it('needs the school year the marker is for; the confirmed-by stamp is no longer written', () => {
     const person = { id: 'x', isStudent: true, year: 'Junior', yearConfirmedFor: '2026-27' };
-    expect(yearsToConfirm([person], august1)).toEqual([person]);
+    expect(yearsToConfirm([person], august1)).toEqual([]);
+    // An old document that still carries the cut stamp keeps counting as done.
+    const old = {
+      id: 'y', isStudent: true, year: 'Junior', yearConfirmedFor: '2026-27',
+      yearConfirmedBy: 'ft1', yearConfirmedAt: '2026-08-02T00:00:00.000Z',
+    };
+    expect(yearsToConfirm([old], august1)).toEqual([]);
+    // A marker for last school year confirms nothing now.
+    const lastYear = { ...person, yearConfirmedFor: '2025-26' };
+    expect(yearsToConfirm([lastYear], august1)).toEqual([lastYear]);
   });
 });
 
 describe('the proposal', () => {
-  it('moves everyone up one step, and a Senior on to graduating', () => {
+  it('moves everyone up one step, from a high school junior through to graduating', () => {
+    expect(proposeYear({ year: 'High school junior' })).toEqual({ type: 'year', year: 'High school senior' });
+    expect(proposeYear({ year: 'High school senior' })).toEqual({ type: 'year', year: 'Freshman' });
     expect(proposeYear({ year: 'Freshman' })).toEqual({ type: 'year', year: 'Sophomore' });
     expect(proposeYear({ year: 'Sophomore' })).toEqual({ type: 'year', year: 'Junior' });
     expect(proposeYear({ year: 'Junior' })).toEqual({ type: 'year', year: 'Senior' });
@@ -99,12 +108,11 @@ describe('confirming a year', () => {
   const ourOwn = { id: 'o', inChurchLife: true, isStudent: true, year: 'Senior', kindSetBy: 'ft0', kindSetAt: '2025-01-01T00:00:00.000Z' };
   const contact = { id: 'c', inChurchLife: false, isStudent: true, year: 'Senior' };
 
-  it('writes the new year with the marker of who confirmed it, for this school year', () => {
+  it('writes the new year and the school-year marker, with no confirmed-by stamp', () => {
     const update = planYearConfirmation({ ...contact, year: 'Freshman' }, { type: 'year', year: 'Sophomore' }, by);
-    expect(update).toEqual({
-      year: 'Sophomore',
-      yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1', yearConfirmedAt: '2026-08-03T10:00:00.000Z',
-    });
+    expect(update).toEqual({ year: 'Sophomore', yearConfirmedFor: '2026-27' });
+    expect(update).not.toHaveProperty('yearConfirmedBy');
+    expect(update).not.toHaveProperty('yearConfirmedAt');
   });
 
   it('confirms the same year without rewriting it', () => {

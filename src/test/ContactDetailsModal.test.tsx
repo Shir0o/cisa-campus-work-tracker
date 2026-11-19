@@ -2042,6 +2042,7 @@ describe('ContactDetailsModal Component', () => {
       const year = screen.getByRole('combobox', { name: 'YEAR' }) as HTMLSelectElement;
       expect(year.value).toBe('Junior');
       expect(Array.from(year.options).map((o) => o.value).filter(Boolean)).toEqual([
+        'High school junior', 'High school senior',
         'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other',
       ]);
       expect(screen.getByPlaceholderText('e.g. Biology')).toHaveValue('Biology');
