@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor, TRAINEE_ROUTES } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, effectiveRole, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor, TRAINEE_ROUTES } from '../lib/permissions';
 import * as permissionsModule from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
@@ -463,11 +463,9 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, canSeeHist
     expect(canAccessRoute('admin', '/history')).toBe(true);
   });
 
-  // The decision in #1922: coordination pages are the team's record and a
-  // Trainee does not read them. The floor reads "manager and above", which
-  // would suggest otherwise, so this is a guard against /coordination being
-  // added to the allowlist rather than a consequence of ROUTE_MIN_ROLE.
-  it('a Trainee cannot reach Coordination Notes, and its floor does not say so', () => {
+  // Coordination pages are the team's record and a Trainee does not read them
+  // (cut-or-keep §19): the route floor is admin, and the allowlist agrees.
+  it('a Trainee cannot reach Coordination Notes', () => {
     expect(canAccessRoute('manager', '/coordination')).toBe(false);
     expect(navItemsForRole('manager').some((i) => i.href === '/coordination')).toBe(false);
     expect(canAccessRoute('admin', '/coordination')).toBe(true);
@@ -482,9 +480,6 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, canSeeHist
     expect(canSeePrefs('admin')).toBe(true);
     expect(canSeePrefs('manager')).toBe(true);
     expect(canSeePrefs('operator')).toBe(false);
-
-    expect(canSeeBoardNotes('admin')).toBe(true);
-    expect(canSeeBoardNotes('manager')).toBe(false);
 
     expect(isAppOwner('yilongwang05@gmail.com')).toBe(true);
     expect(isAppOwner('other@gmail.com')).toBe(false);

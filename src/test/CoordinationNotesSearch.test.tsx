@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CoordinationNotes from '../views/CoordinationNotes';
-import CoordinationNotesMobile from '../views/CoordinationNotesMobile';
 import { useAuth } from '../components/AuthProvider';
 
 vi.mock('../components/AuthProvider', () => ({
@@ -140,8 +139,6 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
-const MockChildComponent = () => <div>Mock Component</div>;
-
 describe('Coordination Notes Search & Jump to Anchor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -154,13 +151,13 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
 
   it('renders search input with placeholder and keyboard shortcut hint', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
     expect(searchInput).toBeInTheDocument();
   });
 
   it('focuses search input when slash (/) or Cmd+K is pressed', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
 
     fireEvent.keyDown(window, { key: '/' });
     expect(document.activeElement).toBe(searchInput);
@@ -174,7 +171,7 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
     window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
 
     fireEvent.change(searchInput, { target: { value: 'Small Groups' } });
 
@@ -191,34 +188,24 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
     });
   });
 
-  it('allows clicking note search result to jump to target note', async () => {
-    const scrollIntoViewMock = vi.fn();
-    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
-
+  it('has no Notes result group or tab (the archive is cut)', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
 
     fireEvent.change(searchInput, { target: { value: 'Conference Logistics' } });
-    const noteBtn = (await screen.findAllByText('Conference Logistics')).find((el) => el.closest('button'));
-    expect(noteBtn).toBeDefined();
-    fireEvent.click(noteBtn!.closest('button')!);
-
-    await waitFor(() => {
-      expect(scrollIntoViewMock).toHaveBeenCalled();
-    });
+    // The old note result no longer exists, and the filter row has no Notes tab.
+    expect(screen.queryByText('Conference Logistics')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Notes$/i })).not.toBeInTheDocument();
   });
 
-  it('allows clicking filter tabs (Pages & Headings, Notes, Tasks)', async () => {
+  it('allows clicking filter tabs (Pages & Headings, Tasks)', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
 
     fireEvent.change(searchInput, { target: { value: 'e' } });
 
     const headingTab = screen.getAllByRole('button', { name: /Pages & Headings/i })[0];
     fireEvent.click(headingTab);
-
-    const notesTab = screen.getAllByRole('button', { name: /Notes/i })[0];
-    fireEvent.click(notesTab);
 
     const tasksTab = screen.getAllByRole('button', { name: /Tasks/i })[0];
     fireEvent.click(tasksTab);
@@ -229,7 +216,7 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
 
   it('renders clear button and resets search input when clicked', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i) as HTMLInputElement;
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i) as HTMLInputElement;
 
     fireEvent.change(searchInput, { target: { value: 'Retreat' } });
     expect(searchInput.value).toBe('Retreat');
@@ -243,7 +230,7 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
 
   it('shows no matching results message when search query does not match', async () => {
     render(<CoordinationNotes />);
-    const searchInput = screen.getByPlaceholderText(/search pages, headings, notes & tasks/i);
+    const searchInput = screen.getByPlaceholderText(/search pages, headings & tasks/i);
 
     fireEvent.change(searchInput, { target: { value: 'NonExistentTermXYZ' } });
 
@@ -254,7 +241,7 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
   it('handles deep-linking from location.state and location.search', async () => {
     const scrollIntoViewMock = vi.fn();
     window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
-    mockLocation = { state: { focusNoteId: 'note-1', focusDocId: 'doc-1' }, search: '?focusDoc=doc-1&anchor=small-groups' };
+    mockLocation = { state: { focusDocId: 'doc-1' }, search: '?focusDoc=doc-1&anchor=small-groups' };
 
     render(<CoordinationNotes />);
 
@@ -286,43 +273,5 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('renders SearchBarComponent in CoordinationNotesMobile', () => {
-    render(
-      <CoordinationNotesMobile
-        canEdit={true}
-        canSeeNotes={true}
-        docs={[]}
-        active={null}
-        activeId={null}
-        setActiveId={vi.fn()}
-        newDoc={vi.fn()}
-        promoteDoc={vi.fn()}
-        heading="Notes"
-        intro="Intro"
-        uid="u1"
-        meName="User"
-        pagesCollapsed={false}
-        togglePages={vi.fn()}
-        setLiveActiveMd={vi.fn()}
-        saveMarkdown={vi.fn()}
-        saveTitle={vi.fn()}
-        saveAudience={vi.fn()}
-        deleteBoardDoc={vi.fn()}
-        team={[]}
-        showToast={vi.fn()}
-        contacts={[]}
-        setSelectedContact={vi.fn()}
-        setIsDetailsModalOpen={vi.fn()}
-        DocEditorComponent={MockChildComponent}
-        ReadOnlyDocComponent={MockChildComponent}
-        TodoSectionComponent={<MockChildComponent />}
-        NotesSectionComponent={<MockChildComponent />}
-        SearchBarComponent={<div data-testid="mobile-search-bar">Mobile Search Bar</div>}
-      />,
-    );
-
-    expect(screen.getByTestId('mobile-search-bar')).toBeInTheDocument();
   });
 });

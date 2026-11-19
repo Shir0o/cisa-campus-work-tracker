@@ -45,7 +45,7 @@ import {
 // The app's real builders. `src/lib/contactQueries` is the web mirror the
 // board, Directory, My Day and every contact picker spread into their query.
 import { contactVisibilityConstraints } from '../lib/contactQueries';
-import { credentialAuditFeedQuery } from '../lib/credentialVault';
+import { boardDocsQuery } from '../lib/data/board';
 import {
   contactReadConstraints,
   subscribeTouches,
@@ -246,17 +246,19 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
         gotIt: {},
       });
 
-      // The vault's audit feed (#1966): entries a Full-timer appends. The feed
-      // is the newest 20, so 21 exist and the oldest must fall off.
-      for (let i = 0; i < 21; i += 1) {
-        await seedDoc(db, `credentialAudit/aud-${String(i).padStart(2, '0')}`, {
-          actorUid: ADMIN,
-          credentialId: 'cred-1',
-          action: 'reveal',
-          field: null,
-          createdAt: Timestamp.fromMillis(Date.parse(ISO) + i * 60_000),
-        });
-      }
+      // Coordination pages: Full-timer-only since §19 — a Trainee reads none.
+      await seedDoc(db, 'board_docs/board-open', {
+        date: ISO.slice(0, 10),
+        title: 'Open page',
+        md: '# Open',
+        audience: 'everyone',
+      });
+      await seedDoc(db, 'board_docs/board-team', {
+        date: ISO.slice(0, 10),
+        title: 'Team page',
+        md: '# Team',
+        audience: 'team',
+      });
     });
 
     // buildQueue / traineeWaitingItems read the roster from the walking module.
@@ -661,22 +663,15 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await assertFails(getDocs(activitiesPageQuery(dbFor(TRAINEE), 2)));
   });
 
-  // ── #1966: the credential vault's audit feed ──────────────────────────────
-  // Ticket 3/5's builder reads the newest 20 entries, newest first. Pin that
-  // query shape now: one field + the implicit document-id tiebreak needs no
-  // composite index, and the rules' single `read: isAdmin()` must not narrow
-  // into a per-document check that a list query can never satisfy.
-  it('credential audit — a Full-timer reads the newest 20 entries, newest first (#1966)', async () => {
+  // ── Section 19: Trainee read access is cut ─────────────────────────────────
+  // The pages list reads every page newest-first. The route is admin-only and
+  // the rules now match: a Full-timer's list resolves, a Trainee's does not.
+  it('board pages — a Full-timer reads every page, a Trainee reads none (§19)', async () => {
     for (const uid of [ADMIN, ADMIN_FRESH]) {
-      const snap = await assertSucceeds(getDocs(credentialAuditFeedQuery(dbFor(uid))));
-      expect(snap.size).toBe(20);
-      expect(snap.docs[0].id).toBe('aud-20');
-      expect(snap.docs.some((d) => d.id === 'aud-00')).toBe(false); // negative
+      const snap = await assertSucceeds(getDocs(boardDocsQuery(dbFor(uid))));
+      expect(snap.docs.map((d) => d.id)).toEqual(['board-team', 'board-open']);
     }
-  });
-
-  it('credential audit — a Trainee is denied the feed (#1966)', async () => {
-    await assertFails(getDocs(credentialAuditFeedQuery(dbFor(TRAINEE))));
+    await assertFails(getDocs(boardDocsQuery(dbFor(TRAINEE))));
   });
 
   // ── Team prayer toggle: the flag is written, never deleted ────────────────

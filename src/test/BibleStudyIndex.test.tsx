@@ -97,8 +97,8 @@ describe('BibleStudyIndex view', () => {
     );
   }
 
-  // At desktop width a week's title can appear twice — in its row and in the
-  // rail's scan card — so row lookups go through the row element.
+  // Row lookups go through the row element, so a title in the page heading or
+  // another card cannot be mistaken for the week's own row.
   function rowFor(title: string): HTMLButtonElement | undefined {
     return screen
       .getAllByText(title)
@@ -125,10 +125,6 @@ describe('BibleStudyIndex view', () => {
   function weeksSection(): HTMLElement {
     const heading = screen.getByRole('heading', { name: /^Weeks/ });
     return heading.closest('section') as HTMLElement;
-  }
-
-  function scanCard(): HTMLElement {
-    return screen.getByText('What a scan opens right now').parentElement as HTMLElement;
   }
 
   let meetingsCb: ((meetings: Meeting[]) => void) | null = null;
@@ -208,17 +204,15 @@ describe('BibleStudyIndex view', () => {
     expect(olderRow?.textContent).not.toContain('Live now');
   });
 
-  it('states what a scan opens on desktop, and why a newer draft is not showing', async () => {
+  it('states what a scan opens in the weeks list, once', async () => {
     setViewport('desktop');
     renderIndex();
 
-    expect(await screen.findByText('What a scan opens right now')).toBeInTheDocument();
-    const panel = scanCard();
-    expect(panel.textContent).toContain('Alive to God');
-    expect(panel.textContent).toMatch(/Oct 14/);
-    // The rail only summarises the live week now: the draft note lives in the
-    // weeks section, once, at every width (#1860).
-    expect(panel.textContent).not.toMatch(/is still a draft/);
+    await screen.findByText('Nothing between us');
+    // The live mark on the row is the single statement; the old second-column
+    // scan card is cut (cut-or-keep §18).
+    expect(screen.queryByText('What a scan opens right now')).not.toBeInTheDocument();
+    expect(rowFor('Alive to God')?.textContent).toContain('Live now');
     expect(weeksSection().textContent).toMatch(/Nothing between us is still a draft/);
   });
 
@@ -303,19 +297,14 @@ describe('BibleStudyIndex view', () => {
       expect(weeksSection().contains(sentence)).toBe(true);
     });
 
-    it('desktop: the rail states which week a scan opens, once (#1860)', async () => {
+    it('desktop: the weeks list carries the live mark, with no second column', async () => {
       setViewport('desktop');
       renderIndex();
 
-      expect(await screen.findByText('What a scan opens right now')).toBeInTheDocument();
-      const card = scanCard();
-      expect(card.textContent).toContain('Alive to God');
-      expect(card.textContent).toMatch(/Oct 14/);
-      // The title is in the row and in the rail — that is the rail's job at
-      // width — but the draft note is not repeated there.
-      expect(screen.getAllByText('Alive to God')).toHaveLength(2);
+      await screen.findByText('Nothing between us');
+      expect(screen.queryByText('What a scan opens right now')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Alive to God')).toHaveLength(1);
       expect(screen.getAllByText(/is still a draft/)).toHaveLength(1);
-      expect(card.textContent).not.toMatch(/is still a draft/);
     });
   });
 
@@ -530,7 +519,7 @@ describe('BibleStudyIndex view', () => {
       });
     });
 
-    it('unpublishing is reflected immediately in what a scan opens', async () => {
+    it('unpublishing is reflected immediately in the live mark', async () => {
       setViewport('desktop');
       renderIndex();
 
@@ -542,15 +531,14 @@ describe('BibleStudyIndex view', () => {
         expect(bibleData.setMeetingPublished).toHaveBeenCalledWith(expect.anything(), 'm-5', false),
       );
 
-      // The subscription delivers the change; the scan panel falls back to
-      // the previous published week and the live mark moves with it.
+      // The subscription delivers the change; the live mark falls back to the
+      // previous published week.
       act(() => {
         meetingsCb?.(MEETINGS.map((m) => (m.id === 'm-5' ? { ...m, published: false } : m)));
       });
       await waitFor(() => {
-        const panel = scanCard();
-        expect(panel.textContent).toContain('Peace that holds');
-        expect(panel.textContent).not.toContain('Alive to God');
+        expect(rowFor('Peace that holds')?.textContent).toContain('Live now');
+        expect(rowFor('Alive to God')?.textContent).not.toContain('Live now');
       });
     });
   });

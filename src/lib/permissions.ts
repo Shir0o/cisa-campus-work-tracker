@@ -66,11 +66,9 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // one row in Settings → Security rather than a nav item.
   '/vault': 'admin',
   '/feedback': 'manager',
-  // The floor reads "manager and above", which is not true for a Trainee: they
-  // take the allowlist path below and are not on it. The deny is the decision
-  // (#1922), the same shape as /history (#1825). This entry is not what stops
-  // a Trainee and must not claim otherwise.
-  '/coordination': 'manager',
+  // The Board is Full-timers only (cut-or-keep §19): a Trainee reads no page
+  // at all, and its floor says so rather than leaning on the allowlist.
+  '/coordination': 'admin',
   '/coordination/trash': 'admin',
   // The Weeks index is the archive, and the archive is Full-timers only
   // (ADR 0011 §6).
@@ -121,7 +119,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/bible-study', label: 'Bible study', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
-  { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
+  { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
   // To ask (#1649) — the Full-timer's private notepad. It sits where Questions
   // used to, in Today; Trainees never reach it.
   { href: '/ask', label: 'To ask', minRole: 'admin' },
@@ -147,9 +145,9 @@ export const NAV_ITEMS: NavItem[] = [
  * and /answered are the team's shared list and the testimonies that came
  * out of it, while a Trainee's prayer surface is the home card's personal
  * list ("just between you and God").
- * '/coordination' is deliberately missing (#1922): a Trainee does not read
- * the team's coordination pages. Its floor reads "manager and above", so
- * this allowlist is the only place the deny is enforced.
+ * '/coordination' is missing because the Board is Full-timers only
+ * (cut-or-keep §19); its route floor is admin, so the allowlist and the floor
+ * agree.
  * '/settings' is here because a Trainee sets their own preferences. The
  * team surface stays Full-timer-only: Settings branches on isAdmin, so a
  * Trainee lands on the personal page and never the staff one.
@@ -261,7 +259,6 @@ export function groupedNavFor(role: AppRole | string | null): NavGroup[] {
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
-export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
 // Only a Full-timer reads the whole roster — the rules' seesAllContacts().
 export const seesAllPeople = (role: AppRole | string | null) => role === 'admin';
 

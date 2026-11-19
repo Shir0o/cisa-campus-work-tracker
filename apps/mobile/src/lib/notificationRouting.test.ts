@@ -21,7 +21,8 @@ describe('routeForNotificationLink', () => {
     ['/messages', '/'],
     ['/directory', '/people'],
     ['/feedback', '/your-notes'],
-    ['/coordination/doc-2', '/coordination/doc-2'],
+    // The phone Board is cut; a stale page link lands on the queue.
+    ['/coordination/doc-2', '/'],
   ])('%s opens %s', (link, route) => {
     expect(routeForNotificationLink(link)).toBe(route);
   });

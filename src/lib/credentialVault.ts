@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  limit,
   onSnapshot,
   orderBy,
   query,
@@ -11,7 +10,6 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
-  type Firestore,
   type Timestamp,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
@@ -28,27 +26,16 @@ import {
 } from "./vaultCrypto";
 
 // Credential vault data layer (#1967, ADR 0051). The cryptography lives in
-// vaultCrypto; this module is the Firestore side — one meta document, the
-// sealed entries, and the append-only audit feed — shaped like toAsk.ts: one
-// subscription per collection and one guarded write per intent.
+// vaultCrypto; this module is the Firestore side — one meta document and the
+// sealed entries — shaped like toAsk.ts: one subscription per collection and
+// one guarded write per intent.
 //
 // The derived key is passed in and handed back, never held here: it lives in
 // the page's state for the session and nowhere else.
-//
-// Audit rows always name `user.uid`, never `effectiveUserId`. A Full-timer
-// previewing a Trainee still acted as themselves, and a log that named the
-// Trainee would be a lie (ADR 0051).
 
 /** The only schema this build writes; the field exists so a later format can
  *  tell an older vault apart instead of guessing. */
 export const VAULT_SCHEMA_VERSION = 1;
-
-/** How many audit rows the page reads and shows. */
-export const VAULT_AUDIT_LIMIT = 20;
-
-/** The audit row's `credentialId` when the action belongs to the vault itself
- *  (unlock, unlock-failed, rotate) rather than to one entry. */
-export const VAULT_AUDIT_ID = "vault";
 
 export interface VaultMeta {
   /** Base64 — Firestore stores it as a string (the rules bound it at 128). */
@@ -64,25 +51,6 @@ export interface VaultEntryDoc {
   id: string;
   iv: string;
   ciphertext: string;
-  createdAt: Timestamp | null;
-}
-
-export type CredentialAction =
-  | "unlock"
-  | "unlock-failed"
-  | "reveal"
-  | "copy"
-  | "create"
-  | "update"
-  | "delete"
-  | "rotate";
-
-export interface CredentialAuditRow {
-  id: string;
-  actorUid: string;
-  credentialId: string;
-  action: CredentialAction;
-  field: string | null;
   createdAt: Timestamp | null;
 }
 
@@ -144,37 +112,6 @@ export function subscribeVaultEntries(
   );
 }
 
-/** The audit feed query, parameterised by `db` so the query-contract test runs
- *  the real builder against the rules emulator rather than a copy of it. One
- *  field plus the implicit document-id tiebreak needs no composite index. */
-export function credentialAuditFeedQuery(database: Firestore, size: number = VAULT_AUDIT_LIMIT) {
-  return query(collection(database, "credentialAudit"), orderBy("createdAt", "desc"), limit(size));
-}
-
-export function subscribeCredentialAudit(
-  cb: (rows: CredentialAuditRow[]) => void,
-  onError?: (e: unknown) => void,
-): () => void {
-  return onSnapshot(
-    credentialAuditFeedQuery(db),
-    (snap) =>
-      cb(
-        snap.docs.map((d) => {
-          const data = d.data() as Omit<CredentialAuditRow, "id">;
-          return {
-            id: d.id,
-            actorUid: data.actorUid,
-            credentialId: data.credentialId,
-            action: data.action,
-            field: data.field ?? null,
-            createdAt: data.createdAt ?? null,
-          };
-        }),
-      ),
-    (e) => (onError ? onError(e) : handleFirestoreError(e, OperationType.LIST, "credentialAudit")),
-  );
-}
-
 // ── Passphrase: create, unlock, rotate ──────────────────────────────────────
 
 /** Thrown by createVault when another Full-timer created the vault first. */
@@ -227,11 +164,10 @@ export async function unlockVault(
   return { key, ok };
 }
 
-/** Re-derive under a new salt and re-seal every entry, then write the meta, the
- *  entries and the audit row in ONE batch: the meta and the entries are only
- *  ever consistent within a single commit (ADR 0051). */
+/** Re-derive under a new salt and re-seal every entry, then write the meta and
+ *  the entries in ONE batch: the meta and the entries are only ever consistent
+ *  within a single commit (ADR 0051). */
 export async function rotatePassphrase(
-  uid: string,
   oldKey: CryptoKey,
   newPassphrase: string,
   entries: VaultEntryDoc[],
@@ -262,13 +198,6 @@ export async function rotatePassphrase(
       { merge: true },
     );
   });
-  batch.set(doc(collection(db, "credentialAudit")), {
-    actorUid: uid,
-    credentialId: VAULT_AUDIT_ID,
-    action: "rotate",
-    field: null,
-    createdAt: serverTimestamp(),
-  });
   try {
     await batch.commit();
   } catch (e) {
@@ -282,7 +211,6 @@ export async function rotatePassphrase(
  *  deny deleting the meta document, so overwriting it is the only exit that
  *  leaves the vault usable again (ADR 0051). */
 export async function resetVault(
-  uid: string,
   newPassphrase: string,
   entries: VaultEntryDoc[],
 ): Promise<CryptoKey> {
@@ -301,13 +229,6 @@ export async function resetVault(
   });
   entries.forEach((entry) => {
     batch.delete(doc(db, "credentials", entry.id));
-    batch.set(doc(collection(db, "credentialAudit")), {
-      actorUid: uid,
-      credentialId: entry.id,
-      action: "delete",
-      field: null,
-      createdAt: serverTimestamp(),
-    });
   });
   try {
     await batch.commit();
@@ -355,26 +276,5 @@ export async function deleteEntry(id: string): Promise<void> {
     await deleteDoc(doc(db, "credentials", id));
   } catch (e) {
     handleFirestoreError(e, OperationType.DELETE, `credentials/${id}`);
-  }
-}
-
-/** One append-only row. `uid` must be the real auth uid — see the note at the
- *  top of this file. */
-export async function writeCredentialAudit(
-  uid: string,
-  action: CredentialAction,
-  credentialId: string = VAULT_AUDIT_ID,
-  field?: string,
-): Promise<void> {
-  try {
-    await addDoc(collection(db, "credentialAudit"), {
-      actorUid: uid,
-      credentialId,
-      action,
-      ...(field ? { field } : {}),
-      createdAt: serverTimestamp(),
-    });
-  } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, "credentialAudit");
   }
 }

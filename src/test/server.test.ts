@@ -793,38 +793,6 @@ describe("POST /api/smart-import/commit", () => {
   });
 });
 
-describe("POST /api/analyze-notes", () => {
-  it("returns 400 when text is missing", async () => {
-    const res = await request(app).post("/api/analyze-notes").send({});
-    expect(res.status).toBe(400);
-  });
-
-  it("returns updated markdown and suggested tasks from Gemini", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ updatedMarkdown: "See [Jane](/contacts/c1)", suggestedTasks: [{ title: "Call Jane", priority: "high" }] }),
-    });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Talked with Jane about outreach." });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.updatedMarkdown).toContain("/contacts/c1");
-    expect(res.body.suggestedTasks).toHaveLength(1);
-  });
-
-  it("returns 500 when Gemini returns no text", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "" });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes here" });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toContain("No response returned from the Gemini API");
-  });
-
-  it("returns 500 when Gemini returns invalid JSON", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "not json at all" });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes here" });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to parse AI response");
-  });
-});
-
 describe("POST /api/smart-import/parse", () => {
   it("returns 400 when text is missing", async () => {
     const res = await request(app).post("/api/smart-import/parse").send({});
@@ -846,28 +814,6 @@ describe("POST /api/smart-import/parse", () => {
     const res = await request(app).post("/api/smart-import/parse").send({ text: "Met Amy today." });
     expect(res.status).toBe(500);
     expect(res.body.error).toContain("No response returned from Gemini API");
-  });
-});
-
-describe("POST /api/mint-custom-token", () => {
-  it("returns 401 without an Authorization header", async () => {
-    const res = await request(app).post("/api/mint-custom-token");
-    expect(res.status).toBe(401);
-  });
-
-  it("mints a custom token for the authenticated user", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "uid-42" });
-    const res = await request(app).post("/api/mint-custom-token").set("Authorization", "Bearer tok");
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ success: true, token: "minted-token" });
-    expect(mockCreateCustomToken).toHaveBeenCalledWith("uid-42");
-  });
-
-  it("returns 401 when minting the custom token fails", async () => {
-    mockCreateCustomToken.mockRejectedValue(new Error("mint failed"));
-    const res = await request(app).post("/api/mint-custom-token").set("Authorization", "Bearer tok");
-    expect(res.status).toBe(401);
-    expect(res.body.success).toBe(false);
   });
 });
 
@@ -1129,22 +1075,6 @@ describe("POST /api/webhook/github — payload edge cases", () => {
       .send(payload);
     expect(res.status).toBe(200);
     expect(res.body.message).toContain("Ignored action: labeled");
-  });
-});
-
-describe("POST /api/analyze-notes — prompt composition", () => {
-  it("includes the contact directory and user roster in the Gemini prompt", async () => {
-    seedDoc("contacts", "c-a", { name: "Zoe Pratt" });
-    seedDoc("users", "u-a", { displayName: "Alex Admin" });
-    seedDoc("users", "u-b", { email: "pending@example.com", approved: false });
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ updatedMarkdown: "", suggestedTasks: [] }) });
-
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes" });
-    expect(res.status).toBe(200);
-    const contents = mockGenerateContent.mock.calls[0][0].contents as string;
-    expect(contents).toContain("Zoe Pratt");
-    expect(contents).toContain("Alex Admin");
-    expect(contents).not.toContain("pending@example.com");
   });
 });
 
@@ -2093,12 +2023,18 @@ describe("POST /api/combine-contacts/undo", () => {
   it("refuses a tag combine record, for the preview and the undo, and writes nothing", async () => {
     seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
     seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
-    const tagRes = await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
-    expect(tagRes.status).toBe(200);
-    const recordId = tagRes.body.combineRecordId as string;
-    expect(getCollection("combineRecords")[recordId].kind).toBe("tags");
+    // Tag combines no longer have an endpoint; an old record of that kind is
+    // still refused by the contact-combine undo.
+    const recordId = "legacy-tag-record";
+    seedDoc("combineRecords", recordId, {
+      kind: "tags",
+      status: "done",
+      combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }],
+      contacts: [
+        { contactId: "a", name: "Alice", before: ["BFA table", "BFA"], after: ["BFA"] },
+      ],
+      combinedAt: new Date().toISOString(),
+    });
     const snapshot = () =>
       structuredClone({ contacts: getCollection("contacts"), records: getCollection("combineRecords") });
     const before = snapshot();
@@ -2550,352 +2486,6 @@ describe("POST /api/combine-contacts/undo", () => {
   });
 });
 
-describe("POST /api/combine-tags", () => {
-  const seedTags = () => {
-    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
-    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
-    seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
-  };
-
-  it("rewrites affected tags, drops repeats, and writes a done tags record", async () => {
-    seedTags();
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.combineRecordId).toBeTruthy();
-    expect(res.body.changedCount).toBe(2);
-
-    const contacts = getCollection("contacts");
-    expect(contacts["a"].tags).toEqual(["BFA"]);
-    expect(contacts["b"].tags).toEqual(["BFA"]);
-    expect(contacts["c"].tags).toEqual(["Saved"]);
-
-    const record = getCollection("combineRecords")[res.body.combineRecordId];
-    expect(record.kind).toBe("tags");
-    expect(record.status).toBe("done");
-    expect(record.combinedByName).toBe("Test User");
-    expect(record.combines).toEqual([{ variants: ["BFA table", "bfa-table"], target: "BFA" }]);
-    expect(record.contacts).toEqual([
-      { contactId: "a", name: "Alice", before: ["BFA table", "BFA"], after: ["BFA"] },
-      { contactId: "b", name: "Bob", before: ["bfa-table"], after: ["BFA"] },
-    ]);
-  });
-
-  it("logs one Activity Log entry per changed contact", async () => {
-    seedTags();
-    await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
-
-    const activities = Object.values(getCollection("activities")).filter(
-      (activity: any) => activity.action === "combined tags on",
-    );
-    expect(activities).toHaveLength(2);
-    expect(activities[0]).toMatchObject({ targetType: "contact", type: "edit" });
-  });
-
-  it("previews without writing on a dry run", async () => {
-    seedTags();
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }], dryRun: true });
-
-    expect(res.status).toBe(200);
-    expect(res.body.dryRun).toBe(true);
-    expect(res.body.rows).toEqual([
-      { contactId: "a", name: "Alice", from: ["BFA table", "BFA"], to: ["BFA"] },
-      { contactId: "b", name: "Bob", from: ["bfa-table"], to: ["BFA"] },
-    ]);
-    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
-    expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
-  });
-
-  it("adds a requested standard tag to the standard tags document and records it", async () => {
-    seedTags();
-    seedDoc("settings", "standard_tags", { tags: ["Saved", "BFA"] });
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({
-        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
-        makeStandard: ["Outreach", "Saved", "Unrelated"],
-      });
-
-    expect(res.status).toBe(200);
-    // Added once, after the existing ones; already-standard and non-target names are ignored.
-    expect(getCollection("settings")["standard_tags"].tags).toEqual(["Saved", "BFA", "Outreach"]);
-    const record = getCollection("combineRecords")[res.body.combineRecordId];
-    expect(record.standardTagsAdded).toEqual(["Outreach"]);
-  });
-
-  it("starts from the seed list when no standard tags document exists yet", async () => {
-    seedTags();
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({
-        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
-        makeStandard: ["Outreach"],
-      });
-
-    expect(res.status).toBe(200);
-    expect(getCollection("settings")["standard_tags"].tags).toEqual([
-      "Saved", "Baptized", "Interested", "Open", "Club Rush", "BFA", "Outreach",
-    ]);
-  });
-
-  it("records no standard tags and leaves the document alone when none are requested", async () => {
-    seedTags();
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
-
-    expect(getCollection("combineRecords")[res.body.combineRecordId].standardTagsAdded).toEqual([]);
-    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
-  });
-
-  it("does not add a standard tag on a dry run", async () => {
-    seedTags();
-    await request(app)
-      .post("/api/combine-tags")
-      .send({
-        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
-        makeStandard: ["Outreach"],
-        dryRun: true,
-      });
-    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
-  });
-
-  it("returns 400 when no combines are given", async () => {
-    const res = await request(app).post("/api/combine-tags").send({ combinations: [] });
-    expect(res.status).toBe(400);
-  });
-
-  it("refuses a non-Full-timer with 403", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
-      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
-      const res = await request(app)
-        .post("/api/combine-tags")
-        .set("Authorization", "Bearer tok")
-        .send({ combines: [{ variants: ["BFA table"], target: "BFA" }] });
-      expect(res.status).toBe(403);
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
-  });
-});
-
-describe("POST /api/combine-tags/undo", () => {
-  const seedTags = () => {
-    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
-    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
-    seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
-  };
-
-  const combineOnce = async (): Promise<string> => {
-    seedTags();
-    const res = await request(app)
-      .post("/api/combine-tags")
-      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
-    expect(res.status).toBe(200);
-    return res.body.combineRecordId as string;
-  };
-
-  it("restores every contact's tags on an apply-then-undo round trip", async () => {
-    const recordId = await combineOnce();
-    expect(getCollection("contacts")["a"].tags).toEqual(["BFA"]);
-    expect(getCollection("contacts")["b"].tags).toEqual(["BFA"]);
-
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: recordId });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
-    expect(getCollection("contacts")["b"].tags).toEqual(["bfa-table"]);
-    expect(getCollection("contacts")["c"].tags).toEqual(["Saved"]);
-    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
-  });
-
-  it("previews the undo without writing: restored, skipped and standard tags that remain", async () => {
-    seedTags();
-    const applied = await request(app)
-      .post("/api/combine-tags")
-      .send({
-        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
-        makeStandard: ["Outreach"],
-      });
-    const recordId = applied.body.combineRecordId as string;
-    seedDoc("contacts", "b", { name: "Bob", tags: ["Outreach", "Fall 2026"] });
-    const contactsBefore = structuredClone(getCollection("contacts"));
-    const activitiesBefore = Object.keys(getCollection("activities")).length;
-
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: recordId, dryRun: true });
-
-    expect(res.status).toBe(200);
-    expect(res.body.dryRun).toBe(true);
-    expect(res.body.preview.restored).toEqual([
-      { contactId: "a", name: "Alice", current: ["Outreach", "BFA"], before: ["BFA table", "BFA"] },
-    ]);
-    expect(res.body.preview.skipped).toEqual([
-      { contactId: "b", name: "Bob", current: ["Outreach", "Fall 2026"], after: ["Outreach"] },
-    ]);
-    expect(res.body.preview.standardTagsRemaining).toEqual(["Outreach"]);
-
-    // Nothing was written.
-    expect(getCollection("contacts")).toEqual(contactsBefore);
-    expect(getCollection("combineRecords")[recordId].status).toBe("done");
-    expect(Object.keys(getCollection("activities"))).toHaveLength(activitiesBefore);
-    expect(getCollection("settings")["standard_tags"].tags).toContain("Outreach");
-  });
-
-  it("skips a contact re-tagged after the combine and reports it", async () => {
-    const recordId = await combineOnce();
-    seedDoc("contacts", "b", { name: "Bob", tags: ["BFA", "Fall 2026"] });
-
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: recordId });
-
-    expect(res.status).toBe(200);
-    // Bob keeps his later tagging; Alice alone goes back.
-    expect(getCollection("contacts")["b"].tags).toEqual(["BFA", "Fall 2026"]);
-    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
-    expect(res.body.preview.skipped).toEqual([
-      { contactId: "b", name: "Bob", current: ["BFA", "Fall 2026"], after: ["BFA"] },
-    ]);
-  });
-
-  it("marks the record undone with who and when", async () => {
-    const recordId = await combineOnce();
-    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-
-    const record = getCollection("combineRecords")[recordId] as any;
-    expect(record.status).toBe("undone");
-    expect(record.undoneAt).toBeTruthy();
-    expect(record.undoneBy).toBe("test-user");
-    expect(record.undoneByName).toBe("Test User");
-  });
-
-  it("refuses to undo the same combine twice", async () => {
-    const recordId = await combineOnce();
-    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-    const second = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: recordId });
-    expect(second.status).toBe(409);
-  });
-
-  it("lets exactly one of two concurrent undos through", async () => {
-    const recordId = await combineOnce();
-    // The second undo runs to completion after the first has read the record.
-    let second: request.Response | undefined;
-    writeAfterFirstRead("combineRecords", async () => {
-      second = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-    });
-
-    const first = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-
-    expect([first.status, second?.status].sort()).toEqual([200, 409]);
-    const undoEntries = Object.values(getCollection("activities")).filter(
-      (activity: any) => activity.action === "undid tag combine",
-    );
-    expect(undoEntries).toHaveLength(2);
-  });
-
-  it("refuses an undo whose claim is fresh and retries one whose claim has expired", async () => {
-    const recordId = await combineOnce();
-    const record = getCollection("combineRecords")[recordId];
-    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: new Date().toISOString() });
-
-    const tooSoon = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-    expect(tooSoon.status).toBe(409);
-
-    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: LONG_AGO });
-    const retried = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-
-    expect(retried.status).toBe(200);
-    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
-    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
-  });
-
-  it("returns 404 for a missing combine record", async () => {
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: "nope" });
-    expect(res.status).toBe(404);
-  });
-
-  it("returns 400 when the record id is missing", async () => {
-    const res = await request(app).post("/api/combine-tags/undo").send({});
-    expect(res.status).toBe(400);
-  });
-
-  it("refuses a contact combine record", async () => {
-    seedDoc("combineRecords", "contacts-1", {
-      kind: "contacts",
-      status: "done",
-      keptId: "a",
-      combinedInId: "b",
-    });
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: "contacts-1" });
-    expect(res.status).toBe(400);
-  });
-
-  it("records an Activity Log entry for the undo", async () => {
-    const recordId = await combineOnce();
-    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
-
-    const entries = Object.values(getCollection("activities")).filter(
-      (activity: any) => activity.action === "undid tag combine",
-    );
-    expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatchObject({ targetType: "contact", type: "edit" });
-  });
-
-  it("returns the undo preview without writing when dryRun is set", async () => {
-    const recordId = await combineOnce();
-    const afterCombine = structuredClone(getCollection("contacts")["a"]);
-
-    const res = await request(app)
-      .post("/api/combine-tags/undo")
-      .send({ combineRecordId: recordId, dryRun: true });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.preview.restored).toHaveLength(2);
-    expect(res.body.preview.skipped).toEqual([]);
-    expect(getCollection("contacts")["a"]).toEqual(afterCombine);
-    expect(getCollection("combineRecords")[recordId].status).toBe("done");
-  });
-
-  it("refuses a non-Full-timer with 403", async () => {
-    const recordId = await combineOnce();
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
-      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
-      const res = await request(app)
-        .post("/api/combine-tags/undo")
-        .set("Authorization", "Bearer tok")
-        .send({ combineRecordId: recordId });
-      expect(res.status).toBe(403);
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
-  });
-});
-
 // Endpoints that served the cut channels (cut-or-keep §14, §15, §26). The
 // Smart Import parse/commit pair stays, and so does the GitHub issue webhook
 // (outcome sentences still ride the issue close). Everything here is gone.
@@ -2911,6 +2501,7 @@ describe("cut endpoints", () => {
     ["post", "/api/feedback/reply"],
     ["post", "/api/feedback/reply/edit"],
     ["post", "/api/feedback/update"],
+    ["post", "/api/analyze-notes"],
   ] as const;
 
   it.each(gone)("%s %s is no longer routed", async (method, path) => {

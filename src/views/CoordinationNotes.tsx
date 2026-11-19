@@ -10,26 +10,26 @@
 import React, { useState, useEffect, useMemo, useRef, useReducer } from 'react';
 import {
   collection,
-  query,
-  orderBy,
-  where,
   onSnapshot,
   doc,
   setDoc,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { softDeleteBoardDoc, restoreBoardDoc, pinBoardDoc, reorderPinnedBoardDocs } from '../lib/data/board';
+import {
+  softDeleteBoardDoc,
+  restoreBoardDoc,
+  pinBoardDoc,
+  reorderPinnedBoardDocs,
+  boardDocsQuery,
+} from '../lib/data/board';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
-import CoordinationNotesMobile from './CoordinationNotesMobile';
 import ShareDocModal from '../components/modals/ShareDocModal';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
@@ -51,7 +51,6 @@ import {
   Plus,
   Search,
   X,
-  Tag,
   ShieldAlert,
   Trash2,
   Feather,
@@ -69,22 +68,17 @@ import {
   Code2,
   Check,
   CheckSquare,
-  Clock,
   MapPin,
   PanelLeftClose,
   PanelLeftOpen,
   Users,
-  Sparkles,
   AtSign,
   Lock,
   Globe,
-  RotateCw,
   Link2,
   Share2,
   Pin,
   GripVertical,
-  Archive,
-  Edit3,
   Maximize2,
   Minimize2,
   Hash,
@@ -110,16 +104,11 @@ import { peersFromAwareness, colorFor, type Peer } from '../lib/presence';
 import {
   BoardDoc,
   DocGroup,
-  BoardNote,
-  NoteType,
-  BOARD_SERIES,
   Audience,
   BOARD_AUDIENCE,
   AUDIENCE_ORDER,
   audienceOf,
   canViewBoard,
-  canViewBoardNotes,
-  boardAudiencesForRole,
   todayISO,
   longDateOf,
   dateLabelOf,
@@ -139,18 +128,14 @@ import {
   persistDocEdit,
   type DocSaveState,
   type DocMarkdownWriter,
-  formatDocNoteMarkdown,
   parseDocTasks,
-  parseDocNotes,
   collectDocTaskNodes,
   planDocTaskEdits,
   slugifyHeading,
-  parseDocHeadings,
   searchBoardContent,
-  type BoardSearchResult,
 } from '../lib/board';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
-import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
+import { mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Task, Contact } from '../types';
@@ -161,33 +146,12 @@ import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { useLanguage } from '../components/LanguageProvider';
 
-// ── Team (contributor avatars + cursor identities) ────────────────────────────
+// ── Team (cursor identities) ──────────────────────────────────────────────────
 export interface TeamMember {
   uid: string;
   name: string;
   photoURL?: string;
   role?: string;
-}
-
-function Avatar({ member, size = 'sm' }: { member?: TeamMember; size?: 'xs' | 'sm' | 'md' }) {
-  const { t } = useLanguage();
-  const dim = size === 'md' ? 'w-9 h-9 text-sm' : size === 'xs' ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs';
-  const name = member?.name || t('coordination.unknown');
-  const initials = member ? getUserInitials(name) : '–';
-  if (member?.photoURL) {
-    return <img src={member.photoURL} alt={name} className={cn(dim, 'rounded-full object-cover shrink-0')} />;
-  }
-  return (
-    <div
-      className={cn(
-        dim,
-        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
-      )}
-      title={name}
-    >
-      {initials}
-    </div>
-  );
 }
 
 const SectionHead = ({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) => (
@@ -614,55 +578,20 @@ function ReadOnlyDoc({
   );
 }
 
-// ── Notes & learnings: prefill helpers (Session 4) ────────────────────────────
-// Exported alongside NoteForm/addNote's shape so EmbedCoordinationDoc.tsx's
-// admin-only "Keep as a note" flow can reuse them (see MIGRATION.md
-// "Coordination Notes / The Board").
-export type NoteFormInitial = { id?: string; type?: NoteType; series?: string; title?: string; body?: string; displayMode?: 'text' | 'list' };
-
-// Guess which series a page belongs to from its title (first-word match).
-export function guessSeries(title: string): string {
-  const t = (title || '').toLowerCase();
-  return BOARD_SERIES.find((s) => t.includes(s.toLowerCase().split(' ')[0])) || 'Team';
-}
-
-// A short plain-text excerpt of a page's markdown, for the archive body.
-export function mdExcerpt(md: string): string {
-  const body = (md || '')
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .filter((l) => !/^#{1,3}\s/.test(l)) // drop headings
-    .filter((l) => !/^\*\*.*\*\*$/.test(l)) // drop a bold-only meta line
-    .map((l) =>
-      l
-        .replace(/^\s*[-*]\s+\[( |x|X)\]\s+/, '') // task marker
-        .replace(/^\s*[-*]\s+/, '') // bullet
-        .replace(/^>\s?/, '') // quote
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1'),
-    )
-    .join(' ');
-  return body.length > 360 ? body.slice(0, 357).trimEnd() + '…' : body;
-}
-
 export default function CoordinationNotes() {
   const { isAdmin, user, role } = useAuth();
   const { t, language } = useLanguage();
-  const isMobile = useMediaQuery("(max-width: 768px)");
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
-  // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
+  // Full-timers (admins) edit; a legacy owner account may too. The Board is
+  // Full-timers only now (cut-or-keep §19), so no lower role is let in.
   const canEdit = isAdmin || isMe;
   const canView = canEdit || canViewBoard(role);
-  const canSeeNotes = canEdit || canViewBoardNotes(role);
   const uid = user?.uid || '';
   const meName = user?.displayName || user?.email || t('coordination.someone');
 
   const [docs, setDocs] = useState<BoardDoc[]>([]);
-  const [notes, setNotes] = useState<BoardNote[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
-  const [loadingNotes, setLoadingNotes] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -744,19 +673,11 @@ export default function CoordinationNotes() {
   const [liveActiveMd, setLiveActiveMd] = useState<string | null>(null);
   useEffect(() => setLiveActiveMd(null), [activeId]);
 
-  // notes archive controls
-  const [q, setQ] = useState('');
-  const [series, setSeries] = useState('All');
-  const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
-  const [noteTab, setNoteTab] = useState<'active' | 'archived' | 'trash'>('active');
-
   // unified coordination search state
   const [boardSearchQ, setBoardSearchQ] = useState('');
-  const [boardSearchTab, setBoardSearchTab] = useState<'all' | 'heading' | 'note' | 'task'>('all');
+  const [boardSearchTab, setBoardSearchTab] = useState<'all' | 'heading' | 'task'>('all');
   const [isBoardSearchFocused, setIsBoardSearchFocused] = useState(false);
   const boardSearchRef = useRef<HTMLInputElement>(null);
-  // The note form holds optional prefill so "Keep as a note" can seed it from a page.
-  const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
   // team to-dos ("What we're holding")
   const [todos, setTodos] = useState<Task[]>([]);
@@ -817,19 +738,13 @@ export default function CoordinationNotes() {
   useEffect(() => {
     if (!canView) {
       setLoadingDocs(false);
-      setLoadingNotes(false);
       return;
     }
 
-    // Full-timers read every page (incl. legacy pages with no audience); lower
-    // roles must scope the query by audience so the rules' per-doc checks pass.
-    // The non-admin query has no orderBy (sorted client-side) so no composite
-    // index is needed.
-    const docsQuery = canEdit
-      ? query(collection(db, 'board_docs'), orderBy('date', 'desc'))
-      : query(collection(db, 'board_docs'), where('audience', 'in', boardAudiencesForRole(role)));
+    // Full-timers read every page; the Board is Full-timers only now
+    // (cut-or-keep §19), so there is no audience-scoped query to make.
     const unsubDocs = onSnapshot(
-      docsQuery,
+      boardDocsQuery(db),
       (snap) => {
         setDocs(
           snap.docs
@@ -843,21 +758,6 @@ export default function CoordinationNotes() {
         handleFirestoreError(err, OperationType.LIST, 'board_docs');
       },
     );
-
-    // The Notes & learnings archive is Full-timer + Trainee only.
-    const unsubNotes = canSeeNotes
-      ? onSnapshot(
-          query(collection(db, 'board_notes'), orderBy('date', 'desc')),
-          (snap) => {
-            setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as BoardNote));
-            setLoadingNotes(false);
-          },
-          (err) => {
-            setLoadingNotes(false);
-            handleFirestoreError(err, OperationType.LIST, 'board_notes');
-          },
-        )
-      : (setLoadingNotes(false), () => {});
 
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
@@ -903,12 +803,11 @@ export default function CoordinationNotes() {
 
     return () => {
       unsubDocs();
-      unsubNotes();
       unsubUsers();
       unsubTodos();
       unsubContacts();
     };
-  }, [canView, canEdit, canSeeNotes, role]);
+  }, [canView, canEdit, role]);
 
   // keep a sensible page focused: top pinned → today → soonest upcoming → most recent
   useEffect(() => {
@@ -945,7 +844,7 @@ export default function CoordinationNotes() {
     };
   }, []);
 
-  const jumpToAnchor = (docId?: string, anchorId?: string, noteId?: string) => {
+  const jumpToAnchor = (docId?: string, anchorId?: string) => {
     if (docId) {
       if (docs.some((d) => d.id === docId)) {
         setActiveId(docId);
@@ -979,42 +878,27 @@ export default function CoordinationNotes() {
       } else {
         showToast(t('coordination.page_no_longer_here'));
       }
-    } else if (noteId) {
-      scheduleJump(() => {
-        const noteEl = document.getElementById(`note-${noteId}`);
-        if (noteEl) {
-          noteEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          noteEl.classList.remove('bdoc-anchor-highlight');
-          void noteEl.offsetWidth;
-          noteEl.classList.add('bdoc-anchor-highlight');
-          scheduleJump(() => noteEl.classList.remove('bdoc-anchor-highlight'), 2200);
-        } else {
-          document.getElementById('board-notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 120);
     }
   };
 
   useEffect(() => {
-    const locState = location.state as { focusDocId?: string; focusAnchorId?: string; focusNoteId?: string } | null;
+    const locState = location.state as { focusDocId?: string; focusAnchorId?: string } | null;
     const focusDoc = locState?.focusDocId || searchParams.get('focusDoc');
     const focusAnchor = locState?.focusAnchorId || searchParams.get('anchor');
-    const focusNote = locState?.focusNoteId || searchParams.get('focusNote');
 
-    if (focusDoc || focusNote) {
-      jumpToAnchor(focusDoc || undefined, focusAnchor || undefined, focusNote || undefined);
+    if (focusDoc) {
+      jumpToAnchor(focusDoc, focusAnchor || undefined);
     }
   }, [location.state, location.search, docs, searchParams]);
 
   // Unified search calculations
   const searchResults = useMemo(() => {
-    return searchBoardContent(docs, notes, todos, boardSearchQ, language);
-  }, [docs, notes, todos, boardSearchQ, language]);
+    return searchBoardContent(docs, todos, boardSearchQ, language);
+  }, [docs, todos, boardSearchQ, language]);
 
   const filteredSearchResults = useMemo(() => {
     if (boardSearchTab === 'all') return searchResults;
     if (boardSearchTab === 'heading') return searchResults.filter((r) => r.kind === 'heading' || r.kind === 'doc');
-    if (boardSearchTab === 'note') return searchResults.filter((r) => r.kind === 'note');
     if (boardSearchTab === 'task') return searchResults.filter((r) => r.kind === 'task');
     return searchResults;
   }, [searchResults, boardSearchTab]);
@@ -1187,157 +1071,6 @@ export default function CoordinationNotes() {
     }
   };
 
-  // ── notes ──────────────────────────────────────────────────────────────────
-  const addNote = async (fields: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => {
-    try {
-      if (fields.id) {
-        await updateDoc(doc(db, 'board_notes', fields.id), {
-          type: fields.type,
-          series: fields.series,
-          title: fields.title.trim() || t('coordination.untitled_note'),
-          body: fields.body.trim(),
-          tags: fields.tags,
-          displayMode: fields.displayMode || 'text',
-          updatedAt: serverTimestamp(),
-          updatedBy: uid,
-          updatedByName: meName,
-        });
-        showToast(t('coordination.note_updated'));
-      } else {
-        const ref = doc(collection(db, 'board_notes'));
-        await setDoc(ref, {
-          type: fields.type,
-          series: fields.series,
-          title: fields.title.trim() || t('coordination.untitled_note'),
-          body: fields.body.trim(),
-          date: todayISO(),
-          contributorIds: [uid],
-          tags: fields.tags,
-          displayMode: fields.displayMode || 'text',
-          sessionId: active?.id || '',
-          createdAt: serverTimestamp(),
-          createdBy: uid,
-          createdByName: meName,
-          updatedAt: serverTimestamp(),
-          updatedBy: uid,
-          updatedByName: meName,
-        });
-        logActivity({
-          action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
-          targetId: ref.id,
-          targetName: fields.title || t('coordination.note'),
-          targetType: 'comment',
-          type: 'create',
-          description: fields.series,
-        } as never);
-        showToast(t('coordination.note_saved'));
-      }
-      setNoteForm(null);
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'board_notes');
-    }
-  };
-
-  // Session 4 — "Keep as a note": promote the open page into Notes & learnings,
-  // prefilling the form with its title, an excerpt, and a guessed series.
-  const promoteDoc = (d: BoardDoc) => {
-    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(d.md) });
-    document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  };
-
-  const softDeleteNote = async (n: BoardNote) => {
-    try {
-      await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: serverTimestamp() });
-      showUndoSnack(t('coordination.note_moved_to_trash'), () => updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null }));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
-    }
-  };
-
-  const restoreNote = async (n: BoardNote) => {
-    try {
-      await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null });
-      showToast(t('coordination.note_restored_from_trash'));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
-    }
-  };
-
-  const removeNoteForever = async (n: BoardNote) => {
-    if (!window.confirm(t('coordination.confirm_delete_note').replace('{title}', n.title))) return;
-    try {
-      await deleteDoc(doc(db, 'board_notes', n.id));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, 'board_notes');
-    }
-  };
-
-  const toggleArchiveNote = async (n: BoardNote) => {
-    try {
-      const isArchived = !!n.archivedAt;
-      await updateDoc(doc(db, 'board_notes', n.id), { archivedAt: isArchived ? null : serverTimestamp() });
-      showToast(isArchived ? t('coordination.note_unarchived') : t('coordination.note_archived'));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
-    }
-  };
-
-  const toggleNoteDisplayMode = async (n: BoardNote) => {
-    try {
-      const newMode = n.displayMode === 'list' ? 'text' : 'list';
-      let newBody = n.body;
-      if (newMode === 'list') {
-        newBody = n.body
-          .split('\n')
-          .map((l) => (l.trim().startsWith('- [') ? l : `- [ ] ${l}`))
-          .join('\n');
-      }
-      await updateDoc(doc(db, 'board_notes', n.id), { displayMode: newMode, body: newBody });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
-    }
-  };
-
-  const toggleNoteChecklistItem = async (n: BoardNote, lineIdx: number, done: boolean) => {
-    try {
-      const lines = n.body.split('\n');
-      if (lineIdx < 0 || lineIdx >= lines.length) return;
-      const curLine = lines[lineIdx];
-      const itemText = curLine.replace(/^\s*-\s*\[[ xX]\]\s*/, '');
-      lines[lineIdx] = done ? `- [x] ${itemText}` : `- [ ] ${itemText}`;
-      await updateDoc(doc(db, 'board_notes', n.id), { body: lines.join('\n') });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
-    }
-  };
-
-  const ql = q.trim().toLowerCase();
-  const filteredNotes = useMemo(() => {
-    return notes.filter((n) => {
-      if (noteTab === 'trash') {
-        if (!n.deletedAt) return false;
-      } else if (noteTab === 'archived') {
-        if (n.deletedAt || !n.archivedAt) return false;
-      } else {
-        if (n.deletedAt || n.archivedAt) return false;
-      }
-      if (series !== 'All' && n.series !== series) return false;
-      if (kind === 'Records' && n.type !== 'record') return false;
-      if (kind === 'Learnings' && n.type !== 'learning') return false;
-      if (ql) {
-        const hay = `${n.title} ${n.body} ${n.series}`.toLowerCase();
-        if (!hay.includes(ql)) return false;
-      }
-      return true;
-    });
-  }, [notes, noteTab, series, kind, ql]);
-
-  const seriesOptions = useMemo(() => {
-    const set = new Set<string>(BOARD_SERIES);
-    notes.forEach((n) => n.series && set.add(n.series));
-    return ['All', ...Array.from(set)];
-  }, [notes]);
-
   // ── access gate ──────────────────────────────────────────────────────────────
   if (!canView) {
     return (
@@ -1355,10 +1088,8 @@ export default function CoordinationNotes() {
     );
   }
 
-  // Header copy by role: editors get the working framing, students a gentler
-  // "what's happening" look. Trainees are outside the route allowlist (#1849),
-  // so there is no read-along framing promising them this page.
-  const heading = canSeeNotes ? t('coordination.coordination_notes') : t('coordination.whats_happening');
+  // Header copy: the Board is a working surface for Full-timers.
+  const heading = t('coordination.coordination_notes');
   const intro = canEdit ? (
     <>
       {t('coordination.page_per_gathering')}
@@ -1368,247 +1099,6 @@ export default function CoordinationNotes() {
       {t('coordination.open_to_everyone_intro')}
     </>
   );
-
-  const TodoSectionComponent = canEdit ? (
-    <section className="px-5 mt-5">
-      <SectionHead
-        title={t('coordination.what_were_holding')}
-        sub={t('coordination.todo_sub', 'Every to-do the team is carrying — {count}. Highlight a line in a page above, or add one here.').replace(
-          '{count}',
-          openTodoCount > 0 ? t('coordination.todo_open_count').replace('{n}', String(openTodoCount)) : t('coordination.all_clear'),
-        )}
-        action={
-          <button
-            onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
-            className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-          >
-            <Plus className="w-4 h-4" /> {t('coordination.add_todo')}
-          </button>
-        }
-      />
-
-      {/* filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-3">
-        <div className="flex flex-wrap gap-1.5 flex-1">
-          <button
-            onClick={() => setTodoFilter('all')}
-            className={cn(
-              'inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
-              todoFilter === 'all'
-                ? 'bg-primary-container border-primary text-on-primary-container'
-                : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
-            )}
-          >
-            <Users className="w-3.5 h-3.5" /> {t('coordination.everyone')}
-          </button>
-          {team.map((m) => {
-            const n = openTodosByUid.get(m.uid) ?? 0;
-            return (
-              <button
-                key={m.uid}
-                onClick={() => setTodoFilter(m.uid)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border text-xs font-medium transition-colors',
-                  todoFilter === m.uid
-                    ? 'bg-primary-container border-primary text-on-primary-container'
-                    : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
-                )}
-              >
-                <PersonAvatar person={m} size="xs" />
-                {m.name.split(' ')[0]}
-                {m.uid === uid ? t('coordination.you_suffix') : ''}
-                {n > 0 && (
-                  <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-accent text-[10px] font-semibold inline-flex items-center justify-center">
-                    {n}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <button
-          onClick={() => setShowDoneTodos((v) => !v)}
-          className={cn(
-            'inline-flex items-center gap-2 text-xs font-medium transition-colors shrink-0',
-            showDoneTodos ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface',
-          )}
-        >
-          <span
-            className={cn(
-              'w-4 h-4 rounded border flex items-center justify-center',
-              showDoneTodos ? 'bg-primary border-primary text-on-primary' : 'border-outline',
-            )}
-          >
-            {showDoneTodos && <Check className="w-2.5 h-2.5" />}
-          </span>
-          {t('coordination.show_done')}
-        </button>
-      </div>
-
-      {visibleTodos.length === 0 ? (
-        <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-8 text-center flex flex-col items-center">
-          <CheckSquare className="w-6 h-6 text-on-surface-variant/50 mb-2" />
-          <p className="text-sm text-on-surface-variant max-w-sm">
-            {t('coordination.no_todos_yet')}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
-          {visibleTodos.map((t, i) => (
-            <TodoRow
-              key={t.id}
-              first={i === 0}
-              todo={t}
-              assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
-              showAssignee
-              onToggle={(todo, done) => handleToggleTodo(todo.id, done)}
-              onEdit={(todo) =>
-                setTodoComposer({
-                  mode: 'edit',
-                  initial: {
-                    id: todo.id,
-                    text: todo.title,
-                    assigneeId: todo.assigneeId ?? null,
-                    dueDate: todo.dueDate ?? null,
-                  },
-                })
-              }
-              onDelete={(todo) => handleDeleteTodo(todo.id)}
-              onJumpToSource={jumpToTodoSource}
-            />
-          ))}
-        </div>
-      )}
-    </section>
-  ) : null;
-
-  const NotesSectionComponent = canSeeNotes ? (
-    <section id="board-notes-section" className="px-5 mt-5">
-      <SectionHead
-        title={t('coordination.notes_learnings')}
-        sub={t('coordination.notes_sub')}
-        action={
-          canEdit ? (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setNoteForm({ type: 'record' })}
-                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-              >
-                <Plus className="w-4 h-4" /> {t('coordination.new_record')}
-              </button>
-              <button
-                onClick={() => setNoteForm({ type: 'learning' })}
-                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-              >
-                <NotebookPen className="w-4 h-4" /> {t('coordination.new_learning')}
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
-
-      {canEdit && noteForm && (
-        <NoteForm initial={noteForm} seriesOptions={BOARD_SERIES} onCancel={() => setNoteForm(null)} onSave={addNote} />
-      )}
-
-      {/* controls */}
-      <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t('coordination.search_notes_placeholder')}
-            className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
-          />
-          {q && (
-            <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-            {(['active', 'archived', 'trash'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setNoteTab(tab)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                  noteTab === tab ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                {tab === 'trash' ? t('coordination.trash') : tab === 'archived' ? t('coordination.archive') : t('coordination.active')}
-              </button>
-            ))}
-          </div>
-          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-            {(['All', 'Records', 'Learnings'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setKind(k)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                  kind === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                {k === 'All' ? t('coordination.all') : k === 'Records' ? t('coordination.records') : t('coordination.learnings')}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* series chips */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {seriesOptions.map((s) => (
-          <button
-            key={s}
-            onClick={() => setSeries(s)}
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-              series === s
-                ? 'bg-stage-accent border-stage-accent text-white'
-                : 'bg-surface border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-on-surface',
-            )}
-          >
-            {s === 'All' ? t('coordination.all') : s}
-          </button>
-        ))}
-      </div>
-
-      {/* note cards */}
-      {notes.length === 0 ? (
-        <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-          {t('coordination.no_notes_yet')}
-        </div>
-      ) : filteredNotes.length === 0 ? (
-        <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-          {t('coordination.no_notes_match')}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {filteredNotes.map((n) => (
-              <NoteCard
-                key={n.id}
-                n={n}
-                memberById={memberById}
-                canEdit={canEdit}
-                noteTab={noteTab}
-                onEdit={(note) => setNoteForm({ id: note.id, type: note.type, series: note.series, title: note.title, body: note.body, displayMode: note.displayMode || 'text' })}
-                onSoftDelete={softDeleteNote}
-                onRestore={restoreNote}
-                onRemoveForever={removeNoteForever}
-                onToggleArchive={toggleArchiveNote}
-                onToggleDisplayMode={toggleNoteDisplayMode}
-                onToggleChecklistItem={toggleNoteChecklistItem}
-              />
-            ))}
-          </div>
-        )
-      }
-    </section>
-  ) : null;
 
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
@@ -1670,7 +1160,6 @@ export default function CoordinationNotes() {
                   label: t('coordination.pages_headings'),
                   count: searchResults.filter((r) => r.kind === 'heading' || r.kind === 'doc').length,
                 },
-                { id: 'note', label: t('coordination.notes'), count: searchResults.filter((r) => r.kind === 'note').length },
                 { id: 'task', label: t('coordination.tasks'), count: searchResults.filter((r) => r.kind === 'task').length },
               ] as const
             ).map((tab) => (
@@ -1703,7 +1192,7 @@ export default function CoordinationNotes() {
                   key={res.id}
                   type="button"
                   onClick={() => {
-                    jumpToAnchor(res.docId, res.anchorId, res.noteId);
+                    jumpToAnchor(res.docId, res.anchorId);
                     setIsBoardSearchFocused(false);
                   }}
                   className="w-full text-left p-2.5 rounded-xl hover:bg-surface-container-low transition-colors flex items-start gap-3 group"
@@ -1713,8 +1202,6 @@ export default function CoordinationNotes() {
                       <Hash className="w-4 h-4 text-stage-accent" />
                     ) : res.kind === 'doc' ? (
                       <FileText className="w-4 h-4 text-stage-amber" />
-                    ) : res.kind === 'note' ? (
-                      <NotebookPen className="w-4 h-4 text-stage-violet" />
                     ) : (
                       <CheckSquare className="w-4 h-4 text-stage-teal" />
                     )}
@@ -1750,55 +1237,6 @@ export default function CoordinationNotes() {
       )}
     </div>
   );
-
-  if (isMobile) {
-    return (
-      <>
-        <CoordinationNotesMobile
-          canEdit={canEdit}
-          canSeeNotes={canSeeNotes}
-          docs={docs}
-          active={active}
-          activeId={activeId}
-          setActiveId={setActiveId}
-          newDoc={createDoc}
-          promoteDoc={promoteDoc}
-          heading={heading}
-          intro={intro}
-          uid={uid}
-          meName={meName}
-          pagesCollapsed={pagesCollapsed}
-          togglePages={togglePages}
-          setLiveActiveMd={setLiveActiveMd}
-          saveMarkdown={saveMarkdown}
-          saveTitle={saveTitle}
-          saveAudience={saveAudience}
-          deleteBoardDoc={deleteBoardDoc}
-          team={team}
-          showToast={showToast}
-          contacts={contacts}
-          setSelectedContact={setSelectedContact}
-          setIsDetailsModalOpen={setIsDetailsModalOpen}
-          DocEditorComponent={DocEditor}
-          ReadOnlyDocComponent={ReadOnlyDoc}
-          TodoSectionComponent={TodoSectionComponent}
-          NotesSectionComponent={NotesSectionComponent}
-          SearchBarComponent={searchBarJSX}
-        />
-        {/* The phone branch used to drop every confirmation and undo the desktop
-            renders — a deleted page left no snackbar and no way back. */}
-        {flash && (
-          <div
-            role="status"
-            className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-[130] bg-on-surface text-surface text-sm font-medium px-4 py-2.5 rounded-full shadow-lg"
-          >
-            {flash}
-          </div>
-        )}
-        <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
-      </>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-8" id="coordination-notes-panel">
@@ -1981,7 +1419,6 @@ export default function CoordinationNotes() {
                   onSaveMarkdown={saveMarkdown}
                   onSaveTitle={saveTitle}
                   onSaveAudience={saveAudience}
-                  onPromote={promoteDoc}
                   onDelete={deleteBoardDoc}
                   team={team}
                   onToast={showToast}
@@ -2130,16 +1567,13 @@ export default function CoordinationNotes() {
       </section>
       )}
 
-      {/* Notes & learnings */}
-      {NotesSectionComponent}
+      {/* Notes & learnings is cut (cut-or-keep §19). */}
 
       <p className="text-center text-sm text-on-surface-variant/70 pt-2 flex items-center justify-center gap-2">
         <Feather className="w-3.5 h-3.5" />{' '}
         {canEdit
           ? 'A shared place to think together — so the team stays one mind.'
-          : canSeeNotes
-            ? 'Read along — the team is keeping nothing important to itself.'
-            : 'A look at how each gathering comes together.'}
+          : 'A look at how each gathering comes together.'}
       </p>
 
       {/* Add / edit a to-do (centered) */}
@@ -2299,168 +1733,6 @@ function DocRow({
             <Pin className="w-3.5 h-3.5" fill={d.pinned ? 'currentColor' : 'none'} />
           </button>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Note Composer Popover ───────────────────────────────────────────────────
-function NoteComposer({
-  anchorRect,
-  initialText,
-  seriesOptions,
-  onClose,
-  onSaved,
-  onCreated,
-  meUid,
-  meName,
-  sessionId,
-}: {
-  anchorRect: { top: number; left: number };
-  initialText: string;
-  seriesOptions: string[];
-  onClose: () => void;
-  onSaved?: (msg: string) => void;
-  onCreated?: (note: { id: string; title: string; body: string; type: NoteType; series: string }) => void;
-  meUid: string;
-  meName: string;
-  sessionId: string;
-}) {
-  const [type, setType] = useState<NoteType>('record');
-  const [series, setSeries] = useState(seriesOptions[0] || 'Team');
-  const { t } = useLanguage();
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState(initialText);
-  const [saving, setSaving] = useState(false);
-
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-
-  React.useLayoutEffect(() => {
-    const h = cardRef.current?.offsetHeight ?? 260;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const left = Math.min(Math.max(anchorRect.left - 160, 12), vw - 332);
-    let top = anchorRect.top + 14;
-    if (top + h > vh - 12) top = Math.max(12, anchorRect.top - h - 14);
-    setPos({ left, top });
-  }, [anchorRect]);
-
-  const handleSave = async () => {
-    if (!title.trim() || saving) return;
-    setSaving(true);
-    try {
-      const ref = doc(collection(db, 'board_notes'));
-      const noteTitle = title.trim() || t('coordination.untitled_note');
-      const noteBody = body.trim();
-      await setDoc(ref, {
-        type,
-        series,
-        title: noteTitle,
-        body: noteBody,
-        date: todayISO(),
-        contributorIds: [meUid],
-        tags: [],
-        sessionId: sessionId || '',
-        createdAt: serverTimestamp(),
-        createdBy: meUid,
-        createdByName: meName,
-        updatedAt: serverTimestamp(),
-        updatedBy: meUid,
-        updatedByName: meName,
-      });
-      logActivity({
-        action: type === 'learning' ? 'recorded a learning' : 'saved a record',
-        targetId: ref.id,
-        targetName: title || t('coordination.note'),
-        targetType: 'comment',
-        type: 'create',
-        description: series,
-      } as never);
-      onCreated?.({ id: ref.id, title: noteTitle, body: noteBody, type, series });
-      onSaved?.(`Note saved to ${series}.`);
-      onClose();
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'board_notes');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100]" onClick={onClose}>
-      <div
-        ref={cardRef}
-        onClick={(e) => e.stopPropagation()}
-        style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
-        className="bg-surface rounded-3xl border border-outline-variant p-4 flex flex-col space-y-3"
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="font-serif text-sm font-semibold text-on-surface">{t('coordination.make_note_learning')}</h3>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-0.5">
-            {(['record', 'learning'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setType(k)}
-                className={cn(
-                  'px-2 py-1 rounded-lg text-[11px] font-medium capitalize transition-colors',
-                  type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                {k === 'record' ? t('coordination.record').toLowerCase() : t('coordination.learning').toLowerCase()}
-              </button>
-            ))}
-          </div>
-          <select
-            value={series}
-            onChange={(e) => setSeries(e.target.value)}
-            className="bg-surface border border-outline-variant rounded-xl px-2 py-1 text-xs text-on-surface-variant focus:outline-none focus:border-stage-accent"
-          >
-            {seriesOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={t('coordination.note_title_placeholder')}
-          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
-          autoFocus
-        />
-
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={3}
-          placeholder={t('coordination.note_content_placeholder')}
-          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors resize-y leading-relaxed"
-        />
-
-        <div className="flex gap-2 justify-end pt-1">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded-xl hover:bg-surface-container transition-colors"
-          >
-            {t('coordination.cancel')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!title.trim() || saving}
-            className="px-3 py-1.5 bg-primary text-on-primary text-xs font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
-          >
-            {t('coordination.save_note')}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -2648,7 +1920,6 @@ export function DocEditor({
   onSaveMarkdown,
   onSaveTitle,
   onSaveAudience,
-  onPromote,
   onDelete,
   team,
   onToast,
@@ -2674,7 +1945,6 @@ export function DocEditor({
   onSaveMarkdown: DocMarkdownWriter;
   onSaveTitle: (id: string, title: string) => void;
   onSaveAudience: (id: string, audience: Audience) => void;
-  onPromote: (d: BoardDoc) => void;
   onDelete: (d: BoardDoc) => void;
   team: TeamMember[];
   onToast: (msg: string) => void;
@@ -2689,7 +1959,6 @@ export function DocEditor({
   canNativeFs?: boolean;
   onSaveStateChange?: (state: DocSaveState) => void;
 }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [shareOpen, setShareOpen] = useState(false);
@@ -2716,13 +1985,12 @@ export function DocEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [fab, setFab] = useState<{ text: string; lines: string[]; top: number; left: number } | null>(null);
   const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string; lines?: string[] } | null>(null);
-  const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
   const [linkComposer, setLinkComposer] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
   const [assignMenuOpen, setAssignMenuOpen] = useState(false);
   const linkBtnRef = useRef<HTMLButtonElement>(null);
 
   const refreshSelectionFab = () => {
-    if (todoFromSelection || noteFromSelection || showSource) {
+    if (todoFromSelection || showSource) {
       setFab(null);
       return;
     }
@@ -2756,12 +2024,6 @@ export function DocEditor({
       text: fab.text,
       lines: fab.lines.length > 1 ? fab.lines : undefined
     });
-    setFab(null);
-  };
-
-  const openNoteFromFab = () => {
-    if (!fab) return;
-    setNoteFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
     setFab(null);
   };
 
@@ -3170,39 +2432,6 @@ export function DocEditor({
     }
   };
 
-  const handleSaveTask = async (taskData: {
-    title: string;
-    dueDate: string | null;
-    priority: 'low' | 'medium' | 'high';
-    contactId: string | null;
-    assigneeId: string | null;
-  }) => {
-    const matchedContact = contacts.find((c) => c.id === taskData.contactId);
-    const matchedAssignee = team.find((t) => t.uid === taskData.assigneeId);
-
-    const taskRef = doc(collection(db, 'tasks'));
-    await setDoc(taskRef, {
-      title: taskData.title,
-      dueDate: taskData.dueDate || null,
-      priority: taskData.priority,
-      contactId: taskData.contactId || null,
-      contactName: matchedContact?.name || null,
-      assigneeId: taskData.assigneeId || null,
-      assigneeName: matchedAssignee?.name || null,
-      status: 'pending',
-      createdAt: serverTimestamp(),
-    });
-
-    logActivity({
-      action: 'added task',
-      targetId: taskRef.id,
-      targetName: taskData.title,
-      targetType: 'comment',
-      type: 'create',
-      description: t('coordination.assigned_to').replace('{name}', matchedAssignee?.name || t('coordination.unassigned')),
-    } as never);
-  };
-
   const status = sessionStatus(d.date);
   const st = DOC_STATUS[status];
 
@@ -3289,13 +2518,6 @@ export function DocEditor({
           >
             <Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("coordination.share.button")}</span>
             {guestLinkActive && <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" aria-hidden />}
-          </button>
-          <button
-            onClick={() => onPromote(d)}
-            title={t('coordination.keep_note_title')}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
-          >
-            <Tag className="w-3.5 h-3.5" /> {t('coordination.keep_as_note')}
           </button>
           {isFullscreen && onToggleNativeFs && canNativeFs && (
             <button
@@ -3505,7 +2727,7 @@ export function DocEditor({
       </div>
 
       {/* Highlight → Selection Menu */}
-      {fab && !todoFromSelection && !noteFromSelection && (
+      {fab && !todoFromSelection && (
         <div
           onMouseDown={(e) => e.preventDefault()}
           style={{ position: 'fixed', top: fab.top - 44, left: fab.left, transform: 'translateX(-50%)' }}
@@ -3517,16 +2739,6 @@ export function DocEditor({
             title={t('coordination.make_todo')}
           >
             <CheckSquare className="w-3.5 h-3.5" /> {t('coordination.todo')}
-          </button>
-
-          <div className="w-px h-4 bg-surface/20" />
-
-          <button
-            onClick={openNoteFromFab}
-            className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
-            title={t('coordination.make_note')}
-          >
-            <Feather className="w-3.5 h-3.5" /> {t('coordination.note_learning')}
           </button>
 
           <div className="w-px h-4 bg-surface/20" />
@@ -3584,25 +2796,6 @@ export function DocEditor({
         />
       )}
 
-      {/* Note Composer anchored to the selection */}
-      {noteFromSelection && (
-        <NoteComposer
-          anchorRect={noteFromSelection.rect}
-          initialText={noteFromSelection.text}
-          seriesOptions={BOARD_SERIES}
-          onClose={() => setNoteFromSelection(null)}
-          onSaved={onToast}
-          meUid={meUid}
-          meName={meName}
-          sessionId={d.id}
-          onCreated={(createdNote) => {
-            if (!editor) return;
-            const mdLine = formatDocNoteMarkdown(createdNote);
-            editor.chain().focus().deleteSelection().insertContent(mdLine).run();
-          }}
-        />
-      )}
-
       {/* Link Composer — toolbar button or the selection pill menu */}
       {linkComposer && (
         <LinkComposer
@@ -3617,467 +2810,6 @@ export function DocEditor({
       )}
 
       {shareOpen && <ShareDocModal doc={d} currentUserId={meUid} onClose={() => setShareOpen(false)} />}
-    </div>
-  );
-}
-
-// ── Note card (records + learnings archive) ──────────────────────────────────
-function NoteCard({
-  n,
-  memberById,
-  canEdit,
-  noteTab,
-  onEdit,
-  onSoftDelete,
-  onRestore,
-  onRemoveForever,
-  onToggleArchive,
-  onToggleDisplayMode,
-  onToggleChecklistItem,
-  onRemove,
-}: {
-  n: BoardNote;
-  memberById: Map<string, TeamMember>;
-  canEdit?: boolean;
-  noteTab?: 'active' | 'archived' | 'trash';
-  onEdit?: (n: BoardNote) => void;
-  onSoftDelete?: (n: BoardNote) => void;
-  onRestore?: (n: BoardNote) => void;
-  onRemoveForever?: (n: BoardNote) => void;
-  onToggleArchive?: (n: BoardNote) => void;
-  onToggleDisplayMode?: (n: BoardNote) => void;
-  onToggleChecklistItem?: (n: BoardNote, lineIdx: number, done: boolean) => void;
-  onRemove?: (n: BoardNote) => void;
-}) {
-  const isLearning = n.type === 'learning';
-  const { t, language } = useLanguage();
-  const ageDays = Math.round((Date.now() - new Date(n.date).getTime()) / 86400000);
-  const oldRecall = ageDays > 300;
-  const isListMode = n.displayMode === 'list' || (n.body && n.body.split('\n').some((l) => /^\s*-\s*\[[ xX]\]/.test(l)));
-  const lines = n.body ? n.body.split('\n') : [];
-
-  return (
-    <article
-      id={`note-${n.id}`}
-      className={cn(
-        'group bg-surface rounded-3xl border p-5 flex flex-col',
-        isLearning ? 'border-stage-amber/30' : 'border-outline-variant',
-      )}
-    >
-      <div className="flex items-center gap-2.5 mb-2.5 text-xs">
-        <span
-          className={cn(
-            'px-2 py-0.5 rounded-full font-medium',
-            isLearning ? 'bg-stage-amber-soft text-stage-amber' : 'bg-stage-accent-soft text-stage-accent',
-          )}
-        >
-          {isLearning ? t('coordination.learning') : t('coordination.record')}
-        </span>
-        <span className="inline-flex items-center gap-1 text-on-surface-variant">
-          <Tag className="w-3 h-3" /> <span>{n.series}</span>
-        </span>
-        {n.archivedAt != null && (
-          <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold  ">
-            {t('coordination.archived')}
-          </span>
-        )}
-        <span className="ml-auto inline-flex items-center gap-1.5 text-on-surface-variant/70 whitespace-nowrap">
-          {oldRecall && (
-            <span className="px-1.5 py-px rounded-full bg-stage-amber-soft text-stage-amber font-semibold text-[10.5px]">{t('coordination.one_year')}</span>
-          )}
-          {dateLabelOf(n.date, language)}
-        </span>
-
-        {canEdit && (
-          <div className="flex items-center gap-1 ml-1">
-            {onToggleDisplayMode && (
-              <button
-                onClick={() => onToggleDisplayMode(n)}
-                className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                title={isListMode ? t('coordination.switch_text_mode') : t('coordination.switch_checklist_mode')}
-              >
-                {isListMode ? <Type className="w-3.5 h-3.5" /> : <ListChecks className="w-3.5 h-3.5" />}
-              </button>
-            )}
-            {onEdit && noteTab !== 'trash' && (
-              <button
-                onClick={() => onEdit(n)}
-                className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                title={t('coordination.edit_note')}
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {onToggleArchive && noteTab !== 'trash' && (
-              <button
-                onClick={() => onToggleArchive(n)}
-                className={cn('p-1 transition-colors', n.archivedAt ? 'text-accent' : 'text-on-surface-variant/50 hover:text-accent')}
-                title={n.archivedAt ? t('coordination.unarchive_note') : t('coordination.archive_note')}
-              >
-                <Archive className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {noteTab === 'trash' ? (
-              <>
-                {onRestore && (
-                  <button
-                    onClick={() => onRestore(n)}
-                    className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                    title={t('coordination.restore_note')}
-                  >
-                    <RotateCw className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {onRemoveForever && (
-                  <button
-                    onClick={() => onRemoveForever(n)}
-                    className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
-                    title={t('coordination.delete_forever')}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </>
-            ) : (
-              (onSoftDelete || onRemove) && (
-                <button
-                  onClick={() => (onSoftDelete ? onSoftDelete(n) : onRemove?.(n))}
-                  className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
-                  title={t('coordination.move_to_trash')}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )
-            )}
-          </div>
-        )}
-      </div>
-
-      <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">
-        {n.title}
-      </h4>
-
-      {n.body && (
-        isListMode ? (
-          <div className="space-y-1.5 mb-3.5 text-sm text-on-surface-variant">
-            {lines.map((line, idx) => {
-              const isChecked = /^\s*-\s*\[[xX]\]/.test(line);
-              const cleanText = line.replace(/^\s*-\s*\[[ xX]\]\s*/, '');
-              return (
-                <label key={idx} className="flex items-start gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => onToggleChecklistItem?.(n, idx, e.target.checked)}
-                    disabled={!canEdit}
-                    className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
-                  />
-                  <span className={cn('leading-normal', isChecked && 'line-through opacity-60')}>
-                    {cleanText}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">
-            {n.body}
-          </p>
-        )
-      )}
-
-      <div className="flex items-center gap-3 mt-auto">
-        <div className="flex -space-x-2">
-          {(n.contributorIds || []).slice(0, 4).map((id) => (
-            <div key={id} className="ring-2 ring-surface rounded-full">
-              <Avatar member={memberById.get(id)} size="xs" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ── Add-note form ─────────────────────────────────────────────────────────────
-// Exported for EmbedCoordinationDoc.tsx's admin-only "Keep as a note" flow.
-export function NoteForm({
-  seriesOptions,
-  initial,
-  onCancel,
-  onSave,
-}: {
-  seriesOptions: string[];
-  initial?: NoteFormInitial;
-  onCancel: () => void;
-  onSave: (f: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => void;
-}) {
-  const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
-  const { t } = useLanguage();
-  const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [body, setBody] = useState(initial?.body ?? '');
-  const [displayMode, setDisplayMode] = useState<'text' | 'list'>(initial?.displayMode ?? 'text');
-
-  const toggleMode = () => {
-    if (displayMode === 'text') {
-      const formatted = body
-        .split('\n')
-        .map((l) => (l.trim().startsWith('- [') ? l : `- [ ] ${l}`))
-        .join('\n');
-      setBody(formatted);
-      setDisplayMode('list');
-    } else {
-      const plain = body
-        .split('\n')
-        .map((l) => l.replace(/^\s*-\s*\[[ xX]\]\s*/, ''))
-        .join('\n');
-      setBody(plain);
-      setDisplayMode('text');
-    }
-  };
-
-  const field =
-    'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
-
-  return (
-    <div className="mb-4 p-4 rounded-3xl bg-surface border border-outline-variant space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-            {(['record', 'learning'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setType(k)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                  type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                {k === 'record' ? t('coordination.record').toLowerCase() : t('coordination.learning').toLowerCase()}
-              </button>
-            ))}
-          </div>
-          <select
-            value={series}
-            onChange={(e) => setSeries(e.target.value)}
-            className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent"
-          >
-            {seriesOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="button"
-          onClick={toggleMode}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors',
-            displayMode === 'list'
-              ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40'
-              : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
-          )}
-          title={displayMode === 'list' ? t('coordination.switch_to_text_format') : t('coordination.switch_to_checklist_format')}
-        >
-          {displayMode === 'list' ? <ListChecks className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
-          <span>{displayMode === 'list' ? t('coordination.list_format') : t('coordination.text_format')}</span>
-        </button>
-      </div>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('coordination.short_title_placeholder')} className={field} />
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={4}
-        placeholder={displayMode === 'list' ? t('coordination.body_placeholder_list') : t('coordination.body_placeholder_text')}
-        className={cn(field, 'resize-y leading-relaxed font-sans')}
-      />
-      <div className="flex gap-2.5 justify-end">
-        <button
-          onClick={onCancel}
-          className="px-3.5 py-2 border border-outline-variant text-on-surface-variant text-sm font-medium rounded-xl hover:bg-surface-container transition-colors"
-        >
-          {t('coordination.cancel')}
-        </button>
-        <button
-          onClick={() => onSave({ id: initial?.id, type, series, title, body, tags: [], displayMode })}
-          disabled={!title.trim()}
-          className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
-        >
-          {initial?.id ? t('coordination.update_note') : type === 'learning' ? t('coordination.save_learning') : t('coordination.save_record')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Suggested Task card inside AI Insights sidebar ────────────────────────────
-export function SuggestedTaskCard({
-  task,
-  isAdded,
-  contacts,
-  team,
-  meUid,
-  onAdd,
-  onDismiss,
-  onSaveTask,
-}: {
-  task: any;
-  isAdded: boolean;
-  contacts: Contact[];
-  team: TeamMember[];
-  meUid: string;
-  onAdd: () => void;
-  onDismiss: () => void;
-  onSaveTask: (taskData: {
-    title: string;
-    dueDate: string | null;
-    priority: 'low' | 'medium' | 'high';
-    contactId: string | null;
-    assigneeId: string | null;
-  }) => Promise<void>;
-}) {
-  const [title, setTitle] = useState(task.title);
-  const { t } = useLanguage();
-
-  const [dueDate, setDueDate] = useState(task.dueDate || '');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
-  const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId || meUid || '');
-  const [contactId, setContactId] = useState<string>(task.contactId || '');
-  const [saving, setSaving] = useState(false);
-
-  const saveTask = async () => {
-    if (!title.trim()) return;
-    try {
-      setSaving(true);
-      await onSaveTask({
-        title: title.trim(),
-        dueDate: dueDate || null,
-        priority,
-        contactId: contactId || null,
-        assigneeId: assigneeId || null,
-      });
-      onAdd();
-    } catch (err) {
-      console.error('Failed to save suggested task: ', err);
-      alert(t('coordination.failed_save_task').replace('{message}', err instanceof Error ? err.message : String(err)));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (isAdded) {
-    return (
-      <div className="bg-tertiary/10 border border-tertiary/30 rounded-xl p-3 flex items-center justify-between text-xs">
-        <span className="text-on-surface font-medium truncate flex-1">
-          <del className="text-on-surface-variant">{title}</del>
-        </span>
-        <span className="flex items-center gap-1 text-tertiary font-semibold ml-2">
-          <Check className="w-3.5 h-3.5" /> {t('coordination.added')}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-surface border border-outline-variant rounded-xl p-3.5 space-y-3 ">
-      <textarea
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        rows={2}
-        className="w-full text-xs font-semibold text-on-surface bg-transparent border-0 resize-none focus:outline-none focus:ring-0 p-0 leading-snug"
-        placeholder={t('coordination.task_description_placeholder')}
-      />
-
-      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-        {/* Assignee */}
-        <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.who')}</label>
-          <select
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
-          >
-            <option value="">{t('coordination.unassigned')}</option>
-            {team.map((t) => (
-              <option key={t.uid} value={t.uid}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Due Date */}
-        <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.when')}</label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
-          />
-        </div>
-
-        {/* Contact */}
-        <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.contact')}</label>
-          <select
-            value={contactId}
-            onChange={(e) => setContactId(e.target.value)}
-            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
-          >
-            <option value="">{t('coordination.none')}</option>
-            {contacts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Priority */}
-        <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.priority')}</label>
-          <div className="flex bg-surface-container border border-outline-variant rounded-lg p-0.5">
-            {(['low', 'medium', 'high'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPriority(p)}
-                className={cn(
-                  'flex-1 text-[9.5px] font-semibold  rounded py-0.5 transition-colors',
-                  priority === p
-                    ? p === 'high'
-                      ? 'bg-error text-white'
-                      : p === 'medium'
-                        ? 'bg-stage-amber text-on-stage-amber'
-                        : 'bg-stage-teal text-white'
-                    : 'text-on-surface-variant/60 hover:text-on-surface',
-                )}
-              >
-                {p.slice(0, 3)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-2 justify-end pt-1">
-        <button
-          onClick={onDismiss}
-          className="px-2 py-1 text-on-surface-variant/70 hover:bg-surface-variant rounded text-[11px] font-semibold"
-        >
-          {t('coordination.dismiss')}
-        </button>
-        <button
-          onClick={saveTask}
-          disabled={saving || !title.trim()}
-          className="flex items-center gap-1 px-3 py-1 bg-primary text-on-primary rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity"
-        >
-          {saving ? t('coordination.adding') : t('coordination.add_task')}
-        </button>
-      </div>
     </div>
   );
 }

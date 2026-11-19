@@ -2,10 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   formatDocTaskMarkdown,
   formatDocTaskText,
-  formatDocNoteMarkdown,
   parseDocTasks,
   parseDocTaskText,
-  parseDocNotes,
   planDocTaskEdits,
   type DocTaskNode,
 } from '../lib/board';
@@ -29,16 +27,6 @@ describe('docLinkSync helpers', () => {
       done: true,
     });
     expect(formatted).toBe('- [x] Clean workspace <!-- task:task-999 -->');
-  });
-
-  it('formats doc note markdown', () => {
-    const formatted = formatDocNoteMarkdown({
-      id: 'note-789',
-      title: 'Team sync key takeaway',
-      body: 'Focus on campus outreach',
-      type: 'learning',
-    });
-    expect(formatted).toBe('> 📝 **Note (Learning)**: Team sync key takeaway — Focus on campus outreach <!-- note:note-789 type:learning -->');
   });
 
   it('parses doc tasks correctly', () => {
@@ -67,26 +55,6 @@ Regular text line
     });
   });
 
-  it('parses doc notes correctly', () => {
-    const markdown = `> 📝 **Note (Learning)**: Takeaway <!-- note:note-1 type:learning -->`;
-    const notes = parseDocNotes(markdown);
-    expect(notes).toHaveLength(1);
-    expect(notes[0]).toEqual({
-      id: 'note-1',
-      type: 'learning',
-      rawLine: '> 📝 **Note (Learning)**: Takeaway <!-- note:note-1 type:learning -->',
-    });
-  });
-
-  it('formats doc note with record type and without body', () => {
-    const formatted = formatDocNoteMarkdown({
-      id: 'note-100',
-      title: 'Meeting Notes',
-      type: 'record',
-    });
-    expect(formatted).toBe('> 📝 **Note (Record)**: Meeting Notes <!-- note:note-100 type:record -->');
-  });
-
   it('formats doc task with assigneeId but no assigneeName', () => {
     const formatted = formatDocTaskMarkdown({
       id: 'task-555',
@@ -94,17 +62,6 @@ Regular text line
       assigneeId: 'uid-555',
     });
     expect(formatted).toBe('- [ ] Task without name <!-- task:task-555 assignee:uid-555 -->');
-  });
-
-  it('parses doc notes when type attribute is omitted in comment', () => {
-    const markdown = `> 📝 **Note**: Default note <!-- note:note-no-type -->`;
-    const notes = parseDocNotes(markdown);
-    expect(notes).toHaveLength(1);
-    expect(notes[0]).toEqual({
-      id: 'note-no-type',
-      type: 'record',
-      rawLine: '> 📝 **Note**: Default note <!-- note:note-no-type -->',
-    });
   });
 
 });

@@ -16,8 +16,6 @@ import { OWNER_EMAIL } from "./src/lib/permissions";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
-import { type TagCombine } from "./src/lib/tags";
-import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
 import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testAccountPurgeEngine";
 import { failsClosed, rateLimitKey } from "./src/server/requestGuards";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -346,109 +344,6 @@ export async function createApp() {
     }
   });
 
-  // AI Notes Analyzer endpoint: automates contact linking and suggests tasks
-  app.post("/api/analyze-notes", standardRateLimiter, async (req, res) => {
-    try {
-      // Admin-only: this endpoint dumps the full contact directory + user roster
-      // into the AI prompt (matches the client-side canEdit=isAdmin gating on the
-      // "Analyze notes" button in CoordinationNotes).
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authorizeAdmin(req);
-        } catch (authErr: any) {
-          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
-        }
-      }
-
-      const { text } = req.body;
-      if (!text || typeof text !== "string") {
-        return res.status(400).json({ error: "Missing required 'text' parameter." });
-      }
-
-      console.log(`[AI Notes Analyzer] Analyzing notes content (${text.length} chars)`);
-
-      const db = getAdminDb();
-
-      // Fetch all contacts (limited to 200 to optimize prompt size)
-      const contactsSnapshot = await db.collection("contacts").limit(200).get();
-      const contactsList = contactsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name || "Unknown"
-      }));
-
-      // Fetch all approved users (limited to 100 to optimize prompt size)
-      const usersSnapshot = await db.collection("users").limit(100).get();
-      const usersList = usersSnapshot.docs
-        .filter(doc => doc.data().approved !== false)
-        .map(doc => ({
-          id: doc.id,
-          name: doc.data().displayName || doc.data().email || "Teammate"
-        }));
-
-      const currentDate = new Date().toISOString().split("T")[0];
-
-      const prompt = `Here are the meeting notes to analyze:\n\n${text}\n\nAvailable Contacts:\n${JSON.stringify(
-        contactsList
-      )}\n\nAvailable Users (Team Members):\n${JSON.stringify(usersList)}`;
-
-      const response = await getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: `You are an expert assistant for a campus ministry tracker. Your job is to analyze meeting notes (written in markdown) and do two things:
-1. Identify contacts mentioned in the notes and add markdown links to their profiles in the format [Name](/contacts/id) based on the provided contacts list. Only link names that are actual contacts and not part of existing links. Ensure you match names accurately. If a contact name is a common noun (e.g., Will, Hope, Grace, Joy), only link it if the context indicates it refers to the person.
-2. Suggest tasks/action items extracted from the notes, matching each task to a contact from the contacts list (if applicable) and an assignee from the users list (if applicable). Suggest a priority ('low', 'medium', 'high') and a due date (YYYY-MM-DD format) based on context and relative terms (like 'before Friday', 'next week', 'by Monday').
-The current local date is: ${currentDate}.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              updatedMarkdown: {
-                type: Type.STRING,
-                description: "The complete updated meeting notes markdown with contact names wrapped in [Name](/contacts/id) links."
-              },
-              suggestedTasks: {
-                type: Type.ARRAY,
-                description: "List of tasks/action items extracted from the notes.",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING, description: "Clear action-oriented task description." },
-                    dueDate: { type: Type.STRING, description: "Suggested due date (YYYY-MM-DD format) or empty string if not mentioned/estimatable." },
-                    priority: { type: Type.STRING, description: "Suggested priority: low, medium, or high." },
-                    contactId: { type: Type.STRING, description: "The matching contact ID if associated with a contact, or null." },
-                    contactName: { type: Type.STRING, description: "The matched contact name, or null." },
-                    assigneeId: { type: Type.STRING, description: "The matching user ID if assigned to a team member, or null." },
-                    assigneeName: { type: Type.STRING, description: "The matched team member name, or null." }
-                  },
-                  required: ["title", "priority"]
-                }
-              }
-            },
-            required: ["updatedMarkdown", "suggestedTasks"]
-          }
-        }
-      });
-
-      if (!response.text) {
-        throw new Error("No response returned from the Gemini API.");
-      }
-
-      let parsed;
-      try {
-        parsed = JSON.parse(response.text.trim());
-      } catch (parseError: any) {
-        throw new Error(`Failed to parse AI response: ${parseError.message || String(parseError)}`);
-      }
-
-      console.log(`[AI Notes Analyzer] Analysis complete. Extracted ${parsed.suggestedTasks.length} tasks.`);
-      res.status(200).json({ success: true, ...parsed });
-    } catch (error: any) {
-      console.error("AI Notes Analyzer Error: ", error);
-      res.status(500).json({ error: error.message || "Failed to analyze notes" });
-    }
-  });
-
   // AI Smart Import endpoint: parses raw text into contacts, interactions, and discussions
   app.post("/api/smart-import/parse", standardRateLimiter, async (req, res) => {
     try {
@@ -627,22 +522,6 @@ ${JSON.stringify(contactsList)}`;
   });
 
 
-  // Self-service token exchange: mints a short-lived custom token for the
-  // caller's own uid, so the mobile app can bridge its Firebase session into
-  // a react-native-webview page (which has its own, separate auth storage).
-  // No privilege escalation — the token signs in as the same uid the caller
-  // already authenticated as.
-  app.post("/api/mint-custom-token", standardRateLimiter, async (req, res) => {
-    try {
-      const decodedToken = await authenticateFirebaseUser(req);
-      const token = await getAdminAuth().createCustomToken(decodedToken.uid);
-      res.status(200).json({ success: true, token });
-    } catch (error: any) {
-      console.error("Mint Custom Token Error: ", error);
-      res.status(401).json({ success: false, error: error.message || "Failed to mint custom token" });
-    }
-  });
-
   // Combine contacts (issue #1427, ADR 0038, deepened in #1586). Full-timers only.
   app.post("/api/combine-contacts", standardRateLimiter, async (req, res) => {
     const actor = await requireFullTimerActor(req, res);
@@ -764,101 +643,6 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to undo combine" });
-    }
-  });
-
-  // Combine tags (issue #1435, spec #1426, issue #1587). Full-timers only.
-  // Replaces every occurrence of any variant with the target tag, deduping per
-  // contact. Can optionally mark new targets as standard tags. Writes a combine
-  // record of kind tags holding each contact's tags before and after and the
-  // standard tags it added.
-  app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
-    const actor = await requireFullTimerActor(req, res);
-    if (!actor) return;
-    const { actorId, actorName } = actor;
-
-    const rawCombines = req.body?.combines;
-    if (!Array.isArray(rawCombines) || rawCombines.length === 0) {
-      return res.status(400).json({ success: false, error: "combines are required" });
-    }
-    const combines: TagCombine[] = rawCombines
-      .filter((c: any) => c && typeof c === "object")
-      .map((c: any) => ({
-        variants: Array.isArray(c.variants)
-          ? c.variants.filter((v: any) => typeof v === "string")
-          : [],
-        target: typeof c.target === "string" ? c.target : "",
-      }))
-      .filter((c: TagCombine) => c.target && c.variants.length > 0);
-    if (combines.length === 0) {
-      return res.status(400).json({ success: false, error: "combines are required" });
-    }
-
-    try {
-      const db = getAdminDb();
-      const engine = new TagCombineEngine({ db });
-      const result = await engine.combineTags({
-        combines,
-        dryRun: req.body?.dryRun === true,
-        makeStandard: Array.isArray(req.body?.makeStandard)
-          ? req.body.makeStandard.filter((v: any) => typeof v === "string")
-          : [],
-        actorId,
-        actorName,
-      });
-
-      return res.status(200).json(result);
-    } catch (error: any) {
-      if (error instanceof TagEngineError) {
-        return res
-          .status(error.status)
-          .json({ success: false, error: error.message, ...error.extra });
-      }
-      console.error("Combine Tags Error:", error);
-      return res
-        .status(500)
-        .json({ success: false, error: error.message || "Failed to combine tags" });
-    }
-  });
-
-  // Undo a tag combine (issue #1436, spec #1426, issue #1587). Full-timers only. Replays the
-  // tag combine record: each contact returns to its before-tags only while its
-  // current tags still equal what the combine wrote. Contacts re-tagged (or
-  // deleted) since are skipped and reported. Standard tags added by the combine
-  // stay. A combine can only be undone once.
-  app.post("/api/combine-tags/undo", standardRateLimiter, async (req, res) => {
-    const actor = await requireFullTimerActor(req, res);
-    if (!actor) return;
-    const { actorId, actorName } = actor;
-
-    const combineRecordId =
-      typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
-    if (!combineRecordId) {
-      return res.status(400).json({ success: false, error: "combineRecordId is required" });
-    }
-    const dryRun = req.body?.dryRun === true;
-
-    try {
-      const db = getAdminDb();
-      const engine = new TagCombineEngine({ db });
-      const result = await engine.undoCombine({
-        combineRecordId,
-        dryRun,
-        actorId,
-        actorName,
-      });
-
-      return res.status(200).json(result);
-    } catch (error: any) {
-      if (error instanceof TagEngineError) {
-        return res
-          .status(error.status)
-          .json({ success: false, error: error.message, ...error.extra });
-      }
-      console.error("Undo Tag Combine Error:", error);
-      return res
-        .status(500)
-        .json({ success: false, error: error.message || "Failed to undo tag combine" });
     }
   });
 

@@ -12,28 +12,21 @@ import {
   dayNum,
   docByDateDesc,
   docSortOrder,
-  parseDocNotes,
   parseDocTasks,
   collectDocTaskNodes,
   newDocMarkdown,
   bodyMarkdownForDisplay,
   persistDocEdit,
   audienceOf,
-  boardLevelForRole,
-  canSeeBoardDoc,
-  boardAudiencesForRole,
   canViewBoard,
-  canViewBoardNotes,
   canEditBoard,
   AUDIENCE_ORDER,
   BOARD_AUDIENCE,
-  BOARD_SERIES,
   slugifyHeading,
   parseDocHeadings,
   searchBoardContent,
   type BoardSession,
   type BoardDoc,
-  type BoardNote,
   type BoardSearchResult,
 } from '../lib/board';
 
@@ -261,23 +254,6 @@ describe('Board Pure Helpers', () => {
     });
   });
 
-  describe('parseDocNotes', () => {
-    it('parses note comments with and without type from markdown', () => {
-      const md = `
-# Title
-Some text
-<!-- note:n-1 type:learning -->
-More text
-<!-- note:n-2 -->
-      `;
-      const notes = parseDocNotes(md);
-      expect(notes).toEqual([
-        { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
-        { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
-      ]);
-    });
-  });
-
   describe('parseDocTasks & collectDocTaskNodes edge cases', () => {
     it('skips task lines without a valid task ID format', () => {
       const md = '- [ ] Just plain text without id tag';
@@ -307,51 +283,6 @@ More text
     });
   });
 
-  describe('boardLevelForRole', () => {
-    it('maps roles to board levels; a legacy Student or Community role is excluded', () => {
-      expect(boardLevelForRole('admin')).toBe(2);
-      expect(boardLevelForRole('manager')).toBe(1);
-      expect(boardLevelForRole('operator')).toBe(-1);
-      expect(boardLevelForRole('viewer')).toBe(-1);
-      expect(boardLevelForRole(null)).toBe(-1);
-      expect(boardLevelForRole('unknown')).toBe(-1);
-    });
-  });
-
-  describe('canSeeBoardDoc', () => {
-    it('full-timer (admin) sees every tier, incl. legacy/no-audience pages', () => {
-      expect(canSeeBoardDoc('admin', { audience: 'team' })).toBe(true);
-      expect(canSeeBoardDoc('admin', { audience: 'trainees' })).toBe(true);
-      expect(canSeeBoardDoc('admin', { audience: 'everyone' })).toBe(true);
-      expect(canSeeBoardDoc('admin', {})).toBe(true);
-    });
-
-    it('trainee (manager) sees trainees + everyone, never team', () => {
-      expect(canSeeBoardDoc('manager', { audience: 'team' })).toBe(false);
-      expect(canSeeBoardDoc('manager', { audience: 'trainees' })).toBe(true);
-      expect(canSeeBoardDoc('manager', { audience: 'everyone' })).toBe(true);
-      expect(canSeeBoardDoc('manager', {})).toBe(false);
-    });
-
-    it('a legacy Student or Community role, and unknown roles, see nothing', () => {
-      expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(false);
-      expect(canSeeBoardDoc('viewer', { audience: 'everyone' })).toBe(false);
-      expect(canSeeBoardDoc(null, { audience: 'everyone' })).toBe(false);
-    });
-  });
-
-  describe('boardAudiencesForRole', () => {
-    it('returns an empty list for admins (query is unconstrained)', () => {
-      expect(boardAudiencesForRole('admin')).toEqual([]);
-    });
-
-    it('scopes lower roles to the tiers they may read', () => {
-      expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
-      expect(boardAudiencesForRole('operator')).toEqual([]);
-      expect(boardAudiencesForRole('viewer')).toEqual([]);
-    });
-  });
-
   describe('AUDIENCE_ORDER', () => {
     it('no longer offers the trainees tier to a new page (#1849)', () => {
       expect(AUDIENCE_ORDER).toEqual(['everyone', 'team']);
@@ -362,30 +293,18 @@ More text
     });
   });
 
-  describe('canViewBoard / canViewBoardNotes / canEditBoard', () => {
-    it('grants Board view to Trainee and up only', () => {
+  describe('canViewBoard / canEditBoard', () => {
+    it('grants Board view to Full-timers only (cut-or-keep §19)', () => {
       expect(canViewBoard('admin')).toBe(true);
-      expect(canViewBoard('manager')).toBe(true);
+      expect(canViewBoard('manager')).toBe(false);
       expect(canViewBoard('operator')).toBe(false);
       expect(canViewBoard('viewer')).toBe(false);
-    });
-
-    it('grants the notes archive to Full-timer + Trainee only', () => {
-      expect(canViewBoardNotes('admin')).toBe(true);
-      expect(canViewBoardNotes('manager')).toBe(true);
-      expect(canViewBoardNotes('operator')).toBe(false);
-      expect(canViewBoardNotes('viewer')).toBe(false);
+      expect(canViewBoard(null)).toBe(false);
     });
 
     it('grants editing to full-timers (admins) only', () => {
       expect(canEditBoard(true)).toBe(true);
       expect(canEditBoard(false)).toBe(false);
-    });
-  });
-
-  describe('BOARD_SERIES', () => {
-    it('has the updated series options without Friday Gathering and with Conferences/Trainings', () => {
-      expect(BOARD_SERIES).toEqual(['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']);
     });
   });
 
@@ -432,19 +351,6 @@ More text
       },
     ];
 
-    const mockNotes: BoardNote[] = [
-      {
-        id: 'note1',
-        title: 'Conferences Recap',
-        body: 'Great turnout at the summer training',
-        series: 'Conferences/Trainings',
-        date: '2026-06-10',
-        type: 'record',
-        tags: ['conferences', 'training'],
-        contributorIds: ['u1'],
-      },
-    ];
-
     const mockTasks: any[] = [
       {
         id: 'task1',
@@ -456,12 +362,12 @@ More text
     ];
 
     it('returns empty array for empty search queries', () => {
-      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '', 'en')).toEqual([]);
-      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '   ', 'en')).toEqual([]);
+      expect(searchBoardContent(mockDocs, mockTasks, '', 'en')).toEqual([]);
+      expect(searchBoardContent(mockDocs, mockTasks, '   ', 'en')).toEqual([]);
     });
 
     it('searches doc titles and content headings', () => {
-      const results = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups', 'en');
+      const results = searchBoardContent(mockDocs, mockTasks, 'Small Groups', 'en');
       expect(results).toHaveLength(1);
       expect(results[0].kind).toBe('heading');
       expect(results[0].docId).toBe('doc1');
@@ -469,12 +375,10 @@ More text
       expect(results[0].anchorId).toBe('small-groups');
     });
 
-    it('searches across notes and tasks', () => {
-      const noteResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'training', 'en');
-      expect(noteResults.some((r) => r.kind === 'note' && r.noteId === 'note1')).toBe(true);
-
-      const taskResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'welcome emails', 'en');
+    it('searches tasks (and no longer notes)', () => {
+      const taskResults = searchBoardContent(mockDocs, mockTasks, 'welcome emails', 'en');
       expect(taskResults.some((r) => r.kind === 'task' && r.taskId === 'task1')).toBe(true);
+      expect(taskResults.some((r) => (r.kind as string) === 'note')).toBe(false);
     });
   });
 });

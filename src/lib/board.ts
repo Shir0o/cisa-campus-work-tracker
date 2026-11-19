@@ -35,12 +35,6 @@ export const CHIP_TONE: Record<Tone, { dot: string; bg: string; text: string }> 
   neutral: { dot: 'bg-on-surface-variant/50', bg: 'bg-surface-variant', text: 'text-on-surface-variant' },
 };
 
-// ── Notes & learnings ───────────────────────────────────────────────────────
-export type NoteType = 'record' | 'learning';
-
-// Default event series; stored as a plain string so new ones are free-form.
-export const BOARD_SERIES = ['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team'];
-
 // ── Firestore document shapes ───────────────────────────────────────────────
 export interface AgendaAction {
   id: string;
@@ -85,28 +79,6 @@ export interface BoardSession {
   updatedAt?: unknown;
   updatedBy?: string;
   updatedByName?: string;
-}
-
-// board_notes/{id}
-export interface BoardNote {
-  id: string;
-  type: NoteType;
-  series: string;
-  title: string;
-  body: string;
-  date: string; // yyyy-MM-dd
-  contributorIds: string[];
-  tags: string[];
-  sessionId?: string;
-  createdAt?: unknown;
-  createdBy?: string;
-  createdByName?: string;
-  updatedAt?: unknown;
-  updatedBy?: string;
-  updatedByName?: string;
-  deletedAt?: unknown;
-  archivedAt?: unknown;
-  displayMode?: 'text' | 'list';
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────────────
@@ -217,39 +189,6 @@ export const AUDIENCE_ORDER: Audience[] = ['everyone', 'team'];
 // A page with no audience defaults to the most private tier.
 export const audienceOf = (doc: Pick<BoardDoc, 'audience'>): Audience => doc.audience ?? 'team';
 
-// How far up the audience hierarchy a role can see. Any other role has no
-// Board access at all.
-export const boardLevelForRole = (role: AppRole | string | null): number => {
-  switch (role) {
-    case 'admin':
-      return 2;
-    case 'manager':
-      return 1;
-    default:
-      return -1;
-  }
-};
-
-export const canSeeBoardDoc = (role: AppRole | string | null, doc: Pick<BoardDoc, 'audience'>): boolean => {
-  const level = boardLevelForRole(role);
-  return level >= 0 && level >= BOARD_AUDIENCE[audienceOf(doc)].rank;
-};
-
-// The audiences a role may query for — used to scope the Firestore listener so
-// the rules' per-document checks never reject the list. Admins read everything
-// (returned empty so the caller queries unconstrained, including legacy/no-audience
-// pages). Higher roles include every tier at or below their level.
-export const boardAudiencesForRole = (role: AppRole | string | null): Audience[] => {
-  switch (role) {
-    case 'admin':
-      return [];
-    case 'manager':
-      return ['trainees', 'everyone'];
-    default:
-      return [];
-  }
-};
-
 // ── Referencing one page from another (#1668) ────────────────────────────────
 // A page is addressed in the app by its id, and the Board route reads that id
 // back out of the query string. Storing that href in the page's Markdown keeps
@@ -279,11 +218,8 @@ export function boardDocRefFromHref(href: string | null | undefined): { docId: s
 export const isStricterAudience = (target: Audience, page: Audience): boolean =>
   BOARD_AUDIENCE[target].rank > BOARD_AUDIENCE[page].rank;
 
-// Who can reach the Board at all (Trainee and up) vs. who can edit (Full-timers).
-export const canViewBoard = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 0;
-
-// The Notes & learnings archive is shared by Full-timers + Trainees only.
-export const canViewBoardNotes = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 1;
+// Who can reach the Board at all — Full-timers only (cut-or-keep §19).
+export const canViewBoard = (role: AppRole | string | null): boolean => role === 'admin';
 export const canEditBoard = (isAdmin: boolean): boolean => isAdmin;
 
 // The list groups, in order (Pinned float to their own section at top).
@@ -401,12 +337,6 @@ export interface ParsedDocTask {
   rawLine: string;
 }
 
-export interface ParsedDocNote {
-  id: string;
-  type: NoteType;
-  rawLine: string;
-}
-
 /** The text a task line carries *after* its checkbox — i.e. what a `taskItem` node holds. */
 export function formatDocTaskText(task: {
   id: string;
@@ -428,18 +358,6 @@ export function formatDocTaskMarkdown(task: {
 }): string {
   const checkbox = task.done ? '[x]' : '[ ]';
   return `- ${checkbox} ${formatDocTaskText(task)}`;
-}
-
-export function formatDocNoteMarkdown(note: {
-  id: string;
-  title: string;
-  body?: string;
-  type: NoteType;
-  series?: string;
-}): string {
-  const typeLabel = note.type === 'learning' ? 'Learning' : 'Record';
-  const bodyText = note.body ? ` — ${note.body.trim()}` : '';
-  return `> 📝 **Note (${typeLabel})**: ${note.title.trim()}${bodyText} <!-- note:${note.id} type:${note.type} -->`;
 }
 
 const TASK_TEXT_RE = /^\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
@@ -473,25 +391,6 @@ export function parseDocTasks(markdown: string): ParsedDocTask[] {
   }
 
   return tasks;
-}
-
-export function parseDocNotes(markdown: string): ParsedDocNote[] {
-  const notes: ParsedDocNote[] = [];
-  const lines = markdown.split('\n');
-  const noteRegex = /<!--\s*note:([^\s>]+)(?:\s+type:([^\s>]+))?\s*-->/;
-
-  for (const line of lines) {
-    const match = noteRegex.exec(line);
-    if (match) {
-      notes.push({
-        id: match[1],
-        type: (match[2] as NoteType) || 'record',
-        rawLine: line,
-      });
-    }
-  }
-
-  return notes;
 }
 
 /** One checklist line as it currently stands in the editor, with its document positions. */
@@ -584,9 +483,8 @@ export interface DocHeadingAnchor {
 
 export interface BoardSearchResult {
   id: string;
-  kind: 'doc' | 'heading' | 'note' | 'task';
+  kind: 'doc' | 'heading' | 'task';
   docId?: string;
-  noteId?: string;
   taskId?: string;
   title: string;
   subtitle?: string;
@@ -626,7 +524,6 @@ export function parseDocHeadings(md: string): DocHeadingAnchor[] {
 
 export function searchBoardContent(
   docs: BoardDoc[],
-  notes: BoardNote[],
   tasks: Array<{ id: string; title: string; assigneeName?: string | null; status?: string; dueDate?: string | null; sourceDocId?: string | null }>,
   query: string,
   language: AppLanguage,
@@ -695,23 +592,6 @@ export function searchBoardContent(
         anchorId: nearestAnchor,
         snippet: snippetText.length > 120 ? snippetText.slice(0, 120) + '...' : snippetText,
         date: dateStr,
-      });
-    }
-  });
-
-  // Search Notes
-  notes.forEach((n) => {
-    if (n.deletedAt) return;
-    const hay = `${n.title} ${n.body} ${n.series} ${(n.tags || []).join(' ')}`.toLowerCase();
-    if (hay.includes(ql)) {
-      results.push({
-        id: `note-${n.id}`,
-        kind: 'note',
-        noteId: n.id,
-        title: n.title || 'Untitled note',
-        subtitle: n.series,
-        snippet: n.body.length > 120 ? n.body.slice(0, 120) + '...' : n.body,
-        date: n.date,
       });
     }
   });

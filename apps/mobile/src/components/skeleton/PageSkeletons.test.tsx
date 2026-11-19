@@ -6,7 +6,6 @@ import { QueueSkeleton } from './QueueSkeleton';
 import { MemberHomeSkeleton } from './MemberHomeSkeleton';
 import { FtHomeSkeleton } from './FtHomeSkeleton';
 import { ContactSkeleton } from './ContactSkeleton';
-import { DocSkeleton } from './DocSkeleton';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: 'user1', user: null, role: 'full-timer' }),
@@ -69,17 +68,5 @@ describe('ContactSkeleton', () => {
     );
     expect(getByTestId('contact-skeleton')).toBeTruthy();
     expect(getAllByTestId('skeleton').length).toBeGreaterThan(10);
-  });
-});
-
-describe('DocSkeleton', () => {
-  it('renders the audience line and a card of document lines', async () => {
-    const { getByTestId, getAllByTestId } = await render(
-      <ThemeProvider>
-        <DocSkeleton />
-      </ThemeProvider>,
-    );
-    expect(getByTestId('doc-skeleton')).toBeTruthy();
-    expect(getAllByTestId('skeleton').length).toBeGreaterThan(4);
   });
 });

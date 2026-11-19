@@ -1,8 +1,8 @@
 // Standard tags (#1437, ADR 0039) — the web app's live view of the team-wide
-// `settings/standard_tags` list. One Full-timer-edited list drives both the
-// suggestion chips (new contact, contact edit, contact overview) and the
-// combine-tags guess targets. Season tags are standard by pattern and never
-// stored; removing a standard tag only edits this list, never a contact.
+// `settings/standard_tags` list. One Full-timer-edited list drives the
+// suggestion chips (new contact, contact edit, contact overview). Season tags
+// are standard by pattern and never stored; removing a standard tag only edits
+// this list, never a contact.
 //
 // The web app deliberately has no @cisa/core dependency, so the pure
 // resolution logic mirrors packages/core/src/tags.ts (STANDARD_TAG_SEED,

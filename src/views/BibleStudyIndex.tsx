@@ -30,7 +30,6 @@ import {
 } from '../lib/data/bibleStudy';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { entryPointUrl, staffPermalinkUrl } from '../lib/publicUrl';
 import { format, parseISO } from 'date-fns';
 
@@ -66,13 +65,10 @@ const writeStored = (key: string, value: string) => {
 
 /**
  * The weeks index at /bible-study (ADR 0011, `Main` / `IndexPhone`
- * artboards). On a wide screen, two columns that answer different questions:
- * the left is what exists; the right is what a student scanning right now
- * would actually see. On a phone there is no rail summary — the live week's
- * own `Live now` pill is the single statement of which week a scan opens, and
- * the admin entry point sits below the list (#1860). The newest draft can sit
- * at the top of the list while an older week carries the live mark — the gap
- * stays legible without arithmetic.
+ * artboards). The weeks list is the page — the newest draft can sit at the top
+ * while an older week carries the live mark, and each row says which state it
+ * is in. The room's standing code sits below the list, since that is where a
+ * Full-timer goes to find it; the second column is cut (cut-or-keep §18).
  */
 export default function BibleStudyIndex() {
   const { user, isAdmin } = useAuth();
@@ -81,10 +77,6 @@ export default function BibleStudyIndex() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStudy = searchParams.get('study');
   const requestedEp = searchParams.get('ep');
-
-  // The scan summary is a wide-screen rail, not a CSS-only clone of the week
-  // row: below `lg` it is not rendered at all, so the DOM has one statement.
-  const wide = useMediaQuery('(min-width: 1024px)');
 
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
   const [entryPointsLoaded, setEntryPointsLoaded] = useState(false);
@@ -628,10 +620,10 @@ export default function BibleStudyIndex() {
           )}
         </header>
       </div>
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        {/* #1860: weeks first in the DOM and first on a phone; the grid places
-            it left on a wide screen with no `order` swap, so painted order and
-            reading order agree. */}
+      <div className="max-w-5xl mx-auto space-y-4">
+        {/* Weeks first: the list is the page. The second column (entry point +
+            scan rail) is cut (cut-or-keep §18); the room's standing code stays
+            below as the one admin control that was worth keeping. */}
         <section className="min-w-0">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-bold tracking-wider uppercase text-on-surface-variant px-1">
@@ -775,9 +767,8 @@ export default function BibleStudyIndex() {
           </div>
         </section>
 
-        {/* #1860: entry point + scan rail last in the DOM and last on a phone,
-            so the week list answers the question the visitor came with and
-            admin chrome follows it. */}
+        {/* The room's standing code, below the list. It is the one kept entry
+            point (cut-or-keep §18): one code, every week, never changes. */}
         <aside className="space-y-3">
           <div className="bg-surface border border-outline-variant rounded-2xl p-4">
             <div className="text-xs font-bold tracking-wider uppercase text-on-surface-variant mb-1">
@@ -897,24 +888,6 @@ export default function BibleStudyIndex() {
               </>
             )}
           </div>
-
-          {/* #1860: wide screens keep the rail summary of the week a scan
-              opens. It repeats the row on purpose here — the list is on the
-              left, the scan answer on the right — but the empty-state and
-              draft notes stay in the weeks section so nothing is said twice. */}
-          {wide && resolution.kind === 'meeting' && (
-            <div className="bg-surface border border-outline-variant rounded-2xl p-4">
-              <div className="text-xs font-bold tracking-wider uppercase text-on-surface-variant mb-2">
-                What a scan opens right now
-              </div>
-              <div className="text-sm font-semibold text-on-surface">
-                {resolution.meeting.title}
-              </div>
-              <div className="text-[11px] text-on-surface-variant">
-                {formatDay(resolution.meeting.date)}
-              </div>
-            </div>
-          )}
         </aside>
       </div>
 

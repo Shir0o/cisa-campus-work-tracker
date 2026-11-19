@@ -13,7 +13,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
-  canAccessRoute,
   firstName,
   goalCountFor,
   goalFill,
@@ -115,10 +114,8 @@ export function QueueScreen() {
       }
     : undefined;
   // The design's due card hides this button rather than offering a door that
-  // doesn't open (`api.canBoard !== false` in views/mobile/cards.jsx), and a
-  // trainee is exactly who can't open it — canAccessRoute('manager', …) closes
-  // /coordination, which is why The Board isn't in TRAINEE_DRAWER either.
-  const canBoard = canAccessRoute(role, '/coordination');
+  // doesn't open. The phone Board is cut (cut-or-keep §19), so the button is
+  // gone everywhere and a to-do's source page opens on the web.
   const hint = useTodayHint(uid);
 
   // Done for today: the card goes, the toast names it, and Undo brings it back.
@@ -164,7 +161,6 @@ export function QueueScreen() {
   };
 
   const api: QueueCardApi = {
-    canBoard,
     handle: (id) => doneForToday(id),
     later: (id) => {
       // The queue this handler closes over is the pre-press one. Deferring a
@@ -185,15 +181,6 @@ export function QueueScreen() {
       queueState.handle('todo:' + taskId);
       setIndex(0);
       setToast(t('mobile.queue.moved_to_tomorrow'));
-    },
-    openBoardDoc: (docId) => {
-      // The button is hidden without access, so this only fires if something
-      // else routes here — say it plainly rather than pushing a locked screen.
-      if (!canBoard) {
-        setToast(t('mobile.queue.that_page_lives_with_team'));
-        return;
-      }
-      router.push(docId ? `/coordination/${docId}` : '/coordination');
     },
     openContact: (contactId, tab, card) => {
       if (card?.kind === 'msg') markStreamRead(card);
