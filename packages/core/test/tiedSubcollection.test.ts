@@ -152,6 +152,7 @@ describe('subscribeTiedThreads', () => {
       {
         id: 'm1', contactId: 'a', interactionId: null, parentId: null, from: 'u1', fromName: 'Ada', kind: 'comment', body: '@Bo q',
         at: '2026-01-01T00:00:00.000Z', mentionedUserIds: ['trainee1'], closedBy: 'trainee1', closedByName: 'Bo', closedAt: '2026-01-02T00:00:00.000Z',
+        scope: null,
       },
     ]);
   });
