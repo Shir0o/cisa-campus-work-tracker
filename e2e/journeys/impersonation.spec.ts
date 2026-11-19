@@ -24,10 +24,20 @@
  * Folds in `impersonation-personas.spec.ts` (deleted): the owner-only eye
  * button, the two role-preview chips (Student and Community are cut), and
  * chip -> nav scoping with Back to my view.
+ *
+ * Cut-or-keep §28 ("verify it shows exactly what that Trainee sees and nothing
+ * more"): the view-as Directory is compared row-for-row with the Trainee's own,
+ * and an interaction written while impersonating is checked to carry the
+ * signed-in Full-timer's attribution — the `userId == request.auth.uid` the
+ * Firestore rules require — not the borrowed Trainee's.
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { signInAs } from '../helpers/auth';
+import { DEFAULT_CREDENTIALS } from '../helpers/auth-defaults';
 
 const EYE_BTN = 'See as their view';
 const CARE_CONTACT = 'Lila Chen'; // seeded in the trainee's care (co-creator)
@@ -75,6 +85,24 @@ function seeingAsBanner(page: Page) {
  */
 async function clickNavLink(page: Page, name: string) {
   await page.getByLabel('Main Navigation').getByRole('link', { name, exact: true }).first().click();
+}
+
+/**
+ * The people the People (Directory) route lists, in order. Each card's overlay
+ * carries "Open {name}'s page", so the array's length is the row count and its
+ * members are the visible set — exactly what §28's "sees exactly what that
+ * Trainee sees" has to compare.
+ */
+async function directoryPeople(page: Page): Promise<string[]> {
+  await expect(page.getByRole('heading', { name: 'People', exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  const cards = page.getByRole('main').getByRole('button', { name: /^open .+'s page$/i });
+  await expect(cards.first()).toBeVisible({ timeout: 10_000 });
+  const labels = await cards.evaluateAll((els) =>
+    els.map((el) => el.getAttribute('aria-label') ?? ''),
+  );
+  return labels.map((label) => /^open (.*)'s page$/i.exec(label)?.[1] ?? label);
 }
 
 test.describe('Impersonation journey (#1476)', () => {
@@ -198,5 +226,106 @@ test.describe('Impersonation journey (#1476)', () => {
     await page.getByRole('button', { name: /back to my view/i }).click();
     await expect(page.getByText(/seeing CISA as/i)).toHaveCount(0);
     await expect(page.getByRole('main').getByText(UNTIED_CONTACT)).toBeVisible({ timeout: 10_000 });
+  });
+
+  // ── cut-or-keep §28: the view-as Directory is exactly the Trainee's ────────
+  test('viewing as the Trainee shows exactly their Directory rows and none outside it (cut-or-keep §28)', async ({ page }) => {
+    // The Trainee's own seeded visible set: `Lila Chen` (co-creator) and
+    // `Around Touch` (created by them). `Jordan Visible` is readable-but-untied
+    // and `Casey Untied` is tied to the Full-timer only — neither may appear.
+    const SEEDED_TRAINEE_PEOPLE = ['Around Touch', CARE_CONTACT];
+
+    // Baseline: what the Trainee themselves sees, and the count we hold the
+    // impersonated view to.
+    await signInAs(page, 'trainee');
+    await page.goto('/directory');
+    await waitForShell(page);
+    const traineeRows = await directoryPeople(page);
+    expect(traineeRows).toEqual(SEEDED_TRAINEE_PEOPLE);
+    await expect(page.getByRole('main').getByText(UNTIED_CONTACT)).toHaveCount(0);
+    await expect(page.getByRole('main').getByText(VISIBLE_NOT_CARED)).toHaveCount(0);
+
+    // Switch accounts in this context (no impersonation carries over), then
+    // step into the Trainee's view. The owner-only eye is the signal that the
+    // Full-timer's session, not the Trainee's, is the one now rendered.
+    await signInAs(page, 'fulltimer');
+    await expect(page.getByRole('button', { name: EYE_BTN })).toBeVisible({ timeout: 15_000 });
+    await impersonateTrainee(page);
+    await clickNavLink(page, 'People');
+    await expect(page).toHaveURL(/\/directory$/);
+
+    // Exactly the Trainee's rows: same set, same count, same order — no one
+    // outside their scope leaks in for having "seen as" them.
+    const impersonatedRows = await directoryPeople(page);
+    expect(impersonatedRows).toEqual(traineeRows);
+    expect(impersonatedRows).toHaveLength(SEEDED_TRAINEE_PEOPLE.length);
+
+    // Negative check inside the list container itself, so the equal counts
+    // above are proven to be the same people rather than a coincidental size.
+    const list = page.getByRole('main');
+    await expect(list.getByText(UNTIED_CONTACT)).toHaveCount(0);
+    await expect(list.getByText(VISIBLE_NOT_CARED)).toHaveCount(0);
+    await expect(list).not.toContainText('Missing or insufficient permissions');
+  });
+
+  // ── cut-or-keep §28: writes are the signed-in actor's, not the persona's ──
+  test('an interaction logged while viewing as the Trainee is attributed to the Full-timer (cut-or-keep §28)', async ({ page }) => {
+    const interaction = `Logged while seeing as the trainee ${Date.now()}`;
+
+    await signInAs(page, 'fulltimer');
+    await gotoHome(page);
+    await impersonateTrainee(page);
+    await clickNavLink(page, 'People');
+    await expect(page).toHaveURL(/\/directory$/);
+    await expect(page.getByRole('main').getByText(CARE_CONTACT)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
+
+    const contactPage = page.getByRole('main');
+    await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Log an interaction from inside the impersonated view.
+    const story = contactPage.getByRole('region', { name: /the story so far/i }).first();
+    const composer = story.getByRole('textbox', { name: /what happened with/i }).first();
+    await composer.click();
+    await composer.fill(interaction);
+    await story.getByRole('button', { name: /^log$/i }).click();
+
+    const row = story.locator('[data-kind="conversation"]').filter({ hasText: interaction }).first();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    // The rules require `userId == request.auth.uid`, so a write made while
+    // impersonating belongs to the signed-in Full-timer — never the Trainee
+    // whose view was borrowed. Read the stored record itself first...
+    if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+    const fulltimerUid = (await getAuth().getUserByEmail(DEFAULT_CREDENTIALS.fulltimer.email)).uid;
+    const traineeUid = (await getAuth().getUserByEmail(DEFAULT_CREDENTIALS.trainee.email)).uid;
+    // The row shows from the local cache first; poll until the write lands.
+    const readWritten = () =>
+      getFirestore()
+        .collection('contacts')
+        .doc('e2e-contact-lila')
+        .collection('interactions')
+        .where('content', '==', interaction)
+        .get();
+    await expect.poll(async () => (await readWritten()).size, { timeout: 15_000 }).toBe(1);
+    const written = await readWritten();
+    const entry = written.docs[0].data();
+    expect(entry.userId).toBe(fulltimerUid);
+    expect(entry.userName).toBe(OWNER_NAME);
+    expect(entry.userId).not.toBe(traineeUid);
+
+    // ...then the row reads that written attribution back: the author is the
+    // Full-timer...
+    await expect(row.getByTestId('story-avatar')).toHaveAttribute('data-avatar-name', OWNER_NAME);
+    await expect(row.getByText(OWNER_NAME, { exact: true })).toBeVisible();
+    // ...and not the Trainee.
+    await expect(row.getByText(TRAINEE_NAME, { exact: true })).toHaveCount(0);
+    // The row's Edit control is gated on `user.uid === interaction.userId` for
+    // a manager view, so its presence proves the stored `userId` is the
+    // Full-timer's signed-in uid, not the impersonated one.
+    await expect(row.getByRole('button', { name: /^edit$/i })).toBeVisible();
+    await expect(contactPage.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
   });
 });
