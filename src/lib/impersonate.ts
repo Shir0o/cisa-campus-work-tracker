@@ -13,8 +13,8 @@ export interface StaffItem {
 }
 
 export const DEFAULT_TEST_ACCOUNTS: StaffItem[] = [
-  { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
-  { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
+  { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'admin', isTrainee: false },
+  { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'manager', isTrainee: true },
 ];
 
 export const DEFAULT_STAFF: StaffItem[] = DEFAULT_TEST_ACCOUNTS;
@@ -45,15 +45,13 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const id = s.uid || s.id || '';
   const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
   const cleanName = cleanCisaName(rawName);
-  const roleStr = s.role || 'admin';
-  const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
+  const roleStr = s.role || 'manager';
 
-  const validRoles: AppRole[] = ['admin', 'manager'];
-  const roleKey: AppRole = validRoles.includes(roleStr as AppRole)
-    ? (roleStr as AppRole)
-    : isTrainee
-    ? 'manager'
-    : 'admin';
+  // Only the two live roles have a workspace (cut-or-keep §1). An unknown or
+  // legacy role is never handed the full workspace by accident: it falls to
+  // the least-privilege role, and the picker does not offer it at all.
+  const roleKey: AppRole = roleStr === 'admin' || roleStr === 'Full-timer' ? 'admin' : 'manager';
+  const isTrainee = roleKey === 'manager';
 
   const roleLabelMap: Record<AppRole, string> = {
     admin: 'Full-timer',

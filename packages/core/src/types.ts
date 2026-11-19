@@ -400,17 +400,9 @@ export interface PrayerRequest {
   updatedAt: string;
 }
 
-// A Community member offering their table (MOBILE-V2.md, "Open your home").
-// One doc per household at hospitalityOffers/{uid}, so re-offering updates the
-// standing offer rather than piling up.
-export interface HospitalityOffer {
-  uid: string;
-  name: string;
-  availability: string[];
-  seats: string;
-  note: string;
-  updatedAt: string;
-}
+// A Community member offering their table (MOBILE-V2.md, "Open your home") is
+// cut (cut-or-keep §1) with the Community role itself; hospitalityOffers has no
+// rules match, and the documents stay where they are.
 
 export interface ImpersonateTarget {
   key: string;

@@ -5,7 +5,6 @@ import Settings from '../views/Settings';
 import { useAuth } from '../components/AuthProvider';
 import { dayKey, pairingId, type PartnerPairing } from '../lib/partners';
 import { handleFirestoreError } from '../lib/firebase';
-import { FirstRunStore } from '../lib/firstRun';
 import React from 'react';
 
 // ── Mocks ──────────────────────────────────────────────────────────────
@@ -297,27 +296,6 @@ describe('Settings', () => {
     });
   });
 
-  it('restores a dismissed getting-started checklist and confirms', () => {
-    setupTraineeAuth();
-    FirstRunStore.putAway('fr:manager:u-trainee');
-
-    render(<Settings />);
-    fireEvent.click(screen.getByRole('button', { name: /Show getting started checklist/i }));
-
-    expect(FirstRunStore.isAway('fr:manager:u-trainee')).toBe(false);
-    expect(screen.getByText(/back on your home screen/i)).toBeInTheDocument();
-  });
-
-
-  it('restores using the impersonated effectiveUserId, not the raw auth uid', () => {
-    setupTraineeAuth({ role: 'manager', effectiveUserId: 'cisa-trainee' });
-    FirstRunStore.putAway('fr:manager:cisa-trainee');
-
-    render(<Settings />);
-    fireEvent.click(screen.getByRole('button', { name: /Show getting started checklist/i }));
-
-    expect(FirstRunStore.isAway('fr:manager:cisa-trainee')).toBe(false);
-  });
   // ── 4. Manager view renders team section ──
 
   describe('manager view team section', () => {
@@ -1738,7 +1716,6 @@ describe('Settings', () => {
       const markers = [
         "t('settings.turn_on_web_notifications'",
         "t('settings.send_test_web_notification'",
-        "t('settings.show_checklist'",
         "t('settings.scan_and_purge'",
         'aria-label={t(\'attendanceSync.attd_copy_token\', \'Copy token\')}',
       ];
@@ -2070,5 +2047,71 @@ describe('Settings', () => {
       for (let tap = 0; tap < 7; tap += 1) fireEvent.click(build);
       expect(section('Developer options')).toBeInTheDocument();
     });
+  });
+});
+
+// Roles are only Full-timer and Trainee (cut-or-keep §1). A legacy or unknown
+// role — an old Student or Community account — must read honestly and must not
+// be offered an upgrade it does not have.
+describe('Settings legacy roles', () => {
+  const userDoc = (uid: string, displayName: string, role: string, approved = true) => ({
+    id: uid,
+    data: () => ({ uid, displayName, role, approved, email: `${uid}@test.com`, photoURL: null }),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    window.localStorage.setItem('cisa.settings.devUnlocked', '1');
+    window.history.replaceState({}, '', '/settings');
+    setupManagerAuth();
+  });
+
+  it('labels a legacy role "No access" rather than Trainee', () => {
+    setupTraineeAuth({ role: 'operator', isAdmin: false, isManager: false });
+
+    render(<Settings />);
+
+    expect(screen.getByText('No access')).toBeInTheDocument();
+    expect(screen.queryByText('Trainee')).not.toBeInTheDocument();
+  });
+
+  it('seeds an unknown legacy role as Trainee in the edit dialog', async () => {
+    const users = [userDoc('u1', 'Alice Johnson', 'admin'), userDoc('u9', 'Legacy Person', 'operator')];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'users') callback({ docs: users });
+      else callback({ docs: [] });
+      return vi.fn();
+    });
+
+    render(<Settings />);
+
+    const name = await screen.findByText('Legacy Person');
+    const card = name.closest('.flex-1')?.parentElement as HTMLElement;
+    expect(within(card).getByText(/No access/)).toBeInTheDocument();
+    fireEvent.click(within(card).getByLabelText('Member options'));
+    fireEvent.click(await within(card).findByRole('button', { name: /Edit member/i }));
+
+    expect(screen.getByLabelText('Role')).toHaveValue('manager');
+  });
+
+  it('leaves an unapproved Trainee out of the team rows', async () => {
+    const users = [
+      userDoc('u1', 'Alice Johnson', 'admin'),
+      userDoc('u3', 'Ann Lee', 'manager'),
+      userDoc('u2', 'Bob Smith', 'manager', false),
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'users') callback({ docs: users });
+      else callback({ docs: [] });
+      return vi.fn();
+    });
+
+    render(<Settings />);
+
+    await screen.findByText('Ann Lee');
+    const section = screen.getByRole('heading', { name: "Which team they're on" }).closest('section') as HTMLElement;
+    expect(within(section).getByText('Ann Lee')).toBeInTheDocument();
+    expect(within(section).queryByText('Bob Smith')).not.toBeInTheDocument();
   });
 });

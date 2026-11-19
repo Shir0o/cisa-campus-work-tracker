@@ -10,9 +10,6 @@ Custom React hooks managing reactive subscriptions, contact interactions, story 
 - `ContactStoryActions` (`useContactStory.ts`)
 - `UseContactStoryResult` (`useContactStory.ts`)
 - `useContactStory` (`useContactStory.ts`)
-- `UseTranslateOptions` (`useTranslate.ts`)
-- `useTranslate` (`useTranslate.ts`)
-- `useTranslateMarkdown` (`useTranslate.ts`)
 - `UndoSnack` (`useUndoSnack.ts`)
 - `useUndoSnack` (`useUndoSnack.ts`)
 

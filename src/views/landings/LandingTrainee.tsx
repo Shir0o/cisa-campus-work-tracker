@@ -33,8 +33,6 @@ import { isFullTimer } from "../../lib/walking";
 import { subscribeTiedThreads, type ThreadMessageWithContact } from "../../lib/threads";
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
-import { subscribeTiedSubcollection } from "../../lib/contactQueries";
-import FirstRunCard from "../../components/landing/FirstRunCard";
 import AnnouncementCards from "../../components/announcements/AnnouncementCards";
 import { useLayout } from "../../App";
 import { useI18n } from "../../components/LanguageProvider";
@@ -157,10 +155,6 @@ export default function LandingTrainee() {
   const threadsLoaded = threadsRead?.reader === uid && threadsRead.ok;
   const threadsFailed = threadsRead?.reader === uid && !threadsRead.ok;
   const [threadsAttempt, setThreadsAttempt] = useState(0);
-  // How many conversations this reader has logged, for the first-run checklist.
-  // Stamped with the reader so a persona switch drops the previous count.
-  const [loggedRead, setLoggedRead] = useState<{ reader: string; count: number } | null>(null);
-  const loggedCount = loggedRead?.reader === uid ? loggedRead.count : 0;
   const [selection, setSelection] = useState<{ reader: string; contact: Contact } | null>(null);
   const selectedContact = selection?.reader === uid ? selection.contact : null;
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -233,23 +227,6 @@ export default function LandingTrainee() {
       () => setThreadsRead({ reader: uid, ok: false }),
     );
   }, [uid, threadsAttempt]);
-
-  // Interactions on the people this trainee can see, narrowed to the ones they
-  // wrote: the first-run "write up a conversation" step reads this, not notes.
-  // A failed read leaves the step unticked.
-  useEffect(() => {
-    if (!uid) return;
-    return subscribeTiedSubcollection(
-      uid,
-      "interactions",
-      (docs) =>
-        setLoggedRead({
-          reader: uid,
-          count: docs.filter((d) => (d.data() as { userId?: string }).userId === uid).length,
-        }),
-      () => setLoggedRead({ reader: uid, count: 0 }),
-    );
-  }, [uid]);
 
   // Your people — the contacts you created or co-created, longest-since-seen first.
   const myPeople = useMemo(() => {
@@ -386,22 +363,6 @@ export default function LandingTrainee() {
       </header>
 
       <AnnouncementCards className="mt-8" />
-
-      <FirstRunCard
-        role="trainee"
-        userId={uid}
-        context={{
-          contactsCount: myPeople.length,
-          interactionsCount: loggedCount,
-          messagesCount: threads.filter((m) => m.from === uid).length,
-          prayersCount:
-            personalPrayers.length + prayers.filter((p) => p.updatedBy === uid).length,
-          // A follow-up ask this reader closed; an asker retracting their own
-          // ask (closedBy === from) is not a follow-up.
-          todosCompletedCount: threads.filter((m) => m.closedBy === uid && m.from !== uid).length,
-        }}
-        className="mt-8"
-      />
 
       {/* ── What's waiting on you — your full-timer's nudges & questions ── */}
       {threadsFailed ? (

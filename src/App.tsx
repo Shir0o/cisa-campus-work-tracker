@@ -704,7 +704,7 @@ function RosterSync() {
     () =>
       subscribeUsers(
         (users) => {
-          applyRoster(users.map(({ uid, role }) => ({ uid, role })));
+          applyRoster(users.map(({ uid, role, approved }) => ({ uid, role, approved })));
           applyTeams(users.map(({ uid, team, displayName }) => ({ uid, team, displayName })));
         },
         (e) => console.error("roster subscription error", e),
@@ -867,6 +867,11 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* The signed-in reader is cut (cut-or-keep §18): an old
+                    bookmark lands on My Day for every role, rather than
+                    matching /bible-study/:meetingId with "read" as the id. */}
+                <Route path="/bible-study/read" element={<Navigate to="/" replace />} />
 
                 <Route
                   path="/bible-study/:meetingId"

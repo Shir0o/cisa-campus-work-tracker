@@ -2449,16 +2449,7 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('The Board (board_sessions)', () => {
-    const validSession = {
-      event: 'Friday Night Gathering',
-      date: '2026-05-15',
-      time: '7:00 PM',
-      place: 'Lower Common Room',
-      facilitatorId: 'admin1',
-      agenda: [],
-      assigned: [],
-    };
+  describe('The Board', () => {
     const validNote = {
       type: 'record',
       series: 'Friday Gathering',
@@ -2490,28 +2481,28 @@ describeRules('Firestore Security Rules', () => {
       });
     };
 
-    it('BD1: Admin can create and read a coordination session', async () => {
+    // board_sessions is cut (cut-or-keep §22): the Journey board's sessions and
+    // their agendas are gone, so the collection has no match at all. The
+    // documents already stored stay in Firestore, unread.
+    it('BD1: nobody reads or writes board_sessions, a Full-timer included', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      const ref = doc(db, 'board_sessions', 'bs1');
-      await assertSucceeds(setDoc(ref, validSession));
-      await assertSucceeds(getDoc(ref));
-    });
-
-    it('BD3: Viewer cannot read or write the board', async () => {
-      await seedRoles();
+      const session = {
+        event: 'Friday Night Gathering',
+        date: '2026-05-15',
+        time: '7:00 PM',
+        place: 'Lower Common Room',
+        facilitatorId: 'admin1',
+        agenda: [],
+        assigned: [],
+      };
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'board_sessions', 'bs1'), validSession);
+        await setDoc(doc(context.firestore(), 'board_sessions', 'bs1'), session);
       });
-      const db = getFirestore({ uid: 'viewer1' });
-      await assertFails(getDoc(doc(db, 'board_sessions', 'bs1')));
-      await assertFails(setDoc(doc(db, 'board_sessions', 'bs2'), validSession));
-    });
-
-    it('BD4: Rejects a malformed session (missing required fields)', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      await assertFails(setDoc(doc(db, 'board_sessions', 'bsX'), { event: 'Missing the rest' }));
+      for (const uid of ['admin1', 'manager1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'board_sessions', 'bs1')));
+        await assertFails(setDoc(doc(db, 'board_sessions', 'bs2'), session));
+      }
     });
 
     const validDoc = {
@@ -3027,76 +3018,29 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'prayerRequests', 'pr9'), newRequest()));
     });
 
-    // ── hospitality offers ───────────────────────────────────────────────────
-    const newOffer = (over: Record<string, unknown> = {}) => ({
-      uid: 'community1',
-      name: 'Grace Okafor',
-      availability: ['sunday'],
-      seats: '3–4 students',
-      note: '',
-      updatedAt: new Date().toISOString(),
-      ...over,
-    });
-    const seedOffer = async () => {
+    // ── hospitality offers are cut (cut-or-keep §1) ─────────────────────────
+    // Community's "Open your home" went with the Community role: no match, so
+    // nobody reads or writes an offer, a Full-timer included. The documents
+    // already stored stay in Firestore, unread.
+    it('HO1: nobody reads or writes hospitalityOffers, a Full-timer included', async () => {
+      await seedMemberUsers();
+      const offer = {
+        uid: 'community1',
+        name: 'Grace Okafor',
+        availability: ['sunday'],
+        seats: '3–4 students',
+        note: '',
+        updatedAt: new Date().toISOString(),
+      };
       await testEnv.withSecurityRulesDisabled(async (c) => {
-        await setDoc(doc(c.firestore(), 'hospitalityOffers', 'community1'), newOffer());
+        await setDoc(doc(c.firestore(), 'hospitalityOffers', 'community1'), offer);
       });
-    };
-
-    it('HO1: a Community member can open their home, and update the offer', async () => {
-      await seedMemberUsers();
-      const db = getFirestore({ uid: 'community1' });
-      await assertSucceeds(setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer()));
-      await assertSucceeds(
-        setDoc(
-          doc(db, 'hospitalityOffers', 'community1'),
-          newOffer({ availability: ['weeknight', 'sunday'] }),
-        ),
-      );
-    });
-
-    it('HO2: nobody can write an offer under someone else\'s uid', async () => {
-      await seedMemberUsers();
-      const db = getFirestore({ uid: 'student1' });
-      await assertFails(
-        setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer({ uid: 'community1' })),
-      );
-    });
-
-    it('HO3: the doc id must match the uid inside it', async () => {
-      await seedMemberUsers();
-      const db = getFirestore({ uid: 'community1' });
-      await assertFails(
-        setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer({ uid: 'student1' })),
-      );
-    });
-
-    it('HO4: staff read every offer; another member reads none but their own', async () => {
-      await seedMemberUsers();
-      await seedOffer();
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'hospitalityOffers', 'community1')));
-      await assertSucceeds(
-        getDoc(doc(getFirestore({ uid: 'community1' }), 'hospitalityOffers', 'community1')),
-      );
-      await assertFails(
-        getDoc(doc(getFirestore({ uid: 'student1' }), 'hospitalityOffers', 'community1')),
-      );
-    });
-
-    it('HO5: only staff can list the open homes', async () => {
-      await seedMemberUsers();
-      await seedOffer();
-      await assertSucceeds(getDocs(query(collection(getFirestore({ uid: 'ft1' }), 'hospitalityOffers'))));
-      await assertFails(
-        getDocs(query(collection(getFirestore({ uid: 'community1' }), 'hospitalityOffers'))),
-      );
-    });
-
-    it('HO6: the owner can withdraw their offer', async () => {
-      await seedMemberUsers();
-      await seedOffer();
-      const db = getFirestore({ uid: 'community1' });
-      await assertSucceeds(deleteDoc(doc(db, 'hospitalityOffers', 'community1')));
+      for (const uid of ['ft1', 'community1', 'student1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'hospitalityOffers', 'community1')));
+        await assertFails(getDocs(query(collection(db, 'hospitalityOffers'))));
+        await assertFails(setDoc(doc(db, 'hospitalityOffers', 'community1'), offer));
+      }
     });
 
     // ── chats are cut ────────────────────────────────────────────────────────

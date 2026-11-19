@@ -263,9 +263,9 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
     // buildQueue / traineeWaitingItems read the roster from the walking module.
     applyRoster([
-      { uid: ADMIN, role: 'admin' },
-      { uid: TRAINEE, role: 'manager' },
-      { uid: OTHER_TRAINEE, role: 'manager' },
+      { uid: ADMIN, role: 'admin', approved: true },
+      { uid: TRAINEE, role: 'manager', approved: true },
+      { uid: OTHER_TRAINEE, role: 'manager', approved: true },
     ]);
   });
 

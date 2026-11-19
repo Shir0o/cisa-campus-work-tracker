@@ -17,13 +17,16 @@ const TRAINEE = 'JfcxyTTTFuNUYMLQTisyq2ppoy82';
 describe('roster predicates (issue #549 — no pairing)', () => {
   it('isFullTimer / isTrainee / sets read the roster roles', () => {
     applyRoster([
-      { uid: FT, role: 'admin' },
-      { uid: TRAINEE, role: 'manager' },
-      { uid: 'viewer1', role: 'viewer' },
+      { uid: FT, role: 'admin', approved: true },
+      { uid: TRAINEE, role: 'manager', approved: true },
+      { uid: 'pending', role: 'manager', approved: false },
+      { uid: 'viewer1', role: 'viewer', approved: true },
     ]);
     expect(isFullTimer(FT)).toBe(true);
     expect(isFullTimer(TRAINEE)).toBe(false);
     expect(isTrainee(TRAINEE)).toBe(true);
+    // A Trainee waiting on approval is not on the team yet.
+    expect(isTrainee('pending')).toBe(false);
     expect(isTrainee(FT)).toBe(false);
     expect(isFullTimer('viewer1')).toBe(false);
     expect(isTrainee('viewer1')).toBe(false);
@@ -32,7 +35,7 @@ describe('roster predicates (issue #549 — no pairing)', () => {
   });
 
   it('treats unknown / nullish uids as neither', () => {
-    applyRoster([{ uid: FT, role: 'admin' }]);
+    applyRoster([{ uid: FT, role: 'admin', approved: true }]);
     expect(isFullTimer('nobody')).toBe(false);
     expect(isFullTimer(null)).toBe(false);
     expect(isTrainee('nobody')).toBe(false);
@@ -54,8 +57,8 @@ describe('applyWalkingPairs (archived pairing)', () => {
 describe('walkingRecipient', () => {
   it('a full-timer replies reach the trainee who added the contact', () => {
     applyRoster([
-      { uid: FT, role: 'admin' },
-      { uid: TRAINEE, role: 'manager' },
+      { uid: FT, role: 'admin', approved: true },
+      { uid: TRAINEE, role: 'manager', approved: true },
     ]);
     expect(walkingRecipient(FT, TRAINEE)).toBe(TRAINEE);
     expect(walkingRecipient(FT, 'someone-else')).toBeNull();
@@ -63,8 +66,8 @@ describe('walkingRecipient', () => {
 
   it('a trainee has no single recipient under the no-pairing model', () => {
     applyRoster([
-      { uid: FT, role: 'admin' },
-      { uid: TRAINEE, role: 'manager' },
+      { uid: FT, role: 'admin', approved: true },
+      { uid: TRAINEE, role: 'manager', approved: true },
     ]);
     expect(walkingRecipient(TRAINEE)).toBeNull();
     expect(walkingRecipient(null)).toBeNull();

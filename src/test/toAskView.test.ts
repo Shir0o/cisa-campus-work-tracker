@@ -114,9 +114,9 @@ describe('toAskView — assembling the derivation input', () => {
         { uid: 'hana', team: 'yp', displayName: 'Hana Sato' },
       ]);
       applyRoster([
-        { uid: 'jae', role: 'manager' },
-        { uid: 'hana', role: 'manager' },
-        { uid: 'ft', role: 'admin' },
+        { uid: 'jae', role: 'manager', approved: true },
+        { uid: 'hana', role: 'manager', approved: true },
+        { uid: 'ft', role: 'admin', approved: true },
       ]);
     });
 

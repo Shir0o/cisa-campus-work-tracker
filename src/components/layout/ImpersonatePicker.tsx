@@ -8,7 +8,7 @@ import {
   impStaffTarget,
   impScope,
 } from '../../lib/impersonate';
-import { visibleContacts as calcVisibleContacts } from '../../lib/permissions';
+import { effectiveRole, visibleContacts as calcVisibleContacts } from '../../lib/permissions';
 import { useAuth } from '../AuthProvider';
 import { cn } from '../../lib/utils';
 
@@ -139,13 +139,15 @@ export default function ImpersonatePicker({
     }
   });
 
-  // Never offer yourself as someone to become
+  // Never offer yourself as someone to become, and never offer a role that has
+  // no workspace (cut-or-keep §1): a legacy Student or Community account is not
+  // a view anyone can see.
   const meId = user?.uid || null;
   const filteredTeam = teamList.filter((u) => {
     const uid = u.uid || u.id;
     if (meId && (uid === meId || uid === 'u1')) return false;
     if (user?.email && u.email === user.email) return false;
-    return true;
+    return effectiveRole(u.role ?? null) !== null;
   });
 
   const rawGroups = [

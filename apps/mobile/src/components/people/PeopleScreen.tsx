@@ -11,7 +11,6 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
-  canAccessRoute,
   EVERYONE_PILL,
   isPushedScreen,
   isUnplaced,
@@ -105,7 +104,7 @@ function People() {
   const nothing = data.mine.length === 0 && data.rest.length === 0;
 
   // The pills and Move follow who may see The Journey.
-  const byStep = canAccessRoute(role, '/board');
+  const byStep = role === 'admin';
   const onMove = byStep && data.pillId !== EVERYONE_PILL ? setMoving : undefined;
   // Core names only the Step pills; the two fixed ones are named here.
   const pills = data.pills.map((p) =>

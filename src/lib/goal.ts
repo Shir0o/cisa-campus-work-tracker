@@ -1,8 +1,8 @@
 // THE DAY'S GOAL (#544) — a full-timer's one shared number for the team's
 // on-campus days, shown to a trainee as a small ring that fills as they add
 // new people and goes quiet the moment it's met. The web app has no
-// @cisa/core dependency (mirroring src/lib/asks.ts), so this is a standalone
-// copy of the shared logic in packages/core/src/{goal,data/goal}.ts.
+// @cisa/core dependency (the same rule every web/core mirror follows), so this
+// is a standalone copy of the shared logic in packages/core/src/{goal,data/goal}.ts.
 //
 // Stored at settings/goal, the same team-wide singleton shape as settings/season:
 // one doc, readable by everyone, writable by a full-timer. Beyond on/off, the

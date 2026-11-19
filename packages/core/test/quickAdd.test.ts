@@ -17,6 +17,7 @@ const batch = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
+import { quickAddCanSave } from '../src/quickAdd';
 import { saveQuickAdd } from '../src/data/quickAdd';
 
 const by = { uid: 'u1', name: 'Mei Tanaka' };
@@ -55,6 +56,37 @@ beforeEach(() => {
       return { id: 'new-contact', path: `${parent.path}/new-contact`, kind: 'doc' };
     }
     return { id: rest[rest.length - 1], path: rest.join('/'), kind: 'doc' };
+  });
+});
+
+describe('quickAddCanSave', () => {
+  const named = {
+    contact: { name: 'Jordan Lee', phone: '', email: '', year: '', step: '', tags: [] },
+  };
+
+  it('saves once there is a name or a picked person', () => {
+    expect(quickAddCanSave({ matchId: null, contact: named.contact })).toBe(true);
+    expect(
+      quickAddCanSave({
+        matchId: 'c1',
+        contact: { name: '', phone: '', email: '', year: '', step: '', tags: [] },
+      }),
+    ).toBe(true);
+  });
+
+  it('stays disabled with neither', () => {
+    expect(
+      quickAddCanSave({
+        matchId: null,
+        contact: { name: '  ', phone: '', email: '', year: '', step: '', tags: [] },
+      }),
+    ).toBe(false);
+  });
+
+  it('stays disabled while a multi-match choice is still owed', () => {
+    expect(quickAddCanSave({ matchId: null, contact: named.contact, awaitingMatchChoice: true })).toBe(
+      false,
+    );
   });
 });
 

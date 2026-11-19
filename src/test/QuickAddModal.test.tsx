@@ -109,7 +109,7 @@ describe('QuickAddModal', () => {
     expect(screen.getByText('Add a name, or pick someone already in your directory.')).toBeInTheDocument();
   });
 
-  it('offers every name match and preselects none when there are several', async () => {
+  it('offers every name match, preselects none, and blocks Save until one is picked', async () => {
     respond({
       ...parsed,
       match: [
@@ -123,14 +123,39 @@ describe('QuickAddModal', () => {
     expect(options).toHaveLength(2);
     for (const option of options) expect(option).toHaveAttribute('aria-pressed', 'false');
 
-    // Saving now adds a new person, so both candidates are still on offer.
-    expect(screen.getByRole('button', { name: /New person/ })).toHaveAttribute('aria-pressed', 'true');
+    // Nothing is chosen yet — not even "New person" — so Save stays off.
+    expect(screen.getByRole('button', { name: /New person/ })).toHaveAttribute('aria-pressed', 'false');
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(saveQuickAdd).not.toHaveBeenCalled();
 
     await user.click(options[1]);
     expect(options[1]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(saveQuickAdd).toHaveBeenCalledWith(expect.objectContaining({ matchId: 'c2', matchName: 'Jordan Lee' }), expect.anything()),
+    );
+  });
+
+  it('saves a new person once "New person" is tapped', async () => {
+    respond({
+      ...parsed,
+      match: [
+        { id: 'c1', name: 'Jordan Lee' },
+        { id: 'c2', name: 'Jordan Lee' },
+      ],
+    });
+    const user = await parse();
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /New person/ }));
+    expect(screen.getByRole('button', { name: /New person/ })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(saveQuickAdd).toHaveBeenCalledWith(expect.objectContaining({ matchId: null }), expect.anything()),
     );
   });
 

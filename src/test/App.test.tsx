@@ -450,6 +450,21 @@ describe('App Component', () => {
     expect(window.location.pathname).toBe('/');
   });
 
+  // §18: the reader route is gone for every role. Without an explicit route a
+  // Full-timer's /bible-study/read matches /bible-study/:meetingId and opens the
+  // editor on a "read" document instead of landing home.
+  it('sends a Full-timer who opens /bible-study/read home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/bible-study/read');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
   // Combine tags is cut (cut-or-keep §11): combining contacts stays, but the
   // tag-guess page has no route any more. An old bookmark lands home.
   it('sends a Full-timer who opens /directory/combine-tags home', async () => {

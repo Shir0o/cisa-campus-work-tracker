@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Feed the full-timer/trainee roster from the users collection so the pure
     // lib functions know who is a full-timer (issue #549).
     return subscribeUsers((users) => {
-      applyRoster(users.map((u) => ({ uid: u.uid, role: u.role })));
+      applyRoster(users.map((u) => ({ uid: u.uid, role: u.role, approved: u.approved })));
     });
   }, []);
 
