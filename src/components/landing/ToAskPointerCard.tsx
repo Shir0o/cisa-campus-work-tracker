@@ -98,7 +98,6 @@ export default function ToAskPointerCard({
     const view = buildToAsk({
       uid,
       now: Date.now(),
-      filter: notepad.teamFilter ?? "all",
       people: toAskPeopleOf(contacts),
       reach: reachByContact({
         interactions: interactions.map((i) => ({

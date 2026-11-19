@@ -9,8 +9,6 @@ Full-page router views covering contact directory, The Journey board, prayers, g
 - `AroundTheTeam` (`AroundTheTeam.tsx`)
 - `Ask` (`Ask.tsx`)
 - `Attendance` (`Attendance.tsx`)
-- `UpcomingGathering` (`AttendanceMobile.tsx`)
-- `AttendanceMobile` (`AttendanceMobile.tsx`)
 - `BibleStudyEditor` (`BibleStudyEditor.tsx`)
 - `BibleStudyIndex` (`BibleStudyIndex.tsx`)
 - `BibleStudyPresent` (`BibleStudyPresent.tsx`)

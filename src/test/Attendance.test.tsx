@@ -228,13 +228,19 @@ describe('Attendance', () => {
     expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
   });
 
-  it('renders title and loaded events stats', async () => {
+  it("renders the title and the page's sections, with no stats card or counts (cut-or-keep §8)", async () => {
     render(<Attendance />);
 
     await waitFor(() => {
       expect(screen.getByText('Gatherings')).toBeInTheDocument();
-      expect(screen.getByText('3 times')).toBeInTheDocument();
     });
+    // The greeting's "N times — about M people each time" and the figures card
+    // are cut: header stats and number strips go everywhere.
+    expect(screen.queryByText('3 times')).not.toBeInTheDocument();
+    expect(screen.queryByText('gatherings')).not.toBeInTheDocument();
+    expect(screen.queryByText('come, on average')).not.toBeInTheDocument();
+    expect(screen.queryByText('gone quiet')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Counting heads is just a way of noticing/)).not.toBeInTheDocument();
   });
 
   it('handles clicking the log gathering button to open modal', async () => {
@@ -475,34 +481,17 @@ describe('Attendance', () => {
     });
   });
 
-  it('leaves a gathering that has not happened out of the phone list, and counts only held weeks (#1769)', async () => {
-    const futureDate = new Date(Date.now() + 5 * 86_400_000).toISOString().split('T')[0];
-    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (snap: unknown) => void) => {
-      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
-      else if (ref?.path === 'events') {
-        callback({
-          docs: [
-            { id: 'e-past', data: () => ({ name: 'Last Friday', date: '2026-06-12', order: 1 }) },
-            { id: 'e-future', data: () => ({ name: 'Retreat Ahead', date: futureDate, order: 2 }) },
-          ],
-          size: 2,
-        });
-      } else callback({ docs: [], size: 0 });
-      return vi.fn();
-    }) as unknown as typeof onSnapshot);
-    // The phone branch — the one the critique measured.
+  it('renders the one main view at phone width (the phone-only view is cut, §8)', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
-
     render(<Attendance />);
 
-    await waitFor(() => expect(screen.getByText('Last Friday')).toBeInTheDocument());
-    // "When we met" holds the meetings that happened; the retreat is only an
-    // invitation, so it belongs to "Coming up" alone.
-    const sessionRows = document.querySelectorAll('.gthm-scard');
-    expect(sessionRows).toHaveLength(1);
-    expect(sessionRows[0]).toHaveTextContent('Last Friday');
-    // One gathering was held, not two.
-    expect(screen.getByText('1 times')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    });
+    // The main page's sections, not AttendanceMobile's `.gthm` shell.
+    expect(screen.getByText('This week')).toBeInTheDocument();
+    expect(document.querySelector('.gthm')).toBeNull();
   });
 
   it('shows an upcoming one-off, faint-rendered under One-offs (Story 36)', async () => {
@@ -622,14 +611,10 @@ describe('Attendance', () => {
     });
   });
 
-  it('renders AttendanceMobile on mobile viewport even while loading', async () => {
-    const { useMediaQuery } = await import('../lib/useMediaQuery');
+  it("keeps the phone route's loading skeleton even before events arrive", () => {
     vi.mocked(useMediaQuery).mockReturnValue(true);
-    // On mobile with no events yet (loading state)
+    vi.mocked(onSnapshot).mockImplementation(() => vi.fn());
     render(<Attendance />);
-    await waitFor(() => {
-      // AttendanceMobile container rendered
-      expect(document.querySelector('.gthm')).toBeTruthy();
-    });
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 });

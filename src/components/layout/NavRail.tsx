@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Users,
   StickyNote,
+  MessageCircleQuestion,
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/coordination': FileText,
   '/bible-study': BookOpen,
   '/around': Users,
+  '/ask': MessageCircleQuestion,
   '/feedback': StickyNote,
 };
 

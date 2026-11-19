@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, collectionGroup, limit, onSnapshot, orderBy, query } from "firebase/firestore";
-import { Check, Plus, UserPlus, MessageSquare, Pencil, X, MoreHorizontal } from "lucide-react";
+import { Check, Plus, MessageSquare, Pencil, X, MoreHorizontal } from "lucide-react";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useOptionalLayout } from "../App";
 import { cn } from "../lib/utils";
@@ -10,7 +10,7 @@ import { useLanguage } from "../components/LanguageProvider";
 import type { Contact, Event, Interaction } from "../types";
 import { parseMs } from "../components/landing/helpers";
 import { reachByContact } from "../lib/reach";
-import { TEAMS, teamLabelKey, rosterOnTeam } from "../lib/teams";
+import { teamLabelKey, rosterOnTeam } from "../lib/teams";
 import {
   addThreadMessage,
   contactStakeholdersOf,
@@ -35,7 +35,6 @@ import {
   type ToAskGroup,
   type ToAskLine,
   type ToAskNotepad,
-  type ToAskTeamFilter,
   type ToAskUpdateDest,
   type ToAskView,
 } from "../lib/toAsk";
@@ -182,13 +181,11 @@ export default function Ask() {
     [interactions, events, contacts],
   );
 
-  const filter: ToAskTeamFilter = notepad.teamFilter ?? "all";
   const view: ToAskView = useMemo(
     () =>
       buildToAsk({
         uid,
         now: Date.now(),
-        filter,
         people,
         reach,
         trainees: traineeInput,
@@ -196,7 +193,7 @@ export default function Ask() {
         interactions: toAskInteractionsOf(interactions),
         notepad,
       }),
-    [uid, filter, people, reach, traineeInput, messages, interactions, notepad],
+    [uid, people, reach, traineeInput, messages, interactions, notepad],
   );
 
   // Persist the drafted keys the derivation has seen, so a line that clears
@@ -344,9 +341,6 @@ export default function Ask() {
     }
   };
 
-  const clearDone = () => void saveToAskNotepad(uid, { clearedBefore: nowIso() });
-  const setFilter = (next: ToAskTeamFilter) => void saveToAskNotepad(uid, { teamFilter: next });
-
   const openContact = (contactId: string | null | undefined) => {
     if (!contactId) return;
     const c = contactMap.get(contactId);
@@ -382,42 +376,6 @@ export default function Ask() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <div role="group" aria-label={t("whatsNew.filter_by_team")} className="inline-flex flex-wrap gap-1 p-1 rounded-full bg-surface-container-low border border-outline-variant">
-              <button
-                type="button"
-                onClick={() => setFilter("all")}
-                aria-pressed={filter === "all"}
-                className={cn(
-                  "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
-                  filter === "all" ? "bg-background text-on-surface" : "text-on-surface-variant hover:text-on-surface",
-                )}
-              >
-                {t("toAsk.all_teams", "All teams")}
-              </button>
-              {TEAMS.map((tm) => (
-                <button
-                  key={tm.id}
-                  type="button"
-                  onClick={() => setFilter(tm.id as ToAskTeamFilter)}
-                  aria-pressed={filter === tm.id}
-                  className={cn(
-                    "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
-                    filter === tm.id ? "bg-background text-on-surface" : "text-on-surface-variant hover:text-on-surface",
-                  )}
-                >
-                  {t(teamLabelKey(tm.id), tm.label)}
-                </button>
-              ))}
-            </div>
-            {view.clearedCount > 0 && (
-              <button
-                type="button"
-                onClick={clearDone}
-                className="px-3.5 py-2 rounded-full border border-outline-variant bg-background text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-              >
-                {t("toAsk.clear_done", "Clear done · {n}").replace("{n}", String(view.clearedCount))}
-              </button>
-            )}
             {view.dismissed.length > 0 && (
               <button
                 type="button"
@@ -588,16 +546,6 @@ export default function Ask() {
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
-                          {group.kind === "none" && line.contactId && (
-                            <button
-                              type="button"
-                              onClick={() => openContact(line.contactId)}
-                              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-                            >
-                              <UserPlus className="w-3.5 h-3.5" />
-                              {t("toAsk.delegate", "Delegate")}
-                            </button>
-                          )}
                         </div>
                         <div className="relative sm:hidden">
                           <button

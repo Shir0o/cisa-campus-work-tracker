@@ -556,35 +556,16 @@ describe('Around the team page (#943)', () => {
     expect(InboxState.isCompleted('u1', 'att:contact:aisha')).toBe(true);
   });
 
-  // ── Reach affordance survives the move (#943) ───────────────────────────
-  it('reaches a person with a phone by call, without opening their page', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-    const onOpenContact = vi.fn();
+  // ── The Reach affordance is cut (cut-or-keep §6) ─────────────────────────
+  it('offers no Reach button or mailto even when the person has a phone and email', () => {
     render(
       <MemoryRouter initialEntries={['/around']}>
-        <AroundTheTeam contacts={[contact({ phone: '+15551234567' })]} interactions={[]} threads={[]} staffNameMap={{}} onOpenContact={onOpenContact} />
-      </MemoryRouter>,
-    );
-    const callBtn = screen.getByRole('button', { name: 'Call' });
-    fireEvent.click(callBtn);
-    expect(openSpy).toHaveBeenCalledWith('tel:+15551234567');
-    expect(onOpenContact).not.toHaveBeenCalled();
-  });
-
-  it('reaches an email-only person by mailto', () => {
-    render(
-      <MemoryRouter initialEntries={['/around']}>
-        <AroundTheTeam contacts={[contact({ email: 'kofi@campus.org' })]} interactions={[]} threads={[]} staffNameMap={{}} />
-      </MemoryRouter>,
-    );
-    const link = screen.getByRole('link', { name: 'Email' });
-    expect(link).toHaveAttribute('href', 'mailto:kofi@campus.org');
-  });
-
-  it('shows no reach affordance when the person has neither — empty string counts as absent', () => {
-    render(
-      <MemoryRouter initialEntries={['/around']}>
-        <AroundTheTeam contacts={[contact({ phone: '', email: '' })]} interactions={[]} threads={[]} staffNameMap={{}} />
+        <AroundTheTeam
+          contacts={[contact({ phone: '+15551234567', email: 'kofi@campus.org' })]}
+          interactions={[]}
+          threads={[]}
+          staffNameMap={{}}
+        />
       </MemoryRouter>,
     );
     expect(screen.queryByRole('button', { name: 'Call' })).not.toBeInTheDocument();

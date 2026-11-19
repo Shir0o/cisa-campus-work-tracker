@@ -248,10 +248,9 @@ describe("buildToAsk — grouping", () => {
     ]);
   });
 
-  it("filters Trainee groups by team but keeps General and No Trainee tied", () => {
+  it("shows every Trainee group, with General first and No Trainee tied last", () => {
     const view = buildToAsk(
       base({
-        filter: "yp",
         people: [
           fresh("c1", { createdBy: "jae" }),
           fresh("c2", { createdBy: "hana" }),
@@ -262,7 +261,7 @@ describe("buildToAsk — grouping", () => {
     );
     const ids = view.groups.map((g) => g.id);
     expect(ids).toContain("hana");
-    expect(ids).not.toContain("jae");
+    expect(ids).toContain("jae");
     expect(ids).toContain(GENERAL_GROUP);
     expect(ids).toContain(NO_TRAINEE_GROUP);
   });
@@ -288,7 +287,6 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
     expect(line.clearedBy?.reason).toBe("reached");
     expect(line.clearedBy?.name).toBe("Jae");
     expect(view.openCount).toBe(0);
-    expect(view.clearedCount).toBe(1);
   });
 
   it("never re-opens an Asked line as time passes", () => {
@@ -337,20 +335,6 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
     expect(STRUCK_VISIBLE_DAYS).toBe(7);
   });
 
-  it("drops struck lines sooner with Clear done", () => {
-    const view = buildToAsk(
-      base({
-        people: [person("c1", { createdBy: "jae" })],
-        notepad: {
-          lines: [{ id: "n1", text: "note", group: "jae", createdAt: ago(30), askedAt: ago(1) }],
-          clearedBefore: NOW.toISOString(),
-        },
-      }),
-    );
-    expect(view.groups.find((g) => g.id === "jae")).toBeUndefined();
-    expect(view.clearedCount).toBe(0);
-  });
-
   it("says what cleared a question", () => {
     const view = buildToAsk(
       base({
@@ -397,14 +381,6 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
       }),
     );
     expect(view.openCount).toBe(1);
-  });
-
-  it("keeps drafted keys for groups the team filter hides (#1649)", () => {
-    const view = buildToAsk(
-      base({ filter: "campus", people: [fresh("c1", { createdBy: "hana" })] }),
-    );
-    expect(view.groups.find((g) => g.id === "hana")).toBeUndefined();
-    expect(Object.keys(view.drafted)).toEqual(["notReached|c1"]);
   });
 
   it("returns the drafted keys to persist back", () => {
@@ -589,7 +565,6 @@ describe("buildToAsk — Dismiss", () => {
     );
     expect(view.groups.find((g) => g.id === "jae")).toBeUndefined();
     expect(view.openCount).toBe(0);
-    expect(view.clearedCount).toBe(0);
     expect(view.topTrainees).toEqual([]);
     expect(view.dismissed).toHaveLength(1);
     expect(view.dismissed[0]).toMatchObject({
@@ -654,7 +629,6 @@ describe("buildToAsk — Dismiss", () => {
         },
       }),
     );
-    expect(view.clearedCount).toBe(0);
     expect(view.dismissed).toHaveLength(1);
   });
 
@@ -671,7 +645,6 @@ describe("buildToAsk — Dismiss", () => {
       }),
     );
     expect(view.groups).toEqual([]);
-    expect(view.clearedCount).toBe(0);
     expect(view.dismissed[0].line.state).toBe("cleared");
   });
 
@@ -693,22 +666,6 @@ describe("buildToAsk — Dismiss", () => {
       ["notReached|c1", "jae", "Jae"],
       ["note:n1", GENERAL_GROUP, "General"],
     ]);
-  });
-
-  it("keeps the team filter on the tray", () => {
-    const view = buildToAsk(
-      base({
-        filter: "yp",
-        people: [fresh("c1", { carers: ["jae", "hana"] }), fresh("c2", { carers: ["ana"] })],
-        notepad: {
-          overrides: {
-            "notReached|c1": { dismissedAt: ago(1) },
-            "notReached|c2": { dismissedAt: ago(1) },
-          },
-        },
-      }),
-    );
-    expect(view.dismissed.map((d) => [d.key, d.groupId])).toEqual([["notReached|c1", "hana"]]);
   });
 });
 

@@ -18,7 +18,6 @@ import {
   type AskNoteLine,
   type ToAskGroup,
   type ToAskLine,
-  type ToAskTeamFilter,
 } from '@cisa/core';
 import { SafeAreaView } from '../ui/SafeArea';
 import { Sheet, Snackbar } from '../ui';
@@ -26,7 +25,7 @@ import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { SkeletonList } from '../skeleton/SkeletonList';
 import { PersonMark } from '../queue/atoms';
-import { Room, V2Hint, V2Screen, V2Seg } from '../v2/Widget';
+import { Room, V2Hint, V2Screen } from '../v2/Widget';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useToAskData } from '../../lib/useToAskData';
@@ -85,7 +84,7 @@ function ToAsk() {
   const { t } = useLanguage();
   const router = useRouter();
   const data = useToAskData(uid);
-  const { view, notepad, notepadRef, filter, messages, contactById } = data;
+  const { view, notepad, notepadRef, messages, contactById } = data;
 
   const [editing, setEditing] = React.useState<string | null>(null);
   const editingRef = React.useRef<string | null>(null);
@@ -630,35 +629,6 @@ function ToAsk() {
             </View>
           </View>
           <V2Hint>{t('mobile.toAsk.hint')}</V2Hint>
-          <V2Seg<ToAskTeamFilter>
-            value={filter}
-            onChange={(next) => uid && quiet(saveToAskNotepad(uid, { teamFilter: next }))}
-            items={[
-              { id: 'all', label: t('mobile.toAsk.filter_all') },
-              { id: 'campus', label: t('mobile.toAsk.filter_campus') },
-              { id: 'yp', label: t('mobile.toAsk.filter_yp') },
-            ]}
-          />
-          {view.clearedCount > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => uid && quiet(saveToAskNotepad(uid, { clearedBefore: nowIso() }))}
-              hitSlop={8}
-              style={({ pressed }) => ({
-                alignSelf: 'flex-end',
-                minHeight: 40,
-                justifyContent: 'center',
-                paddingHorizontal: 14,
-                borderRadius: radius.chip,
-                backgroundColor: c.room.chip,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.room.ink2 }}>
-                {t('mobile.toAsk.clear_done').replace('{n}', String(view.clearedCount))}
-              </Text>
-            </Pressable>
-          )}
 
           {!!data.error && (
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text, marginBottom: 8 }}>

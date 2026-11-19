@@ -199,6 +199,17 @@ describe('NavRail (#664)', () => {
     expect(screen.getByRole('link', { name: /People/ })).toBeInTheDocument();
   });
 
+  it('shows To ask to a Full-timer, under Today (cut-or-keep §10)', () => {
+    renderRail({ role: 'admin' });
+    const link = screen.getByRole('link', { name: /^To ask$/ });
+    expect(link).toHaveAttribute('href', '/ask');
+  });
+
+  it('never shows To ask to a Trainee (cut-or-keep §10)', () => {
+    renderRail({ role: 'manager' });
+    expect(screen.queryByRole('link', { name: /^To ask$/ })).not.toBeInTheDocument();
+  });
+
   // ── Current destination is unmistakable ─────────────────────────────
   it('marks the current destination as active with aria-current="page"', () => {
     renderRail({ route: '/directory', role: 'admin' });

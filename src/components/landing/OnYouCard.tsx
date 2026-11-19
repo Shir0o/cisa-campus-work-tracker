@@ -306,7 +306,6 @@ export default function OnYouCard({
                     onComplete={handleComplete}
                     onToast={onToast}
                     mobile={mobile}
-                    showReach={false}
                     threads={stack.contactId ? threadsByContact.get(stack.contactId) : undefined}
                     personalContactIds={personalContactIds}
                   />

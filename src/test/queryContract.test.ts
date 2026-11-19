@@ -234,7 +234,6 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
 
       // The Full-timer's private To ask notepad (#1649).
       await seedDoc(db, 'toAskNotes/admin1', {
-        teamFilter: 'all',
         lines: [{ id: 'n1', text: 'Ask Jae about Sam', group: 'jae', createdAt: ISO }],
       });
 
@@ -500,7 +499,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       subscribeToAskNotepad(dbFor(ADMIN), ADMIN, cb, onError),
     );
     expect(read.ok).toBe(true);
-    await expect(saveToAskNotepad(dbFor(ADMIN), ADMIN, { teamFilter: 'yp' })).resolves.toBeUndefined();
+    await expect(saveToAskNotepad(dbFor(ADMIN), ADMIN, { lines: [] })).resolves.toBeUndefined();
   });
 
   it('row 22 — a Trainee and another Full-timer are denied the notepad (negative)', async () => {
@@ -508,7 +507,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       subscribeToAskNotepad(dbFor(TRAINEE), ADMIN, cb, onError),
     );
     expect(trainee.ok).toBe(false);
-    await expect(saveToAskNotepad(dbFor(TRAINEE), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
+    await expect(saveToAskNotepad(dbFor(TRAINEE), ADMIN, { lines: [] })).rejects.toBeTruthy();
   });
 
   // Row 22b: a merge write never removes a nested key, so Undo Asked and the

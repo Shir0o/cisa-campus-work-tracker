@@ -24,7 +24,6 @@ vi.mock('../lib/firebase', () => ({
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 vi.mock('../components/layout/PageContainer', () => ({ default: ({ children }: any) => children }));
-vi.mock('../views/HistoryMobile', () => ({ default: () => null }));
 
 import { humanize } from '../views/History';
 

@@ -132,10 +132,10 @@ describe('toAsk notepad storage (#1649)', () => {
   });
 
   it('merge-writes notepad patches', async () => {
-    await saveToAskNotepad('u1', { teamFilter: 'campus' });
+    await saveToAskNotepad('u1', { lines: [] });
     expect(setDoc).toHaveBeenCalledWith(
       { path: 'toAskNotes/u1' },
-      { teamFilter: 'campus' },
+      { lines: [] },
       { merge: true },
     );
   });

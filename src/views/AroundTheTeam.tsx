@@ -652,7 +652,6 @@ export default function AroundTheTeam({
                       onComplete={handleComplete}
                       onUnreview={handleUnreview}
                       onToast={showToast}
-                      showReach
                       mobile={compactWidth}
                       reviewedOnly
                       threads={stack.contactId ? threadsByContact.get(stack.contactId) : undefined}

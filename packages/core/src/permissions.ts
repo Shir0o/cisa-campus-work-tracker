@@ -101,6 +101,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
+  { href: '/ask', label: 'To ask', minRole: 'admin' },
   { href: '/settings', label: 'Settings', minRole: 'manager' },
 ];
 
