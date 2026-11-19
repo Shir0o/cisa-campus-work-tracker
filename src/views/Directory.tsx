@@ -11,7 +11,6 @@ import {
   Check,
   Plus,
   Sparkles,
-  Combine,
   Users,
   ChevronDown,
   X,
@@ -715,13 +714,6 @@ export default function Directory() {
             </button>
           )}
           <button
-            onClick={() => navigate('/directory/combine-tags')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
-            title={t('directory.combine_tags')}
-          >
-            <Combine className="w-4 h-4" /> {t('directory.combine_tags')}
-          </button>
-          <button
             onClick={() => setIsTagGenderOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
             title={t('directory.tag_gender') || 'Tag M/F'}
@@ -792,18 +784,6 @@ export default function Directory() {
                       <span>{t('directory.combine_contacts', 'Combine contacts')}</span>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHeaderMoreOpen(false);
-                      navigate('/directory/combine-tags');
-                    }}
-                    role="menuitem"
-                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
-                  >
-                    <Combine className="w-4 h-4 text-on-surface-variant shrink-0" />
-                    <span>{t('directory.combine_tags')}</span>
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -1344,8 +1324,6 @@ export default function Directory() {
           })}
         </div>
       )}
-
-      {/* ── Combine tags lives on its own page (issue #1435) ── */}
 
       {/* ── Combine contacts lives on its own page (issue #1427) ── */}
 

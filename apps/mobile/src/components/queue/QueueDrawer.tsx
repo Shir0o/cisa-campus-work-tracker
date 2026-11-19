@@ -1,9 +1,9 @@
 // Mobile v2 — the trainee's ☰ drawer (`.m2-drawer` in views/mobile/m2.jsx).
 //
 // The trainee's shell has no tab bar: the queue IS the app, and everything else
-// — People, Gatherings, The Board, Settings — lives
-// behind this one button. The list is exactly TRAINEE_DRAWER from @cisa/core,
-// in the design's order, and the foot line says why it's short.
+// — People, Settings, the sign-up form — lives behind this one button. The list
+// is exactly TRAINEE_DRAWER from @cisa/core, in the design's order, and the foot
+// line says why it's short.
 import React from 'react';
 import { Animated, Dimensions, Modal, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';

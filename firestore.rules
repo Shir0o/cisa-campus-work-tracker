@@ -922,28 +922,8 @@ service cloud.firestore {
       allow delete: if isValidId(credentialId) && isAdmin();
     }
 
-    match /credentialAudit/{auditId} {
-      // Append-only from the client's side: a Full-timer creates entries, and
-      // nobody — Full-timer included — edits or removes one, so the log cannot
-      // be made to forget a reveal. `actorUid` is the real auth uid, never an
-      // impersonated one (ADR 0051), and `createdAt` is the request time.
-      function isValidCredentialAuditEntry(data) {
-        return data.keys().hasAll(['actorUid', 'credentialId', 'action', 'createdAt']) &&
-               data.keys().hasOnly(['actorUid', 'credentialId', 'action', 'field', 'createdAt']) &&
-               data.actorUid == request.auth.uid &&
-               data.credentialId is string &&
-               data.credentialId.size() > 0 && data.credentialId.size() <= 128 &&
-               data.action in ['unlock', 'unlock-failed', 'reveal', 'copy',
-                               'create', 'update', 'delete', 'rotate'] &&
-               (!('field' in data) || data.field == null ||
-                (data.field is string && data.field.size() <= 64)) &&
-               data.createdAt == request.time;
-      }
-
-      allow read: if isAdmin();
-      allow create: if isValidId(auditId) && isAdmin() && isValidCredentialAuditEntry(incoming());
-      allow update, delete: if false;
-    }
+    // The vault's activity log is cut (cut-or-keep §3): credentialAudit has no
+    // match. Login entries themselves stay where they are.
 
     // 6d. Attendance Sync Intake - staged attd pushes, alias memory, and
     // remembered attd event -> Rhythm mappings. Only Full-timers ever read or
@@ -1202,26 +1182,8 @@ service cloud.firestore {
       allow delete: if isValidId(sessionId) && isAdmin();
     }
 
-    // 15. The Board — notes & learnings archive
-    match /board_notes/{noteId} {
-      function isValidBoardNote(data) {
-        return data.keys().hasAll(['type', 'series', 'title', 'body', 'date', 'contributorIds', 'tags']) &&
-               data.type in ['record', 'learning'] &&
-               data.series is string && data.series.size() <= 120 &&
-               data.title is string && data.title.size() <= 200 &&
-               data.body is string && data.body.size() <= 20000 &&
-               data.date is string && data.date.size() <= 64 &&
-               data.contributorIds is list && data.contributorIds.size() <= 50 &&
-               data.tags is list && data.tags.size() <= 50 &&
-               (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 128));
-      }
-
-      // Read: Full-timers + Trainees (the shared archive). Write: Full-timers.
-      allow get, list: if isManager();
-      allow create: if isValidId(noteId) && isAdmin() && isValidBoardNote(incoming());
-      allow update: if isValidId(noteId) && isAdmin() && isValidBoardNote(incoming());
-      allow delete: if isValidId(noteId) && isAdmin();
-    }
+    // 15. The Board — the Notes & learnings archive is cut (cut-or-keep §19),
+    // so board_notes has no match. Stored notes stay where they are.
 
     // 16. The Board — dated Markdown pages (one running doc per gathering)
     match /board_docs/{docId} {
@@ -1236,12 +1198,10 @@ service cloud.firestore {
                (!('audience' in data) || data.audience in ['team', 'trainees', 'everyone']);
       }
 
-      // Read by audience: Full-timers see all (incl. legacy pages with no
-      // audience); Trainees see 'trainees' + 'everyone'.
-      // Non-admins must scope their query by audience so each returned doc passes.
-      allow get, list: if isAdmin()
-                          || ('audience' in existing() && existing().audience == 'everyone' && isManager())
-                          || ('audience' in existing() && existing().audience == 'trainees' && isManager());
+      // Full-timers only (cut-or-keep §19): a Trainee reads no page, whatever
+      // its audience. The guest-link read bypasses these rules through the
+      // Admin SDK (/api/guest-doc), so a shared page still opens for its key.
+      allow get, list: if isAdmin();
       allow create: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
       allow update: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
       allow delete: if isValidId(docId) && isAdmin();

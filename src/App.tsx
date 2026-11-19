@@ -52,7 +52,6 @@ const SentryRoutes = wrapRoutesWithSentry(Routes);
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
 const Directory = lazyWithRetry(() => import("./views/Directory"));
 const CombineContacts = lazyWithRetry(() => import("./views/CombineContacts"));
-const CombineTags = lazyWithRetry(() => import("./views/CombineTags"));
 const History = lazyWithRetry(() => import("./views/History"));
 const PrayerList = lazyWithRetry(() => import("./views/PrayerList"));
 const AnsweredList = lazyWithRetry(() => import("./views/AnsweredList"));
@@ -68,7 +67,6 @@ const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Ask = lazyWithRetry(() => import("./views/Ask"));
 const CredentialVault = lazyWithRetry(() => import("./views/CredentialVault"));
-const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const GuestCoordinationDoc = lazyWithRetry(() => import("./views/GuestCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
 const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
@@ -736,15 +734,6 @@ export default function App() {
                   }
                 />
 
-                <Route
-                  path="/embed/coordination/:docId"
-                  element={
-                    <React.Suspense fallback={null}>
-                      <EmbedCoordinationDoc />
-                    </React.Suspense>
-                  }
-                />
-
                 {/* Guest surface: public, key-gated, no app chrome (issue #1023) */}
                 <Route
                   path="/c/:docId"
@@ -930,18 +919,6 @@ export default function App() {
                   }
                 />
 
-                <Route
-                  path="/directory/combine-tags"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="admin">
-                        <DashboardLayout>
-                          <CombineTags />
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
 
                 <Route
                   path="/people/:contactId"
@@ -1090,7 +1067,7 @@ export default function App() {
                   path="/coordination"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="manager">
+                      <RoleGuard minRole="admin">
                         <DashboardLayout>
                           <React.Suspense
                             fallback={

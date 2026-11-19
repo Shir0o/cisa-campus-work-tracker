@@ -3,8 +3,8 @@
 // list. People isn't here — it's a tab of its own.
 //
 // The list is exactly FT_MORE from @cisa/core and nothing else. The heavier
-// work (Board pages, gatherings, kinds) is read-mostly on the phone, which the
-// foot line says out loud.
+// work (gatherings, kinds) is read-mostly on the phone, which the foot line says
+// out loud.
 import React, { useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -38,7 +38,6 @@ function FtMore() {
     const labels: Record<string, string> = {
       gatherings: t('nav.gatherings'),
       prayers: t('mobile.nav.prayer_log'),
-      board: t('mobile.nav.the_board'),
       signup: t('mobile.nav.sign_up_form'),
       settings: t('mobile.nav.settings'),
     };

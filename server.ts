@@ -16,8 +16,6 @@ import { OWNER_EMAIL } from "./src/lib/permissions";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
-import { type TagCombine } from "./src/lib/tags";
-import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
 import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testAccountPurgeEngine";
 import { failsClosed, rateLimitKey } from "./src/server/requestGuards";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -627,22 +625,6 @@ ${JSON.stringify(contactsList)}`;
   });
 
 
-  // Self-service token exchange: mints a short-lived custom token for the
-  // caller's own uid, so the mobile app can bridge its Firebase session into
-  // a react-native-webview page (which has its own, separate auth storage).
-  // No privilege escalation — the token signs in as the same uid the caller
-  // already authenticated as.
-  app.post("/api/mint-custom-token", standardRateLimiter, async (req, res) => {
-    try {
-      const decodedToken = await authenticateFirebaseUser(req);
-      const token = await getAdminAuth().createCustomToken(decodedToken.uid);
-      res.status(200).json({ success: true, token });
-    } catch (error: any) {
-      console.error("Mint Custom Token Error: ", error);
-      res.status(401).json({ success: false, error: error.message || "Failed to mint custom token" });
-    }
-  });
-
   // Combine contacts (issue #1427, ADR 0038, deepened in #1586). Full-timers only.
   app.post("/api/combine-contacts", standardRateLimiter, async (req, res) => {
     const actor = await requireFullTimerActor(req, res);
@@ -764,101 +746,6 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to undo combine" });
-    }
-  });
-
-  // Combine tags (issue #1435, spec #1426, issue #1587). Full-timers only.
-  // Replaces every occurrence of any variant with the target tag, deduping per
-  // contact. Can optionally mark new targets as standard tags. Writes a combine
-  // record of kind tags holding each contact's tags before and after and the
-  // standard tags it added.
-  app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
-    const actor = await requireFullTimerActor(req, res);
-    if (!actor) return;
-    const { actorId, actorName } = actor;
-
-    const rawCombines = req.body?.combines;
-    if (!Array.isArray(rawCombines) || rawCombines.length === 0) {
-      return res.status(400).json({ success: false, error: "combines are required" });
-    }
-    const combines: TagCombine[] = rawCombines
-      .filter((c: any) => c && typeof c === "object")
-      .map((c: any) => ({
-        variants: Array.isArray(c.variants)
-          ? c.variants.filter((v: any) => typeof v === "string")
-          : [],
-        target: typeof c.target === "string" ? c.target : "",
-      }))
-      .filter((c: TagCombine) => c.target && c.variants.length > 0);
-    if (combines.length === 0) {
-      return res.status(400).json({ success: false, error: "combines are required" });
-    }
-
-    try {
-      const db = getAdminDb();
-      const engine = new TagCombineEngine({ db });
-      const result = await engine.combineTags({
-        combines,
-        dryRun: req.body?.dryRun === true,
-        makeStandard: Array.isArray(req.body?.makeStandard)
-          ? req.body.makeStandard.filter((v: any) => typeof v === "string")
-          : [],
-        actorId,
-        actorName,
-      });
-
-      return res.status(200).json(result);
-    } catch (error: any) {
-      if (error instanceof TagEngineError) {
-        return res
-          .status(error.status)
-          .json({ success: false, error: error.message, ...error.extra });
-      }
-      console.error("Combine Tags Error:", error);
-      return res
-        .status(500)
-        .json({ success: false, error: error.message || "Failed to combine tags" });
-    }
-  });
-
-  // Undo a tag combine (issue #1436, spec #1426, issue #1587). Full-timers only. Replays the
-  // tag combine record: each contact returns to its before-tags only while its
-  // current tags still equal what the combine wrote. Contacts re-tagged (or
-  // deleted) since are skipped and reported. Standard tags added by the combine
-  // stay. A combine can only be undone once.
-  app.post("/api/combine-tags/undo", standardRateLimiter, async (req, res) => {
-    const actor = await requireFullTimerActor(req, res);
-    if (!actor) return;
-    const { actorId, actorName } = actor;
-
-    const combineRecordId =
-      typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
-    if (!combineRecordId) {
-      return res.status(400).json({ success: false, error: "combineRecordId is required" });
-    }
-    const dryRun = req.body?.dryRun === true;
-
-    try {
-      const db = getAdminDb();
-      const engine = new TagCombineEngine({ db });
-      const result = await engine.undoCombine({
-        combineRecordId,
-        dryRun,
-        actorId,
-        actorName,
-      });
-
-      return res.status(200).json(result);
-    } catch (error: any) {
-      if (error instanceof TagEngineError) {
-        return res
-          .status(error.status)
-          .json({ success: false, error: error.message, ...error.extra });
-      }
-      console.error("Undo Tag Combine Error:", error);
-      return res
-        .status(500)
-        .json({ success: false, error: error.message || "Failed to undo tag combine" });
     }
   });
 

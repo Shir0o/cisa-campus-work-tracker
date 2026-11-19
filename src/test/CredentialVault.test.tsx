@@ -171,15 +171,14 @@ describe('Credential vault page (#1967)', () => {
     // The passphrase is not left in the DOM once it has been used.
     expect(screen.queryByDisplayValue(PASSPHRASE)).toBeNull();
     expect(document.body.textContent).not.toContain(PASSPHRASE);
-    expect(h.auditWrites).toContainEqual(expect.objectContaining({ action: 'unlock', actorUid: 'admin1' }));
+    // The activity log is cut (cut-or-keep §3): unlocking writes nothing.
+    expect(h.auditWrites).toHaveLength(0);
 
-    // The password stays masked until reveal, and the reveal is audited.
+    // The password stays masked until reveal; revealing it writes nothing.
     expect(screen.getAllByTestId('vault-password')[0].textContent).not.toContain(ENTRY.password);
     fireEvent.click(screen.getAllByRole('button', { name: 'Show password' })[0]);
     expect(screen.getAllByTestId('vault-password')[0].textContent).toBe(ENTRY.password);
-    expect(h.auditWrites).toContainEqual(
-      expect.objectContaining({ action: 'reveal', credentialId: 'cred-1', field: 'password' }),
-    );
+    expect(h.auditWrites).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
 
@@ -209,11 +208,8 @@ describe('Credential vault page (#1967)', () => {
     expect(alert.textContent).not.toMatch(/empty/i);
     expect(screen.queryByText(ENTRY.label)).toBeNull();
     expect(h.openEntry).not.toHaveBeenCalled();
-    expect(h.auditWrites).toContainEqual(
-      expect.objectContaining({ action: 'unlock-failed', actorUid: 'admin1' }),
-    );
-    // A failed attempt writes no `unlock` row.
-    expect(h.auditWrites.some((row) => row.action === 'unlock')).toBe(false);
+    // A failed attempt writes nothing either — there is no log to write to.
+    expect(h.auditWrites).toHaveLength(0);
   });
 
   it('mints the vault from the first passphrase when there is no meta yet', async () => {
@@ -235,7 +231,7 @@ describe('Credential vault page (#1967)', () => {
     expect(await screen.findByText(ENTRY.label)).toBeTruthy();
   });
 
-  it('starts over after a lost passphrase: new meta, entries destroyed, each deletion audited', async () => {
+  it('starts over after a lost passphrase: new meta, entries destroyed, nothing logged', async () => {
     renderVault();
     await screen.findByLabelText('Passphrase');
 
@@ -259,24 +255,20 @@ describe('Credential vault page (#1967)', () => {
       { path: 'credentialsMeta/current' },
       expect.objectContaining({ iterations: 600_000, schemaVersion: 1, check: expect.any(String) }),
     );
-    // Every entry goes, and each one leaves a row in the append-only log.
+    // Every entry goes; no audit row is written for the deletions.
     expect(batch.delete).toHaveBeenCalledWith({ path: 'credentials/cred-1' });
     expect(batch.delete).toHaveBeenCalledWith({ path: 'credentials/cred-2' });
-    expect(batch.set).toHaveBeenCalledWith(
-      { path: 'credentialAudit' },
-      expect.objectContaining({ action: 'delete', credentialId: 'cred-1', actorUid: 'admin1' }),
+    expect((batch.set.mock.calls as [{ path: string }][]).map(([ref]) => ref.path)).not.toContain(
+      'credentialAudit',
     );
-    expect(batch.set).toHaveBeenCalledWith(
-      { path: 'credentialAudit' },
-      expect.objectContaining({ action: 'delete', credentialId: 'cred-2', actorUid: 'admin1' }),
-    );
+    expect(h.auditWrites).toHaveLength(0);
 
     // Resetting unlocks the vault rather than leaving it locked under a key nobody has.
     expect(await screen.findByText('Vault reset. Share the new passphrase with the other Full-timers.')).toBeTruthy();
     expect(screen.queryByDisplayValue('new shared phrase')).toBeNull();
   });
 
-  it('seals a new entry before writing it, and audits the create against the real uid', async () => {
+  it('seals a new entry before writing it, and writes no audit row', async () => {
     renderVault();
     await unlock();
     expect(await screen.findByText(ENTRY.label)).toBeTruthy();
@@ -296,12 +288,10 @@ describe('Credential vault page (#1967)', () => {
     const written = h.addedDocs.find((doc) => doc.path === 'credentials');
     expect(written?.data).toMatchObject({ iv: 'iv-new', ciphertext: 'ct-new' });
     expect(JSON.stringify(written?.data)).not.toContain('secret-value');
-    expect(h.auditWrites).toContainEqual(
-      expect.objectContaining({ action: 'create', credentialId: 'new-cred', actorUid: 'admin1' }),
-    );
+    expect(h.auditWrites).toHaveLength(0);
   });
 
-  it('edits an entry through a re-seal, leaving its createdAt alone, and audits the update', async () => {
+  it('edits an entry through a re-seal, leaving its createdAt alone, and writes no audit row', async () => {
     renderVault();
     await unlock();
     expect(await screen.findByText(ENTRY.label)).toBeTruthy();
@@ -318,12 +308,10 @@ describe('Credential vault page (#1967)', () => {
     expect(JSON.stringify(written)).not.toContain('new-secret');
     // The update rule freezes `createdAt`, so the write must not touch it.
     expect(written).not.toHaveProperty('createdAt');
-    expect(h.auditWrites).toContainEqual(
-      expect.objectContaining({ action: 'update', credentialId: 'cred-1' }),
-    );
+    expect(h.auditWrites).toHaveLength(0);
   });
 
-  it('deletes an entry only on the second tap, and audits it', async () => {
+  it('deletes an entry only on the second tap, and writes no audit row', async () => {
     renderVault();
     await unlock();
     expect(await screen.findByText(ENTRY.label)).toBeTruthy();
@@ -339,9 +327,7 @@ describe('Credential vault page (#1967)', () => {
 
     await waitFor(() => expect(h.deleteDoc).toHaveBeenCalled());
     expect(h.deleteDoc.mock.calls[0][0]).toEqual({ path: 'credentials/cred-1' });
-    expect(h.auditWrites).toContainEqual(
-      expect.objectContaining({ action: 'delete', credentialId: 'cred-1' }),
-    );
+    expect(h.auditWrites).toHaveLength(0);
   });
 
   it('re-seals every entry under the new passphrase in one batch, after showing the count', async () => {
@@ -377,10 +363,9 @@ describe('Credential vault page (#1967)', () => {
       'credentialsMeta/current',
       'credentials/cred-1',
       'credentials/cred-2',
-      'credentialAudit',
     ]);
     expect(calls[1][1]).toMatchObject({ iv: 'iv-1b', ciphertext: 'ct-1b' });
-    expect(calls[3][1]).toMatchObject({ action: 'rotate', actorUid: 'admin1', credentialId: 'vault' });
+    expect(h.auditWrites).toHaveLength(0);
     expect(batch.commit).toHaveBeenCalled();
   });
 

@@ -1,11 +1,28 @@
 // The Board (board_docs) — soft-delete/restore/pin/purge helpers shared by
-// CoordinationNotes.tsx, EmbedCoordinationDoc.tsx, and CoordinationTrash.tsx.
+// CoordinationNotes.tsx and CoordinationTrash.tsx.
 // The web app has no dependency on @cisa/core (mobile-only package), so this
 // mirrors packages/core/src/data/board.ts's shape for the web side.
-import { doc, deleteDoc, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  deleteDoc,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  type Firestore,
+} from 'firebase/firestore';
 import { ref as dbRef, remove as dbRemove } from 'firebase/database';
 import { db, rtdb } from '../firebase';
 import { createGuestAccess, type BoardDoc, type GuestPermission } from '../board';
+
+/** The Pages list read: every page, newest first. Full-timers are the only
+ *  role that may run it (cut-or-keep §19); the query-contract test pins it
+ *  against the rules emulator. */
+export function boardDocsQuery(database: Firestore) {
+  return query(collection(database, 'board_docs'), orderBy('date', 'desc'));
+}
 
 /** Soft-deletes a page (moves it to Trash) and best-effort cleans up its
  * live-collab RTDB node so it doesn't orphan. Recoverable via `restoreBoardDoc`. */

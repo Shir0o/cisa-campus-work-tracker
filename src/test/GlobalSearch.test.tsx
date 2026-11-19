@@ -16,7 +16,6 @@ const h = vi.hoisted(() => ({
   mockData: {
     contacts: [] as any[],
     interactions: [] as any[],
-    board_notes: [] as any[],
     activities: [] as any[],
   } as Record<string, any[]>,
   mockAuth: { value: null as any },
@@ -103,18 +102,6 @@ function seedData() {
       { content: 'Discussed the plan for next term', createdAt: '2026-06-12T09:00:00Z' },
       { ref: { parent: { parent: { id: 'c1' } } } },
     ),
-  ];
-  h.mockData.board_notes = [
-    docOf('b1', {
-      type: 'record',
-      title: 'Semester plan',
-      body: 'kickoff notes',
-      series: 'Team',
-      tags: ['kickoff'],
-      date: '2026-06-12',
-      contributorIds: ['u1'],
-      updatedByName: 'Sam',
-    }),
   ];
   h.mockData.activities = [
     docOf('a1', {
@@ -295,27 +282,19 @@ describe('GlobalSearch', () => {
     expect(fieldIdx).toBeGreaterThan(nameIdx);
   });
 
-  it('admin sees Conversations, The Board, and an opt-in History group', () => {
+  it('admin sees Conversations and an opt-in History group', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
     expect(screen.getAllByText('People').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Interactions').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Coordination Notes').length).toBeGreaterThan(0);
+    // The Board's notes archive is cut (cut-or-keep §19), so search has no
+    // Coordination Notes group to show.
+    expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
 
     // History is opt-in behind a pill toggle.
     expect(screen.queryAllByText('History').length).toBe(0);
     fireEvent.click(screen.getAllByRole('button', { name: /search history too/i })[0]);
     expect(screen.getAllByText('History').length).toBeGreaterThan(0);
-  });
-
-  it('clicking a Coordination Note result navigates to /coordination with note and doc state', () => {
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    const boardNoteBtn = screen.getAllByText('Coordination Notes')[0].closest('section')?.querySelector('button');
-    if (boardNoteBtn) {
-      fireEvent.click(boardNoteBtn);
-      expect(h.mockNavigate).toHaveBeenCalledWith('/coordination', expect.objectContaining({ state: expect.objectContaining({ focusNoteId: 'b1' }) }));
-    }
   });
 
   it('Trainee gets no history toggle and never reads the activity feed', () => {
@@ -468,15 +447,6 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
     );
-  });
-
-  it('clicking a Coordination Note result navigates to /coordination', () => {
-    render(<GlobalSearch />);
-    typeDesktop('plan');
-    const row = screen.getAllByText('Semester plan')[0].closest('button')!;
-    fireEvent.click(row);
-    expect(h.mockNavigate).toHaveBeenCalledWith('/coordination', undefined);
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
   });
 
   it('toggling history on and clicking a History result navigates to /history', () => {

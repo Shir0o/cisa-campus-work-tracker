@@ -68,11 +68,8 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // one row in Settings → Security rather than a nav item.
   '/vault': 'admin',
   '/feedback': 'manager',
-  // The floor reads "manager and above", which is not true for a Trainee: they
-  // take the allowlist path below and are not on it. The deny is the decision
-  // (#1922), the same shape as /history (#1825). This entry is not what stops
-  // a Trainee and must not claim otherwise.
-  '/coordination': 'manager',
+  // The Board is Full-timers only (cut-or-keep §19): a Trainee reads no page.
+  '/coordination': 'admin',
   '/coordination/trash': 'admin',
   // The Weeks index is the archive, and the archive is Full-timers only
   // (ADR 0011 §6).
@@ -100,7 +97,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/attendance', label: 'Gatherings', minRole: 'manager' },
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
-  { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
+  { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
   { href: '/ask', label: 'To ask', minRole: 'admin' },
   { href: '/settings', label: 'Settings', minRole: 'manager' },
 ];
@@ -137,7 +134,6 @@ export const NAV_EXTERNAL = [
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
-export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
 // Only a Full-timer reads the whole roster — the rules' seesAllContacts().
 export const seesAllPeople = (role: AppRole | string | null) => role === 'admin';
 

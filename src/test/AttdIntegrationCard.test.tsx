@@ -154,8 +154,7 @@ describe('AttdIntegrationCard in Settings', () => {
     });
   });
 
-  it('writes only the hash of a freshly generated token and shows it once (#1968)', async () => {
-    render(<Settings />);
+  it('writes only the hash of a freshly generated token and shows it once (#1968)', async () => {    render(<Settings />);
 
     await waitFor(() => {
       expect(screen.getByText('Generate new token')).toBeInTheDocument();
@@ -177,17 +176,8 @@ describe('AttdIntegrationCard in Settings', () => {
     const revealed = writeText.mock.calls[0][0] as string;
     expect(payload.attdSyncTokenHash).toBe(sha256(revealed));
 
-    // Rotation is audited against the vault's log (ADR 0052).
-    await waitFor(() => {
-      expect(addDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'credentialAudit' }),
-        expect.objectContaining({
-          actorUid: 'admin-1',
-          credentialId: 'attd-sync-token',
-          action: 'rotate',
-        }),
-      );
-    });
+    // The activity log is cut (cut-or-keep §3): rotation writes no audit row.
+    expect(addDoc).not.toHaveBeenCalled();
   });
 
   it('offers Rotate and no reveal control once a hash is stored (#1968)', async () => {

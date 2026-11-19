@@ -810,11 +810,10 @@ describe('Directory', () => {
     fireEvent.click(moreBtn);
     expect(moreBtn).toHaveAttribute('aria-expanded', 'true');
 
-    // Check menu items
-    const combineItem = screen.getAllByRole('menuitem', { name: /combine tags/i })[0];
+    // Check menu items (Combine tags is cut — cut-or-keep §11)
     const tagGenderItem = screen.getByRole('menuitem', { name: /Tag M\/F/i });
     const smartImportItem = screen.getByRole('menuitem', { name: /smart import/i });
-    expect(combineItem).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /combine tags/i })).not.toBeInTheDocument();
     expect(tagGenderItem).toBeInTheDocument();
     expect(smartImportItem).toBeInTheDocument();
 
@@ -846,11 +845,9 @@ describe('Directory', () => {
       expect(screen.queryByText('Tag M / F')).not.toBeInTheDocument();
     });
 
-    // Reopen and test Combine Tags item navigates to its own page (#1435)
+    // Combine tags is cut (cut-or-keep §11): the menu has no such item.
     fireEvent.click(moreBtn);
-    const newCombineItem = await screen.findByRole('menuitem', { name: /combine tags/i });
-    fireEvent.click(newCombineItem);
-    expect(mockNavigate).toHaveBeenCalledWith('/directory/combine-tags');
+    expect(screen.queryByRole('menuitem', { name: /combine tags/i })).not.toBeInTheDocument();
   });
 
   it('navigates to the Combine contacts page from the admin action', async () => {

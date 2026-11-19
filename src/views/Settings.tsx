@@ -14,7 +14,6 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../lib/firebase';
-import { writeCredentialAudit } from '../lib/credentialVault';
 import { AppUser, Contact, Invitation, Stage } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
@@ -1379,7 +1378,7 @@ function AttdIntegrationCard({
       .join('');
   };
 
-  const writeToken = async (token: string, audit: boolean) => {
+  const writeToken = async (token: string) => {
     setIsGenerating(true);
     setSaveStatus(null);
     try {
@@ -1397,9 +1396,6 @@ function AttdIntegrationCard({
         },
         { merge: true },
       );
-      if (audit && currentUser?.uid) {
-        await writeCredentialAudit(currentUser.uid, 'rotate', 'attd-sync-token');
-      }
       setRevealedToken(token);
       setSaveStatus(t('attendanceSync.attd_token_saved', 'Sync token updated successfully'));
     } catch (e: any) {
@@ -1415,14 +1411,14 @@ function AttdIntegrationCard({
     const generated = Array.from(crypto.getRandomValues(new Uint8Array(24)))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
-    await writeToken(generated, true);
+    await writeToken(generated);
   };
 
   // Explicit, never on load: while `attdSyncToken` is plaintext it is the last
   // readable copy of the secret, and the one pasted into ~/attd may have drifted.
   const handleActivateHashedToken = async () => {
     if (!legacyToken) return;
-    await writeToken(legacyToken, false);
+    await writeToken(legacyToken);
   };
 
   return (

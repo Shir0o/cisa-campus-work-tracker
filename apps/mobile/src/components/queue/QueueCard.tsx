@@ -36,16 +36,12 @@ import {
 } from './atoms';
 
 export interface QueueCardApi {
-  /** Can this role actually open The Board? A trainee can't, so the due card
-   *  hides the button rather than offering a door that doesn't open. */
-  canBoard: boolean;
   /** Dealt with — gone from the queue for the day. */
   handle: (cardId: string) => void;
   /** Not now — back of the queue. */
   later: (cardId: string) => void;
   markDone: (taskId: string) => void;
   pushToTomorrow: (taskId: string) => void;
-  openBoardDoc: (docId?: string | null) => void;
   /** `card` is passed from a msg card, so opening the person reads its stream. */
   openContact: (contactId: string, tab?: 'thread' | 'prayer', card?: QueueCardData) => void;
   openReply: (card: QueueCardData) => void;
@@ -178,15 +174,6 @@ export function QueueCard({
         tone: 'due',
         primary: { title: 'Mark it done', icon: 'checkmark-circle', onPress: () => api.markDone(t.id) },
         actions: [
-          ...(api.canBoard
-            ? [
-                {
-                  title: t.sourceDocId ? 'Open the page' : 'Open The Board',
-                  icon: 'document-text-outline' as const,
-                  onPress: () => api.openBoardDoc(t.sourceDocId),
-                },
-              ]
-            : []),
           { title: 'Push to tomorrow', icon: 'calendar-outline', onPress: () => api.pushToTomorrow(t.id) },
         ],
         body: () => (
@@ -196,9 +183,6 @@ export function QueueCard({
               {t.createdByName
                 ? `${firstName(t.createdByName)} put this on the page and put your name on it.`
                 : 'This one has your name on it.'}
-              {/* Naming a page they can't open just raises a question they can't
-                  answer — the design gates this line on canBoard too. */}
-              {t.sourceDocTitle && api.canBoard ? ` It came from ${t.sourceDocTitle}.` : ''}
             </Why>
           </>
         ),

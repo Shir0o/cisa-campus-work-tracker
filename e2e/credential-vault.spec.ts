@@ -45,16 +45,14 @@ test('a Full-timer opens the vault, unlocks, adds an entry, and a reload locks i
 
   await expect(page.getByRole('heading', { name: VAULT_ENTRY.label })).toBeVisible({ timeout: 10_000 });
 
-  // Masked until reveal, and the reveal is the audited event.
+  // Masked until reveal.
   const password = page.getByTestId('vault-password').first();
   await expect(password).toHaveText('••••••••');
   await page.getByRole('button', { name: 'Show password' }).first().click();
   await expect(password).toHaveText(VAULT_ENTRY.password);
 
-  // The audit is readable, not merely written.
-  await page.getByText('Recent activity').click();
-  await expect(page.getByText('Unlocked the vault').first()).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Revealed a password').first()).toBeVisible({ timeout: 10_000 });
+  // The activity log is cut (cut-or-keep §3): no feed is rendered.
+  await expect(page.getByText('Recent activity')).toHaveCount(0);
 
   // A new entry round-trips through the real write path.
   await page.getByRole('button', { name: 'Add an entry' }).click();

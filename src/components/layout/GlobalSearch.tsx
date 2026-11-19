@@ -10,7 +10,6 @@ import {
   Compass,
   User,
   MessageSquare,
-  FileText,
   Clock,
   Keyboard,
   ExternalLink as ExternalLinkIcon,
@@ -54,16 +53,6 @@ const TONE_NODE: Record<Tone, string> = {
   neutral: 'bg-surface-container-highest text-on-surface-variant',
 };
 
-interface BoardNote {
-  id: string;
-  type?: 'record' | 'learning';
-  title: string;
-  body?: string;
-  series?: string;
-  tags?: string[];
-  updatedByName?: string;
-}
-
 interface NavItem {
   key: string;
   run: () => void;
@@ -82,7 +71,6 @@ export default function GlobalSearch() {
   const navigate = useNavigate();
 
   const isStaff = isManager; // Trainee+ (manager/admin)
-  const isFullStaff = isAdmin; // Full-timer
   // The rules deny anyone who can't see every person the whole activity feed.
   const seesHistory = canSeeHistory(role);
   const currentUid = auth.currentUser?.uid || '';
@@ -95,7 +83,6 @@ export default function GlobalSearch() {
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [boardNotes, setBoardNotes] = useState<BoardNote[]>([]);
   const [activities, setActivities] = useState<(SystemActivity & { id: string })[]>([]);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -150,16 +137,6 @@ export default function GlobalSearch() {
       : subscribeTiedSubcollection(currentUid, 'interactions', onDocs, onError);
     return () => unsub();
   }, [searchOpen, isStaff, role, currentUid]);
-
-  useEffect(() => {
-    if (!searchOpen || !isFullStaff) return;
-    const unsub = onSnapshot(
-      collection(db, 'board_notes'),
-      (snap) => setBoardNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as BoardNote[]),
-      (err) => console.error('GlobalSearch board listener:', err),
-    );
-    return () => unsub();
-  }, [searchOpen, isFullStaff]);
 
   useEffect(() => {
     if (!searchOpen || !seesHistory || !inclHistory) return;
@@ -225,19 +202,6 @@ export default function GlobalSearch() {
       .filter((i) => (i.content || '').toLowerCase().includes(ql))
       .slice(0, GS_MAX);
   }, [hasQ, ql, isStaff, interactions]);
-
-  const boardResults = useMemo(() => {
-    if (!hasQ || !isFullStaff) return [];
-    return boardNotes
-      .filter(
-        (n) =>
-          (n.title || '').toLowerCase().includes(ql) ||
-          (n.body || '').toLowerCase().includes(ql) ||
-          (n.series || '').toLowerCase().includes(ql) ||
-          (n.tags || []).some((t) => t.toLowerCase().includes(ql)),
-      )
-      .slice(0, GS_MAX);
-  }, [hasQ, ql, isFullStaff, boardNotes]);
 
   // Every place the current role can reach — the top bar's tabs + More menu, so
   // ⌘K can jump anywhere, not just search. ("Everything is reachable from search".)
@@ -369,19 +333,13 @@ export default function GlobalSearch() {
     );
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
-    boardResults.forEach((n) =>
-      navItems.push({
-        key: `b:${n.id}`,
-        run: () => go('/coordination', { focusNoteId: n.id, focusDocId: (n as { sessionId?: string }).sessionId }),
-      }),
-    );
     historyResults.forEach((a) => navItems.push({ key: `h:${a.id}`, run: () => go('/history') }));
   }
   const indexByKey: Record<string, number> = {};
   navItems.forEach((it, idx) => (indexByKey[it.key] = idx));
 
   const hasResults = hasQ
-    ? peopleResults.length + convResults.length + boardResults.length + historyResults.length + destResults.length > 0
+    ? peopleResults.length + convResults.length + historyResults.length + destResults.length > 0
     : true;
 
   // Keep latest nav state in a ref so the keydown handler stays stable.
@@ -659,25 +617,6 @@ export default function GlobalSearch() {
                   />
                 );
               })}
-            </div>
-          )}
-
-          {boardResults.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.coordination_notes')}</GroupLabel>
-              {boardResults.map((n) => (
-                <Row
-                  key={n.id}
-                  navKey={`b:${n.id}`}
-                  tone="teal"
-                  icon={FileText}
-                  title={n.title}
-                  sub={[n.type === 'learning' ? t('search.learning') : t('search.record'), n.series]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  onClick={() => go('/coordination')}
-                />
-              ))}
             </div>
           )}
 

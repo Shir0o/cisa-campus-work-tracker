@@ -12,7 +12,6 @@ import {
   Trash2,
   Unlock,
 } from "lucide-react";
-import { useAuth } from "../components/AuthProvider";
 import { useLanguage } from "../components/LanguageProvider";
 import PageContainer from "../components/layout/PageContainer";
 import { cn } from "../lib/utils";
@@ -24,15 +23,10 @@ import {
   deleteEntry,
   resetVault,
   rotatePassphrase,
-  subscribeCredentialAudit,
   subscribeVaultEntries,
   subscribeVaultMeta,
   unlockVault,
   updateEntry,
-  writeCredentialAudit,
-  VAULT_AUDIT_ID,
-  type CredentialAction,
-  type CredentialAuditRow,
   type VaultEntryDoc,
   type VaultMeta,
 } from "../lib/credentialVault";
@@ -43,32 +37,15 @@ import {
 // in this page's state for the session only. A reload re-prompts, Lock drops
 // the key and every decrypted field, and nothing about the passphrase is
 // rendered once it has been used.
-//
-// The audit feed below the list is the readable half of the log the rules keep
-// append-only: who unlocked, what was revealed or copied, and when.
 
 const EMPTY_ENTRY: VaultEntry = { label: "", username: "", password: "", url: "", notes: "" };
 
-const ACTIVITY_KEYS: Record<CredentialAction, [string, string]> = {
-  unlock: ["vault.action_unlock", "Unlocked the vault"],
-  "unlock-failed": ["vault.action_unlock_failed", "Wrong passphrase"],
-  reveal: ["vault.action_reveal", "Revealed a password"],
-  copy: ["vault.action_copy", "Copied a password"],
-  create: ["vault.action_create", "Added an entry"],
-  update: ["vault.action_update", "Edited an entry"],
-  delete: ["vault.action_delete", "Deleted an entry"],
-  rotate: ["vault.action_rotate", "Changed the passphrase"],
-};
-
 export default function CredentialVault() {
-  const { user } = useAuth();
   const { t } = useLanguage();
-  const uid = user?.uid ?? "";
 
   const [meta, setMeta] = useState<VaultMeta | null>(null);
   const [metaKnown, setMetaKnown] = useState(false);
   const [entries, setEntries] = useState<VaultEntryDoc[]>([]);
-  const [audit, setAudit] = useState<CredentialAuditRow[]>([]);
 
   // The only place the key ever lives.
   const [key, setKey] = useState<CryptoKey | null>(null);
@@ -106,11 +83,9 @@ export default function CredentialVault() {
       setMetaKnown(true);
     });
     const unsubEntries = subscribeVaultEntries(setEntries);
-    const unsubAudit = subscribeCredentialAudit(setAudit);
     return () => {
       unsubMeta();
       unsubEntries();
-      unsubAudit();
     };
   }, []);
 
@@ -191,11 +166,6 @@ export default function CredentialVault() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, meta, keySalt]);
 
-  const remember = (action: CredentialAction, credentialId: string = VAULT_AUDIT_ID, field?: string) => {
-    if (!uid) return;
-    void writeCredentialAudit(uid, action, credentialId, field);
-  };
-
   const unlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passphrase || busy) return;
@@ -224,12 +194,10 @@ export default function CredentialVault() {
         }
         setKey(nextKey);
         setPassphrase("");
-        remember("unlock");
         return;
       }
       const attempt = await unlockVault(passphrase, meta);
       if (!attempt.ok) {
-        remember("unlock-failed");
         setPassphrase("");
         // Deliberately the same sentence whatever is inside: a wrong
         // passphrase must not tell anyone whether the vault is empty.
@@ -239,7 +207,6 @@ export default function CredentialVault() {
       setKey(attempt.key);
       setKeySalt({ kind: "known", salt: meta.salt });
       setPassphrase("");
-      remember("unlock");
     } catch {
       setError(t("vault.unlock_failed", "The vault could not be opened. Please try again."));
     } finally {
@@ -255,11 +222,9 @@ export default function CredentialVault() {
       if (editing === "new") {
         const id = await createEntry(key, draft);
         setPlain((current) => ({ ...current, [id]: draft }));
-        remember("create", id);
       } else if (editing) {
         await updateEntry(editing, key, draft);
         setPlain((current) => ({ ...current, [editing]: draft }));
-        remember("update", editing);
       }
       setEditing(null);
     } catch {
@@ -279,7 +244,6 @@ export default function CredentialVault() {
         delete next[id];
         return next;
       });
-      remember("delete", id);
       setConfirmDelete(null);
     } catch {
       setError(t("vault.delete_failed", "That entry could not be deleted. Please try again."));
@@ -289,14 +253,12 @@ export default function CredentialVault() {
   };
 
   const toggleReveal = (id: string) => {
-    const wasOpen = revealed.has(id);
     setRevealed((current) => {
       const next = new Set(current);
-      if (wasOpen) next.delete(id);
+      if (current.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-    if (!wasOpen) remember("reveal", id, "password");
   };
 
   const copy = async (id: string) => {
@@ -304,7 +266,6 @@ export default function CredentialVault() {
     if (!secret) return;
     try {
       await navigator.clipboard.writeText(secret);
-      remember("copy", id, "password");
       setNotice(t("vault.copied", "Password copied."));
     } catch {
       setError(t("vault.copy_failed", "The password could not be copied."));
@@ -320,7 +281,7 @@ export default function CredentialVault() {
     const previousSalt = keySalt;
     setKeySalt({ kind: "pending", from: meta.salt });
     try {
-      const nextKey = await rotatePassphrase(uid, key, nextPassphrase, entries, meta.iterations);
+      const nextKey = await rotatePassphrase(key, nextPassphrase, entries, meta.iterations);
       setKey(nextKey);
       // Every blob was re-sealed under the new key, so the old plaintext map
       // is stale; clearing it makes the decrypt effect re-read the new ones.
@@ -346,7 +307,7 @@ export default function CredentialVault() {
     const previousSalt = keySalt;
     setKeySalt({ kind: "pending", from: meta.salt });
     try {
-      const nextKey = await resetVault(uid, resetPassphrase, entries);
+      const nextKey = await resetVault(resetPassphrase, entries);
       setKey(nextKey);
       setPlain({});
       setPlainIv({});
@@ -362,11 +323,6 @@ export default function CredentialVault() {
       setBusy(false);
     }
   };
-
-  const entryName = (credentialId: string) =>
-    credentialId === VAULT_AUDIT_ID
-      ? t("vault.activity_vault", "The vault")
-      : (plain[credentialId]?.label ?? t("vault.activity_unknown", "An entry"));
 
   return (
     <PageContainer variant="reading">
@@ -729,35 +685,6 @@ export default function CredentialVault() {
           )}
         </>
       )}
-
-      <section className="rounded-3xl border border-outline-variant/60 bg-surface mt-6">
-        <details className="p-6">
-          <summary className="cursor-pointer font-serif text-lg text-on-surface font-semibold select-none">
-            {t("vault.activity_title", "Recent activity")}
-          </summary>
-          <p className="text-xs text-on-surface-variant mt-2 m-0">
-            {t("vault.activity_sub", "The last 20 things done here. Rows cannot be edited or removed.")}
-          </p>
-          {audit.length === 0 ? (
-            <p className="text-sm text-on-surface-variant mt-3 mb-0">{t("vault.activity_empty", "Nothing yet.")}</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-outline-variant/40 list-none p-0 m-0">
-              {audit.map((row) => {
-                const [keyName, fallback] = ACTIVITY_KEYS[row.action];
-                return (
-                  <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-x-3 py-2 text-sm">
-                    <span className="text-on-surface">{t(keyName, fallback)}</span>
-                    <span className="text-xs text-on-surface-variant">
-                      {entryName(row.credentialId)}
-                      {row.createdAt ? ` · ${new Date(row.createdAt.toMillis()).toLocaleString()}` : ""}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </details>
-      </section>
     </PageContainer>
   );
 }

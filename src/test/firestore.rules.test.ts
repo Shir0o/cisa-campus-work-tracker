@@ -1463,21 +1463,6 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(admin, 'combineRecords/r1'), { status: 'undone' }));
       await assertFails(deleteDoc(doc(admin, 'combineRecords/r1')));
     });
-
-    it('applies the same gate to a tags combine record (#1435)', async () => {
-      await seed();
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'combineRecords/t1'), {
-          kind: 'tags',
-          status: 'done',
-          combines: [],
-        });
-      });
-      const admin = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(getDoc(doc(admin, 'combineRecords/t1')));
-      await assertFails(setDoc(doc(admin, 'combineRecords/t2'), { kind: 'tags' }));
-      await assertFails(updateDoc(doc(admin, 'combineRecords/t1'), { status: 'undone' }));
-    });
   });
 
   // A Not the same person mark (ADR 0038, #1432) is a Full-timer's remembered
@@ -2316,7 +2301,7 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('The Board (board_sessions + board_notes)', () => {
+  describe('The Board (board_sessions)', () => {
     const validSession = {
       event: 'Friday Night Gathering',
       date: '2026-05-15',
@@ -2365,14 +2350,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(ref));
     });
 
-    it('BD2: Admin can create then delete a board note', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'admin1' });
-      const ref = doc(db, 'board_notes', 'bn1');
-      await assertSucceeds(setDoc(ref, validNote));
-      await assertSucceeds(deleteDoc(ref));
-    });
-
     it('BD3: Viewer cannot read or write the board', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -2381,7 +2358,6 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'viewer1' });
       await assertFails(getDoc(doc(db, 'board_sessions', 'bs1')));
       await assertFails(setDoc(doc(db, 'board_sessions', 'bs2'), validSession));
-      await assertFails(setDoc(doc(db, 'board_notes', 'bn2'), validNote));
     });
 
     it('BD4: Rejects a malformed session (missing required fields)', async () => {
@@ -2431,25 +2407,27 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'board_docs', 'bdX'), { title: 'No date or md' }));
     });
 
-    // ── Audience-scoped reads (Session 3) ───────────────────────────────────
-    it('BD9: Trainee (manager) reads trainees + everyone pages, never team', async () => {
+    // ── Trainee read access is cut (cut-or-keep §19) ────────────────────────
+    it('BD9: a Trainee reads no board page at any audience', async () => {
       await seedRoles();
       await seedBoardDoc('bd-team', 'team');
       await seedBoardDoc('bd-trainees', 'trainees');
       await seedBoardDoc('bd-everyone', 'everyone');
       await seedBoardDoc('bd-legacy'); // no audience → team-private
       const db = getFirestore({ uid: 'manager1' });
-      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-trainees')));
-      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-everyone')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-trainees')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-everyone')));
       await assertFails(getDoc(doc(db, 'board_docs', 'bd-team')));
       await assertFails(getDoc(doc(db, 'board_docs', 'bd-legacy')));
+      await assertFails(getDocs(collection(db, 'board_docs')));
     });
 
-    it('BD11: Trainee/Student can read but never write board pages', async () => {
+    it('BD11: Trainee/Student can read and write no board page', async () => {
       await seedRoles();
       await seedBoardDoc('bd-everyone', 'everyone');
       const trainee = getFirestore({ uid: 'manager1' });
       const student = getFirestore({ uid: 'operator1' });
+      await assertFails(getDoc(doc(trainee, 'board_docs', 'bd-everyone')));
       await assertFails(setDoc(doc(trainee, 'board_docs', 'bd-new'), { ...validDoc, audience: 'everyone' }));
       await assertFails(setDoc(doc(student, 'board_docs', 'bd-new2'), { ...validDoc, audience: 'everyone' }));
       // Admin write with a valid audience succeeds; an invalid audience is rejected.
@@ -2458,15 +2436,14 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(admin, 'board_docs', 'bd-bad'), { ...validDoc, audience: 'world' }));
     });
 
-    it('BD12: The notes archive is Full-timer + Trainee read; Student denied', async () => {
+    it('BD12: the notes archive is cut — board_notes has no match at all', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'board_notes', 'bn1'), validNote);
       });
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'manager1' }), 'board_notes', 'bn1')));
-      await assertFails(getDoc(doc(getFirestore({ uid: 'operator1' }), 'board_notes', 'bn1')));
-      // Trainees still cannot write to the archive.
-      await assertFails(setDoc(doc(getFirestore({ uid: 'manager1' }), 'board_notes', 'bn2'), validNote));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'admin1' }), 'board_notes', 'bn1')));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'manager1' }), 'board_notes', 'bn1')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'admin1' }), 'board_notes', 'bn2'), validNote));
     });
   });
 
@@ -4783,52 +4760,16 @@ describeRules('Firestore Security Rules', () => {
       }
     });
 
-    it('a Full-timer appends to the credential audit log and reads it back', async () => {
+    it('the credential audit log is cut: even a Full-timer is denied', async () => {
       await seedVaultUsers();
       const db = fullTimer();
-      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry()));
-      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-2'), auditEntry({
-        credentialId: 'attd-sync-token',
-        action: 'rotate',
-        field: 'attdSyncTokenHash',
-      })));
-      await assertSucceeds(getDoc(doc(db, 'credentialAudit', 'aud-1')));
-      const all = await assertSucceeds(getDocs(collection(db, 'credentialAudit')));
-      expect(all.size).toBe(2);
-    });
-
-    it('keeps the credential audit log append-only, even for a Full-timer', async () => {
-      await seedVaultUsers();
-      const db = fullTimer();
-      await assertSucceeds(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry()));
-      await assertFails(updateDoc(doc(db, 'credentialAudit', 'aud-1'), { action: 'copy' }));
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'credentialAudit', 'aud-1'), auditEntry());
+      });
+      await assertFails(getDoc(doc(db, 'credentialAudit', 'aud-1')));
+      await assertFails(getDocs(collection(db, 'credentialAudit')));
+      await assertFails(setDoc(doc(db, 'credentialAudit', 'aud-2'), auditEntry()));
       await assertFails(deleteDoc(doc(db, 'credentialAudit', 'aud-1')));
-      // A setDoc onto an existing id is an update, so it is refused too.
-      await assertFails(setDoc(doc(db, 'credentialAudit', 'aud-1'), auditEntry({ action: 'copy' })));
-    });
-
-    it('refuses a credential audit entry that spoofs the actor, the action or the time', async () => {
-      await seedVaultUsers();
-      const db = fullTimer();
-      const write = (id: string, over: Record<string, unknown>) =>
-        setDoc(doc(db, 'credentialAudit', id), auditEntry(over));
-      await assertFails(write('aud-uid', { actorUid: 'vault-trainee' }));
-      await assertFails(write('aud-action', { action: 'read' }));
-      await assertFails(write('aud-time', { createdAt: new Date('2020-01-01') }));
-      await assertFails(write('aud-field', { field: 42 }));
-      await assertFails(write('aud-ghost', { userId: 'vault-ft' }));
-      // The allowed shape still lands, including the optional field.
-      await assertSucceeds(write('aud-ok', { action: 'copy', field: 'password' }));
-    });
-
-    it('denies a Trainee, Student and Community the credential audit log', async () => {
-      await seedVaultUsers();
-      await assertSucceeds(setDoc(doc(fullTimer(), 'credentialAudit', 'aud-1'), auditEntry()));
-      for (const db of outsiderDbs()) {
-        await assertFails(getDoc(doc(db, 'credentialAudit', 'aud-1')));
-        await assertFails(getDocs(collection(db, 'credentialAudit')));
-        await assertFails(setDoc(doc(db, 'credentialAudit', 'aud-2'), auditEntry()));
-      }
     });
   });
 
