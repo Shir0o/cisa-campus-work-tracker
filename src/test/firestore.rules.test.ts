@@ -705,6 +705,79 @@ describeRules('Firestore Security Rules', () => {
         }));
       });
     });
+
+    // §21: team prayer is per person, a boolean on the contact. Any approved
+    // teammate who can update the person may write it (the same people who
+    // could set the per-prayer flag); a non-boolean is refused. Bringing them
+    // to the team also clears the removal in the same write.
+    describe('team prayer per person (§21)', () => {
+      const seed = async (contact: Record<string, unknown> = {}) => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          const adminDb = context.firestore();
+          await setDoc(doc(adminDb, 'users', 'teammate1'), { role: 'manager', approved: true });
+          await setDoc(doc(adminDb, 'users', 'teammate2'), { role: 'manager', approved: true });
+          await setDoc(doc(adminDb, 'users', 'admin1'), { role: 'admin', approved: true });
+          await setDoc(doc(adminDb, 'contacts', 'contact-team'), {
+            name: 'Test',
+            email: 'test@example.com',
+            visibleTo: ['teammate1'],
+            ...contact,
+          });
+        });
+      };
+
+      const stamp = (uid: string) => ({
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        updatedByName: 'Teammate One',
+      });
+
+      it('lets a tied Trainee put a person on team prayer, and take them off', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: true, ...stamp('teammate1') }));
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: false, ...stamp('teammate1') }));
+      });
+
+      it('lets a Full-timer who is not in visibleTo set it', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'admin1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: true, ...stamp('admin1') }));
+      });
+
+      it('brings them to the team and clears the removal in one write', async () => {
+        await seed({
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'teammate2', byName: 'Teammate Two' },
+        });
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact-team'), {
+          teamPrayer: true,
+          prayerListRemoved: deleteField(),
+          ...stamp('teammate1'),
+        }));
+      });
+
+      it('lets a teammate take a person off even when someone else removed them', async () => {
+        await seed({
+          teamPrayer: true,
+          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'teammate2', byName: 'Teammate Two' },
+        });
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: false, ...stamp('teammate1') }));
+      });
+
+      it('rejects a non-boolean teamPrayer', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'teammate1' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: 'yes', ...stamp('teammate1') }));
+      });
+
+      it('denies a teammate who cannot see the person', async () => {
+        await seed();
+        const db = getFirestore({ uid: 'teammate2' });
+        await assertFails(updateDoc(doc(db, 'contacts', 'contact-team'), { teamPrayer: true, ...stamp('teammate2') }));
+      });
+    });
   });
 
   describe('Your sheep carers (#1051)', () => {
@@ -1973,7 +2046,11 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(getFirestore({ uid: 'pending1' }), 'prayers', 'prayer-edit'), edit));
     });
 
-    it('lets a teammate toggle teamPrayer, rejects a non-boolean, and denies an unapproved account', async () => {
+    // §21 moved the page's flag to the person, but a prayer doc can still
+    // carry one — the data stays, and the off-page repair script writes
+    // `teamPrayer: false` onto old rows. The shape stays writable: a teammate
+    // may set it, a non-boolean is refused, and an unapproved account is denied.
+    it('lets a teammate toggle a prayer’s teamPrayer flag, rejects a non-boolean, and denies an unapproved account', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'teammate1'), { role: 'manager', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'manager', approved: false });
@@ -1991,36 +2068,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(updateDoc(ref('teammate1'), flip(false)));
       await assertFails(updateDoc(ref('teammate1'), flip('yes')));
       await assertFails(updateDoc(ref('pending1'), flip(true)));
-    });
-
-    // "Bring to team prayer" is one batch: the prayer flag plus clearing the
-    // contact's team-wide removal, stamped with ISO strings (setPrayerTeamPrayer).
-    it('lets a teammate bring a prayer to the team and clear the contact removal in one batch; denies an unapproved account', async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        const fs = context.firestore();
-        await setDoc(doc(fs, 'users', 'teammate1'), { role: 'manager', approved: true });
-        await setDoc(doc(fs, 'users', 'pending1'), { role: 'manager', approved: false });
-        await setDoc(doc(fs, 'contacts', 'contact-batch'), {
-          name: 'Test',
-          email: 'test@example.com',
-          visibleTo: ['teammate1'],
-          prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'teammate2', byName: 'Teammate Two' },
-        });
-        await setDoc(doc(fs, 'prayers', 'prayer-batch'), {
-          contactId: 'contact-batch', burden: 'Peace', status: 'pending', teamPrayer: false,
-          updatedAt: '2026-10-16T00:00:00.000Z',
-        });
-      });
-      const run = (uid: string) => {
-        const fs = getFirestore({ uid });
-        const stamp = { updatedAt: '2026-10-19T00:00:00.000Z', updatedBy: uid, updatedByName: 'X' };
-        const batch = writeBatch(fs);
-        batch.update(doc(fs, 'prayers', 'prayer-batch'), { teamPrayer: true, ...stamp });
-        batch.update(doc(fs, 'contacts', 'contact-batch'), { prayerListRemoved: deleteField(), ...stamp });
-        return batch.commit();
-      };
-      await assertFails(run('pending1'));
-      await assertSucceeds(run('teammate1'));
     });
 
     it('rejects a prayer with more than 4 answeredPhotos', async () => {

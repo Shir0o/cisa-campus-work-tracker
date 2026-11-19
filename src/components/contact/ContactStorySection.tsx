@@ -5,6 +5,7 @@ import ContactStory from "./ContactStory";
 import ContactInteractionItem from "./ContactInteractionItem";
 import ContactPrayerCard from "./ContactPrayerCard";
 import { canRemoveInteraction } from "../../lib/interactionRemoval";
+import { isOnTeamPrayer } from "../../lib/prayers";
 import ContactComposer from "./ContactComposer";
 import type { ContactTeamMember } from "./types";
 import {
@@ -32,8 +33,11 @@ export interface ContactStorySectionProps {
     data: { content: string; dateTime?: string; type?: string },
   ): Promise<void>;
   onUpdatePrayerStatus: (prayer: PrayerRecord, status: PrayerRecord["status"]) => void;
-  onSetPrayerTeamPrayer: (prayer: PrayerRecord, teamPrayer: boolean) => void;
+  onSetPrayerTeamPrayer: (on: boolean) => void;
   onUpdatePrayerBurden(prayer: PrayerRecord, words: { text: string; context: string }): Promise<void>;
+  /** Every prayer of this person, so the team-prayer footer can read the
+   *  transitional per-prayer fallback (§21 fix round 1). */
+  prayers: PrayerRecord[];
   /** The roster, so a story row can show the reacher's portrait (#1669). */
   teamMembers: ContactTeamMember[];
 }
@@ -55,6 +59,7 @@ export default function ContactStorySection({
   onUpdatePrayerStatus,
   onSetPrayerTeamPrayer,
   onUpdatePrayerBurden,
+  prayers,
   teamMembers,
 }: ContactStorySectionProps) {
   const [editingInteractionId, setEditingInteractionId] = useState<string | null>(null);
@@ -118,6 +123,10 @@ export default function ContactStorySection({
   };
 
   // A prayer's words are edited in the composer, in prayer mode (#1674).
+  // The footer (and the "Bring to team prayer" it offers) belongs to the
+  // person, including the team's own removal, which hides them from
+  // "On our hearts" (§21 fix round 1).
+  const onTeam = isOnTeamPrayer(currentContact, prayers);
   const renderPrayerCard = (p: PrayerRecord) =>
     editingPrayerId === p.id ? (
       <ContactComposer
@@ -134,6 +143,7 @@ export default function ContactStorySection({
     ) : (
       <ContactPrayerCard
         prayer={p}
+        onTeam={onTeam}
         canUpdatePrayers={canUpdatePrayers}
         onUpdateStatus={onUpdatePrayerStatus}
         onSetTeamPrayer={onSetPrayerTeamPrayer}

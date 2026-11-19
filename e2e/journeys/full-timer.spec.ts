@@ -434,21 +434,30 @@ test.describe('Full-timer journey (#1477)', () => {
 });
 
 /**
- * Escape row 9 (#1042, #1406): a burden typed on a contact's Prayer composer
- * belongs to that contact. The write carries `teamPrayer: false`, and
- * `isTeamPrayer` reads a MISSING flag as the team's, so dropping that field
- * wrongly surfaces the person on "On our hearts" — the exact escape.
+ * Escape row 9 (#1042, #1406) + §21: team prayer is per person now, not per
+ * prayer. A burden typed on a contact's own Prayer composer belongs to that
+ * contact and does NOT put the person on "On our hearts"; the page shows the
+ * person only while their contact carries `teamPrayer: true`, and then it
+ * shows EVERY prayer of theirs — including one whose retired per-prayer flag
+ * says false.
  */
 test.describe('Full-timer journey — a private burden stays off On our hearts (#1477)', () => {
-  test('a prayer typed on a contact does not put the person on On our hearts', async ({ page }) => {
+  test('a person on team prayer shows all their prayers, and a private burden does not add anyone', async ({ page }) => {
     await signInAs(page, 'fulltimer');
 
-    // Positive control: a seeded team prayer (`teamPrayer: true`) keeps its
-    // person here, so an empty page cannot make the negative below pass.
+    // Positive control: the seeded person carries `teamPrayer: true`, so an
+    // empty page cannot make the negative below pass — and both of their
+    // prayers are here, one of which carries `teamPrayer: false`.
     await page.goto('/prayer');
     await waitForShell(page);
     await expect(page.getByRole('heading', { name: 'On our hearts' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('main').getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText('Settling into the new term after the move.')).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole('main').getByText('A second burden only the person’s own flag kept off.'),
+    ).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Row 9: type the burden on the contact's own Prayer composer.
     const burden = `Kept between us ${Date.now()}`;
@@ -464,11 +473,13 @@ test.describe('Full-timer journey — a private burden stays off On our hearts (
     await expect(story.getByText(burden).first()).toBeVisible({ timeout: 10_000 });
     await waitForDurablePrayer(burden);
 
-    // It belongs to the contact, so the person never reaches the team page.
+    // It belongs to the contact, and the person is not on team prayer, so
+    // neither the person nor the burden reaches the team page.
     await page.goto('/prayer');
     await waitForShell(page);
     await expect(page.getByRole('main').getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(CARE_CONTACT)).toHaveCount(0);
+    await expect(page.getByRole('main').getByText(burden)).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 });

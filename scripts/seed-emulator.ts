@@ -185,15 +185,17 @@ export async function seedEmulator() {
     at: new Date().toISOString(),
   }, { merge: true });
 
-  // A person genuinely on the team prayer list (row 9 positive control): a
-  // prayer written on "On our hearts" carries `teamPrayer: true`, so they must
-  // stay on that page even after a private burden is typed on a contact.
+  // A person genuinely on the team prayer list (row 9 positive control, §21):
+  // team prayer is per person, so the contact carries `teamPrayer: true` and
+  // EVERY prayer of theirs shows on the page — even one whose own old flag is
+  // false. That is the assertion the e2e makes.
   const heldRef = db.collection('contacts').doc('e2e-contact-held');
   await heldRef.set({
     name: 'Held Burden',
     initials: 'HB',
     stage: 'First Contact',
     tags: [],
+    teamPrayer: true,
     createdBy: fulltimerUid || 'fulltimer-uid',
     createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
     visibleTo: [fulltimerUid].filter(Boolean),
@@ -207,6 +209,16 @@ export async function seedEmulator() {
     status: 'pending',
     prayerPage: true,
     teamPrayer: true,
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  // Carries the retired per-prayer flag, false — and still shows, because the
+  // person is on team prayer (§21).
+  await db.collection('prayers').doc('e2e-prayer-held-private').set({
+    contactId: 'e2e-contact-held',
+    date: new Date().toISOString(),
+    burden: 'A second burden only the person’s own flag kept off.',
+    status: 'pending',
+    teamPrayer: false,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 

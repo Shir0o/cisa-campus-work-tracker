@@ -31,6 +31,7 @@ export async function addTeamPrayer(
       updatedByName: by.name || null,
     });
     batch.update(doc(db, "contacts", contactId), {
+      teamPrayer: true,
       prayerListRemoved: deleteField(),
       updatedAt: now,
       updatedBy: by.uid || null,
@@ -109,40 +110,36 @@ export async function updatePrayerStatus(
   }
 }
 
-// Bring a burden to the team prayer page, or take it off. Always writes the
-// flag: deleting it would make the burden count as the team's again. Bringing
-// it to the team also clears the contact's `prayerListRemoved` in the same
-// batch (as addTeamPrayer does) so the person really is on the page; taking it
-// off leaves the contact alone.
-export async function setPrayerTeamPrayer(
-  prayerId: string,
+// Put a person on, or take them off, the team prayer page (§21). The flag lives
+// on the contact now, not on a single prayer: once on, every prayer of theirs
+// shows on "On our hearts". Bringing them to the team also clears the
+// contact's `prayerListRemoved` in the same write (as addTeamPrayer does) so
+// the person really is on the page; taking them off leaves that flag alone.
+export async function setTeamPrayer(
   contactId: string,
-  teamPrayer: boolean,
+  on: boolean,
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   try {
-    const stamp = { updatedAt: new Date().toISOString(), updatedBy: by.uid || null, updatedByName: by.name || null };
-    const batch = writeBatch(db);
-    batch.update(doc(db, "prayers", prayerId), { teamPrayer, ...stamp });
-    if (teamPrayer) batch.update(doc(db, "contacts", contactId), { prayerListRemoved: deleteField(), ...stamp });
-    await batch.commit();
+    const patch: Record<string, unknown> = {
+      teamPrayer: on,
+      updatedAt: new Date().toISOString(),
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    };
+    if (on) patch.prayerListRemoved = deleteField();
+    await updateDoc(doc(db, "contacts", contactId), patch);
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}`);
   }
 }
 
 /**
- * Whether a burden belongs on the team prayer page ("On our hearts"). Mirrors
- * `isTeamPrayer` in packages/core/src/prayerThread.ts — keep the two in step.
- *
- * An ABSENT flag means team: every prayer written before the phone's "Bring it
- * to team prayer" toggle existed stays exactly where it was, so this page needs
- * no backfill. That is why this is a function and not `p.teamPrayer` at the
- * call site.
+ * The team-prayer reading moved to src/lib/teamPrayer.ts so the migration
+ * planner can import it without the Firebase client. Re-exported here so the
+ * page, the cards and the parity test keep one import path.
  */
-export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
-  return p.teamPrayer !== false;
-}
+export { isTeamPrayer, isOnTeamPrayer } from "./teamPrayer";
 
 /**
  * Splits a display name ("First Last" / "First Middle Last") into first and

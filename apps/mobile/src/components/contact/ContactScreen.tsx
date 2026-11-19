@@ -34,7 +34,7 @@ import {
   firstName,
   ftAssignees,
   hasMinRole,
-  isTeamPrayer,
+  isOnTeamPrayer,
   lastTimeLine,
   parseMs,
   prayerCardKicker,
@@ -419,9 +419,10 @@ function Person({ contactId, initialTab }: ContactScreenProps) {
                 name={first}
                 prayed={!!queueState.handled[prayerCardId(prayer.id)]}
                 canWrite={canWrite}
+                onTeam={isOnTeamPrayer(data.contact ?? {}, data.prayers)}
                 onPrayed={() => queueState.handle(prayerCardId(prayer.id))}
                 onAnswered={() => void data.markPrayerAnswered(prayer)}
-                onSetTeamPrayer={canWrite ? (team) => void data.setPrayerTeamPrayer(prayer, team) : undefined}
+                onSetTeamPrayer={canWrite ? (on) => void data.setTeamPrayer(on) : undefined}
               />
             ))}
 
@@ -756,6 +757,7 @@ function PrayerCard({
   name,
   prayed,
   done,
+  onTeam = false,
   canWrite,
   onPrayed,
   onAnswered,
@@ -766,11 +768,13 @@ function PrayerCard({
   name?: string;
   prayed?: boolean;
   done?: boolean;
+  /** Whether the person — not this prayer — is on team prayer (§21). */
+  onTeam?: boolean;
   canWrite: boolean;
   onPrayed?: () => void;
   onAnswered?: () => void;
-  /** Bring to / take off team prayer. Only the open cards, and only for a writer. */
-  onSetTeamPrayer?: (teamPrayer: boolean) => void;
+  /** Bring the person to / take them off team prayer. Only the open cards, and only for a writer. */
+  onSetTeamPrayer?: (on: boolean) => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -843,9 +847,9 @@ function PrayerCard({
         </View>
       )}
 
-      {!done && (onSetTeamPrayer || isTeamPrayer(prayer)) && (
+      {!done && (onSetTeamPrayer || onTeam) && (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-          {isTeamPrayer(prayer) ? (
+          {onTeam ? (
             <>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 }}>
                 <Ionicons name="people-outline" size={15} color={c.card.tones.pray.text} />

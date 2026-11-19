@@ -28,7 +28,7 @@ import {
 import type { Contact, Stage, Interaction, PrayerRecord, Gathering, Rhythm, SystemActivity } from "../types";
 import { buildContactStory, type StoryEntry } from "../lib/contactStory";
 import { subscribeRhythms } from "../lib/rhythms";
-import { setPrayerTeamPrayer as setPrayerTeamPrayerDoc } from "../lib/prayers";
+import { setTeamPrayer as setTeamPrayerDoc } from "../lib/prayers";
 import { subscribeThreads, type ThreadMessage } from "../lib/threads";
 import {
   subscribeInteractionRemovals,
@@ -83,7 +83,7 @@ export interface ContactStoryActions {
     context?: string;
   }): Promise<void>;
   updatePrayerStatus(prayer: PrayerRecord, status: PrayerRecord["status"], answeredAtText?: string): Promise<void>;
-  setPrayerTeamPrayer(prayer: PrayerRecord, teamPrayer: boolean, by: { uid?: string | null; name?: string | null }): Promise<void>;
+  setTeamPrayer(on: boolean, by: { uid?: string | null; name?: string | null }): Promise<void>;
   updatePrayerBurden(
     prayer: PrayerRecord,
     words: { text: string; context: string },
@@ -603,22 +603,21 @@ export function useContactStory(
     []
   );
 
-  const setPrayerTeamPrayer = useCallback(
+  const setTeamPrayer = useCallback(
     async (
-      prayer: PrayerRecord,
-      teamPrayer: boolean,
+      on: boolean,
       by: { uid?: string | null; name?: string | null },
     ) => {
       const c = currentContactRef.current;
       if (!c?.id) return;
-      await setPrayerTeamPrayerDoc(prayer.id, c.id, teamPrayer, by);
+      await setTeamPrayerDoc(c.id, on, by);
       await logActivity({
-        action: teamPrayer ? "brought a prayer to team prayer for" : "took a prayer off team prayer for",
+        action: on ? "brought to the team's prayer list for" : "took off the team's prayer list for",
         targetId: c.id,
         targetName: c.name,
         targetType: "contact",
         type: "edit",
-        description: prayer.burden,
+        description: on ? "On our hearts" : "Off On our hearts",
       });
     },
     []
@@ -918,7 +917,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
-      setPrayerTeamPrayer,
+      setTeamPrayer,
       updatePrayerBurden,
       moveStage,
       changeKind,
@@ -936,7 +935,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
-      setPrayerTeamPrayer,
+      setTeamPrayer,
       updatePrayerBurden,
       moveStage,
       changeKind,

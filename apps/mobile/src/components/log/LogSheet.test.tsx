@@ -10,7 +10,7 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 jest.mock('../../lib/data/contacts', () => ({}));
 jest.mock('../../lib/data/interactions', () => ({}));
-jest.mock('../../lib/data/prayers', () => ({}));
+jest.mock('../../lib/data/prayers', () => ({ addPrayer: jest.fn(), addTeamPrayer: jest.fn() }));
 jest.mock('../../lib/data/todos', () => ({}));
 jest.mock('../../lib/notifications', () => ({}));
 jest.mock('../../lib/useActiveSeason', () => ({}));

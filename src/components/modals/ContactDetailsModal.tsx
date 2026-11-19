@@ -565,12 +565,12 @@ export default function ContactDetailsModal({
     }
   };
 
-  const handleSetPrayerTeamPrayer = async (prayer: PrayerRecord, teamPrayer: boolean) => {
+  const handleSetPrayerTeamPrayer = async (on: boolean) => {
     if (!contact) return;
     try {
-      await actions.setPrayerTeamPrayer(prayer, teamPrayer, { uid: user?.uid, name: user?.displayName });
+      await actions.setTeamPrayer(on, { uid: user?.uid, name: user?.displayName });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "prayers");
+      handleFirestoreError(error, OperationType.UPDATE, "contacts");
     }
   };
 
@@ -741,6 +741,7 @@ export default function ContactDetailsModal({
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
       onSetPrayerTeamPrayer={handleSetPrayerTeamPrayer}
       onUpdatePrayerBurden={handleUpdatePrayerBurden}
+      prayers={prayers}
       teamMembers={teamMembers}
     />
   );

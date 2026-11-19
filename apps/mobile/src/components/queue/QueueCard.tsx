@@ -10,6 +10,7 @@ import {
   agoPhrase,
   daysAgoWords,
   firstName,
+  isOnTeamPrayer,
   personSubLine,
   prayerCarryLine,
   roleLabel,
@@ -278,7 +279,7 @@ export function QueueCard({
           <>
             {!!c && <WhoBlock name={c.name} id={c.id} sub={personSubLine(c)} />}
             <Said lines={full ? undefined : 4}>“{p.burden}”</Said>
-            <Why>{prayerCarryLine(p, { me })}</Why>
+            <Why>{prayerCarryLine(p, { me, onTeam: c ? isOnTeamPrayer(c, [p]) : false })}</Why>
           </>
         ),
       };

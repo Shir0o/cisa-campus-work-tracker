@@ -69,7 +69,7 @@ import { activitiesPageQuery, countActivities } from '../../packages/core/src/da
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
 import { markGotIt, postAnnouncement, subscribeAnnouncements } from '../../packages/core/src/data/announcements';
 import type { Announcement } from '../../packages/core/src/announcements';
-import { setPrayerTeamPrayer } from '../../packages/core/src/data/prayers';
+import { setTeamPrayer } from '../../packages/core/src/data/prayers';
 import { submitSignUp } from '../../packages/core/src/data/signup';
 import { buildQueue } from '../../packages/core/src/queue';
 import { traineeWaitingItems } from '../../packages/core/src/inbox';
@@ -676,35 +676,28 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await assertFails(getDocs(boardDocsQuery(dbFor(TRAINEE))));
   });
 
-  // ── Team prayer toggle: the flag is written, never deleted ────────────────
-  // The contact prayer card's one-tap toggle (core `setPrayerTeamPrayer`). Bringing
-  // it to the team is a batch that also clears the contact's `prayerListRemoved`.
-  // A tied Trainee may do either; an untied one may not.
-  it('team prayer toggle — a tied Trainee brings a prayer to the team (clearing the contact removal) and takes it off', async () => {
+  // ── Team prayer is per person: the contact's flag is written, not deleted ──
+  // The contact prayer card's one-tap toggle (core `setTeamPrayer`, §21).
+  // Bringing a person to the team is one contact write that also clears the
+  // contact's `prayerListRemoved`. A tied Trainee may do either; an untied one
+  // may not.
+  it('team prayer — a tied Trainee puts a person on the team list (clearing the removal) and takes them off', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'prayers', 'p-toggle'), {
-        contactId: 'c-mine', burden: 'Peace', status: 'pending', teamPrayer: false, updatedAt: ISO,
-      });
       await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
         prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
       });
     });
     const by = { uid: TRAINEE, name: 'Tr' };
-    await expect(setPrayerTeamPrayer(dbFor(TRAINEE), 'p-toggle', 'c-mine', true, by)).resolves.toBeUndefined();
-    expect((await getDoc(doc(dbFor(TRAINEE), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(true);
-    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).not.toHaveProperty('prayerListRemoved');
+    await expect(setTeamPrayer(dbFor(TRAINEE), 'c-mine', true, by)).resolves.toBeUndefined();
+    const onSnap = await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'));
+    expect(onSnap.data()?.teamPrayer).toBe(true);
+    expect(onSnap.data()).not.toHaveProperty('prayerListRemoved');
 
-    await env.withSecurityRulesDisabled(async (ctx) => {
-      await updateDoc(doc(ctx.firestore(), 'contacts', 'c-mine'), {
-        prayerListRemoved: { at: ISO, by: ADMIN, byName: 'Admin' },
-      });
-    });
-    await expect(setPrayerTeamPrayer(dbFor(TRAINEE), 'p-toggle', 'c-mine', false, by)).resolves.toBeUndefined();
-    expect((await getDoc(doc(dbFor(TRAINEE), 'prayers', 'p-toggle'))).data()?.teamPrayer).toBe(false);
-    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()).toHaveProperty('prayerListRemoved'); // untouched
+    await expect(setTeamPrayer(dbFor(TRAINEE), 'c-mine', false, by)).resolves.toBeUndefined();
+    expect((await getDoc(doc(dbFor(ADMIN), 'contacts', 'c-mine'))).data()?.teamPrayer).toBe(false);
   });
 
-  it('team prayer toggle — an untied Trainee is refused (negative)', async () => {
-    await assertFails(setPrayerTeamPrayer(dbFor(OTHER_TRAINEE), 'p-toggle', 'c-mine', true, { uid: OTHER_TRAINEE, name: 'T2' }));
+  it('team prayer — an untied Trainee is refused (negative)', async () => {
+    await assertFails(setTeamPrayer(dbFor(OTHER_TRAINEE), 'c-mine', true, { uid: OTHER_TRAINEE, name: 'T2' }));
   });
 });

@@ -12,11 +12,11 @@ const firestoreMock = vi.hoisted(() => ({
   deleteField: vi.fn(),
 }));
 const REMOVED = { __deleteField: true };
-const batch = vi.hoisted(() => ({ update: vi.fn(), commit: vi.fn() }));
+const batch = vi.hoisted(() => ({ set: vi.fn(), update: vi.fn(), commit: vi.fn() }));
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { addPrayer, setPrayerTeamPrayer } from '../src/data/prayers';
+import { addPrayer, addTeamPrayer, setTeamPrayer } from '../src/data/prayers';
 
 const COLLECTION = { __collection: 'prayers' };
 const by = { uid: 'u1', name: 'Mei Tanaka' };
@@ -51,31 +51,62 @@ describe('addPrayer (packages/core)', () => {
   });
 });
 
-describe('setPrayerTeamPrayer (packages/core)', () => {
+describe('addTeamPrayer (packages/core)', () => {
   beforeEach(() => {
     firestoreMock.doc.mockImplementation((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }));
-    batch.update.mockClear();
-    batch.commit.mockClear();
-    batch.commit.mockResolvedValue(undefined);
   });
 
-  it('brings a burden to the team and clears the contact removal flag in the same batch', async () => {
-    await setPrayerTeamPrayer({} as never, 'p1', 'c1', true, by);
-    const [prayerRef, prayerData] = batch.update.mock.calls[0];
-    expect(prayerRef).toEqual({ path: 'prayers/p1' });
-    expect(prayerData).toMatchObject({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
-    const [contactRef, contactData] = batch.update.mock.calls[1];
+  // Fix round 1: the log sheet's "Bring it to team prayer" makes the burden and
+  // the person's flag one write — a failure writes neither.
+  it('writes the prayer and the person’s team flag in one batch', async () => {
+    await addTeamPrayer({} as never, { contactId: 'c1', burden: ' Peace ' }, by);
+
+    expect(firestoreMock.writeBatch).toHaveBeenCalledTimes(1);
+    expect(firestoreMock.addDoc).not.toHaveBeenCalled();
+    expect(firestoreMock.updateDoc).not.toHaveBeenCalled();
+
+    const [, wrote] = batch.set.mock.calls[0];
+    expect(wrote).toMatchObject({
+      contactId: 'c1',
+      burden: 'Peace',
+      status: 'pending',
+      teamPrayer: true,
+    });
+
+    const [contactRef, patch] = batch.update.mock.calls[0];
     expect(contactRef).toEqual({ path: 'contacts/c1' });
-    expect(contactData).toMatchObject({ prayerListRemoved: REMOVED, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+    expect(patch).toMatchObject({
+      teamPrayer: true,
+      prayerListRemoved: REMOVED,
+      updatedBy: 'u1',
+      updatedByName: 'Mei Tanaka',
+    });
+
     expect(batch.commit).toHaveBeenCalledTimes(1);
   });
+});
 
-  // An absent flag reads as the team's, so taking it off must write false;
-  // the contact is left alone.
-  it('writes an explicit teamPrayer: false and leaves the contact untouched', async () => {
-    await setPrayerTeamPrayer({} as never, 'p1', 'c1', false, by);
-    expect(batch.update).toHaveBeenCalledTimes(1);
-    expect(batch.update.mock.calls[0][0]).toEqual({ path: 'prayers/p1' });
-    expect(batch.update.mock.calls[0][1].teamPrayer).toBe(false);
+describe('setTeamPrayer (packages/core)', () => {
+  beforeEach(() => {
+    firestoreMock.doc.mockImplementation((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') }));
+  });
+
+  it('puts the person on team prayer and clears the team removal in one write', async () => {
+    await setTeamPrayer({} as never, 'c1', true, by);
+    const [ref, data] = firestoreMock.updateDoc.mock.calls[0];
+    expect(ref).toEqual({ path: 'contacts/c1' });
+    expect(data).toMatchObject({
+      teamPrayer: true,
+      prayerListRemoved: REMOVED,
+      updatedBy: 'u1',
+      updatedByName: 'Mei Tanaka',
+    });
+  });
+
+  it('takes the person off without touching the team removal', async () => {
+    await setTeamPrayer({} as never, 'c1', false, by);
+    const [, data] = firestoreMock.updateDoc.mock.calls[0];
+    expect(data).toMatchObject({ teamPrayer: false, updatedBy: 'u1' });
+    expect(data).not.toHaveProperty('prayerListRemoved');
   });
 });

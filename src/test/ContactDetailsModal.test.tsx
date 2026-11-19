@@ -3889,7 +3889,7 @@ describe('contact head, About sheet and kind (#1299)', () => {
         addPrayer: vi.fn(),
         updatePrayerStatus: vi.fn(),
         updatePrayerBurden: vi.fn(),
-        setPrayerTeamPrayer: vi.fn(),
+        setTeamPrayer: vi.fn(),
         moveStage: vi.fn(),
         changeKind: vi.fn(),
         updateContact: vi.fn(),

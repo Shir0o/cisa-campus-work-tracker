@@ -267,7 +267,10 @@ service cloud.firestore {
                  data.prayerListRemoved.at is string && data.prayerListRemoved.at.size() <= 40 &&
                  data.prayerListRemoved.by is string && data.prayerListRemoved.by.size() <= 128 &&
                  (!('byName' in data.prayerListRemoved) || data.prayerListRemoved.byName == null ||
-                  (data.prayerListRemoved.byName is string && data.prayerListRemoved.byName.size() <= 128))));
+                  (data.prayerListRemoved.byName is string && data.prayerListRemoved.byName.size() <= 128)))) &&
+               // §21: team prayer is per person, a plain boolean on the
+               // contact. Absent means off, so this validates the shape only.
+               (!('teamPrayer' in data) || data.teamPrayer is bool);
       }
 
       // Read the tie server-side: a Trainee must appear in `visibleTo`, and
@@ -410,7 +413,11 @@ service cloud.firestore {
           // nobody), while setting the removal must name the caller, so the
           // flag cannot be pinned on someone else. First so this small write
           // short-circuits before the role and tie branches.
-          (keys.hasOnly(['prayerListRemoved', 'updatedAt', 'updatedBy', 'updatedByName']) &&
+          //
+          // §21: `teamPrayer` rides along — bringing a person to team prayer is
+          // one write that also clears their removal, and both are the same
+          // "who we're carrying" decision, open to whoever may update them.
+          (keys.hasOnly(['prayerListRemoved', 'teamPrayer', 'updatedAt', 'updatedBy', 'updatedByName']) &&
            (incoming().get('prayerListRemoved', null) == null ||
             incoming().prayerListRemoved.by == uid)) ||
           // #1526: Release from my queue. The caller appends only their own uid
@@ -452,7 +459,7 @@ service cloud.firestore {
             'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
             'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
             'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
-            'lastSeen', 'avatar', 'hasNewActivity', 'storyMessageIds',
+            'lastSeen', 'avatar', 'hasNewActivity', 'storyMessageIds', 'teamPrayer',
             'lastContactedBy', 'lastContactedById', 'lastContactedDate', 'reachedAt',
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) ||

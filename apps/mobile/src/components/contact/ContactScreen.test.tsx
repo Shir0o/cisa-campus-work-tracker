@@ -6,7 +6,7 @@ import { ContactScreen } from './ContactScreen';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { useAuth } from '../../lib/AuthProvider';
 import { InboxReads } from '../../lib/data/inboxReads';
-import type { Interaction, PrayerRecord, ThreadMessage } from '@cisa/core';
+import type { Contact, Interaction, PrayerRecord, ThreadMessage } from '@cisa/core';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: jest.fn(),
@@ -297,7 +297,17 @@ describe('ContactScreen', () => {
       updatedAt: '2026-08-01T12:00:00.000Z',
       ...over,
     });
-    const renderWith = async (p: PrayerRecord, setPrayerTeamPrayer = jest.fn(), canWrite = true) => {
+    // §21: the footer reads the person, not the prayer. `onTeam` is the
+    // contact's flag; the prayer's retired per-prayer flag is irrelevant.
+    const renderWith = async (
+      onTeam: boolean,
+      setTeamPrayer = jest.fn(),
+      canWrite = true,
+      contact: Partial<Contact> & {
+        prayerListRemoved?: { at: string; by: string; byName?: string | null };
+      } = {},
+      prayers: PrayerRecord[] = [prayer({ teamPrayer: !onTeam })],
+    ) => {
       (useAuth as jest.Mock).mockReturnValue({
         uid: 'user1',
         user: { displayName: 'Staffer' },
@@ -306,8 +316,9 @@ describe('ContactScreen', () => {
       });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
-        prayers: [p],
-        setPrayerTeamPrayer,
+        contact: { ...mockContact, teamPrayer: onTeam, ...contact },
+        prayers,
+        setTeamPrayer,
       });
       return await render(
         <ThemeProvider>
@@ -316,28 +327,58 @@ describe('ContactScreen', () => {
       );
     };
 
-    it('off the team: only "Bring to team prayer", and it brings the prayer', async () => {
+    it('off the team: only "Bring to team prayer", and it brings the person', async () => {
       const set = jest.fn();
-      const { getByText, queryByText } = await renderWith(prayer({ teamPrayer: false }), set);
+      const { getByText, queryByText } = await renderWith(false, set);
       expect(queryByText('On our hearts')).toBeNull();
       await fireEvent.press(getByText('Bring to team prayer'));
-      expect(set).toHaveBeenCalledWith(expect.objectContaining({ id: 'prayer1' }), true);
+      expect(set).toHaveBeenCalledWith(true);
     });
 
     it('on the team: shows the link and "Take off team prayer"', async () => {
       const set = jest.fn();
-      const { getByText } = await renderWith(prayer({ teamPrayer: true }), set);
+      const { getByText } = await renderWith(true, set);
       expect(getByText('On our hearts · Team prayers →')).toBeTruthy();
       await fireEvent.press(getByText('Take off team prayer'));
-      expect(set).toHaveBeenCalledWith(expect.objectContaining({ id: 'prayer1' }), false);
+      expect(set).toHaveBeenCalledWith(false);
     });
 
     it('read-only: the shared line shows without the button; nothing when not shared', async () => {
-      const shared = await renderWith(prayer({ teamPrayer: true }), jest.fn(), false);
+      const shared = await renderWith(true, jest.fn(), false);
       expect(shared.getByText('On our hearts · Team prayers →')).toBeTruthy();
       expect(shared.queryByText('Take off team prayer')).toBeNull();
-      const off = await renderWith(prayer({ teamPrayer: false }), jest.fn(), false);
+      const off = await renderWith(false, jest.fn(), false);
       expect(off.queryByText('Bring to team prayer')).toBeNull();
+    });
+
+    // Fix round 1: a person carrying both the flag and the team's removal is
+    // off the shared list, so the card must offer to bring them back.
+    it('offers "Bring to team prayer" for a person the team removed, even with the flag set', async () => {
+      const set = jest.fn();
+      const { getByText, queryByText } = await renderWith(true, set, true, {
+        prayerListRemoved: { at: '2026-10-01T00:00:00.000Z', by: 'u-admin' },
+      });
+      expect(queryByText('On our hearts · Team prayers →')).toBeNull();
+      expect(queryByText('Take off team prayer')).toBeNull();
+      await fireEvent.press(getByText('Bring to team prayer'));
+      expect(set).toHaveBeenCalledWith(true);
+    });
+
+    // TRANSITIONAL (fix round 1): until the migration runs, an un-stamped
+    // person counts while one of their prayers carries the old flag.
+    it('reads the legacy per-prayer flag while the person has no flag yet', async () => {
+      const { getByText } = await renderWith(false, jest.fn(), true, { teamPrayer: undefined }, [
+        prayer({ teamPrayer: undefined }),
+      ]);
+      expect(getByText('On our hearts · Team prayers →')).toBeTruthy();
+    });
+
+    it('does not fall back when every prayer was kept private', async () => {
+      const { queryByText, getByText } = await renderWith(false, jest.fn(), true, { teamPrayer: undefined }, [
+        prayer({ teamPrayer: false }),
+      ]);
+      expect(queryByText('On our hearts · Team prayers →')).toBeNull();
+      expect(getByText('Bring to team prayer')).toBeTruthy();
     });
   });
 
