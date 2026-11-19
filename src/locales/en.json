@@ -2032,6 +2032,7 @@
     "discard_failed": "Could not discard this draft.",
     "choose_rhythm_error": "Choose a Rhythm before confirming.",
     "confirm_failed": "Could not confirm this sync.",
+    "section_title": "Attendance sync",
     "attd_integration_title": "Attendance Tracker app (~/attd)",
     "attd_integration_blurb": "Rotate the sync token (stored as a hash) and copy the intake endpoint for the attendance app.",
     "attd_integration_desc": "Staff taking attendance in the room can stage their records directly into CISA without requiring a personal Firebase login.",

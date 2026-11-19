@@ -1287,7 +1287,7 @@ function AttendanceSyncSection({ currentUser }: { currentUser: User | null }) {
   return (
     <section className="mt-10">
       <SectionHeader
-        title={t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)')}
+        title={t('attendanceSync.section_title', 'Attendance sync')}
         sub={t(
           'attendanceSync.attd_integration_blurb',
           'Rotate the sync token (stored as a hash) and copy the intake endpoint for the attendance app.',
@@ -3497,7 +3497,7 @@ export default function Settings() {
     },
     {
       id: 'settings-attendance-sync',
-      label: t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)'),
+      label: t('attendanceSync.section_title', 'Attendance sync'),
       visible: isDev && devUnlocked,
       node: <AttendanceSyncSection currentUser={currentUser} />,
     },
