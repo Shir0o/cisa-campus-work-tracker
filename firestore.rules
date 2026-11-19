@@ -577,6 +577,16 @@ service cloud.firestore {
                seesAllContacts();
       }
 
+      // Quick add's save creates a brand-new person and their first interaction
+      // in ONE batch (§26), so for a create the parent has to be read as it
+      // will stand after the batch: getAfter sees the contact's new visibleTo.
+      // Where the person already exists this is the same document. Updates and
+      // deletes keep reading the state before the write.
+      function seesParentContactAfter() {
+        return request.auth.uid in contactVisibleTo(getAfter(/databases/$(database)/documents/contacts/$(contactId)).data) ||
+               seesAllContacts();
+      }
+
       // Interactions
       match /interactions/{interactionId} {
         function isValidInteraction(data) {
@@ -597,7 +607,7 @@ service cloud.firestore {
 
         allow list: if canReadParentContact();
         allow get: if isValidId(interactionId) && canReadParentContact();
-        allow create: if isValidId(interactionId) && isApprovedUser() && isManager() && seesParentContact() &&
+        allow create: if isValidId(interactionId) && isApprovedUser() && isManager() && seesParentContactAfter() &&
                         isValidInteraction(incoming()) && 
                         incoming().userId == request.auth.uid && 
                         isReachedByAllowed(incoming()) &&

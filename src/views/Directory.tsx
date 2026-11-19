@@ -11,6 +11,7 @@ import {
   Check,
   Plus,
   Sparkles,
+  Zap,
   Users,
   ChevronDown,
   X,
@@ -41,6 +42,7 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import Select from '../components/ui/Select';
 import PageContainer from '../components/layout/PageContainer';
 import TagGenderModal from '../components/modals/TagGenderModal';
+import QuickAddModal from '../components/modals/QuickAddModal';
 import MovingUpAYearModal from '../components/modals/MovingUpAYearModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
@@ -334,6 +336,7 @@ export default function Directory() {
   // there is no pre-chosen answer to confirm by accident.
   const [bulkStage, setBulkStage] = useState('');
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   // Moving up a year (#1351): a Full-timer's sorting work, beside Not sorted yet.
   const [movingUpAt, setMovingUpAt] = useState<Date | null>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -721,6 +724,13 @@ export default function Directory() {
             <Tag className="w-4 h-4" /> {t('directory.tag_gender') || 'Tag M/F'}
           </button>
           <button
+            onClick={() => setIsQuickAddOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
+            title={t('directory.quick_add')}
+          >
+            <Zap className="w-4 h-4" /> {t('directory.quick_add')}
+          </button>
+          <button
             onClick={() => openSmartImport()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-line bg-primary/10 text-accent text-sm font-medium hover:bg-primary/20 transition-colors shrink-0 min-h-[44px]"
           >
@@ -807,6 +817,18 @@ export default function Directory() {
                   >
                     <Sparkles className="w-4 h-4 text-accent shrink-0" />
                     <span>{t('directory.smart_import')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeaderMoreOpen(false);
+                      setIsQuickAddOpen(true);
+                    }}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
+                  >
+                    <Zap className="w-4 h-4 text-on-surface-variant shrink-0" />
+                    <span>{t('directory.quick_add')}</span>
                   </button>
                 </motion.div>
               )}
@@ -1342,6 +1364,12 @@ export default function Directory() {
           onClose={() => setIsTagGenderOpen(false)}
         />
       )}
+
+      <QuickAddModal
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        stages={stagesData.map((stage) => stage.label)}
+      />
 
       {/* ── Bulk Stage Modal ── */}
       <AnimatePresence>

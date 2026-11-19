@@ -2486,6 +2486,45 @@ describe("POST /api/combine-contacts/undo", () => {
   });
 });
 
+describe("POST /api/quick-add/parse (§26)", () => {
+  it("returns 400 when the note is missing", async () => {
+    const res = await request(app).post("/api/quick-add/parse").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Missing required 'text'");
+  });
+
+  it("parses the note and offers every name match", async () => {
+    seedDoc("contacts", "c1", { name: "Jordan Lee" });
+    seedDoc("contacts", "c2", { name: "jordan lee" });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({
+        contact: { name: "Jordan Lee", year: "sophomore", step: "contact", tags: ["Bible study"] },
+        interaction: { type: "meeting", when: "2026-11-17", notes: "Met at the club table" },
+        prayer: "pray for his exams",
+      }),
+    });
+
+    const res = await request(app)
+      .post("/api/quick-add/parse")
+      .send({ text: "Met Jordan at the club table, sophomore, wants Bible study, pray for his exams" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.contact).toMatchObject({ name: "Jordan Lee", year: "Sophomore", step: "contact" });
+    expect(res.body.match.map((m: { id: string }) => m.id)).toEqual(["c1", "c2"]);
+    expect(res.body.interaction.notes).toBe("Met at the club table");
+    expect(res.body.prayer).toBe("pray for his exams");
+    expect(mockGenerateContent.mock.calls[0][0].contents).toContain("Met Jordan at the club table");
+  });
+
+  it("returns 500 when Gemini returns no text", async () => {
+    mockGenerateContent.mockResolvedValue({ text: "" });
+    const res = await request(app).post("/api/quick-add/parse").send({ text: "Met Jordan" });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("No response returned from Gemini API");
+  });
+});
+
 // Endpoints that served the cut channels (cut-or-keep §14, §15, §26). The
 // Smart Import parse/commit pair stays, and so does the GitHub issue webhook
 // (outcome sentences still ride the issue close). Everything here is gone.
