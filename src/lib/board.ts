@@ -11,22 +11,10 @@ import type { AppRole } from './permissions';
 import type { AppLanguage } from './userPreferences';
 import { mdSummary } from './markdown';
 
-// ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
-export type BoardCategory = 'gathering' | 'outreach' | 'care' | 'prayer' | 'logistics';
+// ── Stage tones for the kept doc chips ──────────────────────────────────────
 export type Tone = 'accent' | 'amber' | 'teal' | 'violet' | 'neutral';
 
-export const CATEGORY_META: Record<BoardCategory, { label: string; tone: Tone }> = {
-  gathering: { label: 'Gathering', tone: 'amber' },
-  outreach: { label: 'Outreach', tone: 'accent' },
-  care: { label: 'Care', tone: 'teal' },
-  prayer: { label: 'Prayer', tone: 'violet' },
-  logistics: { label: 'Logistics', tone: 'neutral' },
-};
-
-export const CATEGORY_ORDER: BoardCategory[] = ['care', 'gathering', 'outreach', 'prayer', 'logistics'];
-
-// Full static class strings so Tailwind's scanner keeps them (same approach as
-// OutreachBoard.tsx TONE_CLASSES).
+// Full static class strings so Tailwind's scanner keeps them.
 export const CHIP_TONE: Record<Tone, { dot: string; bg: string; text: string }> = {
   accent: { dot: 'bg-stage-accent', bg: 'bg-stage-accent-soft', text: 'text-stage-accent' },
   amber: { dot: 'bg-stage-amber', bg: 'bg-stage-amber-soft', text: 'text-stage-amber' },
@@ -34,52 +22,6 @@ export const CHIP_TONE: Record<Tone, { dot: string; bg: string; text: string }> 
   violet: { dot: 'bg-stage-violet', bg: 'bg-stage-violet-soft', text: 'text-stage-violet' },
   neutral: { dot: 'bg-on-surface-variant/50', bg: 'bg-surface-variant', text: 'text-on-surface-variant' },
 };
-
-// ── Firestore document shapes ───────────────────────────────────────────────
-export interface AgendaAction {
-  id: string;
-  text: string;
-  who: string; // assignee uid
-  done: boolean;
-}
-
-export type AgendaStatus = 'open' | 'covered' | 'pushed';
-
-export interface AgendaItem {
-  id: string;
-  text: string;
-  cat: BoardCategory;
-  raisedById: string;
-  status: AgendaStatus;
-  carriedFrom?: string; // weekday it was carried from
-  pushedTo?: string; // weekday it was pushed to
-  actions: AgendaAction[];
-}
-
-export interface BoardTask {
-  id: string;
-  text: string;
-  who: string; // assignee uid
-  done: boolean;
-}
-
-// board_sessions/{id}
-export interface BoardSession {
-  id: string;
-  event: string;
-  date: string; // yyyy-MM-dd
-  time: string;
-  place: string;
-  facilitatorId?: string;
-  agenda: AgendaItem[];
-  assigned: BoardTask[];
-  createdAt?: unknown;
-  createdBy?: string;
-  createdByName?: string;
-  updatedAt?: unknown;
-  updatedBy?: string;
-  updatedByName?: string;
-}
 
 // ── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -132,9 +74,6 @@ export const longDateOf = (date: string, language: AppLanguage): string => {
 };
 
 export const todayISO = (): string => format(new Date(), 'yyyy-MM-dd');
-
-// Sort sessions chronologically (oldest → newest) for the week switcher.
-export const byDateAsc = (a: BoardSession, b: BoardSession) => a.date.localeCompare(b.date);
 
 // ── The Board (doc model) ─────────────────────────────────────────────────────
 // The redesign (design bundle `BoardFT`) replaces coordination SESSIONS with a

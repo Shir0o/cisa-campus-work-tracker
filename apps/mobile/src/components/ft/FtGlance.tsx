@@ -16,6 +16,7 @@ function Tile({
   caption,
   detail,
   onPress,
+  testID,
 }: {
   dot: string;
   label: string;
@@ -23,11 +24,14 @@ function Tile({
   caption: string;
   detail: string;
   onPress?: () => void;
+  testID?: string;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
+      disabled={!onPress}
       style={({ pressed }) => ({
         flex: 1,
         minHeight: 128,
@@ -96,12 +100,10 @@ export function FtGlance({
   carrying,
   next,
   onOpenPrayers,
-  onOpenGatherings,
 }: {
   carrying: FtCarrying;
   next: FtNextGathering | null;
   onOpenPrayers?: () => void;
-  onOpenGatherings: () => void;
 }) {
   const { c, fs } = useV2Theme();
   return (
@@ -116,13 +118,15 @@ export function FtGlance({
           detail={carrying.detail}
           onPress={onOpenPrayers}
         />
+        {/* The phone Gatherings screen is cut (cut-or-keep §8) and /attendance
+            now redirects home, so the tile reads out only — no dead link. */}
         <Tile
+          testID="glance-gathering"
           dot={c.card.tones.note.dot}
           label="Next gathering"
           value={next ? next.when : '—'}
           caption={next ? next.title : 'nothing this week'}
           detail={next ? next.detail : 'Nothing on the calendar.'}
-          onPress={onOpenGatherings}
         />
       </View>
     </View>

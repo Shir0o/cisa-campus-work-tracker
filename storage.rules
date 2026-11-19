@@ -22,7 +22,7 @@ service firebase.storage {
     }
 
     // Photos attached to a prayer's "how it was answered" (#267). The writer
-    // gate lives on the prayer doc (operator-and-up, like /prayers).
+    // gate lives on the prayer doc (Full-timers and Trainees, like /prayers).
     match /prayers/{prayerId}/{photoId} {
       allow read: if isMember();
       allow write: if isMember()

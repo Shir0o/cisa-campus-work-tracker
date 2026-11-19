@@ -67,8 +67,13 @@ export interface QuickAddSaveInput {
   reminder?: QuickAddReminderDraft | null;
 }
 
-/** A person to save needs a name, or an existing person to attach to. */
-export function quickAddCanSave(input: Pick<QuickAddSaveInput, 'matchId' | 'contact'>): boolean {
+/** A person to save needs a name, or an existing person to attach to — and a
+ *  note that matched several people must not slide by as "New person": while
+ *  `awaitingMatchChoice` is set, nothing is picked and Save stays off. */
+export function quickAddCanSave(
+  input: Pick<QuickAddSaveInput, 'matchId' | 'contact'> & { awaitingMatchChoice?: boolean },
+): boolean {
+  if (input.awaitingMatchChoice) return false;
   return Boolean(input.matchId?.trim() || input.contact.name.trim());
 }
 

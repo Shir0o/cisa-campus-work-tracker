@@ -9,8 +9,8 @@ const TRAINEE = 'JfcxyTTTFuNUYMLQTisyq2ppoy82';
 
 beforeEach(() => {
   applyRoster([
-    { uid: FT, role: 'admin' },
-    { uid: TRAINEE, role: 'manager' },
+    { uid: FT, role: 'admin', approved: true },
+    { uid: TRAINEE, role: 'manager', approved: true },
   ]);
 });
 

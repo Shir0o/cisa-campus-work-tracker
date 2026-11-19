@@ -21,7 +21,7 @@ import { DAY_MS, daysSince, parseMs, toLocalDate, type Leader } from "./myday";
 import { dueInDays } from "./queue";
 import { firstName } from "./history";
 import { isTestAccount } from "./settings";
-import type { AppUser, Contact, Event, HospitalityOffer, PrayerRecord, PrayerRequest, Task } from "./types";
+import type { AppUser, Contact, Event, PrayerRecord, PrayerRequest, Task } from "./types";
 
 /** A person is "gone quiet" once this many days have passed since a touch. */
 export const FT_QUIET_DAYS = 10;
@@ -286,16 +286,6 @@ export function ftCarrying(rows: FtCarryRow[]): FtCarrying {
     count: rows.length,
     detail: top.who ? `${top.who} — ${top.burden}` : top.burden,
   };
-}
-
-// ── homes open to students ─────────────────────────────────────────────────
-
-/** The Community members with room at their table, newest offer first. An
- * offer with no times left on it is a withdrawn one — it doesn't show. */
-export function ftHomesOpen(offers: HospitalityOffer[]): HospitalityOffer[] {
-  return offers
-    .filter((o) => o.availability.length > 0)
-    .sort((a, b) => (parseMs(b.updatedAt) ?? 0) - (parseMs(a.updatedAt) ?? 0));
 }
 
 // ── the calendar: the glance tile and the week-ahead strip ─────────────────

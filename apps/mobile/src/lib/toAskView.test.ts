@@ -9,9 +9,10 @@ describe('toAskTraineesOf', () => {
   it('lists the Trainees (role manager) with their team and the best name known', () => {
     const trainees = toAskTraineesOf(
       [
-        { uid: 'tr1', role: 'manager', team: 'campus' },
-        { uid: 'tr2', role: 'manager', team: 'someday' },
-        { uid: 'ft1', role: 'admin', team: 'yp' },
+        { uid: 'tr1', role: 'manager', team: 'campus', approved: true },
+        { uid: 'tr2', role: 'manager', team: 'someday', approved: true },
+        { uid: 'pending', role: 'manager', team: 'campus', approved: false },
+        { uid: 'ft1', role: 'admin', team: 'yp', approved: true },
       ],
       { tr1: ' Zion Park ' },
     );

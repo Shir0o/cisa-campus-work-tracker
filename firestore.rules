@@ -1066,27 +1066,8 @@ service cloud.firestore {
       allow delete: if isOwner(existing().uid) || isManager();
     }
 
-    // 9c. Hospitality Offers — a Community member's standing offer to host
-    // students at their table (mobile v2's "Open your home"). Doc id IS the
-    // uid, so one household has one offer.
-    match /hospitalityOffers/{userId} {
-      function isValidOffer(data) {
-        return data.keys().hasAll(['uid', 'name', 'availability', 'seats', 'note', 'updatedAt']) &&
-               data.uid == userId &&
-               data.name is string && data.name.size() > 0 && data.name.size() <= 128 &&
-               data.availability is list && data.availability.size() <= 8 &&
-               data.seats is string && data.seats.size() <= 128 &&
-               data.note is string && data.note.size() <= 2000 &&
-               data.updatedAt is string && data.updatedAt.size() <= 64;
-      }
-
-      allow get: if isApprovedUser() && (isOwner(userId) || isManager());
-      // Staff list every open home; a member only ever reads their own doc by
-      // id, so the list rule is staff-only.
-      allow list: if isManager();
-      allow create, update: if isApprovedUser() && isOwner(userId) && isValidOffer(incoming());
-      allow delete: if isOwner(userId) || isManager();
-    }
+    // 9c. Hospitality Offers — the Community role's "Open your home" is cut
+    // (cut-or-keep §1): no match, so the stored offers stay but nobody reads them.
 
     // 10. Tasks Collection
     match /tasks/{taskId} {
@@ -1146,47 +1127,14 @@ service cloud.firestore {
       allow delete: if isValidId(feedbackId) && isAdmin();
     }
 
-    // 12. Coordination Notes Collection
-    match /coordination_notes/{noteId} {
-      function isValidCoordinationNote(data) {
-        return data.keys().hasAll(['title', 'date', 'content', 'category', 'todos']) &&
-               data.title is string && data.title.size() <= 200 &&
-               data.date is string && data.date.size() <= 64 &&
-               data.content is string && data.content.size() <= 100000 &&
-               data.category is string && data.category.size() <= 64 &&
-               data.todos is list &&
-               (!('archived' in data) || data.archived is bool);
-      }
-
-      allow get, list: if isAdmin();
-      allow create: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
-      allow update: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
-      allow delete: if isValidId(noteId) && isAdmin();
-    }
-
-    // 14. The Board — coordination sessions (agenda + delegated tasks embedded)
-    match /board_sessions/{sessionId} {
-      function isValidBoardSession(data) {
-        return data.keys().hasAll(['event', 'date', 'time', 'place', 'agenda', 'assigned']) &&
-               data.event is string && data.event.size() <= 200 &&
-               data.date is string && data.date.size() <= 64 &&
-               data.time is string && data.time.size() <= 64 &&
-               data.place is string && data.place.size() <= 200 &&
-               data.agenda is list && data.agenda.size() <= 200 &&
-               data.assigned is list && data.assigned.size() <= 200 &&
-               (!('facilitatorId' in data) || (data.facilitatorId is string && data.facilitatorId.size() <= 128));
-      }
-
-      allow get, list: if isAdmin();
-      allow create: if isValidId(sessionId) && isAdmin() && isValidBoardSession(incoming());
-      allow update: if isValidId(sessionId) && isAdmin() && isValidBoardSession(incoming());
-      allow delete: if isValidId(sessionId) && isAdmin();
-    }
-
-    // 15. The Board — the Notes & learnings archive is cut (cut-or-keep §19),
+    // 12. Coordination Notes and The Board's sessions are cut (cut-or-keep
+    // §19/§22): coordination_notes and board_sessions have no match, and the
+    // documents already stored stay where they are.
+    //
+    // 13. The Board — the Notes & learnings archive is cut (cut-or-keep §19),
     // so board_notes has no match. Stored notes stay where they are.
 
-    // 16. The Board — dated Markdown pages (one running doc per gathering)
+    // 14. The Board — dated Markdown pages (one running doc per gathering)
     match /board_docs/{docId} {
       function isValidBoardDoc(data) {
         return data.keys().hasAll(['date', 'title', 'md']) &&

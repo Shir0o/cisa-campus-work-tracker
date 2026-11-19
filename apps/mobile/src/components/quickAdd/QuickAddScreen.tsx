@@ -63,6 +63,8 @@ function QuickAddBody() {
   const [contact, setContact] = useState<QuickAddContactDraft>(emptyContact);
   const [matches, setMatches] = useState<QuickAddMatch[]>([]);
   const [matchId, setMatchId] = useState<string | null>(null);
+  // Several people matched: nothing is chosen yet, so Save waits for a tap.
+  const [awaitingChoice, setAwaitingChoice] = useState(false);
   const [interaction, setInteraction] = useState<QuickAddInteractionDraft | null>(null);
   const [prayer, setPrayer] = useState('');
   const [reminder, setReminder] = useState<QuickAddReminderDraft | null>(null);
@@ -72,7 +74,7 @@ function QuickAddBody() {
   const setTalk = (key: keyof QuickAddInteractionDraft, value: string) =>
     setInteraction((current) => (current ? { ...current, [key]: value } : current));
 
-  const canSave = quickAddCanSave({ matchId, contact });
+  const canSave = quickAddCanSave({ matchId, contact, awaitingMatchChoice: awaitingChoice });
   const picked = matches.find((match) => match.id === matchId) ?? null;
 
   const handleParse = async () => {
@@ -95,6 +97,7 @@ function QuickAddBody() {
       setMatches(nextMatches);
       // One candidate is the person; several stay unchosen so the preview asks.
       setMatchId(nextMatches.length === 1 ? nextMatches[0].id : null);
+      setAwaitingChoice(nextMatches.length > 1);
       setInteraction(result.interaction ?? null);
       setPrayer(result.prayer ?? '');
       setReminder(result.reminder ?? null);
@@ -191,15 +194,21 @@ function QuickAddBody() {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   <Choice
                     label={t('mobile.quickAdd.new_person')}
-                    selected={matchId === null}
-                    onPress={() => setMatchId(null)}
+                    selected={!awaitingChoice && matchId === null}
+                    onPress={() => {
+                      setMatchId(null);
+                      setAwaitingChoice(false);
+                    }}
                   />
                   {matches.map((match) => (
                     <Choice
                       key={match.id}
                       label={match.name}
                       selected={matchId === match.id}
-                      onPress={() => setMatchId(match.id)}
+                      onPress={() => {
+                        setMatchId(match.id);
+                        setAwaitingChoice(false);
+                      }}
                     />
                   ))}
                 </View>

@@ -102,7 +102,13 @@ export function rosterOnTeam(teamId?: string | null): TeamMember[] {
 // a silent empty roster.
 export function subscribeUsers(
   onRoster: (
-    users: Array<{ uid: string; role?: string; team?: string | null; displayName?: string | null }>,
+    users: Array<{
+      uid: string;
+      role?: string;
+      team?: string | null;
+      displayName?: string | null;
+      approved?: boolean;
+    }>,
   ) => void,
   onError?: (e: unknown) => void,
   opts: { retries?: number; delayMs?: number } = {},
@@ -120,7 +126,12 @@ export function subscribeUsers(
         onRoster(
           snap.docs.map((d) => ({
             uid: d.id,
-            ...(d.data() as { role?: string; team?: string | null; displayName?: string | null }),
+            ...(d.data() as {
+              role?: string;
+              team?: string | null;
+              displayName?: string | null;
+              approved?: boolean;
+            }),
           })),
         );
       },

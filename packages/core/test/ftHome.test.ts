@@ -5,7 +5,6 @@ import {
   ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
-  ftHomesOpen,
   ftInboxRows,
   ftInboxVisible,
   ftLastHeard,
@@ -23,7 +22,6 @@ import type {
   AppUser,
   Contact,
   Event,
-  HospitalityOffer,
   PrayerRecord,
   PrayerRequest,
   Task,
@@ -75,16 +73,6 @@ const request = (overrides: Partial<PrayerRequest> = {}): PrayerRequest => ({
   status: 'open',
   createdAt: iso(-1),
   updatedAt: iso(-1),
-  ...overrides,
-});
-
-const offer = (overrides: Partial<HospitalityOffer> = {}): HospitalityOffer => ({
-  uid: 'u-community',
-  name: 'Grace Okafor',
-  availability: ['sunday'],
-  seats: '3–4 students',
-  note: '',
-  updatedAt: iso(-2),
   ...overrides,
 });
 
@@ -517,22 +505,6 @@ describe('ftCarrying', () => {
       count: 1,
       detail: 'A job before graduation',
     });
-  });
-});
-
-describe('ftHomesOpen', () => {
-  it('lists the open homes, newest offer first', () => {
-    const older = offer();
-    const newer = offer({ uid: 'u2', name: 'Sam Reyes', updatedAt: iso(0) });
-    expect(ftHomesOpen([older, newer]).map((o) => o.uid)).toEqual(['u2', 'u-community']);
-  });
-
-  it('drops an offer with no times left on it — that is a withdrawn one', () => {
-    expect(ftHomesOpen([offer({ availability: [] })])).toEqual([]);
-  });
-
-  it('is empty when nobody has offered', () => {
-    expect(ftHomesOpen([])).toEqual([]);
   });
 });
 

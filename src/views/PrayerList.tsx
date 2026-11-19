@@ -144,9 +144,8 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 export default function PrayerList() {
   const { user, role } = useAuth();
   const { setSelectedContact } = useLayout();
-  const isOperator = hasMinRole(role, 'manager');
   // Clear-prayer (#706): the firestore delete rule for prayers/{id} is
-  // isManager (Full-timer + Trainee); mirror that here.
+  // isManager (Full-timer + Trainee); the same gate covers choosing people.
   const isManager = hasMinRole(role, 'manager');
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -544,7 +543,7 @@ export default function PrayerList() {
           composeFor={composeFor}
           setComposeFor={setComposeFor}
           onRemoveFromPrayerList={removeFromPrayerList}
-          isOperator={isOperator}
+          isOperator={isManager}
           isManager={isManager}
           onClearPrayer={handleClearPrayer}
           onPickHeld={applyPick}
@@ -627,7 +626,7 @@ export default function PrayerList() {
             </button>
           ))}
         </div>
-        {isOperator && (
+        {isManager && (
           <button
             onClick={() => setPicking(true)}
             className="inline-flex items-center gap-2 px-4 h-11 rounded-full border border-outline-variant hover:border-primary text-sm text-on-surface transition-colors shrink-0"
@@ -638,7 +637,7 @@ export default function PrayerList() {
       </div>
 
       {/* Start holding suggestions */}
-      {isOperator && suggestions.length > 0 && (
+      {isManager && suggestions.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-2">
           {suggestions.map((c) => (
             <button
@@ -696,7 +695,7 @@ export default function PrayerList() {
                 onUpdateBurden={handleUpdateBurden}
                 onOpenProfile={() => openContact(e.contact)}
                 onRemoveFromPrayerList={removeFromPrayerList}
-                isOperator={isOperator}
+                isOperator={isManager}
                 meUid={user?.uid ?? ''}
                 isManager={isManager}
                />

@@ -13,14 +13,17 @@
 let FULL_TIMER_UIDS: ReadonlySet<string> = new Set();
 let TRAINEE_UIDS: ReadonlySet<string> = new Set();
 
-/** Replace the roster from a users collection read (role field). */
-export function applyRoster(users: Array<{ uid: string; role?: string | null }>): void {
+/** Replace the roster from a users collection read (role and approval). */
+export function applyRoster(
+  users: Array<{ uid: string; role?: string | null; approved?: boolean }>,
+): void {
   const fts = new Set<string>();
   const ts = new Set<string>();
   for (const u of users) {
     if (!u.uid) continue;
     if (u.role === "admin") fts.add(u.uid);
-    else if (u.role === "manager") ts.add(u.uid);
+    // A pending or removed account is not on the team yet; leave it off.
+    else if (u.role === "manager" && u.approved) ts.add(u.uid);
   }
   FULL_TIMER_UIDS = fts;
   TRAINEE_UIDS = ts;

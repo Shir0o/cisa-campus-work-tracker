@@ -41,7 +41,6 @@ describe('FtHomeScreen', () => {
       quiet: [],
       carryRows: [],
       prayedToday: false,
-      homesOpen: [],
       weekAhead: [],
       assignees: [],
       nameByUid: {},
@@ -56,6 +55,33 @@ describe('FtHomeScreen', () => {
     expect(queryByTestId('ft-home-skeleton')).toBeNull();
   });
 
+  it('shows the next gathering as a read-out, not a link to the cut Gatherings screen', async () => {
+    (useFtHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      contacts: [],
+      carrying: { count: 0, detail: '' },
+      nextGathering: null,
+      todos: { today: [], laterThisWeek: [], overdue: [] },
+      inboxRows: [],
+      quiet: [],
+      carryRows: [],
+      prayedToday: false,
+      weekAhead: [],
+      assignees: [],
+      nameByUid: {},
+      summary: '',
+      error: null,
+    });
+    const { getByTestId } = await render(
+      <ThemeProvider>
+        <FtHomeScreen />
+      </ThemeProvider>,
+    );
+    // §8 cut the phone Gatherings screen; /attendance is a redirect home, so
+    // the tile no longer pretends to open anything.
+    expect(getByTestId('glance-gathering').props.accessibilityState.disabled).toBe(true);
+  });
+
   it('mounts the announcements panel (cut-or-keep §20)', async () => {
     (useFtHomeData as jest.Mock).mockReturnValue({
       loading: false,
@@ -67,7 +93,6 @@ describe('FtHomeScreen', () => {
       quiet: [],
       carryRows: [],
       prayedToday: false,
-      homesOpen: [],
       weekAhead: [],
       assignees: [],
       nameByUid: {},

@@ -85,11 +85,11 @@ export function toAskMessagesOf(threads: ThreadMessageWithContact[]): ToAskThrea
 /** Every Trainee on the roster (role `manager`), with the team the filter reads
  *  and a name — their own, else whatever the app has seen them write under. */
 export function toAskTraineesOf(
-  users: Pick<AppUser, 'uid' | 'role' | 'team'>[],
+  users: Pick<AppUser, 'uid' | 'role' | 'team' | 'approved'>[],
   nameByUid: Record<string, string | undefined>,
 ): ToAskTrainee[] {
   return users
-    .filter((u) => u.role === 'manager')
+    .filter((u) => u.role === 'manager' && u.approved)
     .map((u) => ({
       uid: u.uid,
       name: nameByUid[u.uid]?.trim() || u.uid,

@@ -90,7 +90,9 @@ describe('Impersonation Data & Helpers', () => {
     expect(emailOnly.role).toBe('manager');
 
     const unknownRoleTarget = impStaffTarget({ id: 'u102', name: 'Unknown Role', role: 'custom' });
-    expect(unknownRoleTarget.role).toBe('admin');
+    // An unknown role is never dressed up as the full workspace; it falls to
+    // the least-privilege role instead (cut-or-keep §1).
+    expect(unknownRoleTarget.role).toBe('manager');
 
     const fallbackNoName = impStaffTarget({ id: 'u103' });
     expect(fallbackNoName.name).toBe('Team Member');
@@ -143,6 +145,17 @@ describe('ImpersonatePicker Component', () => {
     fireEvent.click(pickButton);
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onPick.mock.calls[0][0].key).toBe('staff:u1');
+  });
+
+  it('does not offer a legacy role that has no workspace', () => {
+    const mockUsers = [
+      { uid: 'u1', displayName: 'Alex Chen', email: 'alex@example.com', role: 'admin' },
+      { uid: 'u2', displayName: 'Legacy Person', email: 'legacy@example.com', role: 'operator' },
+    ];
+    render(<ImpersonatePicker currentKey={null} onPick={vi.fn()} users={mockUsers} autoFocus />);
+
+    expect(screen.getByText('Alex Chen')).toBeInTheDocument();
+    expect(screen.queryByText('Legacy Person')).not.toBeInTheDocument();
   });
 
 });

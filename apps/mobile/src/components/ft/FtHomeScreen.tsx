@@ -33,7 +33,6 @@ import { NeedsYouToday } from './NeedsYouToday';
 import { FromTeam } from './FromTeam';
 import { GoneQuiet } from './GoneQuiet';
 import { PrayersToCarry } from './PrayersToCarry';
-import { HomesOpen } from './HomesOpen';
 import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
@@ -239,7 +238,6 @@ function FtHome() {
         <FtGlance
           carrying={data.carrying}
           next={data.nextGathering}
-          onOpenGatherings={() => router.push('/attendance')}
         />
 
         <NeedsYouToday
@@ -280,8 +278,6 @@ function FtHome() {
             setToast('Thank God. They’ll see it’s answered.');
           }}
         />
-
-        <HomesOpen offers={data.homesOpen} />
 
         <WeekAhead chips={data.weekAhead} />
 

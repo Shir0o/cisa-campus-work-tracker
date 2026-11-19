@@ -115,8 +115,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseAuth.mockReturnValue({ user: { uid: 'ft', displayName: 'Kate Full' }, effectiveUserId: 'ft', role: 'admin' });
   applyRoster([
-    { uid: 'ft', role: 'admin' },
-    { uid: 'jae', role: 'manager' },
+    { uid: 'ft', role: 'admin', approved: true },
+    { uid: 'jae', role: 'manager', approved: true },
   ]);
   applyTeams([{ uid: 'jae', team: 'campus', displayName: 'Jae Kim' }]);
   h.contacts = [{ id: 'c1', data: { name: 'Priya Nair', carers: ['jae'], createdAt: ago(5) } }];

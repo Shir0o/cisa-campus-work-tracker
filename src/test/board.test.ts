@@ -6,7 +6,6 @@ import {
   dateLabelOf,
   longDateOf,
   todayISO,
-  byDateAsc,
   docGroup,
   weekdayShort,
   dayNum,
@@ -25,7 +24,6 @@ import {
   slugifyHeading,
   parseDocHeadings,
   searchBoardContent,
-  type BoardSession,
   type BoardDoc,
   type BoardSearchResult,
 } from '../lib/board';
@@ -113,17 +111,6 @@ describe('Board Pure Helpers', () => {
 
     it('returns today in yyyy-MM-dd format', () => {
       expect(todayISO()).toBe('2026-06-16');
-    });
-  });
-
-  describe('byDateAsc', () => {
-    it('sorts sessions oldest to newest', () => {
-      const s1 = { date: '2026-06-18' } as BoardSession;
-      const s2 = { date: '2026-06-16' } as BoardSession;
-      const s3 = { date: '2026-06-17' } as BoardSession;
-
-      const sorted = [s1, s2, s3].sort(byDateAsc);
-      expect(sorted.map(s => s.date)).toEqual(['2026-06-16', '2026-06-17', '2026-06-18']);
     });
   });
 

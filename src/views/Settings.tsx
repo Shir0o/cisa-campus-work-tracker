@@ -15,7 +15,6 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../lib/firebase';
 import { AppUser, Contact, Invitation, Stage } from '../types';
-import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
 import {
@@ -84,7 +83,7 @@ import {
   type ReminderTime,
   type Weekday,
 } from '../lib/weeklyReminders';
-import { isRealPerson } from '../lib/permissions';
+import { effectiveRole, isRealPerson } from '../lib/permissions';
 import {
   addStage,
   applyStageReorder,
@@ -184,8 +183,11 @@ const ROLE_LABEL_KEY: Record<AppRole, [key: string, fallback: string]> = {
 };
 
 function roleLabel(t: (key: string, fallback?: string) => string, role: AppRole | string | null | undefined): string {
-  const [key, fallback] = ROLE_LABEL_KEY[(role as AppRole)] ?? ROLE_LABEL_KEY.manager;
-  return t(key, fallback);
+  const entry = ROLE_LABEL_KEY[role as AppRole];
+  // An unknown role has no workspace (cut-or-keep §1): say so plainly rather
+  // than dressing a legacy account up as a Trainee.
+  if (!entry) return t('settings.roles.none', 'No access');
+  return t(entry[0], entry[1]);
 }
 
 // Ordered low → high for the selects. The Full-timer (admin) option is only
@@ -1752,7 +1754,9 @@ function EditMemberModal({
   onSave: (uid: string, updates: { displayName: string; role: AppRole }) => void;
 }) {
   const [displayName, setDisplayName] = useState(user.displayName || '');
-  const [role, setRole] = useState<AppRole>(user.role || 'manager');
+  // Seed with the role they actually hold; a legacy/unknown role has no valid
+  // option, so the edit starts from the least-privilege one (Trainee).
+  const [role, setRole] = useState<AppRole>(effectiveRole(user.role) ?? 'manager');
   const { t } = useLanguage();
   // RBAC: only an admin can grant the Full-timer (admin) role.
   const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
@@ -2255,7 +2259,10 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   );
 
   const term = partnersTermKey();
-  const trainees = useMemo(() => users.filter((u) => u.role === 'manager' && isRealPerson(u)), [users]);
+  const trainees = useMemo(
+    () => users.filter((u) => u.role === 'manager' && u.approved && isRealPerson(u)),
+    [users],
+  );
   const byId = useMemo(() => {
     const m: Record<string, AppUser> = {};
     for (const u of users) m[u.uid] = u;
@@ -2492,7 +2499,7 @@ function PartnersSection({ users }: { users: AppUser[] }) {
 function TeamsSection({ users }: { users: AppUser[] }) {
   const { t } = useLanguage();
   const trainees = useMemo(
-    () => users.filter((u) => u.role === 'manager' && isRealPerson(u)),
+    () => users.filter((u) => u.role === 'manager' && u.approved && isRealPerson(u)),
     [users],
   );
   const onTeam = (id: string) => trainees.filter((u) => u.team === id);
@@ -2584,39 +2591,6 @@ function TeamsSection({ users }: { users: AppUser[] }) {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
-function GettingStartedSection() {
-  const { t } = useLanguage();
-  const { user: currentUser, role, effectiveUserId } = useAuth();
-  const [restored, setRestored] = useState(false);
- 
-  const handleRestore = () => {
-    FirstRunStore.bringBack(firstRunKey(role, effectiveUserId || currentUser?.uid));
-    setRestored(true);
-  };
-
-  return (
-    <section className="mt-10">
-      <SectionHeader
-        title={t('settings.getting_started', 'Getting started')}
-        sub={t('settings.getting_started_sub', 'Bring back the first-week checklist if you put it away.')}
-      />
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleRestore}
-          className="px-4 py-2 text-sm font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 transition-colors"
-        >
-          {t('settings.show_checklist', 'Show getting started checklist')}
-        </button>
-        {restored && (
-          <p role="status" className="text-sm text-on-surface-variant">
-            {t('settings.checklist_restored', 'The getting-started checklist is back on your home screen.')}
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
 
 
 /**
@@ -3456,12 +3430,6 @@ export default function Settings() {
       node: <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />,
     },
     {
-      id: 'settings-getting-started',
-      label: t('settings.getting_started', 'Getting started'),
-      visible: true,
-      node: <GettingStartedSection />,
-    },
-    {
       id: 'settings-team',
       label: t('settings.your_team', 'Your team'),
       visible: true,
@@ -3545,7 +3513,6 @@ export default function Settings() {
         <NavigationSection />
         <NotificationsSection />
         <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />
-        <GettingStartedSection />
       </div>
     );
   }

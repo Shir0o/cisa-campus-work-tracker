@@ -46,6 +46,8 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
   const [contact, setContact] = useState<QuickAddContactDraft>(emptyContact);
   const [matches, setMatches] = useState<QuickAddMatch[]>([]);
   const [matchId, setMatchId] = useState<string | null>(null);
+  // Several people matched: nothing is chosen yet, so Save waits for a tap.
+  const [awaitingChoice, setAwaitingChoice] = useState(false);
   const [interaction, setInteraction] = useState<QuickAddInteractionDraft | null>(null);
   const [prayer, setPrayer] = useState('');
   const [reminder, setReminder] = useState<QuickAddReminderDraft | null>(null);
@@ -59,6 +61,7 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
     setContact(emptyContact());
     setMatches([]);
     setMatchId(null);
+    setAwaitingChoice(false);
     setInteraction(null);
     setPrayer('');
     setReminder(null);
@@ -75,7 +78,7 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
   const setTalk = (key: keyof QuickAddInteractionDraft, value: string) =>
     setInteraction((current) => (current ? { ...current, [key]: value } : current));
 
-  const canSave = Boolean(matchId || contact.name.trim());
+  const canSave = !awaitingChoice && Boolean(matchId || contact.name.trim());
   const picked = matches.find((match) => match.id === matchId) ?? null;
 
   const handleParse = async () => {
@@ -121,6 +124,7 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
       setMatches(nextMatches);
       // One candidate is the person; several stay unchosen so the preview asks.
       setMatchId(nextMatches.length === 1 ? nextMatches[0].id : null);
+      setAwaitingChoice(nextMatches.length > 1);
       setInteraction(body.interaction ?? null);
       setPrayer(body.prayer ?? '');
       setReminder(body.reminder ?? null);
@@ -276,10 +280,13 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    aria-pressed={matchId === null}
-                    onClick={() => setMatchId(null)}
+                    aria-pressed={!awaitingChoice && matchId === null}
+                    onClick={() => {
+                      setMatchId(null);
+                      setAwaitingChoice(false);
+                    }}
                     className={`px-3 py-2 rounded-full border text-sm font-medium ${
-                      matchId === null
+                      !awaitingChoice && matchId === null
                         ? 'border-primary bg-primary/10 text-accent'
                         : 'border-outline-variant text-on-surface-variant'
                     }`}
@@ -291,7 +298,10 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
                       key={match.id}
                       type="button"
                       aria-pressed={matchId === match.id}
-                      onClick={() => setMatchId(match.id)}
+                      onClick={() => {
+                        setMatchId(match.id);
+                        setAwaitingChoice(false);
+                      }}
                       className={`px-3 py-2 rounded-full border text-sm font-medium ${
                         matchId === match.id
                           ? 'border-primary bg-primary/10 text-accent'

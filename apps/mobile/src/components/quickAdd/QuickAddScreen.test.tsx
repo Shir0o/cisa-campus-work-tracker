@@ -60,7 +60,7 @@ describe('QuickAddScreen', () => {
     expect(screen.getByText('Add a name, or pick someone already in your directory.')).toBeTruthy();
   });
 
-  it('offers every name match and preselects none when there are several', async () => {
+  it('offers every name match, preselects none, and blocks Save until one is picked', async () => {
     const screen = await renderScreen();
     await parse(screen, {
       ...parsed,
@@ -73,7 +73,13 @@ describe('QuickAddScreen', () => {
     const options = screen.getAllByRole('button', { name: 'Jordan Lee' });
     expect(options).toHaveLength(2);
     for (const option of options) expect(option.props.accessibilityState.selected).toBe(false);
-    expect(screen.getByRole('button', { name: 'New person' }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByRole('button', { name: 'New person' }).props.accessibilityState.selected).toBe(
+      false,
+    );
+
+    // Nothing chosen yet: Save does nothing until a person or "New person" is tapped.
+    await fireEvent.press(screen.getByText('Save'));
+    expect(saveQuickAdd).not.toHaveBeenCalled();
 
     await fireEvent.press(options[1]);
     const afterPick = screen.getAllByRole('button', { name: 'Jordan Lee' });
@@ -83,6 +89,33 @@ describe('QuickAddScreen', () => {
     await waitFor(() =>
       expect(saveQuickAdd).toHaveBeenCalledWith(
         expect.objectContaining({ matchId: 'c2', matchName: 'Jordan Lee' }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('saves a new person once "New person" is tapped', async () => {
+    const screen = await renderScreen();
+    await parse(screen, {
+      ...parsed,
+      match: [
+        { id: 'c1', name: 'Jordan Lee' },
+        { id: 'c2', name: 'Jordan Lee' },
+      ],
+    });
+
+    await fireEvent.press(screen.getByText('Save'));
+    expect(saveQuickAdd).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'New person' }));
+    expect(screen.getByRole('button', { name: 'New person' }).props.accessibilityState.selected).toBe(
+      true,
+    );
+    await fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(saveQuickAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ matchId: null }),
         expect.anything(),
       ),
     );

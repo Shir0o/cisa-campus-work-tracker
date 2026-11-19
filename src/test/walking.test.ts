@@ -13,11 +13,12 @@ import {
 
 describe("roster predicates (issue #549 — no pairing)", () => {
   const USERS = [
-    { uid: "ft1", role: "admin" },
-    { uid: "ft2", role: "admin" },
-    { uid: "t1", role: "manager" },
-    { uid: "t2", role: "manager" },
-    { uid: "other", role: "viewer" },
+    { uid: "ft1", role: "admin", approved: true },
+    { uid: "ft2", role: "admin", approved: true },
+    { uid: "t1", role: "manager", approved: true },
+    { uid: "t2", role: "manager", approved: true },
+    { uid: "pending", role: "manager", approved: false },
+    { uid: "other", role: "viewer", approved: true },
   ];
 
   it("isFullTimer / isTrainee read the roster roles", () => {
@@ -26,6 +27,8 @@ describe("roster predicates (issue #549 — no pairing)", () => {
     expect(isFullTimer("ft2")).toBe(true);
     expect(isTrainee("t1")).toBe(true);
     expect(isTrainee("t2")).toBe(true);
+    // A Trainee waiting on approval is not on the team yet.
+    expect(isTrainee("pending")).toBe(false);
     // viewer/community is neither
     expect(isFullTimer("other")).toBe(false);
     expect(isTrainee("other")).toBe(false);
@@ -80,8 +83,8 @@ describe("walkingRecipient", () => {
 
   it("a full-timer's reply reaches the trainee who added the contact", () => {
     applyRoster([
-      { uid: "ft1", role: "admin" },
-      { uid: "t1", role: "manager" },
+      { uid: "ft1", role: "admin", approved: true },
+      { uid: "t1", role: "manager", approved: true },
     ]);
     expect(walkingRecipient("ft1", "t1")).toBe("t1");
     // a full-timer replying to a viewer/community-added contact has no trainee to ping
@@ -90,8 +93,8 @@ describe("walkingRecipient", () => {
 
   it("a trainee's message has no single recipient under the no-pairing model", () => {
     applyRoster([
-      { uid: "ft1", role: "admin" },
-      { uid: "t1", role: "manager" },
+      { uid: "ft1", role: "admin", approved: true },
+      { uid: "t1", role: "manager", approved: true },
     ]);
     expect(walkingRecipient("t1", "anyone")).toBeNull();
   });

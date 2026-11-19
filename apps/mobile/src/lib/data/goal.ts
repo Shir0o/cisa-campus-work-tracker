@@ -1,5 +1,5 @@
 // THE DAY'S GOAL (#544) reads/writes — thin mobile wrapper around the shared
-// @cisa/core logic (behind an injected `db`), mirroring data/asks.ts.
+// @cisa/core logic (behind an injected `db`).
 import * as core from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 

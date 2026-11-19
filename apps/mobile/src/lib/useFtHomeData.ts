@@ -22,7 +22,6 @@ import {
   ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
-  ftHomesOpen,
   ftInboxRows,
   ftNextGathering,
   ftOpenPrayers,
@@ -34,7 +33,6 @@ import {
   type AppUser,
   type Contact,
   type Event,
-  type HospitalityOffer,
   type InboxItem,
   type Interaction,
   type Leader,
@@ -55,7 +53,6 @@ import { addThreadMessage, subscribeAllThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { subscribeUsers } from './data/users';
 import { setPrayerRequestStatus, subscribeOpenPrayerRequests } from './data/prayerRequests';
-import { subscribeHospitalityOffers } from './data/hospitality';
 import { InboxReads, useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 
@@ -78,7 +75,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
   const [team, setTeam] = useState<AppUser[]>([]);
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
-  const [offers, setOffers] = useState<HospitalityOffer[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +94,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     setThreads([]);
     setTeam([]);
     setRequests([]);
-    setOffers([]);
     setPrefContactIds(null);
     setLoading(true);
     setError(null);
@@ -179,11 +174,10 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     // Also quiet: the roster only fills the "who" chips on a hand-it-over, and
     // that list degrades to just "Me" rather than failing the screen.
     const unsubTeam = subscribeUsers(setTeam, () => setTeam([]));
-    // Both quiet on error for the same reason as threads above: until
-    // firestore.rules ships these two collections the reads are
-    // permission-denied, and neither is worth failing the whole screen over.
+    // Quiet on error for the same reason as threads above: until
+    // firestore.rules ships this collection the read is permission-denied, and
+    // it is not worth failing the whole screen over.
     const unsubRequests = subscribeOpenPrayerRequests(setRequests, () => setRequests([]));
-    const unsubOffers = subscribeHospitalityOffers(setOffers, () => setOffers([]));
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
       setPrefContactIds(prefs.personalContactIds ?? null),
     );
@@ -199,7 +193,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
       unsubThreads();
       unsubTeam();
       unsubRequests();
-      unsubOffers();
       unsubPrefs();
     };
   }, [uid]);
@@ -279,7 +272,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     [openPrayers, requests, contacts],
   );
   const carrying = useMemo(() => ftCarrying(carryRows), [carryRows]);
-  const homesOpen = useMemo(() => ftHomesOpen(offers), [offers]);
   const nextGathering = useMemo(() => ftNextGathering(events), [events]);
   const weekAhead = useMemo(() => ftWeekAhead(events), [events]);
 
@@ -319,7 +311,6 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     openPrayers,
     carryRows,
     carrying,
-    homesOpen,
     nextGathering,
     weekAhead,
     assignees,
