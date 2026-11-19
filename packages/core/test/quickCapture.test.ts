@@ -339,6 +339,15 @@ describe('the saved step’s own lines', () => {
       sub: 'The team will pray it together too.',
     });
   });
+
+  // Fix round 1: once the person is on team prayer, §21 puts every prayer of
+  // theirs on the team page — so an off toggle must not promise privacy.
+  it('does not say it stays private when the person is already on team prayer', () => {
+    expect(prayerAddedLine('Rio Alvarez', false, true)).toEqual({
+      head: 'Added to what we’re praying',
+      sub: 'The team will pray it together too.',
+    });
+  });
 });
 
 // `M2_TYPE_TITLE` in the design's views/mobile/m2.jsx. The design stores this

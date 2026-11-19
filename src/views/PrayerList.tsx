@@ -13,7 +13,7 @@ import { ChevronRight, Clock, Image as ImageIcon, Plus, Search, Trash2, UserMinu
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
-  isTeamPrayer,
+  isOnTeamPrayer,
   isContactBrother,
   isContactSister,
   getContactGrade,
@@ -370,10 +370,31 @@ export default function PrayerList() {
       .filter((p) => prayerMs(p) >= LAST_WEEK_START && prayerMs(p) < THIS_WEEK_START)
       .sort((a, b) => prayerMs(b) - prayerMs(a))[0] || null;
 
-  // Burdens someone kept to themselves in the phone's log sheet never reach
-  // this page — they live on their own contact's Prayer tab. Prayers written
-  // before that toggle existed carry no flag and stay here (`isTeamPrayer`).
-  const teamPrayers = useMemo(() => visiblePrayers.filter(isTeamPrayer), [visiblePrayers]);
+  // §21: team prayer is per person. A person on it puts EVERY prayer of theirs
+  // on this page, whichever toggle wrote the prayer's own retired flag; a
+  // person off it stays off even when a prayer doc still says `teamPrayer`.
+  //
+  // TRANSITIONAL (fix round 1): until the migration has run, a contact with no
+  // per-person flag yet still counts while one of their prayers carries the
+  // old flag — `isOnTeamPrayer` owns that fallback, so the page and the
+  // migration script cannot disagree.
+  const teamContactIds = useMemo(() => {
+    const prayersByContact = new Map<string, PrayerRecord[]>();
+    for (const p of prayers) {
+      const list = prayersByContact.get(p.contactId);
+      if (list) list.push(p);
+      else prayersByContact.set(p.contactId, [p]);
+    }
+    return new Set(
+      contacts
+        .filter((c) => isOnTeamPrayer(c, prayersByContact.get(c.id) ?? []))
+        .map((c) => c.id),
+    );
+  }, [contacts, prayers]);
+  const teamPrayers = useMemo(
+    () => visiblePrayers.filter((p) => teamContactIds.has(p.contactId)),
+    [visiblePrayers, teamContactIds],
+  );
 
   // One entry per person we're holding (has a prayer, or we just started),
   // sorted by last name then first name — a stable, roster-style order that

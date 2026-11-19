@@ -108,6 +108,12 @@ export interface Contact {
   /** Set when the team took this person off "On our hearts". Absent/null means
    *  they belong on it. Written by a Student or above; see CONTEXT.md. */
   prayerListRemoved?: { at: string; by: string; byName?: string | null } | null;
+  /** Whether the team carries this person on "On our hearts" (§21). Per
+   *  person, not per prayer: once true, every prayer of theirs shows there.
+   *  Read it through `isOnTeamPrayer` (never a bare truthiness check): before
+   *  the per-person migration has run, an absent flag still falls back to the
+   *  old per-prayer flag, and `false` is always off. */
+  teamPrayer?: boolean;
 }
 
 /** The "Combined from X on date by person" note a combine leaves on the kept

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrayerThread, isTeamPrayer, prayerCarryLine } from '../src/prayerThread';
+import { groupPrayerThread, isOnTeamPrayer, isTeamPrayer, prayerCarryLine } from '../src/prayerThread';
 import type { PrayerRecord } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime(); // Monday, this-week start
@@ -75,15 +75,47 @@ describe('isTeamPrayer', () => {
   });
 });
 
+describe('isOnTeamPrayer (§21)', () => {
+  it('reads the person, not the prayer: an absent flag means off', () => {
+    expect(isOnTeamPrayer({})).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: false })).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: true })).toBe(true);
+  });
+
+  // TRANSITIONAL (fix round 1): rules and web deploy before the migration runs,
+  // and installed phone builds still write only the per-prayer flag — so a
+  // contact with no per-person flag yet falls back to the old reading rather
+  // than going blank on "On our hearts".
+  it('counts a legacy team prayer while the person has no flag yet', () => {
+    expect(isOnTeamPrayer({}, [prayer({ teamPrayer: true })])).toBe(true);
+    // A prayer with no flag predates the toggle and was on the page.
+    expect(isOnTeamPrayer({}, [prayer()])).toBe(true);
+  });
+
+  it('stays off when none of the prayers was on the team page', () => {
+    expect(isOnTeamPrayer({}, [prayer({ teamPrayer: false })])).toBe(false);
+    expect(isOnTeamPrayer({}, [])).toBe(false);
+  });
+
+  it('treats an explicit false as off, whatever the prayers say', () => {
+    expect(isOnTeamPrayer({ teamPrayer: false }, [prayer({ teamPrayer: true })])).toBe(false);
+  });
+
+  it('never counts a person the team removed', () => {
+    const removed = { at: '2026-10-01T00:00:00.000Z', by: 'u-admin' };
+    expect(isOnTeamPrayer({ teamPrayer: true, prayerListRemoved: removed })).toBe(false);
+    expect(isOnTeamPrayer({ prayerListRemoved: removed }, [prayer({ teamPrayer: true })])).toBe(false);
+  });
+});
+
 describe('prayerCarryLine', () => {
   it('names who added it and says the team is carrying it too, when it is not you', () => {
     const p = prayer({
       date: new Date(NOW - 3 * 86_400_000).toISOString(),
       updatedByName: 'Ana',
       updatedBy: 'u-ana',
-      teamPrayer: true,
     });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW, onTeam: true })).toBe(
       'Added 3 days ago by Ana. The team is carrying this one too.',
     );
   });
@@ -93,27 +125,37 @@ describe('prayerCarryLine', () => {
       date: new Date(NOW - 86_400_000).toISOString(),
       updatedByName: 'Zion',
       updatedBy: 'u-me',
-      teamPrayer: false,
     });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW, onTeam: false })).toBe(
       "Added yesterday. This one stays off On our hearts.",
     );
   });
 
   it('drops the byline when no author is recorded', () => {
-    const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: undefined, teamPrayer: true });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+    const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: undefined });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW, onTeam: true })).toBe(
       'Added today. The team is carrying this one too.',
     );
   });
 
-  it('reads private prayers as off On our hearts — the absent-flag-means-team rule only flips the other way', () => {
-    const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: 'Ana', updatedBy: 'u-ana', teamPrayer: false });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Added today by Ana. This one stays off On our hearts.');
+  // The line follows the person's team-prayer flag, not the prayer's retired
+  // one: a prayer doc saying `teamPrayer: true` no longer puts anyone on the page.
+  it('stays off the team line when the person is not on team prayer', () => {
+    const p = prayer({
+      date: new Date(NOW).toISOString(),
+      updatedByName: 'Ana',
+      updatedBy: 'u-ana',
+      teamPrayer: true,
+    });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW, onTeam: false })).toBe(
+      'Added today by Ana. This one stays off On our hearts.',
+    );
   });
 
   it('handles a missing or invalid date without throwing', () => {
     const p = prayer({ date: '', updatedByName: 'Ana', updatedBy: 'u-ana' });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Ana added this one. The team is carrying this one too.');
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW, onTeam: true })).toBe(
+      'Ana added this one. The team is carrying this one too.',
+    );
   });
 });

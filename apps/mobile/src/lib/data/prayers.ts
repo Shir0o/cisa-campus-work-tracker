@@ -47,16 +47,32 @@ export async function addPrayer(
   }
 }
 
-export async function setPrayerTeamPrayer(
-  prayerId: string,
+/** Bring a burden to the team's prayer list: the prayer and the person's
+ *  `teamPrayer` flag are one batch in core, so a failure writes neither. */
+export async function addTeamPrayer(
   contactId: string,
-  teamPrayer: boolean,
+  burden: string,
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   try {
-    await core.setPrayerTeamPrayer(db, prayerId, contactId, teamPrayer, by);
+    await core.addTeamPrayer(db, { contactId, burden }, by);
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
+    handleFirestoreError(e, OperationType.CREATE, 'prayers');
+  }
+}
+
+/** Put a person on, or take them off, the team prayer page (§21). The flag
+ *  lives on the contact; bringing them to the team also clears the contact's
+ *  team removal (core `setTeamPrayer`). */
+export async function setTeamPrayer(
+  contactId: string,
+  on: boolean,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    await core.setTeamPrayer(db, contactId, on, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}`);
   }
 }
 

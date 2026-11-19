@@ -347,10 +347,16 @@ export function reminderSetLine(preset: ReminderChoice): string {
 
 /** The prayer's collapsed row, once it's written down. The sub-line names
  *  where the burden actually went, so the design's "Bring it to team prayer"
- *  toggle has a visible consequence. */
-export function prayerAddedLine(name: string, team: boolean): { head: string; sub: string } {
+ *  toggle has a visible consequence. `onTeam` is whether the person is already
+ *  on team prayer (§21): every prayer of theirs shows there, so turning the
+ *  toggle off does not keep this one private. */
+export function prayerAddedLine(
+  name: string,
+  team: boolean,
+  onTeam = false,
+): { head: string; sub: string } {
   return {
     head: "Added to what we’re praying",
-    sub: team ? "The team will pray it together too." : `It sits with ${firstName(name)}'s prayers.`,
+    sub: team || onTeam ? "The team will pray it together too." : `It sits with ${firstName(name)}'s prayers.`,
   };
 }

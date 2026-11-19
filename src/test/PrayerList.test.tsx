@@ -99,6 +99,7 @@ const mockContacts = [
       stage: 'Lead',
       tags: ['Year 2'],
       gender: 'Female',
+      teamPrayer: true,
     }),
   },
   {
@@ -109,6 +110,7 @@ const mockContacts = [
       role: 'Leader',
       stage: 'Regular',
       gender: 'Male',
+      teamPrayer: true,
     }),
   },
 ];
@@ -241,24 +243,24 @@ describe('PrayerList', () => {
     expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
   });
 
-  // The phone's log sheet can keep a burden off this page ("Bring it to team
-  // prayer", off by default). Prayers written before that toggle existed have
-  // no flag at all and must stay — hence `teamPrayer !== false`, not truthiness.
-  it('leaves out burdens kept private, and keeps flagless ones', async () => {
+  // §21: team prayer is per person. Once a person is on it, every prayer of
+  // theirs shows here, whichever toggle wrote the prayer's own flag. An
+  // off-team person's prayers stay off, even when a prayer still carries the
+  // retired per-prayer flag (the data is left as it was).
+  it('shows every prayer of a person on team prayer, whatever the per-prayer flag says', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({ docs: mockContacts, size: 2 });
       } else if (ref?.path === 'prayers') {
         callback({
           docs: [
-            // Flagless — written before the toggle, still the team's.
             mockPrayers[0],
             {
               id: 'p-private',
               data: () => ({
-                contactId: 'c2',
-                burden: 'Something Bob told me in confidence',
-                date: '2026-06-12T00:00:00.000Z',
+                contactId: 'c1',
+                burden: 'Something Alice told me in confidence',
+                date: new Date().toISOString(),
                 status: 'pending',
                 updatedAt: '2026-06-12T00:00:00.000Z',
                 teamPrayer: false,
@@ -278,8 +280,111 @@ describe('PrayerList', () => {
     await waitFor(() => {
       expect(screen.getByText('Strength for finals')).toBeInTheDocument();
     });
+    expect(screen.getByText('Something Alice told me in confidence')).toBeInTheDocument();
+  });
+
+  it('leaves off a person not on team prayer, even when a prayer carries the old per-prayer flag', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [mockContacts[0], { ...mockContacts[1], data: () => ({ ...mockContacts[1].data(), teamPrayer: false }) }],
+          size: 2,
+        });
+      } else if (ref?.path === 'prayers') {
+        callback({
+          docs: [
+            mockPrayers[0],
+            {
+              id: 'p-old-flag',
+              data: () => ({
+                contactId: 'c2',
+                burden: 'Something Bob told me in confidence',
+                date: '2026-06-12T00:00:00.000Z',
+                status: 'pending',
+                updatedAt: '2026-06-12T00:00:00.000Z',
+                teamPrayer: true,
+              }),
+            },
+          ],
+          size: 2,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
     expect(screen.queryByText('Something Bob told me in confidence')).not.toBeInTheDocument();
     expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+  });
+
+  // TRANSITIONAL (fix round 1): rules and web deploy before the migration
+  // runs, so a contact with no per-person flag yet still counts while one of
+  // their prayers carries the old per-prayer flag — the page must not go blank
+  // in between.
+  it('keeps a person with no per-person flag yet when a prayer was on the team page', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [{ ...mockContacts[0], data: () => ({ ...mockContacts[0].data(), teamPrayer: undefined }) }],
+          size: 1,
+        });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: [mockPrayers[0]], size: 1 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+  });
+
+  it('does not fall back for a person whose prayers were all kept private', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [{ ...mockContacts[0], data: () => ({ ...mockContacts[0].data(), teamPrayer: undefined }) }],
+          size: 1,
+        });
+      } else if (ref?.path === 'prayers') {
+        callback({
+          docs: [
+            {
+              id: 'p-private',
+              data: () => ({
+                contactId: 'c1',
+                burden: 'Something Alice told me in confidence',
+                date: new Date().toISOString(),
+                status: 'pending',
+                updatedAt: '2026-06-12T00:00:00.000Z',
+                teamPrayer: false,
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No one to pray for yet')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Something Alice told me in confidence')).not.toBeInTheDocument();
   });
 
   it('shows empty state when no prayers exist and mock is empty', async () => {
@@ -992,7 +1097,7 @@ describe('PrayerList', () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({
-          docs: [{ id: 'c1', data: () => ({ name: 'Alice Johnson', avatar: 'https://example.com/alice.jpg' }) }],
+          docs: [{ id: 'c1', data: () => ({ name: 'Alice Johnson', avatar: 'https://example.com/alice.jpg', teamPrayer: true }) }],
           size: 1,
         });
       } else if (ref?.path === 'prayers') {
@@ -1156,7 +1261,7 @@ describe('PrayerList', () => {
     );
     expect(batch.update).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'contacts', id: 'c1' }),
-      expect.objectContaining({ prayerListRemoved: expect.anything() }),
+      expect.objectContaining({ prayerListRemoved: expect.anything(), teamPrayer: true }),
     );
     expect(batch.commit).toHaveBeenCalled();
   });
@@ -1172,6 +1277,7 @@ describe('PrayerList', () => {
         stage: 'Lead',
         tags: ['Year 2'],
         gender: 'Female',
+        teamPrayer: true,
       }),
     };
     const aliceRemoved = {
@@ -1262,6 +1368,7 @@ describe('PrayerList', () => {
                 owner: 'u-mei',
                 carers: ['u-mei'],
                 createdByName: 'Tony Wang',
+                teamPrayer: true,
               }),
             },
           ],
@@ -1346,7 +1453,7 @@ describe('PrayerList', () => {
     });
   }
 
-  const desktopAlice = { id: 'c1', data: () => ({ name: 'Alice Johnson', gender: 'Female' }) };
+  const desktopAlice = { id: 'c1', data: () => ({ name: 'Alice Johnson', gender: 'Female', teamPrayer: true }) };
   const standInPrayer = () => ({
     id: 'p1',
     data: () => ({
@@ -1414,7 +1521,7 @@ describe('PrayerList — phone card', () => {
 
   const alice = {
     id: 'c1',
-    data: () => ({ name: 'Alice Johnson', gender: 'Female' }),
+    data: () => ({ name: 'Alice Johnson', gender: 'Female', teamPrayer: true }),
   };
 
   it('never calls an unmarked prayer “All answered”', async () => {

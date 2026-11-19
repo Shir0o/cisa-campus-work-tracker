@@ -25,6 +25,7 @@ import {
   firstName,
   followUpDefaultText,
   findDuplicateContact,
+  isOnTeamPrayer,
   logSavedBeat,
   logWhenInstant,
   logWhenLabel,
@@ -54,7 +55,7 @@ import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useLogSheetData } from '../../lib/useLogSheetData';
 import { addContact } from '../../lib/data/contacts';
 import { addInteraction } from '../../lib/data/interactions';
-import { addPrayer } from '../../lib/data/prayers';
+import { addPrayer, addTeamPrayer } from '../../lib/data/prayers';
 import { addTodo, setTodoDone } from '../../lib/data/todos';
 import { ensureNotificationPermission, scheduleTodoDueNotification } from '../../lib/notifications';
 
@@ -332,16 +333,24 @@ function LogSheetBody({
   };
 
   /** "Something to pray for". `teamPrayer` is the "Bring it to team prayer"
-   * toggle and is always written, true or false: an absent flag reads as the
-   * team's, so the choice is never left to that default. */
+   *  toggle and is always written, true or false: an absent flag reads as the
+   *  team's, so the choice is never left to that default. Turning it on writes
+   *  the burden and the person's team flag in ONE batch (core's
+   *  `addTeamPrayer`), so a failure leaves neither behind — the burden is on
+   *  the list because the person is (§21). */
   const savePrayer = async () => {
     if (!saved || !burden.trim() || saving) return;
     setSaving(true);
     try {
-      await addPrayer(
-        { contactId: saved.contactId, burden: burden.trim(), teamPrayer: prTeam },
-        { uid, name: user?.displayName },
-      );
+      const by = { uid, name: user?.displayName };
+      if (prTeam) {
+        await addTeamPrayer(saved.contactId, burden.trim(), by);
+      } else {
+        await addPrayer(
+          { contactId: saved.contactId, burden: burden.trim(), teamPrayer: false },
+          by,
+        );
+      }
       setPrSet(true);
       setExpand(null);
     } finally {
@@ -359,6 +368,12 @@ function LogSheetBody({
       </Text>
     </>
   );
+
+  // Fix round 1: the saved step's prayer line must not promise privacy for a
+  // person already on team prayer — §21 shows every prayer of theirs there.
+  // Their flag is what this sheet can see; the legacy per-prayer fallback needs
+  // the person's prayer list, which only the person page loads.
+  const savedContact = saved ? contacts.find((person) => person.id === saved.contactId) : undefined;
 
   return (
     // A scrim tap on the saved step FINISHES rather than discards: the save
@@ -778,7 +793,7 @@ function LogSheetBody({
                 )}
 
                 {prSet ? (
-                  <DoneRow {...prayerAddedLine(saved.contactName, prTeam)} />
+                  <DoneRow {...prayerAddedLine(saved.contactName, prTeam, isOnTeamPrayer(savedContact ?? {}))} />
                 ) : (
                   <>
                     <Disclosure

@@ -82,6 +82,39 @@ export async function addPrayer(
   });
 }
 
+/** Bring a burden to the team's prayer list: the prayer and the person's
+ *  `teamPrayer` flag are ONE batch, so a failure writes neither. Turning the
+ *  log sheet's "Bring it to team prayer" on must surface the burden (§21), and
+ *  half a write would leave the prayer private or the person on the list with
+ *  nothing new. Clears `prayerListRemoved` in the same write, as the web's
+ *  `addTeamPrayer` does, so the person really lands on "On our hearts". */
+export async function addTeamPrayer(
+  db: Firestore,
+  input: { contactId: string; burden: string },
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+  batch.set(doc(collection(db, "prayers")), {
+    contactId: input.contactId,
+    date: now,
+    burden: input.burden.trim(),
+    status: "pending",
+    teamPrayer: true,
+    updatedAt: now,
+    updatedBy: by.uid || null,
+    updatedByName: by.name || null,
+  });
+  batch.update(doc(db, "contacts", input.contactId), {
+    teamPrayer: true,
+    prayerListRemoved: deleteField(),
+    updatedAt: now,
+    updatedBy: by.uid || null,
+    updatedByName: by.name || null,
+  });
+  await batch.commit();
+}
+
 /** Edit an existing prayer's burden text. */
 export async function updatePrayerBurden(
   db: Firestore,
@@ -97,24 +130,26 @@ export async function updatePrayerBurden(
   });
 }
 
-/** Put a burden on, or take it off, the team prayer page. Always writes the
- *  flag: deleting it would read as the team's again (`isTeamPrayer`). Bringing
- *  it to the team also puts the person back on "On our hearts" in the same
- *  batch (clears `prayerListRemoved`, as the web's `addTeamPrayer` does);
- *  taking it off leaves the contact alone. */
-export async function setPrayerTeamPrayer(
+/** Put a person on, or take them off, the team prayer page (§21). The flag
+ *  lives on the contact now, not on a single prayer: once on, every prayer of
+ *  theirs shows on "On our hearts". Bringing them to the team also puts them
+ *  back on the list in the same write (clears `prayerListRemoved`, as the web's
+ *  `addTeamPrayer` does); taking them off leaves that flag alone. */
+export async function setTeamPrayer(
   db: Firestore,
-  prayerId: string,
   contactId: string,
-  teamPrayer: boolean,
+  on: boolean,
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   const now = new Date().toISOString();
-  const stamp = { updatedAt: now, updatedBy: by.uid || null, updatedByName: by.name || null };
-  const batch = writeBatch(db);
-  batch.update(doc(db, "prayers", prayerId), { teamPrayer, ...stamp });
-  if (teamPrayer) batch.update(doc(db, "contacts", contactId), { prayerListRemoved: deleteField(), ...stamp });
-  await batch.commit();
+  const patch: Record<string, unknown> = {
+    teamPrayer: on,
+    updatedAt: now,
+    updatedBy: by.uid || null,
+    updatedByName: by.name || null,
+  };
+  if (on) patch.prayerListRemoved = deleteField();
+  await updateDoc(doc(db, "contacts", contactId), patch);
 }
 
 export async function updatePrayerStatus(

@@ -38,7 +38,7 @@ import {
 } from './data/interactions';
 import {
   addPrayer as addPrayerApi,
-  setPrayerTeamPrayer as setPrayerTeamPrayerApi,
+  setTeamPrayer as setTeamPrayerApi,
   subscribeContactPrayers,
   updatePrayerStatus,
 } from './data/prayers';
@@ -202,18 +202,18 @@ export function useContactDetailData(contactId: string) {
       });
     },
 
-    // The card's one-tap toggle. Always an explicit write: an absent flag
-    // reads as the team's, so taking it off must store false.
-    setPrayerTeamPrayer: async (prayer: PrayerRecord, teamPrayer: boolean) => {
+    // The card's one-tap toggle (§21). The flag is the person's, so every
+    // prayer of theirs shows on "On our hearts" once it is on.
+    setTeamPrayer: async (on: boolean) => {
       if (!contact) return;
-      await setPrayerTeamPrayerApi(prayer.id, contactId, teamPrayer, by);
+      await setTeamPrayerApi(contactId, on, by);
       void logActivity({
-        action: teamPrayer ? 'brought a prayer to team prayer for' : 'took a prayer off team prayer for',
+        action: on ? "brought to the team's prayer list for" : "took off the team's prayer list for",
         targetId: contactId,
         targetName: contact.name,
         targetType: 'contact',
         type: 'comment',
-        description: prayer.burden,
+        description: on ? 'On our hearts' : 'Off On our hearts',
       });
     },
 

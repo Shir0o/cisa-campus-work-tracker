@@ -4,7 +4,8 @@
 // (#1406 — the phone's version of the web contact-tab fix in #1042).
 import { act, renderHook } from '@testing-library/react-native';
 import { useContactDetailData } from './useContactDetailData';
-import { addPrayer, setPrayerTeamPrayer } from './data/prayers';
+import { addPrayer, setTeamPrayer } from './data/prayers';
+import { logActivity } from './firebase';
 import type { Contact } from '@cisa/core';
 
 jest.mock('./AuthProvider', () => ({
@@ -39,7 +40,7 @@ jest.mock('./data/prayers', () => ({
   addPrayer: jest.fn(() => Promise.resolve()),
   subscribeContactPrayers: () => () => undefined,
   updatePrayerStatus: jest.fn(),
-  setPrayerTeamPrayer: jest.fn(),
+  setTeamPrayer: jest.fn(),
 }));
 
 jest.mock('./data/threads', () => ({
@@ -80,10 +81,10 @@ describe('useContactDetailData.addPrayer', () => {
   });
 });
 
-describe('useContactDetailData.setPrayerTeamPrayer', () => {
+describe('useContactDetailData.setTeamPrayer (§21)', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('writes the flag explicitly, both ways', async () => {
+  it('writes the person’s flag, both ways', async () => {
     const { result } = await renderHook(() => useContactDetailData('c1'));
     const cb = (globalThis as unknown as { __contactCb?: (c: Contact) => void }).__contactCb;
     await act(() => {
@@ -91,13 +92,22 @@ describe('useContactDetailData.setPrayerTeamPrayer', () => {
     });
 
     await act(async () => {
-      await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, false);
+      await result.current.setTeamPrayer(true);
     });
-    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', 'c1', false, expect.objectContaining({ uid: 'u1' }));
+    expect(setTeamPrayer).toHaveBeenLastCalledWith('c1', true, expect.objectContaining({ uid: 'u1' }));
 
     await act(async () => {
-      await result.current.setPrayerTeamPrayer({ id: 'p1', burden: 'Peace' } as never, true);
+      await result.current.setTeamPrayer(false);
     });
-    expect(setPrayerTeamPrayer).toHaveBeenLastCalledWith('p1', 'c1', true, expect.objectContaining({ uid: 'u1' }));
+    expect(setTeamPrayer).toHaveBeenLastCalledWith('c1', false, expect.objectContaining({ uid: 'u1' }));
+
+    // Fix round 1: one activity wording on web and phone — the web app's.
+    const actions = (logActivity as unknown as jest.Mock).mock.calls.map(
+      ([entry]: [{ action: string }]) => entry.action,
+    );
+    expect(actions).toEqual([
+      "brought to the team's prayer list for",
+      "took off the team's prayer list for",
+    ]);
   });
 });

@@ -3,8 +3,9 @@ import { addDoc, collection, deleteField, updateDoc } from 'firebase/firestore';
 import {
   addPrayerBurden,
   addTeamPrayer,
+  isOnTeamPrayer,
   isTeamPrayer,
-  setPrayerTeamPrayer,
+  setTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
   getContactCarers,
@@ -99,7 +100,7 @@ describe('addPrayerBurden', () => {
     expect(hoisted.batchSet.mock.calls[0][1]).not.toHaveProperty('prayerPage');
     expect(hoisted.batchUpdate).toHaveBeenCalledWith(
       { path: 'contacts/c1' },
-      expect.objectContaining({ prayerListRemoved: hoisted.removed }),
+      expect.objectContaining({ prayerListRemoved: hoisted.removed, teamPrayer: true }),
     );
     expect(hoisted.batchCommit).toHaveBeenCalled();
   });
@@ -139,6 +140,32 @@ describe('isTeamPrayer', () => {
     expect(isTeamPrayer({})).toBe(true);
     expect(isTeamPrayer({ teamPrayer: true })).toBe(true);
     expect(isTeamPrayer({ teamPrayer: false })).toBe(false);
+  });
+});
+
+describe('isOnTeamPrayer (§21)', () => {
+  it('reads the person’s flag, and an absent one as off', () => {
+    expect(isOnTeamPrayer({})).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: false })).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: true })).toBe(true);
+  });
+
+  // TRANSITIONAL (fix round 1): before the migration has run, an un-stamped
+  // contact still counts while one of their prayers carries the old flag.
+  it('falls back to the old per-prayer flag while the person has none', () => {
+    expect(isOnTeamPrayer({}, [{ teamPrayer: true }])).toBe(true);
+    expect(isOnTeamPrayer({}, [{}])).toBe(true);
+    expect(isOnTeamPrayer({}, [{ teamPrayer: false }])).toBe(false);
+  });
+
+  it('reads an explicit false as off, whatever the prayers say', () => {
+    expect(isOnTeamPrayer({ teamPrayer: false }, [{ teamPrayer: true }])).toBe(false);
+  });
+
+  it('never counts a person the team removed', () => {
+    const removed = { at: '2026-10-01T00:00:00.000Z', by: 'u-admin' };
+    expect(isOnTeamPrayer({ teamPrayer: true, prayerListRemoved: removed })).toBe(false);
+    expect(isOnTeamPrayer({ prayerListRemoved: removed }, [{ teamPrayer: true }])).toBe(false);
   });
 });
 
@@ -456,33 +483,32 @@ describe('placeholder prayer burdens (#1691, #1765)', () => {
   });
 });
 
-describe('setPrayerTeamPrayer', () => {
-  const by = { uid: 'u1', name: 'Tony' };
-  beforeEach(() => {
-    mock(hoisted.batchUpdate).mockClear();
-    mock(hoisted.batchCommit).mockClear();
-  });
-
-  it('brings a burden to the team and clears the contact removal flag in the same batch', async () => {
-    await setPrayerTeamPrayer('p1', 'c1', true, by);
-    expect(hoisted.batchUpdate).toHaveBeenNthCalledWith(
-      1,
-      { path: 'prayers/p1' },
-      expect.objectContaining({ teamPrayer: true, updatedBy: 'u1', updatedByName: 'Tony' }),
-    );
-    expect(hoisted.batchUpdate).toHaveBeenNthCalledWith(
-      2,
+describe('setTeamPrayer (§21)', () => {
+  it('puts the person on team prayer and clears the team removal in one write', async () => {
+    await setTeamPrayer('c1', true, by);
+    expect(mock(updateDoc)).toHaveBeenCalledWith(
       { path: 'contacts/c1' },
-      expect.objectContaining({ prayerListRemoved: hoisted.removed, updatedBy: 'u1' }),
+      expect.objectContaining({
+        teamPrayer: true,
+        prayerListRemoved: hoisted.removed,
+        updatedBy: 'u1',
+        updatedByName: 'Mei Tanaka',
+      }),
     );
-    expect(hoisted.batchCommit).toHaveBeenCalledTimes(1);
   });
 
-  // Deleting the field would make the burden count as the team's again; the
-  // contact is left alone.
-  it('writes an explicit teamPrayer: false and leaves the contact untouched', async () => {
-    await setPrayerTeamPrayer('p1', 'c1', false, by);
-    expect(hoisted.batchUpdate).toHaveBeenCalledTimes(1);
-    expect(mock(hoisted.batchUpdate).mock.calls[0][1].teamPrayer).toBe(false);
+  // Taking someone off is about that person only: the team's removal flag is a
+  // separate gesture (Remove from the list, with its Undo).
+  it('takes the person off without touching the team removal', async () => {
+    await setTeamPrayer('c1', false, by);
+    const patch = mock(updateDoc).mock.calls[0][1];
+    expect(patch).toMatchObject({ teamPrayer: false, updatedBy: 'u1', updatedByName: 'Mei Tanaka' });
+    expect(patch).not.toHaveProperty('prayerListRemoved');
+  });
+
+  it('reports a failed write', async () => {
+    mock(updateDoc).mockRejectedValueOnce(new Error('permission-denied'));
+    await setTeamPrayer('c1', true, by);
+    expect(handleFirestoreError).toHaveBeenCalled();
   });
 });

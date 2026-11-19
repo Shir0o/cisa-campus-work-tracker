@@ -2,7 +2,6 @@ import { Heart, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { splitPrayerBurden } from "../../lib/contactComposer";
 import type { PrayerRecord } from "../../types";
-import { isTeamPrayer } from "../../lib/prayers";
 import { useLanguage } from "../LanguageProvider";
 
 type PrayerStatus = PrayerRecord["status"];
@@ -19,16 +18,19 @@ const PRAYER_STATUSES: { status: PrayerStatus; label: string }[] = [
 // context sits under it, and status is one control.
 export default function ContactPrayerCard({
   prayer,
+  onTeam = false,
   canUpdatePrayers,
   onUpdateStatus,
   onEdit,
   onSetTeamPrayer,
 }: {
   prayer: PrayerRecord;
+  /** Whether the person — not this prayer — is on team prayer (§21). */
+  onTeam?: boolean;
   canUpdatePrayers: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: PrayerStatus) => void;
   onEdit?: () => void;
-  onSetTeamPrayer?: (prayer: PrayerRecord, teamPrayer: boolean) => void;
+  onSetTeamPrayer?: (on: boolean) => void;
 }) {
   const { t } = useLanguage();
   const p = prayer;
@@ -46,7 +48,6 @@ export default function ContactPrayerCard({
       ? `${t('modals.contactDetails.held')} ${heldDays} ${heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}`
       : null;
 
-  const onTeam = isTeamPrayer(p);
   const canToggleTeam = canUpdatePrayers && !!onSetTeamPrayer;
 
   return (
@@ -111,7 +112,7 @@ export default function ContactPrayerCard({
                 <button
                   type="button"
                   className="cd-prayer-team-off"
-                  onClick={() => onSetTeamPrayer!(p, false)}
+                  onClick={() => onSetTeamPrayer!(false)}
                 >
                   {t('modals.contactDetails.take_off_team_prayer')}
                 </button>
@@ -121,7 +122,7 @@ export default function ContactPrayerCard({
             <button
               type="button"
               className="cd-prayer-team-on"
-              onClick={() => onSetTeamPrayer!(p, true)}
+              onClick={() => onSetTeamPrayer!(true)}
             >
               <Users className="w-3.5 h-3.5" aria-hidden="true" />
               {t('modals.contactDetails.bring_to_team_prayer')}
