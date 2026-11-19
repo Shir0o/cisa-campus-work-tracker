@@ -527,12 +527,7 @@
     "worth_a_look": "Worth a look",
     "earlier": "Earlier",
     "see_whole_record": "See the whole record in History",
-    "open_prayer": "Open Prayer",
-    "hide_updates": "Hide updates",
-    "show_all": "Show all {n}",
-    "set_stack_aside": "Set stack aside",
-    "set_aside": "Set aside",
-    "notifications_on": "{n} notifications on {title}"
+    "open_prayer": "Open Prayer"
   },
   "search": {
     "go_to": "Go to",

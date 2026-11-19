@@ -2,8 +2,8 @@
 // around the shared @cisa/core logic (behind an injected `db`).
 import { collection, getDocs, type QueryDocumentSnapshot } from 'firebase/firestore';
 import * as core from '@cisa/core';
-import type { AppRole, Contact, ContactEditFields, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
-import { db, handleFirestoreError, logActivity, OperationType, sendNotification } from '../firebase';
+import type { AppRole, Contact, ContactEditFields, NewContactInput, Stage, Touch } from '@cisa/core';
+import { db, handleFirestoreError, logActivity, OperationType } from '../firebase';
 
 export function subscribeContacts(
   cb: (contacts: Contact[]) => void,
@@ -48,14 +48,14 @@ export function subscribeTiedSubcollection(
   return core.subscribeTiedSubcollection(db, staffId, sub, cb, onError);
 }
 
-/** Create a new contact; self-notifies the creator and pings their full-timer
- * when the creator is a trainee, then logs the activity (surfaced in History). */
+/** Create a new contact, then log the activity (surfaced in History). Adding a
+ *  person notifies nobody (cut-or-keep §28). */
 export async function addContact(
   input: NewContactInput,
   by: { uid?: string | null; name?: string | null },
 ): Promise<string> {
   try {
-    const id = await core.addContact(db, input, by, (payload: ContactNotifyPayload) => void sendNotification(payload));
+    const id = await core.addContact(db, input, by);
 
     const fieldsLog = [
       `Stage: ${input.stage}`,

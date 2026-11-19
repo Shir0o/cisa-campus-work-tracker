@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Briefcase, Mail, Phone, Calendar, Tag, MessageSquare, Sparkles, AlertCircle } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
-import { isTrainee, fullTimerIds } from '../../lib/walking';
+import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { stampFounders, stampPartners } from '../../lib/partners';
 import { visibleToOf } from '../../lib/permissions';
 import { contactVisibilityConstraints } from '../../lib/contactQueries';
@@ -254,33 +253,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         type: 'create',
         description: fieldsLog
       });
-
-      if (user) {
-        await sendNotification({
-          userId: user.uid,
-          title: 'Contact Created',
-          message: `Successfully added ${fullName} to your directory.`,
-          type: 'success',
-          link: `/people/${docRef.id}`,
-          targetId: docRef.id
-        });
-      }
-
-      // No pairing (#549): when a trainee adds someone, the whole full-timer
-      // team is told, so nothing the team does goes unseen.
-      if (isTrainee(user?.uid)) {
-        const who = (user?.displayName || "A trainee").split(" ")[0];
-        for (const ftId of fullTimerIds()) {
-          await sendNotification({
-            userId: ftId,
-            title: `${who} added ${fullName}`,
-            message: 'A new person in your circle — take a look when you can.',
-            type: 'info',
-            link: `/people/${docRef.id}`,
-            targetId: docRef.id,
-          });
-        }
-      }
 
       if (user?.uid) {
         UsageStats.record(user.uid, {

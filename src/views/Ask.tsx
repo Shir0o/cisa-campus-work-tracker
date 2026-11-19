@@ -13,7 +13,6 @@ import { reachByContact } from "../lib/reach";
 import { teamLabelKey, rosterOnTeam } from "../lib/teams";
 import {
   addThreadMessage,
-  contactStakeholdersOf,
   subscribeAllThreads,
   type ThreadMessageWithContact,
 } from "../lib/threads";
@@ -334,7 +333,7 @@ export default function Ask() {
           kind: "comment",
           body,
         },
-        { contactName: contact.name, stakeholders: contactStakeholdersOf(contact) },
+        { contactName: contact.name },
       );
     }
   };

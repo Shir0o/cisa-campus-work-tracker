@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as firestore from 'firebase/firestore';
-import { useContactStory } from '../hooks/useContactStory';
+import { announceInteraction, useContactStory } from '../hooks/useContactStory';
 import type { Contact, Interaction, PrayerRecord, Gathering, Rhythm, Stage } from '../types';
 
 const hoisted = vi.hoisted(() => ({
@@ -9,6 +9,7 @@ const hoisted = vi.hoisted(() => ({
   subscribeThreads: vi.fn(),
   logActivity: vi.fn(),
   handleFirestoreError: vi.fn(),
+  sendNotification: vi.fn(),
 }));
 
 vi.mock('../lib/rhythms', () => ({
@@ -24,7 +25,7 @@ vi.mock('../lib/firebase', () => ({
   handleFirestoreError: hoisted.handleFirestoreError,
   OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE', DELETE: 'DELETE' },
   logActivity: hoisted.logActivity,
-  sendNotification: vi.fn(),
+  sendNotification: hoisted.sendNotification,
 }));
 
 vi.mock('firebase/firestore', () => {
@@ -49,6 +50,28 @@ vi.mock('firebase/firestore', () => {
       toDate() { return new Date(); }
     },
   };
+});
+
+describe('announceInteraction', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('writes the History entry without a bell entry for the reacher', async () => {
+    await announceInteraction(
+      { id: 'c1', name: 'Priya' },
+      {
+        userId: 'ft1',
+        userName: 'Jae',
+        content: 'Saw her at the library',
+        dateTime: '2026-11-02T10:00:00.000Z',
+        reacher: { id: 'tr1', name: 'Zion' },
+      },
+    );
+
+    expect(hoisted.sendNotification).not.toHaveBeenCalled();
+    expect(hoisted.logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'logged an interaction for', targetId: 'c1' }),
+    );
+  });
 });
 
 describe('useContactStory', () => {

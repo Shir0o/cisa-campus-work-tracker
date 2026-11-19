@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import NotificationCenter, { groupNotificationsIntoStacks } from '../components/layout/NotificationCenter';
+import NotificationCenter from '../components/layout/NotificationCenter';
 import * as firestore from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
 
@@ -536,65 +536,34 @@ describe('NotificationCenter Component', () => {
     expect(screen.getByText('Read Item')).toBeInTheDocument();
   });
 
-  // ── setAside personal vs global ────────────────────────────────────
+  // ── Everything it receives, with no filters ────────────────────────
 
-  it('dismisses personal notification via deleteDoc', async () => {
-    const mockNotifs = [
+  it('shows every notification it receives, one row each, with no filter controls', () => {
+    triggerOnSnapshotCallbacks([
       {
-        id: 'n-personal',
-        userId: 'mock-user-id',
-        title: 'Personal Note',
-        body: 'body',
-        type: 'success',
-        read: false,
-        createdAt: { toDate: () => new Date() },
+        id: 'n1', userId: 'mock-user-id', title: 'Sarah: New check-in', message: 'Had coffee.',
+        targetId: 'contact-sarah', type: 'info', read: false, createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
       },
-    ];
+      {
+        id: 'n2', userId: 'mock-user-id', title: 'Sarah: Prayer request', message: 'Exam week.',
+        targetId: 'contact-sarah', type: 'success', read: false, createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+    ]);
 
-    triggerOnSnapshotCallbacks(mockNotifs);
     render(
       <MemoryRouter>
         <NotificationCenter />
       </MemoryRouter>
     );
-
     fireEvent.click(screen.getByLabelText(/notifications/i));
-    const setAsideBtn = screen.getByLabelText('Set aside');
-    fireEvent.click(setAsideBtn);
 
-    await waitFor(() => {
-      expect(firestore.deleteDoc).toHaveBeenCalled();
-    });
-  });
-
-  it('dismisses global notification via arrayUnion dismissedBy', async () => {
-    const mockNotifs = [
-      {
-        id: 'n-global',
-        userId: 'ALL_ADMINS',
-        title: 'Global Note',
-        body: 'body',
-        type: 'event',
-        readBy: [],
-        createdAt: { toDate: () => new Date() },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-    const setAsideBtn = screen.getByLabelText('Set aside');
-    fireEvent.click(setAsideBtn);
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalled();
-      expect(firestore.arrayUnion).toHaveBeenCalledWith('mock-user-id');
-    });
+    // Both entries are rows in their own right — nothing is folded away.
+    expect(screen.getByRole('button', { name: /Sarah: New check-in/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sarah: Prayer request/ })).toBeInTheDocument();
+    // And no control hides, expands or sets anything aside.
+    expect(screen.queryByLabelText('Set aside')).toBeNull();
+    expect(screen.queryByLabelText('Set stack aside')).toBeNull();
+    expect(screen.queryByText(/Hide updates|Show all/)).toBeNull();
   });
 
   // ── Non-staff footer ───────────────────────────────────────────────
@@ -738,7 +707,7 @@ describe('NotificationCenter Component', () => {
 
   // ── No signed-in user: all mutations become no-ops ─────────────────
 
-  it('skips markAsRead, markAllAsRead, and setAside when there is no current user', async () => {
+  it('skips markAsRead and markAllAsRead when there is no current user', async () => {
     (auth as any).currentUser = null;
     mockUseAuth.mockReturnValue({ role: 'admin', effectiveUserId: 'uid-1' });
 
@@ -775,15 +744,13 @@ describe('NotificationCenter Component', () => {
     fireEvent.click(screen.getByLabelText(/notifications/i));
     await screen.findByText('Solo');
     fireEvent.click(screen.getByRole('button', { name: /Mark all read/i }));
-    fireEvent.click(screen.getByLabelText('Set aside'));
     fireEvent.click(screen.getByText('Solo'));
 
     expect(firestore.updateDoc).not.toHaveBeenCalled();
     expect(firestore.writeBatch).not.toHaveBeenCalled();
-    expect(firestore.deleteDoc).not.toHaveBeenCalled();
   });
 
-  // ── Failure handling on markAsRead / setAside ──────────────────────
+  // ── Failure handling on markAsRead ─────────────────────────────────
 
   it('logs when marking a notification read fails', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -802,27 +769,6 @@ describe('NotificationCenter Component', () => {
 
     await waitFor(() => {
       expect(errSpy).toHaveBeenCalledWith('Error marking as read:', expect.any(Error));
-    });
-    errSpy.mockRestore();
-  });
-
-  it('logs when setting aside a global notification fails', async () => {
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('write fail'));
-    triggerOnSnapshotCallbacks([
-      { id: 'n-global', userId: 'ALL_ADMINS', title: 'Global', body: 'b', type: 'event', readBy: [], createdAt: { toDate: () => new Date() } },
-    ]);
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-    fireEvent.click(screen.getByLabelText('Set aside'));
-
-    await waitFor(() => {
-      expect(errSpy).toHaveBeenCalledWith('Error setting aside:', expect.any(Error));
     });
     errSpy.mockRestore();
   });
@@ -891,10 +837,9 @@ describe('NotificationCenter Component', () => {
 
   // ── Row semantics (#1779) ───────────────────────────────────────────
   //
-  // The row used to be a `div[role="button"]` handling Enter only, with the
-  // "set aside" control nested inside it. The rotor read one flattened node and
-  // a phone could not activate the row with Space. It is a real button now, and
-  // the dismissal is a sibling.
+  // The row used to be a `div[role="button"]` handling Enter only. The rotor
+  // read one flattened node and a phone could not activate the row with Space.
+  // It is a real button now.
 
   function renderOneRow() {
     triggerOnSnapshotCallbacks([
@@ -907,16 +852,6 @@ describe('NotificationCenter Component', () => {
     );
     fireEvent.click(screen.getByLabelText(/notifications/i));
   }
-
-  it('is a real button with its dismissal as a sibling, not a nested control', () => {
-    renderOneRow();
-    const row = screen.getByRole('button', { name: /Key item/ });
-    expect(row.tagName).toBe('BUTTON');
-    // Nothing focusable inside the row: the rotor sees one node, not three.
-    expect(row.querySelector('button, [role="button"], a')).toBeNull();
-    const dismiss = screen.getByRole('button', { name: /Set aside/i });
-    expect(row.contains(dismiss)).toBe(false);
-  });
 
   it('selects a notification when Enter is pressed', async () => {
     const user = userEvent.setup();
@@ -933,286 +868,13 @@ describe('NotificationCenter Component', () => {
     await user.keyboard(' ');
     expect(mockNavigate).toHaveBeenCalledWith('/myday');
   });
-
-  it('keeps the dismissal operable on its own', async () => {
-    renderOneRow();
-    fireEvent.click(screen.getByRole('button', { name: /Set aside/i }));
-    await waitFor(() => {
-      expect(firestore.deleteDoc).toHaveBeenCalled();
-    });
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  // ── Target Stacking (#331) ──────────────────────────────────────────
-
-  it('groups multiple notifications for the same targetId into a stacked row with count badge', () => {
-    const mockNotifs = [
-      {
-        id: 'n1',
-        userId: 'mock-user-id',
-        title: 'Sarah: New check-in',
-        message: 'Had coffee and read scripture together.',
-        targetId: 'contact-sarah',
-        type: 'info',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
-      },
-      {
-        id: 'n2',
-        userId: 'mock-user-id',
-        title: 'Sarah: Prayer request updated',
-        message: 'Exam week preparation prayer.',
-        targetId: 'contact-sarah',
-        type: 'success',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
-      },
-      {
-        id: 'n3',
-        userId: 'mock-user-id',
-        title: 'David: Follow-up needed',
-        message: 'Reach out about Sunday fellowship.',
-        targetId: 'contact-david',
-        type: 'warning',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 12, 0) },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-
-    // Stacking: Sarah's notifications collapse into one stack row with badge "2 updates"
-    expect(screen.getByText('2 updates')).toBeInTheDocument();
-    expect(screen.getByText('Sarah: New check-in')).toBeInTheDocument();
-    // David is a singleton so no "updates" badge on David
-    expect(screen.getByText('David: Follow-up needed')).toBeInTheDocument();
-  });
-
-  it('expands stack to reveal individual notifications and allows clicking a child', () => {
-    const mockNotifs = [
-      {
-        id: 'n1',
-        userId: 'mock-user-id',
-        title: 'Sarah: New check-in',
-        message: 'Had coffee and read scripture.',
-        targetId: 'contact-sarah',
-        link: '/directory/contact-sarah',
-        type: 'info',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
-      },
-      {
-        id: 'n2',
-        userId: 'mock-user-id',
-        title: 'Sarah: Prayer request',
-        message: 'Exam week preparation prayer.',
-        targetId: 'contact-sarah',
-        link: '/prayer',
-        type: 'success',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-
-    // Initially child item 2 is not visible in expanded list
-    expect(screen.getByText('Show all 2')).toBeInTheDocument();
-    expect(screen.queryByText('Sarah: Prayer request')).not.toBeInTheDocument();
-
-    // Click to expand stack
-    fireEvent.click(screen.getByText('Show all 2'));
-
-    // Now both entries are visible inside the expanded stack
-    expect(screen.getByText('Hide updates')).toBeInTheDocument();
-    expect(screen.getByText('Sarah: Prayer request')).toBeInTheDocument();
-
-    // Click child entry to navigate
-    fireEvent.click(screen.getByText('Sarah: Prayer request'));
-    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
-  });
-
-  it('allows dismissing an entire stack at once', async () => {
-    const mockNotifs = [
-      {
-        id: 'n1',
-        userId: 'mock-user-id',
-        title: 'Sarah: New check-in',
-        message: 'Had coffee and read scripture.',
-        targetId: 'contact-sarah',
-        type: 'info',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
-      },
-      {
-        id: 'n2',
-        userId: 'mock-user-id',
-        title: 'Sarah: Prayer request',
-        message: 'Exam week prayer.',
-        targetId: 'contact-sarah',
-        type: 'success',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-
-    // Click "Set stack aside"
-    const setStackAsideBtn = screen.getByLabelText('Set stack aside');
-    expect(setStackAsideBtn).toBeInTheDocument();
-    fireEvent.click(setStackAsideBtn);
-
-    await waitFor(() => {
-      expect(firestore.deleteDoc).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('allows dismissing an entire admin stack via writeBatch updateDoc', async () => {
-    const mockNotifs = [
-      {
-        id: 'n1',
-        userId: 'ALL_ADMINS',
-        title: 'Gathering 1',
-        message: 'Info 1',
-        targetId: 'event-101',
-        type: 'event',
-        read: true,
-        readBy: ['mock-user-id'],
-        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
-      },
-      {
-        id: 'n2',
-        userId: 'ALL_ADMINS',
-        title: 'Gathering 2',
-        message: 'Info 2',
-        targetId: 'event-101',
-        type: 'event',
-        read: true,
-        readBy: ['mock-user-id'],
-        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-
-    const setStackAsideBtn = screen.getByLabelText('Set stack aside');
-    fireEvent.click(setStackAsideBtn);
-
-    await waitFor(() => {
-      expect(firestore.writeBatch).toHaveBeenCalled();
-    });
-  });
-
-  it('toggles stack expansion with keyboard Space and Enter', () => {
-    const mockNotifs = [
-      {
-        id: 'n1',
-        userId: 'mock-user-id',
-        title: 'Sarah: New check-in',
-        message: 'First msg',
-        targetId: 'contact-sarah',
-        type: 'info',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
-      },
-      {
-        id: 'n2',
-        userId: 'mock-user-id',
-        title: 'Sarah: Second check-in',
-        message: 'Second msg',
-        targetId: 'contact-sarah',
-        type: 'info',
-        read: false,
-        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
-      },
-    ];
-
-    triggerOnSnapshotCallbacks(mockNotifs);
-
-    render(
-      <MemoryRouter>
-        <NotificationCenter />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-
-    const stackHeader = screen.getByLabelText(/2 notifications on Sarah: New check-in/i);
-    expect(screen.queryByText('Sarah: Second check-in')).not.toBeInTheDocument();
-
-    // Toggle with Space
-    fireEvent.keyDown(stackHeader, { key: ' ' });
-    expect(screen.getByText('Sarah: Second check-in')).toBeInTheDocument();
-
-    // Toggle with Enter
-    fireEvent.keyDown(stackHeader, { key: 'Enter' });
-    expect(screen.queryByText('Sarah: Second check-in')).not.toBeInTheDocument();
-  });
-
-  it('groupNotificationsIntoStacks groups correctly and preserves singletons', () => {
-    const sample: any[] = [
-      { id: '1', targetId: 't1', title: 'A1', createdAt: '2026-08-19T10:00:00Z' },
-      { id: '2', targetId: 't2', title: 'B1', createdAt: '2026-08-19T09:00:00Z' },
-      { id: '3', targetId: 't1', title: 'A2', createdAt: '2026-08-19T08:00:00Z' },
-      { id: '4', title: 'C1', createdAt: '2026-08-19T07:00:00Z' },
-    ];
-
-    const result = groupNotificationsIntoStacks(sample);
-    expect(result).toHaveLength(3);
-    expect(result[0].kind).toBe('stack');
-    if (result[0].kind === 'stack') {
-      expect(result[0].targetId).toBe('t1');
-      expect(result[0].notifs).toHaveLength(2);
-    }
-    expect(result[1].kind).toBe('single');
-    if (result[1].kind === 'single') {
-      expect(result[1].notif.id).toBe('2');
-    }
-    expect(result[2].kind).toBe('single');
-    if (result[2].kind === 'single') {
-      expect(result[2].notif.id).toBe('4');
-    }
-  });
 });
 
 // ── Phone-width critique findings (#1775) ───────────────────────────────────
 //
 // At 375×812 the panel's secondary copy was painted with `text-outline` — the
-// border token, #E4E4E7 on a #EAEAEC panel (1.1:1) — and the "set aside"
-// controls were hover-only, so a phone could not clear a notification at all.
+// border token, #E4E4E7 on a #EAEAEC panel (1.1:1) — which a phone could not
+// read against the sheet.
 describe('NotificationCenter — phone shell (#1775)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1268,14 +930,6 @@ describe('NotificationCenter — phone shell (#1775)', () => {
     expect(screen.getByText('1 thing since you last looked')).toBeInTheDocument();
   });
 
-  it('keeps set-aside reachable without a hover', () => {
-    renderWithSnapshot([oneUnread]);
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-    const setAside = screen.getByRole('button', { name: /Set aside/i });
-    expect(setAside.className).toContain('opacity-100');
-    expect(setAside.className).toContain('sm:opacity-0');
-  });
-
   it('moves focus into the panel and returns it to the bell on Escape', async () => {
     renderWithSnapshot([oneUnread]);
     const bell = screen.getByLabelText(/notifications/i);
@@ -1288,15 +942,6 @@ describe('NotificationCenter — phone shell (#1775)', () => {
     await waitFor(() => expect(bell).toHaveFocus());
   });
 
-  it('gives the stack\'s "Show all" control a 44px hit area', () => {
-    renderWithSnapshot([
-      { ...oneUnread, id: 's1', title: 'Sarah: New check-in', targetId: 'contact-sarah' },
-      { ...oneUnread, id: 's2', title: 'Sarah: Prayer request', targetId: 'contact-sarah' },
-    ]);
-    fireEvent.click(screen.getByLabelText(/notifications/i));
-    const showAll = screen.getByRole('button', { name: /Show all 2/i });
-    expect(showAll.className).toContain('min-h-11');
-  });
 });
 
 // ── The phone sheet is a sheet (#1779) ──────────────────────────────────────

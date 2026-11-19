@@ -51,8 +51,6 @@ export default function Toaster() {
         const data = change.doc.data();
         const notification = { id: change.doc.id, ...data } as Notification;
 
-        // Bell set-asides never toast.
-        if (notification.dismissedBy?.includes(uid)) return;
         // At most once per page load.
         if (toastedIds.current.has(notification.id)) return;
 

@@ -192,7 +192,6 @@ vi.mock('../lib/threads', () => ({
   useThreads: () => [],
   threadsFor: (msgs: any[]) => msgs,
   countFor: (msgs: any[]) => msgs.length,
-  contactStakeholdersOf: vi.fn((c) => c || {}),
   subscribeAllThreads: vi.fn(() => () => {}),
   subscribeTiedThreads: vi.fn((_staffId, callback) => {
     callback(tiedThreads);

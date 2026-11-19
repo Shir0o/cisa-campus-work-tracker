@@ -84,10 +84,9 @@ export function threadNotificationLink(
   return `/people/${contactId}?tab=thread${input.parentId ? `&parent=${input.parentId}` : ''}`;
 }
 
-/** Post a new message to a contact; pings everyone tied to it. The bell entry
- *  is pushed by the notification function, held to one push per contact per
- *  person per hour so a back-and-forth does not buzz a Trainee eight times
- *  (#813). */
+/** Post a new message to a contact; an @mention pings the person it names and
+ *  nothing else does (cut-or-keep §28). The bell entry is pushed by the
+ *  notification function. */
 export async function addThreadMessage(
   contactId: string,
   input: {
@@ -101,9 +100,8 @@ export async function addThreadMessage(
     mentionedUserIds?: string[];
   },
   notify?: {
-    to?: string | null;
+    /** The person's name, so a mention reads "mentioned you on <name>". */
     contactName?: string;
-    stakeholders?: core.ThreadStakeholders | null;
   },
 ): Promise<void> {
   try {
@@ -111,7 +109,6 @@ export async function addThreadMessage(
       void sendNotification({
         ...payload,
         link: threadNotificationLink(contactId, input),
-        coalesceKey: `contact:${contactId}`,
       });
     });
   } catch (e) {

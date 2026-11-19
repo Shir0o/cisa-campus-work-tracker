@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, deleteDoc, getDoc, getDocs, onSnapshot, updateDoc, where } from "firebase/firestore";
+import { addDoc, deleteDoc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import {
   THREAD_KINDS,
   threadsFor,
   repliesOf,
   countFor,
   addThreadMessage,
-  contactStakeholdersOf,
   threadNotificationLink,
   deleteThreadMessage,
   editThreadMessage,
@@ -19,7 +18,6 @@ import {
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
-import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
   addDoc: vi.fn(() => Promise.resolve({ id: "new-msg-id" })),
@@ -122,155 +120,72 @@ describe("addThreadMessage", () => {
 describe("addThreadMessage notify", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("pings the recipient with a kind-shaped title + contact when notify.to is set", async () => {
+  it("sends nothing for a conversation message with no @mention", async () => {
+    // Every caller used to pass the person's ties, and a legacy single
+    // recipient; neither is addressed to anyone (cut-or-keep §28).
     await addThreadMessage(
       "C-1",
-      { interactionId: null, from: "u1", fromName: "Tony Wang", kind: "question", body: "Coming Thursday?" },
-      { to: "u3", contactName: "Rio Tan" },
-    );
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u3",
-        title: "Tony asked about Rio Tan",
-        message: "Coming Thursday?",
-        type: "info",
-        targetId: "C-1",
-        link: "/people/C-1?tab=thread",
-      }),
-    );
-  });
-
-  it("truncates a long body in the notification message", async () => {
-    await addThreadMessage(
-      "C-1",
-      { from: "u1", fromName: "Tony", kind: "nudge", body: "x".repeat(200) },
-      { to: "u3", contactName: "Rio" },
-    );
-    const arg = vi.mocked(sendNotification).mock.calls[0][0] as { message: string };
-    expect(arg.message.endsWith("…")).toBe(true);
-    expect(arg.message.length).toBeLessThanOrEqual(141);
-  });
-
-  it("does not notify when notify.to is absent", async () => {
-    await addThreadMessage(
-      "C-1",
-      { from: "u1", fromName: "Tony", kind: "comment", body: "hi" },
-      { to: null },
+      { from: "u1", fromName: "Tony", kind: "comment", body: "He is doing well." },
+      { contactName: "Rio", to: "u9", stakeholders: { createdBy: "u2" } } as never,
     );
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
-  it("notifies creator and co-creators (gospel partners) as stakeholders, excluding author", async () => {
-    await addThreadMessage(
-      "C-1",
-      { from: "u1", fromName: "Tony", kind: "comment", body: "Shared bible verse" },
-      {
-        contactName: "Rio",
-        stakeholders: { createdBy: "u1", coCreators: ["u2", "u3"] },
-      },
-    );
-    // u1 is author so excluded. u2 and u3 should be notified.
-    expect(sendNotification).toHaveBeenCalledTimes(2);
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u2",
-        title: "Tony commented on Rio",
-        message: "Shared bible verse",
-      }),
-    );
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u3",
-        title: "Tony commented on Rio",
-        message: "Shared bible verse",
-      }),
-    );
-  });
-
-  it("notifies addedBy, founders, and carers as stakeholders, excluding author", async () => {
-    await addThreadMessage(
-      "C-1",
-      { from: "u-ft", fromName: "Full Timer", kind: "question", body: "How was the catchup?" },
-      {
-        contactName: "Jane",
-        stakeholders: {
-          addedBy: "u-trainee-1",
-          founders: ["u-trainee-2"],
-          carers: ["u-trainee-3"],
-        },
-      },
-    );
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-1",
-        title: "Full asked about Jane",
-      }),
-    );
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-2",
-        title: "Full asked about Jane",
-      }),
-    );
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-3",
-        title: "Full asked about Jane",
-      }),
-    );
-    // Each is pushed by the notification function; the key holds a back-and-
-    // forth on one person to one buzz per hour for each of them (#813).
-    for (const userId of ["u-trainee-1", "u-trainee-2", "u-trainee-3"]) {
-      expect(sendNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ userId, coalesceKey: "contact:C-1" }),
-      );
-    }
-  });
-
-  it("notifies mentioned users with mention-specific title and message", async () => {
+  it("sends only to the teammates it @mentions", async () => {
     await addThreadMessage(
       "C-1",
       {
         from: "u1",
         fromName: "Tony",
         kind: "comment",
-        body: "Hey @Rio Tan, can you check on this?",
-        mentionedUserIds: ["u4"],
+        body: "Hey @Rio Tan and @Alex, can you check on this?",
+        mentionedUserIds: ["u4", "u5"],
       },
-      {
-        contactName: "Alex",
-        stakeholders: { createdBy: "u2" },
-      },
+      { contactName: "Alex", stakeholders: { createdBy: "u2" } } as never,
     );
-    // u2 is stakeholder, u4 is mentioned
+    expect(sendNotification).toHaveBeenCalledTimes(2);
     expect(sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "u4",
         title: "Tony mentioned you on Alex",
-        message: "Hey @Rio Tan, can you check on this?",
+        message: "Hey @Rio Tan and @Alex, can you check on this?",
       }),
     );
     expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u2",
-        title: "Tony commented on Alex",
-        coalesceKey: "contact:C-1",
-      }),
+      expect.objectContaining({ userId: "u5", title: "Tony mentioned you on Alex" }),
     );
+  });
+
+  it("truncates a long body in the mention notification", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "nudge", body: "x".repeat(200), mentionedUserIds: ["u3"] },
+      { contactName: "Rio" },
+    );
+    const arg = vi.mocked(sendNotification).mock.calls[0][0] as { message: string };
+    expect(arg.message.endsWith("…")).toBe(true);
+    expect(arg.message.length).toBeLessThanOrEqual(141);
+  });
+
+  it("never notifies the author for mentioning themselves", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "comment", body: "@me note", mentionedUserIds: ["u1"] },
+      { contactName: "Alex" },
+    );
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
   it("never holds back an @mention: it is addressed to that person, so it always buzzes", async () => {
     await addThreadMessage(
       "C-1",
       { from: "u1", fromName: "Tony", kind: "comment", body: "@Rio look", mentionedUserIds: ["u4"] },
-      { contactName: "Alex", stakeholders: { createdBy: "u2" } },
+      { contactName: "Alex" },
     );
     const toU4 = vi.mocked(sendNotification).mock.calls.map((c) => c[0]).find((n) => n.userId === "u4");
     expect(toU4).toBeDefined();
     expect(toU4).not.toHaveProperty("coalesceKey");
   });
-
-
 
   // A caller that shows a message before the round trip needs to recognise its
   // own document when the subscription delivers it. Matching on the words
@@ -555,8 +470,8 @@ describe("addThreadMessage writes the link a notification opens (#1303)", () => 
   it("a Conversation reply carries its parent, so the Thread opens under it", async () => {
     await addThreadMessage(
       "C-1",
-      { from: "u1", fromName: "Tony", kind: "comment", body: "Sure", parentId: "p-1" },
-      { to: "u3", contactName: "Rio" },
+      { from: "u1", fromName: "Tony", kind: "comment", body: "Sure", parentId: "p-1", mentionedUserIds: ["u3"] },
+      { contactName: "Rio" },
     );
     expect(sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({ link: "/people/C-1?tab=thread&parent=p-1" }),
@@ -608,192 +523,6 @@ describe("useAllThreads hook", () => {
     const { result } = renderHook(() => useAllThreads());
     await waitFor(() => expect(result.current).toHaveLength(1));
     expect(result.current[0].contactId).toBe("c1");
-  });
-});
-
-// #1604: someone who wrote in a stream within 14 days hears what others write
-// there after — whether or not it answers them, and whether or not they are
-// tied to the person (CONTEXT.md "In the Conversation", ADR 0007 amendment).
-describe("addThreadMessage reaches teammates In the Conversation", () => {
-  const recent = (from: string, extra: Record<string, unknown> = {}) => ({
-    id: from + "-msg",
-    ref: { path: "contacts/C-1/threads/" + from + "-msg", parent: { parent: { id: "C-1" } } },
-    data: () => ({ from, fromName: from, kind: "nudge", body: "Can someone text Mark?", interactionId: null, at: new Date(Date.now() - 60_000).toISOString(), ...extra }),
-  });
-  const reached = () => vi.mocked(sendNotification).mock.calls.map((c) => c[0]);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    applyRoster([
-      { uid: "tony", role: "admin" },
-      { uid: "anna", role: "admin" },
-      { uid: "tim", role: "manager" },
-    ]);
-  });
-
-  it("tells the asker of a Follow-up ask, though they are not tied, when a teammate replies", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony")] } as never);
-    await addThreadMessage(
-      "C-1",
-      { parentId: "tony-msg", from: "anna", fromName: "Anna Lee", kind: "comment", body: "I texted him." },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(reached()).toContainEqual(
-      expect.objectContaining({ userId: "tony", title: "Anna commented on Mark", coalesceKey: "contact:C-1" }),
-    );
-  });
-
-  it("still reaches them when they released the person", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony")] } as never);
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "note", body: "Saw him today." },
-      { contactName: "Mark", stakeholders: { createdBy: "tony", unfollowedBy: ["tony"] } },
-    );
-    expect(reached().map((n) => n.userId)).toEqual(["tony"]);
-  });
-
-  it("tells a teammate who is both tied and In the Conversation once", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim"), recent("tim")] } as never);
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "question", body: "Did he come?" },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(reached()).toEqual([expect.objectContaining({ userId: "tim", title: "Anna asked about Mark" })]);
-  });
-
-
-  it("ignores messages in another stream on the same person", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony", { interactionId: "i1" })] } as never);
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "comment", body: "On the Conversation." },
-      { contactName: "Mark" },
-    );
-    expect(sendNotification).not.toHaveBeenCalled();
-  });
-
-  it("asks only for the stream's last 14 days", async () => {
-    await addThreadMessage("C-1", { from: "anna", fromName: "Anna", kind: "comment", body: "Hi" }, { contactName: "Mark" });
-    expect(getDocs).toHaveBeenCalledTimes(1);
-    const [field, op, value] = vi.mocked(where).mock.calls[0] as [string, string, string];
-    expect([field, op]).toEqual(["at", ">="]);
-    const days = (Date.now() - Date.parse(value)) / 86_400_000;
-    expect(Math.round(days)).toBe(14);
-  });
-
-  it("never tells someone who can no longer see the person (security review)", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim"), recent("tony")] } as never);
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "note", body: "Private detail." },
-      { contactName: "Mark", stakeholders: { createdBy: "anna", visibleTo: ["anna"] } },
-    );
-    // tim (Trainee) was unshared since writing; tony is a Full-timer and sees everyone.
-    expect(reached().map((n) => n.userId)).toEqual(["tony"]);
-  });
-
-  it("tells a Trainee who still sees the person", async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim")] } as never);
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "note", body: "Hi" },
-      { contactName: "Mark", stakeholders: contactStakeholdersOf({ createdBy: "anna", visibleTo: ["anna", "tim"] } as never) },
-    );
-    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
-  });
-
-  it("keeps the message when the read fails", async () => {
-    vi.mocked(getDocs).mockRejectedValueOnce(new Error("offline"));
-    const id = await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "comment", body: "Hi" },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(id).toBe("new-msg-id");
-    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
-  });
-});
-
-// #1640: a reply reaches the author of the message it answers, even past the
-// 14-day In-the-Conversation window and with no tie (CONTEXT.md, ADR 0007).
-describe("addThreadMessage reaches the author of the message it answers", () => {
-  const parent = (from: string) => ({
-    exists: () => true,
-    data: () => ({ from, fromName: from, kind: "question", body: "?", interactionId: null }),
-  });
-  const reached = () => vi.mocked(sendNotification).mock.calls.map((c) => c[0]);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    applyRoster([
-      { uid: "tony", role: "admin" },
-      { uid: "anna", role: "admin" },
-      { uid: "tim", role: "manager" },
-    ]);
-  });
-
-  it("tells the parent author though they are untied and outside the 14-day window", async () => {
-    vi.mocked(getDoc).mockResolvedValueOnce(parent("tony") as never);
-    await addThreadMessage(
-      "C-1",
-      { parentId: "tony-msg", from: "anna", fromName: "Anna Lee", kind: "comment", body: "I texted him." },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(reached()).toContainEqual(
-      expect.objectContaining({ userId: "tony", title: "Anna commented on Mark", coalesceKey: "contact:C-1" }),
-    );
-  });
-
-  it("never tells the replier for their own reply", async () => {
-    vi.mocked(getDoc).mockResolvedValueOnce(parent("anna") as never);
-    await addThreadMessage(
-      "C-1",
-      { parentId: "anna-msg", from: "anna", fromName: "Anna", kind: "comment", body: "Adding to my own." },
-      { contactName: "Mark" },
-    );
-    expect(reached().map((n) => n.userId)).not.toContain("anna");
-  });
-
-  it("tells a parent author once when they are also tied", async () => {
-    vi.mocked(getDoc).mockResolvedValueOnce(parent("tim") as never);
-    await addThreadMessage(
-      "C-1",
-      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "question", body: "Did he come?" },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(reached().filter((n) => n.userId === "tim")).toHaveLength(1);
-  });
-
-
-  it("never tells a parent author who can no longer see the person", async () => {
-    vi.mocked(getDoc).mockResolvedValueOnce(parent("tim") as never);
-    await addThreadMessage(
-      "C-1",
-      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "note", body: "Private." },
-      { contactName: "Mark", stakeholders: { createdBy: "anna", visibleTo: ["anna"] } },
-    );
-    expect(reached().map((n) => n.userId)).not.toContain("tim");
-  });
-
-  it("keeps the reply and still tells the other recipients when the parent read fails", async () => {
-    vi.mocked(getDoc).mockRejectedValueOnce(new Error("offline"));
-    await addThreadMessage(
-      "C-1",
-      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "comment", body: "Hi" },
-      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
-    );
-    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
-  });
-
-  it("reads the parent only when the message is a reply", async () => {
-    await addThreadMessage(
-      "C-1",
-      { from: "anna", fromName: "Anna", kind: "comment", body: "Top level" },
-      { contactName: "Mark" },
-    );
-    expect(getDoc).not.toHaveBeenCalled();
   });
 });
 

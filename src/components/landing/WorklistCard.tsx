@@ -32,7 +32,6 @@ import { InboxState } from "../../lib/inboxState";
 import {
   addThreadMessage,
   closeFollowUpAsk,
-  contactStakeholdersOf,
   countFor,
   daysOpen,
   reopenFollowUpAsk,
@@ -188,10 +187,7 @@ function CardComposer({
     await addThreadMessage(
       contact.id,
       { interactionId: null, from: uid, fromName: meName, kind: "comment", body },
-      {
-        contactName: contact.name,
-        stakeholders: contactStakeholdersOf(contact),
-      },
+      { contactName: contact.name },
     );
     setBusy(false);
     setDraft("");

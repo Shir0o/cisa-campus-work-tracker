@@ -2,15 +2,12 @@
 // `threads` subcollection through the existing data layer, with the notify
 // options each adapter used to repeat. No path, shape or rule changes — only
 // one place that calls addThreadMessage for the streams.
-import { addThreadMessage, type ThreadMessage, type ThreadStakeholders } from "../../lib/threads";
+import { addThreadMessage, type ThreadMessage } from "../../lib/threads";
 
 export interface ContactWriteContext {
   contactId: string;
   contactName: string;
   me: { uid: string; name: string };
-  /** Legacy single recipient, passed through to the notify path unchanged. */
-  recipientUid?: string | null;
-  stakeholders?: ThreadStakeholders | null;
   /** Told what was just posted, before the write returns, so a surface can show
    *  it at once. `landed` resolves to the id the write really got (#1012). */
   onPosted?: (message: ThreadMessage, landed: Promise<string | null>) => void;
@@ -24,8 +21,8 @@ export interface ContactWrite {
   mentionedUserIds: string[];
 }
 
-export function contactWriter({ contactId, contactName, me, recipientUid, stakeholders, onPosted }: ContactWriteContext) {
-  const notify = { to: recipientUid ?? null, contactName, ...(stakeholders ? { stakeholders } : {}) };
+export function contactWriter({ contactId, contactName, me, onPosted }: ContactWriteContext) {
+  const notify = { contactName };
   return (input: ContactWrite) => {
     const landed = addThreadMessage(contactId, { from: me.uid, fromName: me.name, ...input }, notify);
     // A placeholder id the caller swaps for the real one when `landed` resolves.

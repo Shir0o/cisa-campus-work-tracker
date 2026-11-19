@@ -217,7 +217,7 @@ export function QueueScreen() {
         kind: 'note',
         body,
       },
-      { to: card.msg.from, contactName: card.contact?.name },
+      { contactName: card.contact?.name },
     );
     markStreamRead(card);
     setReplyTo(null);

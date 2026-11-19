@@ -1,8 +1,8 @@
 // Notifications — Firestore reads/writes behind an injected `db`. Mirrors
 // the web app's src/components/layout/NotificationCenter.tsx (personal +
-// broadcast query merge, mark-read, mark-all-read, set-aside).
+// broadcast query merge, mark-read, mark-all-read).
 import {
-  arrayUnion, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, updateDoc, where, writeBatch,
+  arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, updateDoc, where, writeBatch,
   type Firestore,
 } from "firebase/firestore";
 import type { Notification } from "../types";
@@ -11,8 +11,9 @@ import { mergeNotifications } from "../notifications";
 /**
  * Live-merges the personal (userId == uid) and broadcast (userId ==
  * 'ALL_ADMINS') notification queries, each ordered newest-first and capped
- * at 20, filtering out anything the caller has dismissed. Calls `cb` with
- * the combined, sorted, re-capped list whenever either query updates.
+ * at 20. The bell shows everything it receives (cut-or-keep §28), so nothing
+ * is filtered out. Calls `cb` with the combined, sorted, re-capped list
+ * whenever either query updates.
  * The broadcast query runs only with `includeBroadcast` — the rules let only
  * Full-timers (admin) read ALL_ADMINS docs.
  */
@@ -47,9 +48,7 @@ export function subscribeNotifications(
   const onErr = (e: unknown) => (onError ? onError(e) : console.error("notifications subscription error", e));
 
   const unsubPersonal = onSnapshot(qPersonal, (snap) => {
-    personal = snap.docs
-      .map(mapDoc)
-      .filter((n) => !n.dismissedBy?.includes(uid));
+    personal = snap.docs.map(mapDoc);
     emit();
   }, onErr);
 
@@ -62,9 +61,7 @@ export function subscribeNotifications(
     limit(20),
   );
   const unsubBroadcast = onSnapshot(qBroadcast, (snap) => {
-    broadcast = snap.docs
-      .map(mapDoc)
-      .filter((n) => !n.dismissedBy?.includes(uid));
+    broadcast = snap.docs.map(mapDoc);
     emit();
   }, onErr);
 
@@ -89,23 +86,4 @@ export async function markAllNotificationsRead(db: Firestore, ids: string[], uid
     });
   });
   await batch.commit();
-}
-
-/**
- * "Sets aside" a notification for `uid` — hard-deletes personal
- * notifications, or marks a broadcast notification dismissed for just this
- * user (mirrors web's setAside).
- */
-export async function setAsideNotification(
-  db: Firestore,
-  notif: Pick<Notification, "id" | "userId">,
-  uid: string,
-): Promise<void> {
-  if (notif.userId === "ALL_ADMINS") {
-    await updateDoc(doc(db, "notifications", notif.id), {
-      dismissedBy: arrayUnion(uid),
-    });
-  } else {
-    await deleteDoc(doc(db, "notifications", notif.id));
-  }
 }

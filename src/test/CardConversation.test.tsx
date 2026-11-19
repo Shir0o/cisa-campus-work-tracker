@@ -1,7 +1,6 @@
 // The Around-the-team conversation strip (#1012) posts through the contact's
-// staff thread. A Full-timer's comment, question or follow-up ask from there
-// must reach every Trainee tied to the person — founders and carers included,
-// not only the creator (#1166).
+// staff thread. A comment, question or follow-up ask from there notifies nobody
+// unless it names someone (cut-or-keep §28).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -28,7 +27,7 @@ vi.mock("../lib/threads", async (importOriginal) => {
 describe("CardConversation", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("notifies every Trainee tied to the person, founders and carers included", async () => {
+  it("posts without notifying anyone tied to the person", async () => {
     const contact = {
       id: "c1",
       name: "Priya Shah",
@@ -47,14 +46,8 @@ describe("CardConversation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Post" }));
 
     await vi.waitFor(() => expect(addThreadMessage).toHaveBeenCalled());
-    const notify = (addThreadMessage.mock.calls[0] as unknown[])[2] as { stakeholders: unknown };
-    expect(notify.stakeholders).toEqual({
-      createdBy: "t1",
-      addedBy: "t1",
-      coCreators: ["t2"],
-      founders: ["t1", "t3"],
-      carers: ["t4"],
-    });
+    const notify = (addThreadMessage.mock.calls[0] as unknown[])[2] as { stakeholders?: unknown };
+    expect(notify.stakeholders).toBeUndefined();
   });
 
   const kofi = { id: "c1", name: "Kofi Mensah", createdBy: "t1" } as Contact;

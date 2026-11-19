@@ -20,7 +20,6 @@ import {
   type QueryConstraint,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { isTrainee, fullTimerIds } from "../walking";
 import { seesAllPeople, visibleToOf, type AppRole } from "../permissions";
 import { stampFounders, stampPartners } from "./partners";
 import { carersAfterCollaboratorRemoval } from "../carers";
@@ -236,28 +235,15 @@ export interface NewContactInput {
    * quickCaptureRecents' fallback) reads `createdAt`. Omit for "now". */
   createdAt?: string;
 }
-export interface ContactNotifyPayload {
-  userId: string;
-  title: string;
-  message: string;
-  type: "success" | "assignment";
-  link?: string;
-  targetId: string;
-}
-
 /**
- * Create a new contact (mirrors the web app's NewContactModal). `notify`, when
- * given, is called once for the creator's own confirmation and — reusing the
- * walking-together relationship — once more for the creator's full-timer when
- * the creator is a trainee. Each app supplies its own notification write (e.g.
- * mobile's sendNotification) so this module stays free of that side effect.
- * Season-tag merging happens at the call site, not here.
+ * Create a new contact (mirrors the web app's NewContactModal). Adding a person
+ * notifies nobody (cut-or-keep §28). Season-tag merging happens at the call
+ * site, not here.
  */
 export async function addContact(
   db: Firestore,
   input: NewContactInput,
   by?: { uid?: string | null; name?: string | null },
-  notify?: (payload: ContactNotifyPayload) => void,
 ): Promise<string> {
   const data: Record<string, any> = {
     ...input,
@@ -284,32 +270,6 @@ export async function addContact(
     }
   }
   const docRef = await addDoc(collection(db, "contacts"), data);
-
-  if (notify && by?.uid) {
-    notify({
-      userId: by.uid,
-      title: "Contact Created",
-      message: `Successfully added ${input.name} to your directory.`,
-      type: "success",
-      link: "/directory",
-      targetId: docRef.id,
-    });
-
-    // No pairing (#549): when a trainee adds someone, the whole full-timer
-    // team is told, so nothing the team does goes unseen.
-    if (isTrainee(by.uid)) {
-      const who = (by.name || "A trainee").split(" ")[0];
-      for (const ftId of fullTimerIds()) {
-        notify({
-          userId: ftId,
-          title: `${who} added ${input.name}`,
-          message: "A new person in your circle — take a look when you can.",
-          type: "assignment",
-          targetId: docRef.id,
-        });
-      }
-    }
-  }
 
   return docRef.id;
 }

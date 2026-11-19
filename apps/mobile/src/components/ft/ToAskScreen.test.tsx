@@ -339,7 +339,7 @@ describe('ToAskScreen', () => {
     expect(addThreadMessage).toHaveBeenCalledWith(
       'c1',
       { interactionId: 'i9', parentId: 'm1', from: 'ft-1', fromName: 'Jae Park', kind: 'comment', body: 'She is coming' },
-      expect.objectContaining({ contactName: 'Priya' }),
+      { contactName: 'Priya' },
     );
     expect(addInteraction).not.toHaveBeenCalled();
   });
