@@ -67,8 +67,8 @@ export function decodeValue(value: FsValue): unknown {
   if ('booleanValue' in value) return value.booleanValue;
   if ('timestampValue' in value) return new Date(value.timestampValue);
   if ('nullValue' in value) return null;
-  if ('arrayValue' in value) return value.arrayValue.values.map(decodeValue);
-  return decodeFields(value.mapValue.fields);
+  if ('arrayValue' in value) return (value.arrayValue.values ?? []).map(decodeValue);
+  return decodeFields(value.mapValue.fields ?? {});
 }
 
 export function decodeFields(fields: Record<string, FsValue>): FirestoreData {
