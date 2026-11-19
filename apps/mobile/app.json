@@ -85,7 +85,8 @@
           "backgroundColor": "#5c5595"
         }
       ],
-      "./plugins/withGradleJvmArgs"
+      "./plugins/withGradleJvmArgs",
+      "./plugins/withQuickAddWidget"
     ],
     "experiments": {
       "typedRoutes": false
