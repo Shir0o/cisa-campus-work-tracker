@@ -372,24 +372,10 @@ export default function PrayerList() {
   // §21: team prayer is per person. A person on it puts EVERY prayer of theirs
   // on this page, whichever toggle wrote the prayer's own retired flag; a
   // person off it stays off even when a prayer doc still says `teamPrayer`.
-  //
-  // TRANSITIONAL (fix round 1): until the migration has run, a contact with no
-  // per-person flag yet still counts while one of their prayers carries the
-  // old flag — `isOnTeamPrayer` owns that fallback, so the page and the
-  // migration script cannot disagree.
-  const teamContactIds = useMemo(() => {
-    const prayersByContact = new Map<string, PrayerRecord[]>();
-    for (const p of prayers) {
-      const list = prayersByContact.get(p.contactId);
-      if (list) list.push(p);
-      else prayersByContact.set(p.contactId, [p]);
-    }
-    return new Set(
-      contacts
-        .filter((c) => isOnTeamPrayer(c, prayersByContact.get(c.id) ?? []))
-        .map((c) => c.id),
-    );
-  }, [contacts, prayers]);
+  const teamContactIds = useMemo(
+    () => new Set(contacts.filter((c) => isOnTeamPrayer(c)).map((c) => c.id)),
+    [contacts],
+  );
   const teamPrayers = useMemo(
     () => visiblePrayers.filter((p) => teamContactIds.has(p.contactId)),
     [visiblePrayers, teamContactIds],

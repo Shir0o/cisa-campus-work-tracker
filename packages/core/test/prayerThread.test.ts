@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrayerThread, isOnTeamPrayer, isTeamPrayer, prayerCarryLine } from '../src/prayerThread';
+import { groupPrayerThread, isOnTeamPrayer, prayerCarryLine } from '../src/prayerThread';
 import type { PrayerRecord } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime(); // Monday, this-week start
@@ -64,17 +64,6 @@ describe('groupPrayerThread', () => {
   });
 });
 
-describe('isTeamPrayer', () => {
-  it('treats a prayer with no flag as the team\'s — every doc written before the toggle existed', () => {
-    expect(isTeamPrayer(prayer())).toBe(true);
-  });
-
-  it('honours the flag both ways', () => {
-    expect(isTeamPrayer(prayer({ teamPrayer: true }))).toBe(true);
-    expect(isTeamPrayer(prayer({ teamPrayer: false }))).toBe(false);
-  });
-});
-
 describe('isOnTeamPrayer (§21)', () => {
   it('reads the person, not the prayer: an absent flag means off', () => {
     expect(isOnTeamPrayer({})).toBe(false);
@@ -82,29 +71,17 @@ describe('isOnTeamPrayer (§21)', () => {
     expect(isOnTeamPrayer({ teamPrayer: true })).toBe(true);
   });
 
-  // TRANSITIONAL (fix round 1): rules and web deploy before the migration runs,
-  // and installed phone builds still write only the per-prayer flag — so a
-  // contact with no per-person flag yet falls back to the old reading rather
-  // than going blank on "On our hearts".
-  it('counts a legacy team prayer while the person has no flag yet', () => {
-    expect(isOnTeamPrayer({}, [prayer({ teamPrayer: true })])).toBe(true);
-    // A prayer with no flag predates the toggle and was on the page.
-    expect(isOnTeamPrayer({}, [prayer()])).toBe(true);
-  });
-
-  it('stays off when none of the prayers was on the team page', () => {
-    expect(isOnTeamPrayer({}, [prayer({ teamPrayer: false })])).toBe(false);
-    expect(isOnTeamPrayer({}, [])).toBe(false);
-  });
-
-  it('treats an explicit false as off, whatever the prayers say', () => {
-    expect(isOnTeamPrayer({ teamPrayer: false }, [prayer({ teamPrayer: true })])).toBe(false);
+  // The migration has run, so a legacy per-prayer flag no longer decides
+  // anything: only the person's own flag can put them on the page.
+  it('does not count a person whose prayers carried the old per-prayer flag', () => {
+    expect(isOnTeamPrayer({})).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: undefined })).toBe(false);
   });
 
   it('never counts a person the team removed', () => {
     const removed = { at: '2026-10-01T00:00:00.000Z', by: 'u-admin' };
     expect(isOnTeamPrayer({ teamPrayer: true, prayerListRemoved: removed })).toBe(false);
-    expect(isOnTeamPrayer({ prayerListRemoved: removed }, [prayer({ teamPrayer: true })])).toBe(false);
+    expect(isOnTeamPrayer({ prayerListRemoved: removed })).toBe(false);
   });
 });
 

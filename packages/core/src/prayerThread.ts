@@ -18,23 +18,6 @@ function weekStartOf(date: Date): Date {
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 
 /**
- * Whether a burden belongs on the team prayer page. The log sheet's "Bring it
- * to team prayer" toggle is off by default, so it writes `teamPrayer: false`
- * when the trainee keeps a burden to themselves.
- *
- * An ABSENT flag means team: every prayer written before the toggle existed
- * stays exactly where it was, so the page needs no backfill. That is why this
- * is a function and not `p.teamPrayer` at the call site.
- *
- * §21 moved surfacing to the person — "On our hearts" now reads
- * `isOnTeamPrayer(contact)`. This predicate still describes the stored flag on
- * a prayer, which the migration and the data-repair scripts read.
- */
-export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
-  return p.teamPrayer !== false;
-}
-
-/**
  * A contact as the team-prayer question needs it. `prayerListRemoved` is typed
  * loosely on purpose: it is a stamped object on stored contacts, and either
  * shape only matters as "present means the team took them off".
@@ -46,23 +29,11 @@ export interface TeamPrayerContact {
 
 /**
  * Whether the team carries this person on "On our hearts" (§21). Per person,
- * not per prayer: once true, every prayer of theirs shows on that page.
- *
- * TRANSITIONAL (fix round 1) — remove the fallback once
- * `scripts/migrate-team-prayer-per-person.ts` has run. Rules and web deploy
- * with this change, but the migration runs later by hand, and installed phone
- * builds still write only the per-prayer flag. So a contact with NO per-person
- * flag (`undefined` — not `false`) counts while any of its prayers carries the
- * legacy team flag (`isTeamPrayer`, the same reading the migration's decision
- * uses). `false` always means off, and the team's own removal always wins.
+ * not per prayer: once true, every prayer of theirs shows on that page, and an
+ * absent flag is off. The team's own removal always wins.
  */
-export function isOnTeamPrayer(
-  c: TeamPrayerContact,
-  prayers: Pick<PrayerRecord, "teamPrayer">[] = [],
-): boolean {
-  if (c.prayerListRemoved) return false;
-  if (c.teamPrayer !== undefined) return c.teamPrayer === true;
-  return prayers.some(isTeamPrayer);
+export function isOnTeamPrayer(c: TeamPrayerContact): boolean {
+  return !c.prayerListRemoved && c.teamPrayer === true;
 }
 
 export interface PrayerCarryLineOptions {

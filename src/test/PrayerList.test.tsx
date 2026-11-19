@@ -323,11 +323,9 @@ describe('PrayerList', () => {
     expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
   });
 
-  // TRANSITIONAL (fix round 1): rules and web deploy before the migration
-  // runs, so a contact with no per-person flag yet still counts while one of
-  // their prayers carries the old per-prayer flag — the page must not go blank
-  // in between.
-  it('keeps a person with no per-person flag yet when a prayer was on the team page', async () => {
+  // The migration has run: a contact with no per-person flag is off the page
+  // even when a prayer of theirs carries the old per-prayer flag.
+  it('leaves off a person with no per-person flag even when a prayer was on the team page', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({
@@ -345,11 +343,12 @@ describe('PrayerList', () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+      expect(screen.getByText('No one to pray for yet')).toBeInTheDocument();
     });
+    expect(screen.queryByText('Strength for finals')).not.toBeInTheDocument();
   });
 
-  it('does not fall back for a person whose prayers were all kept private', async () => {
+  it('leaves off a person with no per-person flag whose prayers were all kept private', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({

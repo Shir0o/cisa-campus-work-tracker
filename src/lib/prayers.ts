@@ -51,7 +51,7 @@ export async function addTeamPrayer(
 // prayer's id so the caller can link back to it.
 //
 // `teamPrayer` is required so every caller chooses: an absent flag reads as the
-// team's (`isTeamPrayer`), which is how #1042 and #1406 happened. No
+// team's, which is how #1042 and #1406 happened. No
 // `prayerPage` stamp — that marks a write from the prayer page itself.
 export async function addPrayerBurden(
   contactId: string,
@@ -135,11 +135,11 @@ export async function setTeamPrayer(
 }
 
 /**
- * The team-prayer reading moved to src/lib/teamPrayer.ts so the migration
- * planner can import it without the Firebase client. Re-exported here so the
- * page, the cards and the parity test keep one import path.
+ * The team-prayer reading moved to src/lib/teamPrayer.ts, a Firebase-free
+ * module. Re-exported here so the page, the cards and the parity test keep one
+ * import path.
  */
-export { isTeamPrayer, isOnTeamPrayer } from "./teamPrayer";
+export { isOnTeamPrayer } from "./teamPrayer";
 
 /**
  * Splits a display name ("First Last" / "First Middle Last") into first and

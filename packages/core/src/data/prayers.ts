@@ -61,9 +61,9 @@ export function subscribeContactPrayers(
  *  contact's Pray sheet). Neither is the prayer page, so no `prayerPage` stamp.
  *
  *  `teamPrayer` is required and always written. An absent flag reads as the
- *  team's (`isTeamPrayer`, for the prayers that predate the toggle), so a caller
- *  that forgot to choose would silently put the burden on the team page
- *  (#1042, #1406) — the compiler makes each caller say which. */
+ *  team's (for the prayers that predate the toggle), so a caller that forgot to
+ *  choose would silently put the burden on the team page (#1042, #1406) — the
+ *  compiler makes each caller say which. */
 export async function addPrayer(
   db: Firestore,
   input: { contactId: string; burden: string; teamPrayer: boolean },

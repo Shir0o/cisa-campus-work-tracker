@@ -419,7 +419,7 @@ function Person({ contactId, initialTab }: ContactScreenProps) {
                 name={first}
                 prayed={!!queueState.handled[prayerCardId(prayer.id)]}
                 canWrite={canWrite}
-                onTeam={isOnTeamPrayer(data.contact ?? {}, data.prayers)}
+                onTeam={isOnTeamPrayer(data.contact ?? {})}
                 onPrayed={() => queueState.handle(prayerCardId(prayer.id))}
                 onAnswered={() => void data.markPrayerAnswered(prayer)}
                 onSetTeamPrayer={canWrite ? (on) => void data.setTeamPrayer(on) : undefined}
