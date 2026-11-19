@@ -793,38 +793,6 @@ describe("POST /api/smart-import/commit", () => {
   });
 });
 
-describe("POST /api/analyze-notes", () => {
-  it("returns 400 when text is missing", async () => {
-    const res = await request(app).post("/api/analyze-notes").send({});
-    expect(res.status).toBe(400);
-  });
-
-  it("returns updated markdown and suggested tasks from Gemini", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ updatedMarkdown: "See [Jane](/contacts/c1)", suggestedTasks: [{ title: "Call Jane", priority: "high" }] }),
-    });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Talked with Jane about outreach." });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.updatedMarkdown).toContain("/contacts/c1");
-    expect(res.body.suggestedTasks).toHaveLength(1);
-  });
-
-  it("returns 500 when Gemini returns no text", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "" });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes here" });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toContain("No response returned from the Gemini API");
-  });
-
-  it("returns 500 when Gemini returns invalid JSON", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "not json at all" });
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes here" });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to parse AI response");
-  });
-});
-
 describe("POST /api/smart-import/parse", () => {
   it("returns 400 when text is missing", async () => {
     const res = await request(app).post("/api/smart-import/parse").send({});
@@ -1107,22 +1075,6 @@ describe("POST /api/webhook/github — payload edge cases", () => {
       .send(payload);
     expect(res.status).toBe(200);
     expect(res.body.message).toContain("Ignored action: labeled");
-  });
-});
-
-describe("POST /api/analyze-notes — prompt composition", () => {
-  it("includes the contact directory and user roster in the Gemini prompt", async () => {
-    seedDoc("contacts", "c-a", { name: "Zoe Pratt" });
-    seedDoc("users", "u-a", { displayName: "Alex Admin" });
-    seedDoc("users", "u-b", { email: "pending@example.com", approved: false });
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ updatedMarkdown: "", suggestedTasks: [] }) });
-
-    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes" });
-    expect(res.status).toBe(200);
-    const contents = mockGenerateContent.mock.calls[0][0].contents as string;
-    expect(contents).toContain("Zoe Pratt");
-    expect(contents).toContain("Alex Admin");
-    expect(contents).not.toContain("pending@example.com");
   });
 });
 
@@ -2549,6 +2501,7 @@ describe("cut endpoints", () => {
     ["post", "/api/feedback/reply"],
     ["post", "/api/feedback/reply/edit"],
     ["post", "/api/feedback/update"],
+    ["post", "/api/analyze-notes"],
   ] as const;
 
   it.each(gone)("%s %s is no longer routed", async (method, path) => {
