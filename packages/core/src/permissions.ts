@@ -68,7 +68,6 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // one row in Settings → Security rather than a nav item.
   '/vault': 'admin',
   '/feedback': 'manager',
-  '/admin/feedback': 'admin',
   // The floor reads "manager and above", which is not true for a Trainee: they
   // take the allowlist path below and are not on it. The deny is the decision
   // (#1922), the same shape as /history (#1825). This entry is not what stops

@@ -3736,134 +3736,28 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [] }, { merge: true }));
     });
 
-    it('SWN1: Anyone (even unauthenticated) can read settings/whats_new', async () => {
+    // What's New is cut (cut-or-keep §16): its settings record may stay on
+    // disk, but nothing writes it from a client and it is no longer public.
+    it('SWN1: settings/whats_new is no longer public or client-writable', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'settings', 'whats_new'), {
           videoUrl: 'https://example.com/whats-new.mp4',
-          updatedAt: serverTimestamp(),
-          updatedBy: 'admin1',
         });
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
       });
-      const db = getFirestore(); // unauthenticated
-      await assertSucceeds(getDoc(doc(db, 'settings', 'whats_new')));
-    });
-
-    it('SWN2: Non-admin cannot write settings/whats_new', async () => {
-      await seedRoles();
-      const managerDb = getFirestore({ uid: 'manager1' });
-      await assertFails(
-        setDoc(doc(managerDb, 'settings', 'whats_new'), {
-          videoUrl: 'https://example.com/whats-new.mp4',
-        }),
-      );
 
       const unauthDb = getFirestore();
+      await assertFails(getDoc(doc(unauthDb, 'settings', 'whats_new')));
+
+      const adminDb = getFirestore({ uid: 'admin1' });
       await assertFails(
-        setDoc(doc(unauthDb, 'settings', 'whats_new'), {
-          videoUrl: 'https://example.com/whats-new.mp4',
+        setDoc(doc(adminDb, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/other.mp4',
         }),
       );
-    });
-
-    it('SWN3: Admin can create and update settings/whats_new with valid fields', async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-      });
-      const db = getFirestore({ uid: 'admin1' });
-
-      // Create with valid fields including videoRoles
-      await assertSucceeds(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoUrl: 'https://example.com/whats-new.mp4',
-          videoRoles: ['admin', 'manager'],
-          updatedAt: serverTimestamp(),
-          updatedBy: 'admin1',
-        }),
-      );
-
-      // Update with valid fields / nulls
-      await assertSucceeds(
-        updateDoc(doc(db, 'settings', 'whats_new'), {
-          videoUrl: null,
-          videoRoles: ['admin'],
-          updatedBy: null,
-        }),
-      );
-
-      // Update with videoRoles: null
-      await assertSucceeds(
-        updateDoc(doc(db, 'settings', 'whats_new'), {
-          videoRoles: null,
-        }),
-      );
-    });
-
-    it('SWN4: Rejects write if extra fields are provided', async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-      });
-      const db = getFirestore({ uid: 'admin1' });
-
       await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoUrl: 'https://example.com/whats-new.mp4',
-          extraField: 'not_allowed',
-        }),
-      );
-    });
-
-    it('SWN5: Rejects write if field types or sizes are invalid', async () => {
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-      });
-      const db = getFirestore({ uid: 'admin1' });
-
-      // videoUrl not string or null
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoUrl: 12345,
-        }),
-      );
-
-      // videoUrl size > 1024
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoUrl: 'https://example.com/' + 'a'.repeat(1025),
-        }),
-      );
-
-      // videoRoles not list or null
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoRoles: 'admin',
-        }),
-      );
-
-      // videoRoles size > 10 items
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          videoRoles: ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11'],
-        }),
-      );
-
-      // updatedAt not timestamp or null
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          updatedAt: '2026-09-30T00:00:00Z',
-        }),
-      );
-
-      // updatedBy size > 128
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          updatedBy: 'a'.repeat(129),
-        }),
-      );
-
-      // updatedBy not string or null
-      await assertFails(
-        setDoc(doc(db, 'settings', 'whats_new'), {
-          updatedBy: 999,
+        updateDoc(doc(adminDb, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/edited.mp4',
         }),
       );
     });
@@ -4560,7 +4454,6 @@ describeRules('Firestore Security Rules', () => {
         });
       });
     };
-
     it('FB1: a submitter can read their own Note', async () => {
       await seedFeedbackUsers();
       await seedNote('note1', 'student1');
@@ -4613,39 +4506,23 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDocs(collection(db, 'feedback')));
     });
 
-    it("FB8: the Note's author reads its Follow-ups", async () => {
+    // Follow-ups are cut (cut-or-keep §15): the rules match is gone, so the
+    // thread is unreadable and unwritable from every client. Stored replies
+    // stay where they are.
+    it('FB8: Follow-ups are unreadable and unwritable now that mirroring is cut', async () => {
       await seedFeedbackUsers();
       await seedNote('note1', 'student1');
       await seedFollowUp('note1', 'reply1');
-      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
-      await assertSucceeds(getDocs(collection(db, 'feedback', 'note1', 'replies')));
-    });
-
-    it('FB9: another submitter cannot read those Follow-ups', async () => {
-      await seedFeedbackUsers();
-      await seedNote('note1', 'student1');
-      await seedFollowUp('note1', 'reply1');
-      const db = getFirestore({ uid: 'student2', email: 'student2@test.com' });
-      await assertFails(getDocs(collection(db, 'feedback', 'note1', 'replies')));
-    });
-
-    it('FB10: nobody writes a Follow-up from a client — not the author, not a Full-timer', async () => {
-      await seedFeedbackUsers();
-      await seedNote('note1', 'student1');
       const authorDb = getFirestore({ uid: 'student1', email: 'student1@test.com' });
       const ftDb = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
       const reply = { authorRole: 'submitter', body: 'Any news?', createdAt: new Date() };
+
+      await assertFails(getDocs(collection(authorDb, 'feedback', 'note1', 'replies')));
+      await assertFails(getDoc(doc(ftDb, 'feedback', 'note1', 'replies', 'reply1')));
       await assertFails(setDoc(doc(authorDb, 'feedback', 'note1', 'replies', 'r1'), reply));
       await assertFails(setDoc(doc(ftDb, 'feedback', 'note1', 'replies', 'r2'), reply));
-    });
-
-    it('FB11: a Follow-up cannot be edited or deleted from a client either', async () => {
-      await seedFeedbackUsers();
-      await seedNote('note1', 'student1');
-      await seedFollowUp('note1', 'reply1');
-      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
-      await assertFails(updateDoc(doc(db, 'feedback', 'note1', 'replies', 'reply1'), { body: 'edited' }));
-      await assertFails(deleteDoc(doc(db, 'feedback', 'note1', 'replies', 'reply1')));
+      await assertFails(updateDoc(doc(ftDb, 'feedback', 'note1', 'replies', 'reply1'), { body: 'edited' }));
+      await assertFails(deleteDoc(doc(ftDb, 'feedback', 'note1', 'replies', 'reply1')));
     });
   });
 
@@ -4677,24 +4554,37 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(traineeDb, 'integrations_attd_event_mappings', 'e1')));
     });
 
-    it('lets a Full-timer read and write groupme_aliases but not a Trainee (#1103)', async () => {
+    // The GroupMe channel is cut (cut-or-keep §26): no rules match, so neither
+    // role may read or write the alias collection. Existing documents stay.
+    it('denies groupme_aliases to every role now that the channel is cut', async () => {
       await seedSyncUsers();
       const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
       const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
 
-      await assertSucceeds(setDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1'), {
+      await assertFails(setDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1'), {
         senderId: 'gm-sender-1',
         userId: 'sync-trainee',
         name: 'Trainee Sam',
       }));
-      await assertSucceeds(getDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1')));
-
+      await assertFails(getDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1')));
       await assertFails(setDoc(doc(traineeDb, 'groupme_aliases', 'gm-sender-2'), {
         senderId: 'gm-sender-2',
         userId: 'sync-trainee',
         name: 'Trainee Sam',
       }));
       await assertFails(getDoc(doc(traineeDb, 'groupme_aliases', 'gm-sender-1')));
+    });
+
+    // The webhook console is cut (cut-or-keep §26): its log collection has no
+    // rules match, so not even a Full-timer may read it back from a client.
+    it('denies webhook_logs to every role now that the console is cut', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
+
+      await assertFails(getDocs(collection(adminDb, 'webhook_logs')));
+      await assertFails(setDoc(doc(adminDb, 'webhook_logs', 'l1'), { source: 'SMS' }));
+      await assertFails(getDoc(doc(traineeDb, 'webhook_logs', 'l1')));
     });
 
     it('keeps the sync token private to Full-timers', async () => {

@@ -49,7 +49,6 @@ vi.mock('../views/Settings', () => {
   return { default: SettingsView };
 });
 vi.mock('../views/SignUp', () => ({ default: () => <div data-testid="signup-view">SignUp View</div> }));
-vi.mock('../views/FeedbackList', () => ({ default: () => <div data-testid="feedback-list-view">FeedbackList View</div> }));
 vi.mock('../views/MyNotes', () => ({ default: () => <div data-testid="my-notes-view">MyNotes View</div> }));
 vi.mock('../views/CoordinationNotes', () => ({ default: () => <div data-testid="coordination-view">CoordinationNotes View</div> }));
 
@@ -519,6 +518,22 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(window.location.pathname).toBe('/');
     });
+  });
+
+  // The Feedback list and its owner view are cut (cut-or-keep §15). A bookmark
+  // to the old admin console lands home instead of a page that is gone.
+  it('sends a Full-timer who opens /admin/feedback home', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/admin/feedback');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('feedback-list-view')).not.toBeInTheDocument();
   });
 
   it.each(['/prayer', '/answered', '/attendance'])(

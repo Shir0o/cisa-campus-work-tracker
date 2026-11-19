@@ -16,6 +16,6 @@ CISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gathe
 
 ## Your role
 
-What you can see and do follows your role: Full-timer, Trainee, Student, or Community. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.
+What you can see and do follows your role: Full-timer or Trainee. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.
 
 > This is a seed page. The full Help corpus is authored separately.

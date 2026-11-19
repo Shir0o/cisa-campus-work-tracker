@@ -3,46 +3,27 @@ import {
   Sparkles,
   Check,
   User,
-  MessageSquare,
-  FileText,
   Edit2,
   Loader2,
   AlertCircle,
   CheckSquare,
   Square,
-  ChevronDown,
   ChevronUp,
   Trash2,
 } from 'lucide-react';
-import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, logActivity, auth } from '../../lib/firebase';
+import { auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { PopupFrame } from '../ui/PopupFrame';
-import {
-  ParsedContactItem,
-  ParsedInteractionItem,
-  ParsedDiscussionItem,
-  SmartImportParsedData,
-} from '../../types';
+import { ParsedContactItem, SmartImportParsedData } from '../../types';
 
 interface SmartImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportComplete?: (result: { contactsCount: number; interactionsCount: number; discussionsCount: number }) => void;
+  onImportComplete?: (result: { contactsCount: number }) => void;
 }
 
 type Step = 'input' | 'parsing' | 'preview' | 'importing' | 'success';
-
-const SAMPLE_TEXT = `Met Jane Smith (freshman CS major, jane.smith@email.com, 555-0123) at the welcome booth. She is interested in joining Bible study and looking for community.
-Had coffee with her on 2026-08-03 at Starbucks. Discussed her transition to campus life, answered questions about group meetings, and gave her a welcome pack.
-
-Group Meeting Notes - Fall Kickoff Strategy
-Audience: team
-We met with team leaders to map out Welcome Week. Focus areas:
-1. Dorm outreach teams
-2. Friday night BBQ setup
-3. Follow-up strategy for new contacts`;
 
 export default function SmartImportModal({ isOpen, onClose, onImportComplete }: SmartImportModalProps) {
   const { user } = useAuth();
@@ -51,19 +32,14 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Parsed items with local selection and editing state
+  // Parsed contacts with local selection and editing state
   const [parsedContacts, setParsedContacts] = useState<ParsedContactItem[]>([]);
-  const [parsedInteractions, setParsedInteractions] = useState<ParsedInteractionItem[]>([]);
-  const [parsedDiscussions, setParsedDiscussions] = useState<ParsedDiscussionItem[]>([]);
 
   // Expanded edit tracking
   const [editingItemKey, setEditingItemKey] = useState<string | null>(null);
 
-  // Active tab in preview step
-  const [activeTab, setActiveTab] = useState<'all' | 'contacts' | 'interactions' | 'discussions'>('all');
-
   // Summary counts post-import
-  const [importSummary, setImportSummary] = useState({ contactsCount: 0, interactionsCount: 0, discussionsCount: 0 });
+  const [importSummary, setImportSummary] = useState({ contactsCount: 0 });
 
   if (!isOpen) return null;
 
@@ -72,10 +48,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
     setInputText('');
     setError(null);
     setParsedContacts([]);
-    setParsedInteractions([]);
-    setParsedDiscussions([]);
     setEditingItemKey(null);
-    setActiveTab('all');
   };
 
   const handleClose = () => {
@@ -133,20 +106,10 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         throw new Error(resData.error || t('modals.smartImport.parse_failed'));
       }
 
-      const data: SmartImportParsedData = resData.data || { contacts: [], interactions: [], discussions: [] };
+      const data: SmartImportParsedData = resData.data || { contacts: [] };
 
-      // Initialize selected flag as true for all parsed items
+      // Initialize selected flag as true for every parsed contact.
       setParsedContacts((data.contacts || []).map((c) => ({ ...c, selected: true })));
-      setParsedInteractions((data.interactions || []).map((i) => ({ ...i, selected: true })));
-      // 'trainees' was retired from the picker (#1849) — a parsed legacy tag
-      // becomes Team rather than importing a tier nobody can read.
-      setParsedDiscussions(
-        (data.discussions || []).map((d) => ({
-          ...d,
-          audience: d.audience === 'everyone' ? 'everyone' : 'team',
-          selected: true,
-        })),
-      );
 
       setStep('preview');
     } catch (err: any) {
@@ -158,14 +121,10 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
   const toggleSelectAll = (select: boolean) => {
     setParsedContacts((prev) => prev.map((c) => ({ ...c, selected: select })));
-    setParsedInteractions((prev) => prev.map((i) => ({ ...i, selected: select })));
-    setParsedDiscussions((prev) => prev.map((d) => ({ ...d, selected: select })));
   };
 
   const selectedContactsCount = parsedContacts.filter((c) => c.selected).length;
-  const selectedInteractionsCount = parsedInteractions.filter((i) => i.selected).length;
-  const selectedDiscussionsCount = parsedDiscussions.filter((d) => d.selected).length;
-  const totalSelected = selectedContactsCount + selectedInteractionsCount + selectedDiscussionsCount;
+  const totalSelected = selectedContactsCount;
 
   const handleConfirmImport = async () => {
     if (totalSelected === 0) {
@@ -194,8 +153,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         },
         body: JSON.stringify({
           contacts: parsedContacts.filter((c) => c.selected),
-          interactions: parsedInteractions.filter((i) => i.selected),
-          discussions: parsedDiscussions.filter((d) => d.selected),
         }),
       });
 
@@ -215,12 +172,12 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         throw new Error(resData.error || t('modals.smartImport.failed_to_save'));
       }
 
-      const summary = resData.summary || { contactsCount: 0, interactionsCount: 0, discussionsCount: 0 };
-      setImportSummary(summary);
+      const summary = resData.summary || { contactsCount: 0 };
+      setImportSummary({ contactsCount: summary.contactsCount || 0 });
       setStep('success');
 
       if (onImportComplete) {
-        onImportComplete(summary);
+        onImportComplete({ contactsCount: summary.contactsCount || 0 });
       }
     } catch (err: any) {
       console.error('Smart Import Commit Error:', err);
@@ -231,9 +188,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
   const showCancel = step === 'input' || step === 'preview';
   const cancelLabel = step === 'preview' ? t('modals.smartImport.back_to_text') : t('modals.smartImport.cancel');
-  const dirty = Boolean(
-    inputText.trim() || parsedContacts.length || parsedInteractions.length || parsedDiscussions.length,
-  );
+  const dirty = Boolean(inputText.trim() || parsedContacts.length);
   const primary =
     step === 'input'
       ? {
@@ -283,17 +238,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           {/* STEP 1: INPUT */}
           {step === 'input' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-on-surface">
-                  {t('modals.smartImport.paste_unstructured')}
-                </label>
-                <button
-                  onClick={() => setInputText(SAMPLE_TEXT)}
-                  className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> {t('modals.smartImport.load_sample')}
-                </button>
-              </div>
+              <label className="block text-sm font-semibold text-on-surface">
+                {t('modals.smartImport.paste_unstructured')}
+              </label>
 
               <textarea
                 value={inputText}
@@ -309,8 +256,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 </p>
                 <ul className="list-disc list-inside space-y-1 pl-1">
                   <li><b>{t('modals.smartImport.contacts')}:</b> {t('modals.smartImport.contacts_desc')}</li>
-                  <li><b>{t('modals.smartImport.interactions')}:</b> {t('modals.smartImport.interactions_desc')}</li>
-                  <li><b>{t('modals.smartImport.discussions')}:</b> {t('modals.smartImport.discussions_desc')}</li>
                 </ul>
               </div>
             </div>
@@ -330,7 +275,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
             </div>
           )}
 
-          {/* STEP 3: DRY RUN PREVIEW */}
+          {/* STEP 3: DRY RUN PREVIEW — contacts only */}
           {step === 'preview' && (
             <div className="space-y-6">
               {/* Summary Bar & Selection Toggle */}
@@ -338,12 +283,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 <div className="flex items-center gap-4 text-sm font-medium">
                   <span className="flex items-center gap-1.5 text-accent">
                     <User className="w-4 h-4" /> {parsedContacts.length} {t('modals.smartImport.contacts')}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-secondary">
-                    <MessageSquare className="w-4 h-4" /> {parsedInteractions.length} {t('modals.smartImport.interactions')}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-tertiary">
-                    <FileText className="w-4 h-4" /> {parsedDiscussions.length} {t('modals.smartImport.discussions')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -362,54 +301,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 </div>
               </div>
 
-              {/* Filter Tabs */}
-              <div className="flex border-b border-outline-variant gap-2 text-sm font-medium overflow-x-auto no-scrollbar whitespace-nowrap">
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className={`pb-2 px-3 border-b-2 transition-colors ${
-                    activeTab === 'all'
-                      ? 'border-primary text-accent font-semibold'
-                      : 'border-transparent text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {t('modals.smartImport.all_items')} ({parsedContacts.length + parsedInteractions.length + parsedDiscussions.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('contacts')}
-                  className={`pb-2 px-3 border-b-2 transition-colors ${
-                    activeTab === 'contacts'
-                      ? 'border-primary text-accent font-semibold'
-                      : 'border-transparent text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {t('modals.smartImport.contacts')} ({parsedContacts.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('interactions')}
-                  className={`pb-2 px-3 border-b-2 transition-colors ${
-                    activeTab === 'interactions'
-                      ? 'border-primary text-accent font-semibold'
-                      : 'border-transparent text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {t('modals.smartImport.interactions')} ({parsedInteractions.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('discussions')}
-                  className={`pb-2 px-3 border-b-2 transition-colors ${
-                    activeTab === 'discussions'
-                      ? 'border-primary text-accent font-semibold'
-                      : 'border-transparent text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {t('modals.smartImport.discussions')} ({parsedDiscussions.length})
-                </button>
-              </div>
-
               {/* Items List */}
               <div className="space-y-4">
-                {/* CONTACTS SECTION */}
-                {(activeTab === 'all' || activeTab === 'contacts') && parsedContacts.length > 0 && (
+                {parsedContacts.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-accent" /> {t('modals.smartImport.contacts')} ({parsedContacts.length})
@@ -572,284 +466,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                     })}
                   </div>
                 )}
-
-                {/* INTERACTIONS SECTION */}
-                {(activeTab === 'all' || activeTab === 'interactions') && parsedInteractions.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-secondary" /> {t('modals.smartImport.interactions_section')} ({parsedInteractions.length})
-                    </h4>
-                    {parsedInteractions.map((interaction) => {
-                      const itemKey = `i_${interaction.tempId}`;
-                      const isEditing = editingItemKey === itemKey;
-
-                      return (
-                        <div
-                          key={interaction.tempId}
-                          className={`p-4 rounded-xl border transition-colors ${
-                            interaction.selected
-                              ? 'border-secondary/40 bg-secondary/5'
-                              : 'border-outline-variant bg-surface opacity-75'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setParsedInteractions((prev) =>
-                                    prev.map((i) => (i.tempId === interaction.tempId ? { ...i, selected: !i.selected } : i))
-                                  )
-                                }
-                                className="mt-0.5 text-secondary focus:outline-none"
-                              >
-                                {interaction.selected ? (
-                                  <CheckSquare className="w-5 h-5 text-secondary" />
-                                ) : (
-                                  <Square className="w-5 h-5 text-on-surface-variant" />
-                                )}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-sm text-on-surface">
-                                    {interaction.contactName || t('modals.smartImport.unlinked_interaction')}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-on-surface-variant capitalize">
-                                    {t('modals.smartImport.type')}: {interaction.type || t('modals.smartImport.note')}
-                                  </span>
-                                  {interaction.dateTime && (
-                                    <span className="text-xs text-on-surface-variant font-mono">
-                                      {interaction.dateTime}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <p className="text-xs text-on-surface mt-1 leading-relaxed whitespace-pre-wrap">
-                                  {interaction.content}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setParsedInteractions((prev) => prev.filter((i) => i.tempId !== interaction.tempId))
-                                }
-                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                                title={t('modals.smartImport.delete_item')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
-                                className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                                title={t('modals.smartImport.edit_item_details')}
-                              >
-                                {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Editable Form */}
-                          {isEditing && (
-                            <div className="mt-4 pt-4 border-t border-outline-variant space-y-3 text-xs">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.contact_name')}</label>
-                                  <input
-                                    type="text"
-                                    value={interaction.contactName || ''}
-                                    onChange={(e) =>
-                                      setParsedInteractions((prev) =>
-                                        prev.map((i) =>
-                                          i.tempId === interaction.tempId ? { ...i, contactName: e.target.value } : i
-                                        )
-                                      )
-                                    }
-                                    className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.type')}</label>
-                                  <select
-                                    value={interaction.type || 'note'}
-                                    onChange={(e) =>
-                                      setParsedInteractions((prev) =>
-                                        prev.map((i) =>
-                                          i.tempId === interaction.tempId ? { ...i, type: e.target.value } : i
-                                        )
-                                      )
-                                    }
-                                    className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
-                                  >
-                                    <option value="coffee">{t('modals.smartImport.coffee')}</option>
-                                    <option value="call">{t('modals.smartImport.call')}</option>
-                                    <option value="text">{t('modals.smartImport.text')}</option>
-                                    <option value="meeting">{t('modals.smartImport.meeting')}</option>
-                                    <option value="note">{t('modals.smartImport.note')}</option>
-                                  </select>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.content_summary')}</label>
-                                <textarea
-                                  value={interaction.content}
-                                  onChange={(e) =>
-                                    setParsedInteractions((prev) =>
-                                      prev.map((i) =>
-                                        i.tempId === interaction.tempId ? { ...i, content: e.target.value } : i
-                                      )
-                                    )
-                                  }
-                                  rows={3}
-                                  className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* DISCUSSIONS SECTION */}
-                {(activeTab === 'all' || activeTab === 'discussions') && parsedDiscussions.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-tertiary" /> {t('modals.smartImport.discussions_section')} ({parsedDiscussions.length})
-                    </h4>
-                    {parsedDiscussions.map((discussion) => {
-                      const itemKey = `d_${discussion.tempId}`;
-                      const isEditing = editingItemKey === itemKey;
-
-                      return (
-                        <div
-                          key={discussion.tempId}
-                          className={`p-4 rounded-xl border transition-colors ${
-                            discussion.selected
-                              ? 'border-tertiary/40 bg-tertiary/5'
-                              : 'border-outline-variant bg-surface opacity-75'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setParsedDiscussions((prev) =>
-                                    prev.map((d) => (d.tempId === discussion.tempId ? { ...d, selected: !d.selected } : d))
-                                  )
-                                }
-                                className="mt-0.5 text-tertiary focus:outline-none"
-                              >
-                                {discussion.selected ? (
-                                  <CheckSquare className="w-5 h-5 text-tertiary" />
-                                ) : (
-                                  <Square className="w-5 h-5 text-on-surface-variant" />
-                                )}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-sm text-on-surface">{discussion.title}</span>
-                                  <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-on-surface-variant capitalize">
-                                    {t('modals.smartImport.audience')}: {discussion.audience || t('modals.smartImport.team')}
-                                  </span>
-                                </div>
-
-                                <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-3 font-mono">
-                                  {discussion.content}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setParsedDiscussions((prev) => prev.filter((d) => d.tempId !== discussion.tempId))
-                                }
-                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                                title={t('modals.smartImport.delete_item')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
-                                className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                                title={t('modals.smartImport.edit_item_details')}
-                              >
-                                {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Editable Form */}
-                          {isEditing && (
-                            <div className="mt-4 pt-4 border-t border-outline-variant space-y-3 text-xs">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.title')}</label>
-                                  <input
-                                    type="text"
-                                    value={discussion.title}
-                                    onChange={(e) =>
-                                      setParsedDiscussions((prev) =>
-                                        prev.map((d) =>
-                                          d.tempId === discussion.tempId ? { ...d, title: e.target.value } : d
-                                        )
-                                      )
-                                    }
-                                    className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.audience')}</label>
-                                  <select
-                                    value={discussion.audience || 'team'}
-                                    onChange={(e) =>
-                                      setParsedDiscussions((prev) =>
-                                        prev.map((d) =>
-                                          d.tempId === discussion.tempId
-                                            ? { ...d, audience: e.target.value as any }
-                                            : d
-                                        )
-                                      )
-                                    }
-                                    className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
-                                  >
-                                    <option value="team">{t('modals.smartImport.team')}</option>
-                                    <option value="everyone">{t('modals.smartImport.everyone')}</option>
-                                  </select>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.markdown_content')}</label>
-                                <textarea
-                                  value={discussion.content}
-                                  onChange={(e) =>
-                                    setParsedDiscussions((prev) =>
-                                      prev.map((d) =>
-                                        d.tempId === discussion.tempId ? { ...d, content: e.target.value } : d
-                                      )
-                                    )
-                                  }
-                                  rows={4}
-                                  className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface font-mono"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -873,7 +489,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               </div>
               <h3 className="font-serif text-2xl font-semibold">{t('modals.smartImport.import_completed')}</h3>
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
-                {t('modals.smartImport.success_summary').replace('{contacts}', String(importSummary.contactsCount)).replace('{interactions}', String(importSummary.interactionsCount)).replace('{discussions}', String(importSummary.discussionsCount))}
+                {t('modals.smartImport.success_summary').replace('{contacts}', String(importSummary.contactsCount))}
               </p>
             </div>
           )}

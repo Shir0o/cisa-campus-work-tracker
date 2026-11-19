@@ -90,7 +90,7 @@ vi.mock('motion/react', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback', '/bible-study/present', 'https://shared-calendar-6u6.pages.dev/']);
+const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/feedback', '/bible-study/present', 'https://shared-calendar-6u6.pages.dev/']);
 
 function renderTopNav() {
   return render(
@@ -122,7 +122,7 @@ describe('canAccessRoute()', () => {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
     manager:  ['/', '/directory', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/history', '/admin/feedback', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/history', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {

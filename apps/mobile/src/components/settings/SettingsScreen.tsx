@@ -610,27 +610,6 @@ function Settings() {
           </Pressable>
         </Section>
 
-        <Section title={t('mobile.settings.how_this_works')}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/tutorial')}
-            style={({ pressed }) => ({
-              minHeight: 48,
-              borderRadius: radius.card,
-              backgroundColor: c.card.react,
-              borderWidth: 1.5,
-              borderColor: c.card.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
-              {t('mobile.settings.read_how_this_works')}
-            </Text>
-          </Pressable>
-        </Section>
-
         <Section title={t('mobile.settings.how_it_looks')}>
           <Choice
             label={t('mobile.settings.daylight_or_dark')}

@@ -13,7 +13,6 @@ const {
   getCollection,
   resetDb,
   mockGenerateContent,
-  mockVerifyTwilio,
   mockVerifyIdToken,
   mockCreateCustomToken,
   fetchMock,
@@ -181,7 +180,6 @@ const {
     getCollection: (name: string) => store[name] ?? {},
     resetDb: () => { Object.keys(store).forEach((k) => delete store[k]); },
     mockGenerateContent: vi.fn(),
-    mockVerifyTwilio: vi.fn(),
     mockVerifyIdToken: vi.fn(),
     mockCreateCustomToken: vi.fn(),
     fetchMock: vi.fn(),
@@ -227,10 +225,6 @@ vi.mock("vite", () => ({
   createServer: vi.fn().mockResolvedValue({ middlewares: () => {} }),
 }));
 
-vi.mock("../lib/twilioVerify", () => ({
-  verifyTwilioRequest: mockVerifyTwilio,
-}));
-
 // ── App under test (imported after mocks are registered) ────────────────────
 import { createApp } from "../../server";
 import { TestAccountPurgeEngine } from "../server/testAccountPurgeEngine";
@@ -250,7 +244,6 @@ beforeEach(async () => {
 
   resetDb();
   getFirestoreDbIds.length = 0;
-  mockVerifyTwilio.mockReturnValue(true);
   mockVerifyIdToken.mockResolvedValue({ uid: "u-123", email: "u@example.com", name: "Unit Tester" });
   mockCreateCustomToken.mockResolvedValue("minted-token");
   mockGenerateContent.mockReset();
@@ -271,26 +264,6 @@ function sign(payload: unknown, secret: string) {
   const digest = crypto.createHmac("sha256", secret).update(JSON.stringify(payload)).digest("hex");
   return `sha256=${digest}`;
 }
-
-describe("GET /api/quick-add/status", () => {
-  it("reports Gemini configuration status and endpoint URLs", async () => {
-    const res = await request(app).get("/api/quick-add/status");
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      geminiConfigured: true,
-      endpointUrl: "/api/quick-add",
-      webhookUrl: "/api/webhook/sms",
-      groupmeWebhookUrl: "/api/webhook/groupme",
-      appUrl: "https://example.test",
-    });
-  });
-
-  it("reports geminiConfigured false when GEMINI_API_KEY is absent", async () => {
-    vi.stubEnv("GEMINI_API_KEY", "");
-    const res = await request(app).get("/api/quick-add/status");
-    expect(res.body.geminiConfigured).toBe(false);
-  });
-});
 
 describe("getAdminDb database id resolution", () => {
   it("passes FIREBASE_FIRESTORE_DB_ID to getFirestore when set", async () => {
@@ -567,77 +540,6 @@ describe("POST /api/feedback", () => {
   });
 });
 
-describe("POST /api/feedback/update", () => {
-  it("returns 400 when id is missing", async () => {
-    const res = await request(app).post("/api/feedback/update").send({ status: "resolved" });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 404 when the feedback doc does not exist", async () => {
-    const res = await request(app).post("/api/feedback/update").send({ id: "nope" });
-    expect(res.status).toBe(404);
-  });
-
-  it("updates status and archived without touching GitHub when no issue URL", async () => {
-    seedDoc("feedback", "fb-1", { status: "new", archived: false });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-1", status: "resolved", archived: true });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(getCollection("feedback")["fb-1"].status).toBe("resolved");
-    expect(getCollection("feedback")["fb-1"].archived).toBe(true);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("closes the GitHub issue as completed when status becomes resolved", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    seedDoc("feedback", "fb-2", { status: "new", archived: false, githubIssueUrl: "https://github.com/a/b/issues/9" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-2", status: "resolved" });
-    expect(res.status).toBe(200);
-
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/9");
-    expect((init as RequestInit).method).toBe("PATCH");
-    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ state: "closed", state_reason: "completed" });
-  });
-
-  it("skips GitHub sync when the issue URL is not a valid GitHub URL", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    seedDoc("feedback", "fb-3", { status: "new", githubIssueUrl: "not-a-github-url" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-3", status: "resolved" });
-    expect(res.status).toBe(200);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("refuses to link a note to an issue outside the app's repository (Nov 2026)", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "a/b");
-    seedDoc("feedback", "fb-4", { status: "new" });
-    for (const githubIssueUrl of ["https://github.com/someone/else/issues/1", "not-a-github-url", 42]) {
-      const res = await request(app).post("/api/feedback/update").send({ id: "fb-4", githubIssueUrl });
-      expect(res.status).toBe(400);
-    }
-    expect(getCollection("feedback")["fb-4"].githubIssueUrl).toBeUndefined();
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    // Same repository (any case) and unlinking still work.
-    const ok = await request(app)
-      .post("/api/feedback/update")
-      .send({ id: "fb-4", githubIssueUrl: "https://github.com/A/B/issues/3" });
-    expect(ok.status).toBe(200);
-    const cleared = await request(app).post("/api/feedback/update").send({ id: "fb-4", githubIssueUrl: "" });
-    expect(cleared.status).toBe(200);
-  });
-
-  it("never calls GitHub for a stored issue URL outside the app's repository (Nov 2026)", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "a/b");
-    seedDoc("feedback", "fb-5", { status: "new", githubIssueUrl: "https://github.com/someone/else/issues/1" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-5", status: "resolved" });
-    expect(res.status).toBe(200);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-});
-
 describe("POST /api/webhook/github", () => {
   const issueUrl = "https://github.com/a/b/issues/7";
   const closedPayload = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
@@ -778,278 +680,7 @@ describe("POST /api/webhook/github", () => {
   });
 });
 
-describe("GET /api/webhook/logs", () => {
-  it("returns recent webhook logs", async () => {
-    seedDoc("webhook_logs", "l1", { source: "SMS", status: "success" });
-    seedDoc("webhook_logs", "l2", { source: "GroupMe", status: "error" });
-    const res = await request(app).get("/api/webhook/logs");
-    expect(res.status).toBe(200);
-    expect(res.body.logs).toHaveLength(2);
-    expect(res.body.logs.map((l: any) => l.dbId).sort()).toEqual(["l1", "l2"]);
-  });
-
-  it("caps the limit at 50", async () => {
-    for (let i = 0; i < 60; i++) seedDoc("webhook_logs", `l${i}`, { source: "SMS" });
-    const res = await request(app).get("/api/webhook/logs?limit=999");
-    expect(res.status).toBe(200);
-    expect(res.body.logs).toHaveLength(50);
-  });
-});
-
-describe("POST /api/quick-add", () => {
-  it("returns 400 when text is missing and logs the error", async () => {
-    const res = await request(app).post("/api/quick-add").send({});
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain("No text description provided");
-    expect(Object.values(getCollection("webhook_logs"))).toHaveLength(1);
-  });
-
-  it("creates a new contact from parsed text", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Jane Doe", role: "Student", location: "Cafeteria", notes: "Met at lunch" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Jane Doe at the cafeteria" });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.contact).toMatchObject({ isExisting: false, name: "Jane Doe" });
-    // #1345: the model's guess at a group is ignored; nothing is stored for it.
-    expect(res.body.contact).not.toHaveProperty("role");
-
-    const contacts = Object.values(getCollection("contacts"));
-    expect(contacts).toHaveLength(1);
-    expect(contacts[0]).toMatchObject({ name: "Jane Doe", stage: "First Contact" });
-    expect(contacts[0]).not.toHaveProperty("role");
-    expect(Object.values(getCollection("activities")).length).toBeGreaterThan(0);
-    expect(Object.values(getCollection("notifications")).length).toBeGreaterThan(0);
-  });
-
-  // #1024 phase 4: every server-side create stamps a tie, so it must stamp the
-  // derived `visibleTo` in the same write or the rules hide the new contact
-  // from the very person recorded as its creator/owner. `visibleTo` is defined
-  // as visibleToOf() over the ties actually persisted, so these assert that
-  // invariant rather than a hard-coded uid -- that is what the backfill and the
-  // rules both read.
-  it("stamps visibleTo on a contact a signed-in teammate creates from parsed text", async () => {
-    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-ada", email: "ada@example.com", name: "Ada" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Vee Quinn", role: "Student" }),
-    });
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("Authorization", "Bearer token")
-      .send({ text: "Met Vee Quinn" });
-    expect(res.status).toBe(200);
-
-    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
-    expect(created.createdBy).toBe("uid-ada");
-    expect(created.visibleTo).toEqual(["uid-ada"]);
-  });
-
-  it("stamps visibleTo from the persisted ties on an unauthenticated automation create", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Vee Quinn", role: "Student" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Vee Quinn" });
-    expect(res.status).toBe(200);
-
-    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
-    // No real teammate is tied to it, so the access list is just the recorded
-    // creator label -- it must still match visibleToOf() over what was written,
-    // or the backfill will keep re-planning this row.
-    expect(created.visibleTo).toEqual(visibleToOf(created as Parameters<typeof visibleToOf>[0]));
-  });
-
-  it("stamps visibleTo on a contact auto-created by the interaction subcommand", async () => {
-    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-ada", email: "ada@example.com", name: "Ada" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ contactName: "Nia Fox", content: "Coffee chat", type: "Coffee" }),
-    });
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("Authorization", "Bearer token")
-      .send({ text: "!add interaction Coffee with Nia Fox" });
-    expect(res.status).toBe(200);
-
-    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
-    expect(created.createdBy).toBe("uid-ada");
-    expect(created.visibleTo).toEqual(["uid-ada"]);
-  });
-
-  it("merges into an existing contact matched by email", async () => {
-    seedDoc("contacts", "c-1", { name: "Jane Doe", email: "jane@example.com", phone: "", role: "Student", tags: ["Gospel"] });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Jane Doe", email: "jane@example.com", role: "Student", tags: ["New"], notes: "Follow up" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Follow up with Jane" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(true);
-    expect(res.body.contact.id).toBe("c-1");
-    expect(getCollection("contacts")["c-1"].tags).toEqual(["Gospel", "New"]);
-    expect(getCollection("contacts")["c-1"].lastSeen).toBe("Just now");
-  });
-
-  it("logs an interaction for existing contacts when using the interaction subcommand", async () => {
-    seedDoc("contacts", "c-2", { name: "Bob Smith", email: "bob@example.com" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ contactName: "Bob Smith", content: "Coffee chat", type: "Coffee" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "!add interaction Had coffee with Bob Smith" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(true);
-
-    const interactions = Object.values(getCollection("contacts/c-2/interactions"));
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].type).toBe("Coffee");
-    expect(interactions[0].contactName).toBe("Bob Smith");
-    // An interaction was logged, so the person is reached (#1335).
-    expect(getCollection("contacts")["c-2"].reachedAt).toBe(interactions[0].dateTime);
-  });
-
-  it("attributes to the authenticated user when an Authorization header is present", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "New Person" }) });
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("Authorization", "Bearer tok")
-      .send({ text: "Met New Person" });
-    expect(res.status).toBe(200);
-    expect(Object.values(getCollection("contacts"))[0].createdBy).toBe("u-123");
-    // Adding someone logs no interaction, so it reaches nobody (#1335).
-    expect(Object.values(getCollection("contacts"))[0]).not.toHaveProperty("reachedAt");
-  });
-
-  it("matches an existing contact via fuzzy name containment", async () => {
-    seedDoc("contacts", "c-3", { name: "Jonathan Doe", email: "", phone: "" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Jonathan", email: "", phone: "" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Jonathan" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(true);
-    expect(res.body.contact.id).toBe("c-3");
-    // The merge logs an interaction with them, so they are reached (#1335).
-    const [logged] = Object.values(getCollection("contacts/c-3/interactions"));
-    expect(getCollection("contacts")["c-3"].reachedAt).toBe(logged.dateTime);
-    // ...which is bookkeeping, not a detail the merge filled in.
-    const [activity] = Object.values(getCollection("activities"));
-    expect(activity.description).toContain("No additional empty fields were present to fill.");
-  });
-
-  it("does not collapse 'Bob' onto an existing 'Bobby' contact (#731)", async () => {
-    // Regression for: typing "Bob" (a substring of "Bobby") was matching the
-    // existing contact via substring containment. Word-boundary matching prevents it.
-    seedDoc("contacts", "c-bobby", { name: "Bobby Smith", email: "", phone: "" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Bob", email: "", phone: "" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Bob" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(false);
-    expect(res.body.contact.name).toBe("Bob");
-  });
-
-  it("does not collapse 'Robert' onto an existing 'Roberto' contact (#731)", async () => {
-    // GroupMe !add: typing "Robert" must not fold into existing "Roberto".
-    seedDoc("contacts", "c-rob", { name: "Roberto Garcia", email: "", phone: "" });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Robert", email: "", phone: "" }),
-    });
-    const res = await request(app)
-      .post("/api/webhook/groupme")
-      .send({ text: "!add Robert", name: "Sam", sender_id: "s-1" });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.contact.name).toBe("Robert");
-
-    const contacts = Object.values(getCollection("contacts"));
-    const nameOf = (c: unknown): string => {
-      if (c && typeof c === "object" && "name" in c) {
-        const name = c.name; // unknown until validated
-        return typeof name === "string" ? name : "";
-      }
-      return "";
-    };
-    const robertos = contacts.filter((c) => nameOf(c) === "Roberto Garcia");
-    const roberts = contacts.filter((c) => nameOf(c) === "Robert");
-    expect(robertos).toHaveLength(1);
-    expect(roberts).toHaveLength(1);
-  });
-
-  it("creates a minimal contact when logging an interaction for an unknown contact", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ contactName: "New Kid", content: "Bible study", type: "Bible Study" }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "!add interaction Bible study with New Kid" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(false);
-    expect(res.body.contact.name).toBe("New Kid");
-
-    const contacts = Object.values(getCollection("contacts"));
-    expect(contacts).toHaveLength(1);
-    expect(contacts[0]).toMatchObject({ name: "New Kid", stage: "First Contact" });
-    expect(contacts[0]).not.toHaveProperty("role");
-    const id = res.body.contact.id;
-    const logged = Object.values(getCollection(`contacts/${id}/interactions`));
-    expect(logged).toHaveLength(1);
-    expect(contacts[0].reachedAt).toBe(logged[0].dateTime);
-  });
-
-  it("returns 500 when Gemini cannot extract a name", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ notes: "no name here" }) });
-    const res = await request(app).post("/api/quick-add").send({ text: "some text" });
-    expect(res.status).toBe(500);
-    expect(res.body.success).toBe(false);
-  });
-
-  it("returns 500 when Gemini returns no text", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "" });
-    const res = await request(app).post("/api/quick-add").send({ text: "some text" });
-    expect(res.status).toBe(500);
-    expect(res.body.success).toBe(false);
-  });
-});
-
 describe("Quick Add key and unconfigured webhooks (security decisions, Nov 2026)", () => {
-  it("refuses a keyless Quick Add in production even before a key is set", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Jane Doe" });
-    expect(res.status).toBe(401);
-    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
-    expect(mockGenerateContent).not.toHaveBeenCalled();
-  });
-
-  it("refuses a Quick Add with the wrong key once a key is set", async () => {
-    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("x-quick-add-key", "guess")
-      .send({ text: "Met Jane Doe" });
-    expect(res.status).toBe(401);
-    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
-  });
-
-  it("accepts a Quick Add that sends the right key", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Jane Doe" }) });
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("x-quick-add-key", "shortcut-key")
-      .send({ text: "Met Jane Doe" });
-    expect(res.status).toBe(200);
-    expect(Object.values(getCollection("contacts"))).toHaveLength(1);
-  });
-
-  it("still lets a signed-in teammate use Quick Add without the key", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("QUICK_ADD_SECRET", "shortcut-key");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Jane Doe" }) });
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("Authorization", "Bearer token")
-      .send({ text: "Met Jane Doe" });
-    expect(res.status).toBe(200);
-  });
-
   it("refuses the GitHub webhook in production when its secret is not set", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const res = await request(app)
@@ -1057,20 +688,6 @@ describe("Quick Add key and unconfigured webhooks (security decisions, Nov 2026)
       .set("x-github-event", "issues")
       .send({ action: "closed", issue: { html_url: "https://github.com/a/b/issues/7" } });
     expect(res.status).toBe(503);
-  });
-
-  it("refuses the SMS webhook in production when the Twilio token is not set", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Ava Rose" });
-    expect(res.status).toBe(503);
-    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
-  });
-
-  it("refuses the GroupMe webhook in production when the group is not set", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Robert", name: "Sam", sender_id: "s-1" });
-    expect(res.status).toBe(503);
-    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
   });
 });
 
@@ -1124,296 +741,31 @@ describe("POST /api/signup-notify", () => {
   });
 });
 
-describe("POST /api/webhook/sms", () => {
-  it("rejects requests with an invalid Twilio signature", async () => {
-    vi.stubEnv("TWILIO_AUTH_TOKEN", "twilio-token");
-    mockVerifyTwilio.mockReturnValue(false);
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "hello" });
-    expect(res.status).toBe(403);
-    expect(res.text).toContain("Forbidden");
-  });
-
-  it("returns 400 when the SMS body is empty", async () => {
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ From: "+123" });
-    expect(res.status).toBe(400);
-    expect(res.text).toContain("provide a valid text description");
-  });
-
-  it("quick-adds a contact and responds with TwiML", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Ava Rose", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Ava Rose", From: "+15550001111" });
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/xml");
-    expect(res.text).toContain("Ava Rose");
-    expect(Object.values(getCollection("contacts"))).toHaveLength(1);
-  });
-
-  it("escapes model output before putting it in the TwiML reply", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ name: "Eve</Message><Redirect>https://evil.example</Redirect><Message>", notes: "a & b" }),
-    });
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Eve", From: "+15550002222" });
-    expect(res.status).toBe(200);
-    expect(res.text).not.toContain("<Redirect>");
-    expect(res.text).toContain("&lt;Redirect&gt;");
-    expect(res.text).toContain("a &amp; b");
-  });
-
-  it("returns a 500 TwiML error when quick-add fails", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "" });
-    const res = await request(app).post("/api/webhook/sms").type("form").send({ Body: "Met Ava Rose" });
-    expect(res.status).toBe(500);
-    expect(res.headers["content-type"]).toContain("text/xml");
-    expect(res.text).toContain("Failed to parse/quick-add contact");
-  });
-});
-
-describe("POST /api/webhook/groupme", () => {
-  it("rejects callbacks from an unexpected group", async () => {
-    vi.stubEnv("GROUPME_GROUP_ID", "expected-group");
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Jane", group_id: "other-group" });
-    expect(res.status).toBe(403);
-  });
-
-  it("ignores messages from bots", async () => {
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Jane", sender_type: "bot" });
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ignored_bot_sender");
-  });
-
-  it("ignores messages without a trigger prefix", async () => {
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "Jane Doe", name: "Sam" });
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ignored_no_trigger_prefix");
-  });
-
-  it("quick-adds a contact from a prefixed message", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.contact.name).toBe("Leo King");
-  });
-
-  it("posts a GroupMe bot confirmation when GROUPME_BOT_ID is set", async () => {
-    vi.stubEnv("GROUPME_BOT_ID", "bot-123");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://api.groupme.com/v3/bots/post");
-    const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.bot_id).toBe("bot-123");
-    expect(body.text).toContain("Leo King");
-  });
-
-  it("does not post a GroupMe bot confirmation when GROUPME_BOT_ID is unset", async () => {
-    vi.stubEnv("GROUPME_BOT_ID", "");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-
-  it("attributes createdBy and createdByName to matching user if GroupMe sender matches a team user", async () => {
-    seedDoc("users", "user-sam-uid", {
-      displayName: "Sam Wilson",
-      email: "sam@campus.edu",
-    });
-
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam Wilson", sender_id: "s-1" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    const savedContacts = Object.values(getCollection("contacts"));
-    const createdContact = savedContacts.find((c) => c.name === "Leo King");
-    expect(createdContact).toBeDefined();
-    expect(createdContact.createdBy).toBe("user-sam-uid");
-    expect(createdContact.createdByName).toBe("Sam Wilson");
-  });
-
-  it("attributes creator via groupme_aliases if sender_id is mapped (#1103)", async () => {
-    seedDoc("users", "user-tony-uid", {
-      displayName: "Tony Stark",
-      email: "tony@campus.edu",
-    });
-    seedDoc("groupme_aliases", "gm-tony-id", {
-      senderId: "gm-tony-id",
-      userId: "user-tony-uid",
-      name: "Tony Stark",
-    });
-
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Peter Parker", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({
-      text: "!add Peter Parker",
-      name: "Iron Man", // Nickname does not match user name
-      sender_id: "gm-tony-id",
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    const savedContacts = Object.values(getCollection("contacts"));
-    const createdContact = savedContacts.find((c) => c.name === "Peter Parker");
-    expect(createdContact).toBeDefined();
-    expect(createdContact.createdBy).toBe("user-tony-uid");
-    expect(createdContact.createdByName).toBe("Tony Stark");
-  });
-
-  it("stamps gospel partner coCreators when creator has active pairing (#1103)", async () => {
-    seedDoc("users", "user-trainee-1", {
-      displayName: "Trainee One",
-      email: "t1@campus.edu",
-    });
-    seedDoc("settings", "partners", {
-      pairings: [
-        { id: "pair-1", members: ["user-trainee-1", "user-trainee-2"], startDate: "2020-01-01" },
-      ],
-    });
-
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Ned Leeds", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({
-      text: "!add Ned Leeds",
-      name: "Trainee One",
-      sender_id: "s-t1",
-    });
-
-    expect(res.status).toBe(200);
-    const savedContacts = Object.values(getCollection("contacts"));
-    const created = savedContacts.find((c) => c.name === "Ned Leeds");
-    expect(created).toBeDefined();
-    expect(created.createdBy).toBe("user-trainee-1");
-    expect(created.coCreators).toEqual(["user-trainee-2"]);
-    expect(created.visibleTo).toContain("user-trainee-1");
-    expect(created.visibleTo).toContain("user-trainee-2");
-  });
-
-  it("saves a GroupMe alias via POST /api/groupme-aliases (#1103)", async () => {
-    seedDoc("users", "admin-1", { role: "admin", email: "admin@example.com" });
-    seedDoc("users", "user-member-1", { displayName: "Bruce Banner", email: "bruce@campus.edu" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
-
-    const res = await request(app)
-      .post("/api/groupme-aliases")
-      .set("Authorization", "Bearer valid-token")
-      .send({ senderId: "gm-hulk", userId: "user-member-1" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    const aliases = getCollection("groupme_aliases");
-    expect(aliases["gm-hulk"]).toBeDefined();
-    expect(aliases["gm-hulk"].userId).toBe("user-member-1");
-    expect(aliases["gm-hulk"].name).toBe("Bruce Banner");
-  });
-
-  it("retroactively repairs contacts via POST /api/groupme-aliases/repair (#1103)", async () => {
-    seedDoc("users", "admin-1", { role: "admin", email: "admin@example.com" });
-    seedDoc("users", "user-steve", { displayName: "Steve Rogers", email: "steve@campus.edu" });
-    seedDoc("settings", "partners", {
-      pairings: [
-        { id: "pair-steve", members: ["user-steve", "user-bucky"], startDate: "2020-01-01" },
-      ],
-    });
-    seedDoc("contacts", "contact-legacy", {
-      name: "Bucky Barnes",
-      createdBy: "groupme-gm-steve",
-      createdByName: "Steve (GroupMe)",
-      visibleTo: [],
-    });
-    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
-
-    const res = await request(app)
-      .post("/api/groupme-aliases/repair")
-      .set("Authorization", "Bearer valid-token")
-      .send({ senderId: "gm-steve", userId: "user-steve" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.repairedCount).toBe(1);
-
-    const contact = getCollection("contacts")["contact-legacy"];
-    expect(contact.createdBy).toBe("user-steve");
-    expect(contact.createdByName).toBe("Steve Rogers");
-    expect(contact.coCreators).toEqual(["user-bucky"]);
-    expect(contact.visibleTo).toContain("user-steve");
-    expect(contact.visibleTo).toContain("user-bucky");
-  });
-
-  it("tags a new GroupMe-added contact with the current semester", async () => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const semesterTag = month >= 8 ? `Fall ${year}` : month >= 5 ? `Summer ${year}` : `Spring ${year}`;
-
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
-
-    expect(res.status).toBe(200);
-    const savedContacts = Object.values(getCollection("contacts"));
-    expect(savedContacts.some((c) => c.name === "Leo King" && (c.tags || []).includes(semesterTag))).toBe(true);
-  });
-
-  it("adds the semester tag to an existing GroupMe-matched contact", async () => {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const semesterTag = month >= 8 ? `Fall ${year}` : month >= 5 ? `Summer ${year}` : `Spring ${year}`;
-
-    seedDoc("contacts", "existing-leo", {
-      name: "Leo King",
-      role: "Student",
-      stage: "First Contact",
-      tags: ["Gospel"],
-    });
-
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
-
-    expect(res.status).toBe(200);
-    const saved = getCollection("contacts")["existing-leo"];
-    expect(saved.tags).toContain("Gospel");
-    expect(saved.tags).toContain(semesterTag);
-  });
-
-  it("handles the /add prefix trigger", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Mia Lane", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "/add Mia Lane", name: "Sam" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.name).toBe("Mia Lane");
-  });
-
-  it("treats a bare trigger as no-prefix since the trailing space is trimmed", async () => {
-    // text.trim() strips the trailing space, so "!add " no longer matches the
-    // "!add " prefix and falls through to ignored_no_trigger_prefix.
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add ", name: "Sam" });
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ignored_no_trigger_prefix");
-  });
-});
-
 describe("POST /api/smart-import/commit", () => {
-  it("successfully commits contacts, interactions, and discussions to Firestore", async () => {
+  it("successfully commits contacts to Firestore", async () => {
     const res = await request(app)
       .post("/api/smart-import/commit")
       .send({
         contacts: [{ tempId: "c1", name: "Alice", email: "alice@test.com" }],
-        interactions: [{ tempId: "i1", contactRef: "c1", content: "Met for coffee", type: "coffee" }],
-        discussions: [{ tempId: "d1", title: "Strategy", content: "Notes", audience: "team" }],
       });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.summary).toEqual({
-      contactsCount: 1,
-      interactionsCount: 1,
-      discussionsCount: 1,
-    });
+    expect(res.body.summary).toEqual({ contactsCount: 1 });
+  });
+
+  it("ignores a legacy interactions or discussions payload", async () => {
+    const res = await request(app)
+      .post("/api/smart-import/commit")
+      .send({
+        contacts: [],
+        interactions: [{ tempId: "i1", content: "Met for coffee" }],
+        discussions: [{ tempId: "d1", title: "Strategy", content: "Notes" }],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.summary).toEqual({ contactsCount: 0 });
+    expect(Object.keys(getCollection("board_docs"))).toHaveLength(0);
   });
 
   // #1024 phase 4: the import stamps `createdBy`, so it owes the same write a
@@ -1519,19 +871,6 @@ describe("POST /api/mint-custom-token", () => {
   });
 });
 
-describe("GET /api/quick-add/status", () => {
-  it("returns server configuration status", async () => {
-    const res = await request(app).get("/api/quick-add/status");
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      geminiConfigured: true,
-      endpointUrl: "/api/quick-add",
-      webhookUrl: "/api/webhook/sms",
-      groupmeWebhookUrl: "/api/webhook/groupme",
-    });
-  });
-});
-
 describe("authorizeAdmin role enforcement", () => {
   const originalEnv = process.env.NODE_ENV;
 
@@ -1546,9 +885,9 @@ describe("authorizeAdmin role enforcement", () => {
   it("returns 403 when user does not exist in users collection", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "non-existent-user", email: "user@example.com" });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-1", status: "resolved" });
+      .send({ text: "Met someone" });
 
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("User does not exist");
@@ -1612,9 +951,9 @@ describe("authorizeAdmin role enforcement", () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "trainee@example.com" });
     seedDoc("users", "trainee-1", { role: "trainee" });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-1", status: "resolved" });
+      .send({ text: "Met someone" });
 
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("not an administrator");
@@ -1627,11 +966,11 @@ describe("authorizeAdmin role enforcement", () => {
       email_verified: true,
       firebase: { sign_in_second_factor: "totp" },
     });
-    seedDoc("feedback", "f-2", { status: "new" });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ contacts: [] }) });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-2", status: "resolved" });
+      .send({ text: "Met someone" });
     expect(res.status).toBe(200);
   });
 
@@ -1642,11 +981,10 @@ describe("authorizeAdmin role enforcement", () => {
       email_verified: false,
       firebase: { sign_in_second_factor: "totp" },
     });
-    seedDoc("feedback", "f-5", { status: "new" });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-5", status: "resolved" });
+      .send({ text: "Met someone" });
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("User does not exist");
   });
@@ -1682,11 +1020,11 @@ describe("authorizeAdmin role enforcement", () => {
       firebase: { sign_in_second_factor: "totp" },
     });
     seedDoc("users", "admin-1", { role: "admin" });
-    seedDoc("feedback", "f-3", { status: "new" });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ contacts: [] }) });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-3", status: "resolved" });
+      .send({ text: "Met someone" });
     expect(res.status).toBe(200);
   });
 
@@ -1698,18 +1036,11 @@ describe("authorizeAdmin role enforcement", () => {
     });
     seedDoc("users", "admin-2", { role: "admin" });
     const res = await request(app)
-      .post("/api/feedback/update")
+      .post("/api/smart-import/parse")
       .set("Authorization", "Bearer tok")
-      .send({ id: "f-4", status: "resolved" });
+      .send({ text: "Met someone" });
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("Multi-factor authentication required");
-  });
-
-  it("forbids non-admin access to webhook logs", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "trainee-2", email: "t2@example.com" });
-    seedDoc("users", "trainee-2", { role: "trainee" });
-    const res = await request(app).get("/api/webhook/logs").set("Authorization", "Bearer tok");
-    expect(res.status).toBe(403);
   });
 });
 
@@ -1762,66 +1093,6 @@ describe("POST /api/feedback — GitHub failure and auth paths", () => {
   });
 });
 
-describe("POST /api/feedback/update — GitHub sync branches", () => {
-  it("closes the GitHub issue as not_planned when archived without resolved status", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    seedDoc("feedback", "fb-arch", { status: "new", archived: false, githubIssueUrl: "https://github.com/a/b/issues/10" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-arch", archived: true });
-    expect(res.status).toBe(200);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/10");
-    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ state: "closed", state_reason: "not_planned" });
-  });
-
-  it("reopens the GitHub issue when status moves back from resolved", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    seedDoc("feedback", "fb-re", { status: "resolved", archived: false, githubIssueUrl: "https://github.com/a/b/issues/11" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-re", status: "in_progress" });
-    expect(res.status).toBe(200);
-    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ state: "open" });
-  });
-
-  it("reopens the GitHub issue when feedback is unarchived", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    seedDoc("feedback", "fb-un", { status: "new", archived: true, githubIssueUrl: "https://github.com/a/b/issues/12" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-un", archived: false });
-    expect(res.status).toBe(200);
-    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ state: "open" });
-  });
-
-  it("warns and skips GitHub sync when GITHUB_TOKEN is not configured", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    seedDoc("feedback", "fb-nt", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/13" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-nt", status: "resolved" });
-    expect(res.status).toBe(200);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("GITHUB_TOKEN not configured"));
-    expect(fetchMock).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
-
-  it("logs GitHub API errors during issue state sync", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    fetchMock.mockResolvedValue(new Response("bad", { status: 500 }));
-    seedDoc("feedback", "fb-err", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/14" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-err", status: "resolved" });
-    expect(res.status).toBe(200);
-    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub API error updating issue"), 500, expect.any(String));
-    errSpy.mockRestore();
-  });
-
-  it("logs when the GitHub sync fetch throws", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    fetchMock.mockRejectedValue(new Error("network"));
-    seedDoc("feedback", "fb-fetch", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/15" });
-    const res = await request(app).post("/api/feedback/update").send({ id: "fb-fetch", status: "resolved" });
-    expect(res.status).toBe(200);
-    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to update GitHub issue state for"), expect.any(String), expect.any(Error));
-    errSpy.mockRestore();
-  });
-});
-
 describe("POST /api/webhook/github — payload edge cases", () => {
   const issueUrl = "https://github.com/a/b/issues/7";
 
@@ -1861,74 +1132,6 @@ describe("POST /api/webhook/github — payload edge cases", () => {
   });
 });
 
-describe("POST /api/quick-add — merge and subcommand paths", () => {
-  it("merges missing contact fields on quick-add and leaves the stored role alone (#1345)", async () => {
-    seedDoc("contacts", "c-merge", { name: "Kim Lee", email: "", phone: "", location: "", role: "Student", tags: [] });
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({
-        name: "Kim Lee",
-        email: "kim@example.com",
-        phone: "+1 (555) 010-2222",
-        location: "Library",
-        role: "Trainee",
-        spiritualBackground: "Christian family",
-        tags: ["New"],
-      }),
-    });
-    const res = await request(app).post("/api/quick-add").send({ text: "Met Kim Lee" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.isExisting).toBe(true);
-    const updated = getCollection("contacts")["c-merge"];
-    expect(updated.email).toBe("kim@example.com");
-    expect(updated.phone).toBe("+1 (555) 010-2222");
-    // #730: the location field is no longer merged on quick-add — it has
-    // been retired from the form, so quick-add shouldn't carry it either.
-    expect(updated.spiritualBackground).toBe("Christian family");
-    // The model offered "Trainee"; the stored role is neither upgraded nor dropped.
-    expect(updated.role).toBe("Student");
-    expect(updated.tags).toEqual(["New"]);
-  });
-
-  it("returns 500 when Gemini returns no text for interaction parsing", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "" });
-    const res = await request(app).post("/api/quick-add").send({ text: "!add interaction Coffee with Bob" });
-    expect(res.status).toBe(500);
-    expect(res.body.success).toBe(false);
-  });
-
-  it("returns 401 when token verification fails on quick-add", async () => {
-    mockVerifyIdToken.mockRejectedValue(new Error("bad token"));
-    const res = await request(app)
-      .post("/api/quick-add")
-      .set("Authorization", "Bearer nope")
-      .send({ text: "Met someone" });
-    expect(res.status).toBe(401);
-    expect(res.body.error).toContain("Unauthorized");
-  });
-});
-
-describe("POST /api/webhook/groupme — prefix and error paths", () => {
-  it("handles the add: prefix trigger", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Nia Cole", role: "Student" }) });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "add: Nia Cole", name: "Sam" });
-    expect(res.status).toBe(200);
-    expect(res.body.contact.name).toBe("Nia Cole");
-  });
-
-  it("returns 400 when the message has no text", async () => {
-    const res = await request(app).post("/api/webhook/groupme").send({ name: "Sam", group_id: "g1" });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain("No message text provided");
-  });
-
-  it("returns 500 when quick-add fails inside groupme", async () => {
-    mockGenerateContent.mockResolvedValue({ text: "not json" });
-    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add bad data", name: "Sam" });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toBeTruthy();
-  });
-});
-
 describe("POST /api/analyze-notes — prompt composition", () => {
   it("includes the contact directory and user roster in the Gemini prompt", async () => {
     seedDoc("contacts", "c-a", { name: "Zoe Pratt" });
@@ -1961,20 +1164,13 @@ describe("POST /api/smart-import/parse — prompt composition", () => {
 });
 
 describe("POST /api/smart-import/commit — matching paths", () => {
-  it("maps matched contacts and links interactions by contact name", async () => {
+  it("trusts a matched contact and writes no duplicate", async () => {
     const res = await request(app).post("/api/smart-import/commit").send({
       contacts: [{ tempId: "c1", name: "Amy", matchedContactId: "existing-1", matchedContactName: "Amy" }],
-      interactions: [{ tempId: "i1", contactName: "Amy", content: "Chat", type: "coffee" }],
     });
     expect(res.status).toBe(200);
     expect(res.body.summary.contactsCount).toBe(0);
-    expect(res.body.summary.interactionsCount).toBe(1);
-    expect(Object.values(getCollection("contacts/existing-1/interactions"))).toHaveLength(1);
-    const storedContact = getCollection("contacts")["existing-1"];
-    expect(storedContact.name).toBeUndefined();
-    expect(storedContact.lastSeen).toBeTruthy();
-    // The imported interaction reaches them (#1335).
-    expect(storedContact.reachedAt).toBe(storedContact.lastContactedDate);
+    expect(Object.values(getCollection("contacts"))).toHaveLength(0);
   });
 });
 
@@ -2008,491 +1204,28 @@ describe("production static serving", () => {
   });
 });
 
-// ── Feedback Follow-ups and submitter-facing copy (ADR 0019) ────────────────
-
-describe("POST /api/feedback/reply", () => {
+describe("POST /api/webhook/github — issue comments are ignored", () => {
   const issueUrl = "https://github.com/a/b/issues/7";
 
-  const seedNote = (over: Record<string, any> = {}) =>
-    seedDoc("feedback", "fb-1", {
-      userId: "user-ada",
-      userName: "Ada Student",
-      status: "in_progress",
-      githubIssueUrl: issueUrl,
-      ...over,
-    });
+  it("does not import a GitHub comment into the app", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
 
-  it("refuses a request with no Firebase token", async () => {
-    seedNote();
-    const res = await request(app).post("/api/feedback/reply").send({ id: "fb-1", body: "Any news?" });
-    expect(res.status).toBe(401);
-  });
-
-  it("requires both an id and a body", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const body = {
+      action: "created",
+      issue: { html_url: issueUrl },
+      comment: { id: 99, body: "We investigated and found the fix.", author_association: "OWNER" },
+    };
     const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "   " });
-    expect(res.status).toBe(400);
-  });
-
-  it("404s on a note that does not exist", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "nope", body: "Any news?" });
-    expect(res.status).toBe(404);
-  });
-
-  it("refuses a stranger — neither the author nor a Full-timer", async () => {
-    seedNote();
-    seedDoc("users", "user-bob", { role: "viewer", approved: true, email: "bob@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-bob", email: "bob@test.com", name: "Bob" });
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Nosy question" });
-    expect(res.status).toBe(403);
-  });
-
-  it("stores the author's follow-up, flags the note, and tells the Full-timers", async () => {
-    seedNote();
-    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
-    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
-    seedDoc("users", "ft-2", { role: "admin", approved: true, email: "ft2@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Which screen is it on?" });
-
-    expect(res.status).toBe(200);
-    const replies = Object.values(getCollection("feedback/fb-1/replies"));
-    expect(replies).toHaveLength(1);
-    expect(replies[0]).toMatchObject({ authorRole: "submitter", authorId: "user-ada", body: "Which screen is it on?" });
-    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(true);
-
-    const notified = Object.values(getCollection("notifications")).map((n: any) => n.userId);
-    expect(notified).toEqual(expect.arrayContaining(["ft-1", "ft-2"]));
-    expect(notified).not.toContain("user-ada");
-  });
-
-  it("a Full-timer's reply clears the flag and notifies the submitter instead", async () => {
-    seedNote({ awaitingReply: true });
-    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "It's on the roster screen." });
-
-    expect(res.status).toBe(200);
-    const replies: any[] = Object.values(getCollection("feedback/fb-1/replies"));
-    expect(replies[0]).toMatchObject({ authorRole: "team", authorName: "Tony Wang" });
-    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(false);
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ userId: "user-ada", message: "It's on the roster screen." }),
-    ]);
-  });
-
-  it("never touches status or outcome — a follow-up is not a reopen", async () => {
-    seedNote({ status: "resolved", outcome: "shipped" });
-    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "One more thing" });
-
-    expect(getCollection("feedback")["fb-1"].status).toBe("resolved");
-    expect(getCollection("feedback")["fb-1"].outcome).toBe("shipped");
-  });
-
-  it("mirrors the follow-up onto the issue without naming the reporter", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    seedNote();
-    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 4242 }), { status: 201 }));
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Which screen is it on?" });
-
-    expect(res.body.mirroredToGitHub).toBe(true);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/7/comments");
-    const posted = JSON.parse((init as RequestInit).body as string).body;
-    expect(posted).toContain("**Reporter replied:**");
-    expect(posted).toContain("Which screen is it on?");
-    expect(posted).not.toContain("Ada Student");
-    expect(posted).not.toContain("ada@test.com");
-
-    const replies: any[] = Object.values(getCollection("feedback/fb-1/replies"));
-    expect(replies[0].githubCommentId).toBe(4242);
-  });
-
-  it("still stores and notifies when GitHub is unreachable", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    seedNote();
-    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    fetchMock.mockRejectedValue(new Error("network down"));
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Any news?" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(false);
-    expect(Object.values(getCollection("feedback/fb-1/replies"))).toHaveLength(1);
-  });
-});
-
-describe("POST /api/feedback/reply/edit", () => {
-  const issueUrl = "https://github.com/a/b/issues/7";
-
-  const seedReply = (over: Record<string, any> = {}) => {
-    seedDoc("feedback", "fb-1", {
-      userId: "user-ada",
-      userName: "Ada Student",
-      status: "in_progress",
-      githubIssueUrl: issueUrl,
-    });
-    seedDoc("feedback/fb-1/replies", "r1", {
-      authorRole: "submitter",
-      authorId: "user-ada",
-      authorName: "Ada Student",
-      body: "Which screen is it on?",
-      createdAt: { __mockServerTimestamp: true },
-      ...over,
-    });
-  };
-
-  const edit = (body: Record<string, any>) =>
-    request(app).post("/api/feedback/reply/edit").set("Authorization", "Bearer t").send(body);
-
-  it("refuses a request with no Firebase token", async () => {
-    seedReply();
-    const res = await request(app)
-      .post("/api/feedback/reply/edit")
-      .send({ id: "fb-1", replyId: "r1", body: "Changed" });
-    expect(res.status).toBe(401);
-  });
-
-  it("requires a reply id and a body", async () => {
-    seedReply();
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "   " });
-    expect(res.status).toBe(400);
-    const noReplyId = await edit({ id: "fb-1", body: "Changed" });
-    expect(noReplyId.status).toBe(400);
-  });
-
-  it("404s when the reply does not exist", async () => {
-    seedReply();
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    const res = await edit({ id: "fb-1", replyId: "nope", body: "Changed" });
-    expect(res.status).toBe(404);
-  });
-
-  it("refuses anyone who is not the reply's author, Full-timers included", async () => {
-    seedReply();
-    seedDoc("users", "user-bob", { role: "viewer", approved: true, email: "bob@test.com" });
-    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-bob", email: "bob@test.com", name: "Bob" });
-    const stranger = await edit({ id: "fb-1", replyId: "r1", body: "Nosy edit" });
-    expect(stranger.status).toBe(403);
-
-    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
-    const fullTimer = await edit({ id: "fb-1", replyId: "r1", body: "Admin edit" });
-    expect(fullTimer.status).toBe(403);
-  });
-
-  it("refuses to edit a relayed reply — it belongs to the issue, not the app", async () => {
-    seedReply({ relayed: true, authorId: undefined });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Changed" });
-    expect(res.status).toBe(403);
-  });
-
-  it("refuses to edit a team reply, even the one the Full-timer wrote in-app", async () => {
-    seedReply({ authorRole: "team", authorId: "ft-1", authorName: "Tony Wang" });
-    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Admin edit" });
-    expect(res.status).toBe(403);
-  });
-
-  it("lets the author replace their follow-up's text in place, preserving the rest", async () => {
-    seedReply({ githubCommentId: 4242 });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Which screen — the roster?" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(false);
-    const reply: any = getCollection("feedback/fb-1/replies")["r1"];
-    expect(reply.body).toBe("Which screen — the roster?");
-    // Marks it so Your notes can say "Edited"; an untouched reply has none.
-    expect(reply.editedAt).toEqual({ __mockServerTimestamp: true });
-    expect(reply).toMatchObject({
-      authorRole: "submitter",
-      authorId: "user-ada",
-      authorName: "Ada Student",
-      githubCommentId: 4242,
-    });
-  });
-
-  it("mirrors the edit onto the GitHub comment, keeping the reporter prefix", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    seedReply({ githubCommentId: 4242 });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
-
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Changed my question" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(true);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/comments/4242");
-    expect((init as RequestInit).method).toBe("PATCH");
-    const posted = JSON.parse((init as RequestInit).body as string).body;
-    expect(posted).toContain("**Reporter replied:**");
-    expect(posted).toContain("Changed my question");
-    expect(posted).not.toContain("Which screen is it on?");
-    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Changed my question");
-  });
-
-  it("updates in place, without touching GitHub, when the reply was never mirrored", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    seedReply();
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Local edit" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(false);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Local edit");
-  });
-
-  it("still updates the note when GitHub is unreachable", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    seedReply({ githubCommentId: 4242 });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    fetchMock.mockRejectedValue(new Error("network down"));
-
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "Optimistic edit" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(false);
-    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Optimistic edit");
-  });
-
-  it("never touches status, outcome, or awaitingReply — an edit is not a reopen", async () => {
-    seedReply({ githubCommentId: 4242 });
-    seedDoc("feedback", "fb-1", {
-      userId: "user-ada",
-      status: "resolved",
-      outcome: "shipped",
-      awaitingReply: false,
-      githubIssueUrl: issueUrl,
-    });
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    await edit({ id: "fb-1", replyId: "r1", body: "Reworded" });
-
-    expect(getCollection("feedback")["fb-1"].status).toBe("resolved");
-    expect(getCollection("feedback")["fb-1"].outcome).toBe("shipped");
-    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(false);
-  });
-
-  it("caps the new body at 5000 characters", async () => {
-    seedReply();
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-
-    const res = await edit({ id: "fb-1", replyId: "r1", body: "x".repeat(6000) });
-
-    expect(res.status).toBe(200);
-    expect(getCollection("feedback/fb-1/replies")["r1"].body).toHaveLength(5000);
-  });
-});
-
-describe("POST /api/webhook/github — issue_comment relay", () => {
-  const issueUrl = "https://github.com/a/b/issues/7";
-  const payload = (over: Record<string, any> = {}) => ({
-    action: "created",
-    issue: { html_url: issueUrl },
-    comment: { id: 99, body: "Specced as #910. Confirmed as the textarea rather than the preview.", user: { login: "Shir0o", type: "User" }, author_association: "OWNER" },
-    ...over,
-  });
-
-  const post = (body: any) =>
-    request(app)
       .post("/api/webhook/github")
       .set("x-github-event", "issue_comment")
       .set("x-hub-signature-256", sign(body, "sekret"))
       .send(body);
 
-  beforeEach(() => {
-    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
-    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-  });
-
-  it("relays a laundered restatement, never the raw comment", async () => {
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ relay: true, text: "We've traced this to the text box and a fix is on the way." }),
-    });
-
-    const res = await post(payload());
     expect(res.status).toBe(200);
-    expect(res.body.relayedCount).toBe(1);
-
-    const replies: any[] = Object.values(getCollection("feedback/fb-9/replies"));
-    expect(replies[0]).toMatchObject({
-      authorRole: "team",
-      relayed: true,
-      githubCommentId: 99,
-      body: "We've traced this to the text box and a fix is on the way.",
-    });
-    expect(replies[0].body).not.toContain("#910");
-    expect(replies[0].launderedBody).toBeUndefined();
-  });
-
-  it("drops an AI triage brief without asking the model at all", async () => {
-    const body = payload({
-      comment: {
-        id: 100,
-        body: "> *This was generated by AI during triage.*\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** the toolbar steals focus",
-        user: { login: "Shir0o", type: "User" },
-        author_association: "OWNER",
-      },
-    });
-
-    const res = await post(body);
-    expect(res.status).toBe(200);
-    expect(res.body.relayedCount).toBe(0);
-    expect(mockGenerateContent).not.toHaveBeenCalled();
-    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
-  });
-
-  it("drops a comment the model judges to be internal bookkeeping", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: false, text: "" }) });
-    const res = await post(payload());
-    expect(res.body.relayedCount).toBe(0);
-    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
-  });
-
-  it("does not relay a comment it already stored — the mirror does not echo", async () => {
-    seedDoc("feedback/fb-9/replies", "r1", { authorRole: "submitter", body: "Any news?", githubCommentId: 99 });
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "restated" }) });
-
-    const res = await post(payload());
-    expect(res.body.relayedCount).toBe(0);
-    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(1);
-  });
-
-  it("gives the owner the comment raw, with the restatement stored beside it", async () => {
-    seedDoc("users", "user-ada", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "We're on it." }) });
-
-    await post(payload());
-    const replies: any[] = Object.values(getCollection("feedback/fb-9/replies"));
-    expect(replies[0].body).toContain("#910");
-    expect(replies[0].launderedBody).toBe("We're on it.");
-  });
-
-  it("drops an AI triage brief on the owner's own Note too", async () => {
-    seedDoc("users", "user-ada", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
-    const body = payload({
-      comment: {
-        id: 101,
-        body: "> *This was generated by AI during triage.*\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** the toolbar steals focus",
-        user: { login: "Shir0o", type: "User" },
-        author_association: "OWNER",
-      },
-    });
-
-    const res = await post(body);
-    expect(res.status).toBe(200);
-    expect(res.body.relayedCount).toBe(0);
-    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(res.body.relayedCount).toBeUndefined();
     expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
     expect(Object.values(getCollection("notifications"))).toHaveLength(0);
-  });
-
-  it("notifies the owner with the laundered restatement, never a long raw comment", async () => {
-    seedDoc("users", "user-ada", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
-    const longRaw =
-      "## Investigation\n\nSpecced as #910. Confirmed as the textarea rather than the preview.\n\n"
-      + "This is a long, multi-paragraph comment that a maintainer would read raw in the tracker but which must never reach the reporter or the notification.";
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ relay: true, text: "We've traced this to the text box and a fix is on the way." }),
-    });
-
-    const res = await post(payload({ comment: { id: 99, body: longRaw, user: { login: "Shir0o", type: "User" }, author_association: "OWNER" } }));
-    expect(res.status).toBe(200);
-    expect(res.body.relayedCount).toBe(1);
-
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({
-        userId: "user-ada",
-        title: "A reply on your note",
-        message: "We've traced this to the text box and a fix is on the way.",
-      }),
-    ]);
-    const notifications: any[] = Object.values(getCollection("notifications"));
-    expect(notifications[0].message).not.toContain("#910");
-    expect(notifications[0].message).not.toContain("## Investigation");
-  });
-
-  it("ignores an edited or deleted comment", async () => {
-    const body = payload({ action: "edited" });
-    const res = await post(body);
-    expect(res.status).toBe(200);
-    expect(res.body.message).toContain("Ignored issue_comment action");
-  });
-
-  it("tells the submitter a reply landed", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "We're on it." }) });
-    await post(payload());
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ userId: "user-ada", title: "A reply on your note", message: "We're on it." }),
-    ]);
-  });
-  it("ignores a comment from someone outside the repository team (Nov 2026)", async () => {
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "Click here for a refund." }) });
-    for (const author_association of ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", undefined]) {
-      const body = payload({
-        comment: { id: 120, body: "Visit my site for a refund", user: { login: "drive-by", type: "User" }, author_association },
-      });
-      const res = await post(body);
-      expect(res.status).toBe(200);
-      expect(res.body.relayedCount).toBe(0);
-    }
-    expect(mockGenerateContent).not.toHaveBeenCalled();
-    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
-    expect(Object.values(getCollection("notifications"))).toHaveLength(0);
-  });
-
-  it("drops the app's own mirrored comment even before its id is stored (Nov 2026)", async () => {
-    const body = payload({
-      comment: {
-        id: 121,
-        body: "**Reporter replied:**\n\nAny news?\n\n<!-- cisa-app-relay -->",
-        user: { login: "Shir0o", type: "User" },
-        author_association: "OWNER",
-      },
-    });
-    const res = await post(body);
-    expect(res.body.relayedCount).toBe(0);
     expect(mockGenerateContent).not.toHaveBeenCalled();
   });
 });
@@ -2508,75 +1241,17 @@ describe("POST /api/webhook/github — the message written at close", () => {
       .set("x-hub-signature-256", sign(body, "sekret"))
       .send(body);
 
-  // A PR that says "Closes #7" appears on the timeline as a cross-reference,
-  // never as an issue comment — which is why the close summary reads the PR.
-  const withLinkedPr = (prBody: string) => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).includes("/timeline")) {
-        return new Response(
-          JSON.stringify([
-            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://api.github.com/repos/a/b/pulls/12", merged_at: "2026-09-01T00:00:00Z" } } } },
-          ]),
-          { status: 200 },
-        );
-      }
-      if (String(url).includes("/pulls/12")) {
-        return new Response(JSON.stringify({ title: "Keep walk-ins on the roster", body: prBody }), { status: 200 });
-      }
-      return new Response("{}", { status: 200 });
-    });
-  };
-
   beforeEach(() => {
     vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
     vi.stubEnv("GITHUB_TOKEN", "ghp_test");
   });
 
-  it("draws the submitter's sentence from the PR that closed the issue", async () => {
+  it("writes the canned sentence and never calls the model", async () => {
     seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-    withLinkedPr("Walk-ins added during a gathering now persist when the roster closes.");
-    mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify({ usable: true, text: "The roster now keeps walk-ins after you close it." }),
-    });
-
-    await post();
-    expect(getCollection("feedback")["fb-9"].outcomeMessage).toBe("The roster now keeps walk-ins after you close it.");
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ message: "The roster now keeps walk-ins after you close it." }),
-    ]);
-  });
-
-  it("falls back to the canned sentence when there is no linked PR", async () => {
-    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
 
     await post();
     expect(getCollection("feedback")["fb-9"].outcomeMessage).toBeUndefined();
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
-    ]);
-  });
-
-  it("falls back to the canned sentence when the model gives nothing usable", async () => {
-    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-    withLinkedPr("chore: bump deps");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ usable: false, text: "" }) });
-
-    await post();
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
-    ]);
-  });
-
-  it("gives the owner the canned sentence, not the written one", async () => {
-    seedDoc("feedback", "fb-9", { userId: "owner-uid", status: "in_progress", githubIssueUrl: issueUrl });
-    seedDoc("users", "owner-uid", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
-    withLinkedPr("Walk-ins now persist.");
-    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ usable: true, text: "The roster now keeps walk-ins." }) });
-
-    await post();
-    // Stored either way, so "see it as they do" has something to show.
-    expect(getCollection("feedback")["fb-9"].outcomeMessage).toBe("The roster now keeps walk-ins.");
+    expect(mockGenerateContent).not.toHaveBeenCalled();
     expect(Object.values(getCollection("notifications"))).toEqual([
       expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
     ]);
@@ -2589,7 +1264,6 @@ describe("POST /api/webhook/github — the message written at close", () => {
       githubIssueUrl: issueUrl,
       notifiedOutcome: "shipped",
     });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
 
     await post();
     expect(Object.values(getCollection("notifications"))).toHaveLength(0);
@@ -2602,20 +1276,18 @@ describe("POST /api/webhook/github — the message written at close", () => {
       githubIssueUrl: issueUrl,
       notifiedOutcome: "not-planned",
     });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
 
     await post();
     expect(Object.values(getCollection("notifications"))).toHaveLength(1);
     expect(getCollection("feedback")["fb-9"].notifiedOutcome).toBe("shipped");
   });
 
-  it("a reopen clears the outcome and its message but remembers what was said", async () => {
+  it("a reopen clears the outcome but remembers what was said", async () => {
     seedDoc("feedback", "fb-9", {
       userId: "user-ada",
       status: "resolved",
       githubIssueUrl: issueUrl,
       outcome: "shipped",
-      outcomeMessage: "The roster now keeps walk-ins.",
       notifiedOutcome: "shipped",
     });
 
@@ -2624,124 +1296,8 @@ describe("POST /api/webhook/github — the message written at close", () => {
 
     const note = getCollection("feedback")["fb-9"];
     expect(note.outcome).toBeUndefined();
-    expect(note.outcomeMessage).toBeUndefined();
     expect(note.notifiedOutcome).toBe("shipped");
     expect(Object.values(getCollection("notifications"))).toHaveLength(0);
-  });
-});
-
-describe("Feedback GitHub URLs are not a request-forgery surface", () => {
-  beforeEach(() => {
-    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
-    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
-    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
-    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
-  });
-
-  // `githubIssueUrl` is free text a Full-timer types into the admin list, so a
-  // substring match on "github.com" would have been enough to aim a request.
-  it.each([
-    ["a host that merely mentions github.com", "https://evil.test/?x=github.com/a/b/issues/1"],
-    ["a lookalike host", "https://github.com.evil.test/a/b/issues/1"],
-    ["plain http", "http://github.com/a/b/issues/1"],
-    ["a traversal in the repo segment", "https://github.com/a/../../issues/1"],
-    ["a query smuggled into the owner", "https://github.com/a?x=/b/issues/1"],
-    ["not an issue URL at all", "https://github.com/a/b/pulls/1"],
-  ])("stores a follow-up but makes no request for %s", async (_label, githubIssueUrl) => {
-    seedDoc("feedback", "fb-1", { userId: "user-ada", userName: "Ada Student", status: "new", githubIssueUrl });
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Any news?" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.mirroredToGitHub).toBe(false);
-    expect(fetchMock).not.toHaveBeenCalled();
-    // The Follow-up is still stored and still notified — failing to mirror
-    // never costs the submitter their message.
-    expect(Object.values(getCollection("feedback/fb-1/replies"))).toHaveLength(1);
-  });
-
-  it("mirrors normally to a real issue URL", async () => {
-    vi.stubEnv("GITHUB_REPO", "Shir0o/cisa-campus-work-tracker");
-    seedDoc("feedback", "fb-1", {
-      userId: "user-ada",
-      status: "new",
-      githubIssueUrl: "https://github.com/Shir0o/cisa-campus-work-tracker/issues/988",
-    });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 7 }), { status: 201 }));
-
-    const res = await request(app)
-      .post("/api/feedback/reply")
-      .set("Authorization", "Bearer t")
-      .send({ id: "fb-1", body: "Any news?" });
-
-    expect(res.body.mirroredToGitHub).toBe(true);
-    expect(String(fetchMock.mock.calls[0][0])).toBe(
-      "https://api.github.com/repos/Shir0o/cisa-campus-work-tracker/issues/988/comments",
-    );
-  });
-
-  it("refuses to follow a PR link off api.github.com when summarising a close", async () => {
-    const issueUrl = "https://github.com/a/b/issues/7";
-    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-
-    // The timeline is a response we read, not a URL we built — so what it
-    // points at is checked before it becomes a request.
-    fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).includes("/timeline")) {
-        return new Response(
-          JSON.stringify([
-            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://evil.test/pulls/12", merged_at: "2026-09-01T00:00:00Z" } } } },
-          ]),
-          { status: 200 },
-        );
-      }
-      return new Response("{}", { status: 200 });
-    });
-
-    const closed = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
-    await request(app)
-      .post("/api/webhook/github")
-      .set("x-github-event", "issues")
-      .set("x-hub-signature-256", sign(closed, "sekret"))
-      .send(closed);
-
-    expect(fetchMock.mock.calls.map((c: any[]) => String(c[0]))).not.toContain("https://evil.test/pulls/12");
-    // Falls back to the canned sentence rather than going silent.
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
-    ]);
-  });
-
-  it("refuses an api.github.com URL whose path is not one this server asks for", async () => {
-    const issueUrl = "https://github.com/a/b/issues/7";
-    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
-
-    fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).includes("/timeline")) {
-        return new Response(
-          JSON.stringify([
-            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://api.github.com/user/repos", merged_at: "2026-09-01T00:00:00Z" } } } },
-          ]),
-          { status: 200 },
-        );
-      }
-      return new Response("{}", { status: 200 });
-    });
-
-    const closed = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
-    await request(app)
-      .post("/api/webhook/github")
-      .set("x-github-event", "issues")
-      .set("x-hub-signature-256", sign(closed, "sekret"))
-      .send(closed);
-
-    expect(fetchMock.mock.calls.map((c: any[]) => String(c[0]))).not.toContain("https://api.github.com/user/repos");
-    expect(Object.values(getCollection("notifications"))).toEqual([
-      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
-    ]);
   });
 });
 
@@ -4337,5 +2893,28 @@ describe("POST /api/combine-tags/undo", () => {
     } finally {
       process.env.NODE_ENV = originalEnv;
     }
+  });
+});
+
+// Endpoints that served the cut channels (cut-or-keep §14, §15, §26). The
+// Smart Import parse/commit pair stays, and so does the GitHub issue webhook
+// (outcome sentences still ride the issue close). Everything here is gone.
+describe("cut endpoints", () => {
+  const gone = [
+    ["post", "/api/quick-add"],
+    ["get", "/api/quick-add/status"],
+    ["post", "/api/webhook/sms"],
+    ["post", "/api/webhook/groupme"],
+    ["post", "/api/groupme-aliases"],
+    ["post", "/api/groupme-aliases/repair"],
+    ["get", "/api/webhook/logs"],
+    ["post", "/api/feedback/reply"],
+    ["post", "/api/feedback/reply/edit"],
+    ["post", "/api/feedback/update"],
+  ] as const;
+
+  it.each(gone)("%s %s is no longer routed", async (method, path) => {
+    const res = await request(app)[method](path).send({});
+    expect(res.status).toBe(404);
   });
 });

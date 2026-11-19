@@ -562,9 +562,12 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
     await page.goto('/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
 
-    for (const section of ['Your team', 'Going out together', "The day's goal", 'Roles & access', 'Steps']) {
+    for (const section of ['Your team', 'Going out together', "The day's goal", 'Steps']) {
       await expect(page.getByRole('heading', { level: 2, name: section })).toBeVisible();
     }
+    // The roles explainer and What's New are cut (cut-or-keep §26).
+    await expect(page.getByRole('heading', { level: 2, name: 'Roles & access' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2, name: "What's New" })).toHaveCount(0);
 
     // Gospel partner assignment: pair two seeded trainees, then unpair them.
     await page.getByRole('button', { name: /Two trainees going out together/i }).click();
@@ -816,11 +819,11 @@ test.describe('Full-timer journey — My Day on a phone (#1859)', () => {
 
 /**
  * Folded from `feedback-submission.spec.ts` (#628, ADR 0019): the submitter's
- * Notes page for every role, the admin triage queue, the role redirects, and
- * the FAB that is now the only way to submit.
+ * Reports page for every role, the old admin console's redirect, and the FAB
+ * that is now the only way to submit. Replies and the owner view are cut.
  */
-test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
-  test('every role reaches their Notes page, which is not a composer', async ({ page }) => {
+test.describe('Full-timer journey — Reports (#1477)', () => {
+  test('every role reaches their Reports page, which is not a composer', async ({ page }) => {
     for (const role of ['trainee'] as const) {
       await signInAs(page, role);
       await page.goto('/feedback');
@@ -828,17 +831,12 @@ test.describe('Full-timer journey — Notes and admin triage (#1477)', () => {
       await expect(page.getByRole('heading', { name: /your reports/i })).toBeVisible({ timeout: 10_000 });
       await expect(page.locator('#form-message')).toHaveCount(0);
       await expect(page.getByText(/what kind of note is it/i)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /replies/i })).toHaveCount(0);
     }
   });
 
-  test('the Full-timer triages, other roles are redirected, and the FAB is present', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await page.goto('/admin/feedback');
-    await waitForShell(page);
-    expect(new URL(page.url()).pathname).toBe('/admin/feedback');
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-
-    for (const role of ['trainee'] as const) {
+  test('the old admin console redirects every role, and the FAB is present', async ({ page }) => {
+    for (const role of ['fulltimer', 'trainee'] as const) {
       await signInAs(page, role);
       await page.goto('/admin/feedback');
       await page.waitForURL((url) => url.pathname !== '/admin/feedback', { timeout: 8_000 });

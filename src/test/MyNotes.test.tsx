@@ -1,19 +1,15 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import MyNotes from '../views/MyNotes';
 import { useAuth } from '../components/AuthProvider';
-import { FOLLOW_UPS_SEEN_KEY } from '../lib/feedbackFollowUps';
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
-// The notes query and each Follow-up thread both go through onSnapshot; the
-// mock routes on the collection path so a test can seed them independently.
+// The notes query goes through onSnapshot.
 let noteDocs: any[] = [];
-let replyDocs: any[] = [];
 let notesError: unknown = null;
 let notesSnapshotCallback: ((cb: any, onErr: any) => void) | null = null;
 
@@ -30,15 +26,12 @@ vi.mock('firebase/firestore', () => ({
   limit: vi.fn(),
   doc: vi.fn(),
   onSnapshot: (q: any, cb: any, onErr: any) => {
-    if (q.__path === 'feedback') {
-      if (notesSnapshotCallback) {
-        notesSnapshotCallback(cb, onErr);
-      } else {
-        if (notesError) onErr(notesError);
-        else cb(asSnapshot(noteDocs));
-      }
+    if (notesSnapshotCallback) {
+      notesSnapshotCallback(cb, onErr);
+    } else if (notesError) {
+      onErr(notesError);
     } else {
-      cb(asSnapshot(replyDocs));
+      cb(asSnapshot(noteDocs));
     }
     return vi.fn();
   },
@@ -69,7 +62,7 @@ const signIn = (over: Record<string, unknown> = {}) => {
       displayName: 'Jane Student',
       getIdToken: vi.fn().mockResolvedValue('mock-token'),
     },
-    role: 'operator',
+    role: 'manager',
     ownerViewRole: null,
     ...over,
   });
@@ -87,17 +80,12 @@ const NOTE = {
   githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/900',
 };
 
-describe('MyNotes — your own notes and their follow-ups', () => {
+describe('MyNotes — your reports and what came of them', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     noteDocs = [];
-    replyDocs = [];
     notesError = null;
     notesSnapshotCallback = null;
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true, mirroredToGitHub: true }),
-    });
     signIn();
   });
 
@@ -112,7 +100,6 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     expect(screen.getByTestId('my-notes-loading-skeletons')).toBeInTheDocument();
     expect(screen.queryByText(/haven't sent a report yet/i)).not.toBeInTheDocument();
 
-    // Now resolve with empty notes
     act(() => {
       fireSnapshot!(asSnapshot([]));
     });
@@ -145,14 +132,14 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     expect(screen.getByRole('heading', { name: 'Your reports' })).toBeInTheDocument();
   });
 
-  it('is no longer a composer — there is no kind picker on the page', () => {
+  it('is not a composer — there is no kind picker on the page', () => {
     noteDocs = [NOTE];
     render(<MyNotes />);
     expect(screen.queryByText('What kind of note is it?')).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /Tell us more/i })).not.toBeInTheDocument();
   });
 
-  it('points a first-time visitor at the note button', () => {
+  it('points a first-time visitor at the report button', () => {
     render(<MyNotes />);
     expect(screen.getByText(/haven't sent a report yet/i)).toBeInTheDocument();
   });
@@ -163,405 +150,71 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/couldn't load your reports/i);
   });
 
-  it('shows an open note as having no news rather than promising a resolution', () => {
+  it('shows an open report as having no news rather than promising a resolution', () => {
     noteDocs = [NOTE];
     render(<MyNotes />);
     expect(screen.getByText('We have this — no news yet')).toBeInTheDocument();
   });
 
-  // `awaitingReply` is the only reply state the note doc carries: a Follow-up
-  // from the team writes false, one from the submitter writes true. So the
-  // submitter's page can say whether the last word was the team's without
-  // subscribing to every thread on the list.
-  it('says the team replied when the last follow-up was theirs', () => {
-    noteDocs = [{ ...NOTE, awaitingReply: false }];
+  // The fixed sentences are the guarantee that something always arrives. None
+  // of them may be replaced by prose written in a pull request.
+  const CANNED = [
+    { outcome: 'shipped', copy: /This shipped! Thank you/ },
+    { outcome: 'not-planned', copy: /aren't planning to build it right now/ },
+    { outcome: 'already-there', copy: /already in the app/ },
+  ] as const;
+
+  it.each(CANNED)('shows the canned $outcome sentence', ({ outcome, copy }) => {
+    noteDocs = [{ ...NOTE, outcome }];
     render(<MyNotes />);
-    expect(screen.getByText('The team replied')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Read the reply/i })).toBeInTheDocument();
-    // "No news yet" is a claim the reply just contradicted.
-    expect(screen.queryByText('We have this — no news yet')).not.toBeInTheDocument();
+    expect(screen.getByText(copy)).toBeInTheDocument();
   });
 
-  it('does not claim a reply while the last word is still the submitter’s', () => {
-    noteDocs = [{ ...NOTE, awaitingReply: true }];
-    render(<MyNotes />);
-    expect(screen.queryByText('The team replied')).not.toBeInTheDocument();
-    expect(screen.getByText('We have this — no news yet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Replies/i })).toBeInTheDocument();
-  });
-
-  it('names each follow-ups control after the note it belongs to', () => {
-    noteDocs = [NOTE, { ...NOTE, id: 'n2', createdAt: '2026-08-02T12:00:00.000Z' }];
-    render(<MyNotes />);
-    expect(screen.getByRole('button', { name: 'Replies · Sep 1, 2026' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Replies · Aug 2, 2026' })).toBeInTheDocument();
-  });
-
-  // The count and the "new" mark come from the Note itself: the page does not
-  // subscribe to a thread until it is opened (up to 50 nested listeners on a
-  // phone), so a collapsed card can only say what the Note records.
-  describe('how many follow-ups, and which are new', () => {
-    const VISIT = '2026-09-03T12:00:00.000Z';
-
-    const answered = (over: Record<string, unknown> = {}) => ({
-      ...NOTE,
-      awaitingReply: false,
-      replyCount: 2,
-      lastReplyAt: '2026-09-04T12:00:00.000Z',
-      lastReplyRole: 'team' as const,
-      ...over,
-    });
-
-    const visitedOn = (iso: string) =>
-      localStorage.setItem(`${FOLLOW_UPS_SEEN_KEY}:u1`, String(Date.parse(iso)));
-
-    beforeEach(() => {
-      localStorage.clear();
-    });
-
-    it('shows the count and marks a team reply newer than the last visit as new', () => {
-      visitedOn(VISIT);
-      noteDocs = [answered()];
+  it.each(CANNED)(
+    'never shows a PR-written $outcome sentence, even on a legacy note that carries one',
+    ({ outcome, copy }) => {
+      noteDocs = [
+        {
+          ...NOTE,
+          outcome,
+          outcomeMessage: 'A sentence a pull request wrote about this change.',
+        },
+      ];
       render(<MyNotes />);
-      expect(screen.getByRole('button', { name: /Read the reply · 2 replies · New · Sep 1, 2026/ })).toBeInTheDocument();
-      expect(screen.getByText('New')).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument();
-    });
-
-    it('does not mark a reply the reader has already seen', () => {
-      visitedOn('2026-09-05T12:00:00.000Z');
-      noteDocs = [answered()];
-      render(<MyNotes />);
-      expect(screen.getByRole('button', { name: /Read the reply · 2 replies · Sep 1, 2026/ })).toBeInTheDocument();
-      expect(screen.queryByText('New')).not.toBeInTheDocument();
-    });
-
-    it('does not mark the reader’s own last follow-up as new', () => {
-      visitedOn(VISIT);
-      noteDocs = [answered({ lastReplyRole: 'submitter', awaitingReply: true })];
-      render(<MyNotes />);
-      expect(screen.getByText('2')).toBeInTheDocument();
-      expect(screen.queryByText('New')).not.toBeInTheDocument();
-    });
-
-    it('claims nothing is new on a first visit, but still counts', () => {
-      noteDocs = [answered()];
-      render(<MyNotes />);
-      expect(screen.getByText('2')).toBeInTheDocument();
-      expect(screen.queryByText('New')).not.toBeInTheDocument();
-    });
-
-    it('leaves a note written before the fields existed exactly as it was', () => {
-      visitedOn(VISIT);
-      noteDocs = [NOTE];
-      render(<MyNotes />);
-      // No count, and no claim that one is known: the old label, untouched.
-      expect(screen.getByRole('button', { name: 'Replies · Sep 1, 2026' })).toBeInTheDocument();
-      expect(screen.queryByText('New')).not.toBeInTheDocument();
-    });
-
-    it('reads a single follow-up as one reply', () => {
-      noteDocs = [answered({ replyCount: 1 })];
-      render(<MyNotes />);
-      expect(screen.getByRole('button', { name: /1 reply · Sep 1, 2026/ })).toBeInTheDocument();
-    });
-  });
-
-  it('prefers the message written at close over the canned sentence', () => {
-    noteDocs = [{ ...NOTE, outcome: 'shipped', outcomeMessage: 'The roster now keeps walk-ins after you close it.' }];
-    render(<MyNotes />);
-    expect(screen.getByText('The roster now keeps walk-ins after you close it.')).toBeInTheDocument();
-    expect(screen.queryByText(/This shipped! Thank you/)).not.toBeInTheDocument();
-  });
-
-  it('falls back to the canned sentence when no close message was written', () => {
-    noteDocs = [{ ...NOTE, outcome: 'shipped' }];
-    render(<MyNotes />);
-    expect(screen.getByText(/This shipped! Thank you/)).toBeInTheDocument();
-  });
+      expect(screen.getByText(copy)).toBeInTheDocument();
+      expect(
+        screen.queryByText('A sentence a pull request wrote about this change.'),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('shows a not-planned note rather than hiding it, even when archived', () => {
     noteDocs = [{ ...NOTE, outcome: 'not-planned', archived: true }];
     render(<MyNotes />);
     expect(screen.getByText('Not planned')).toBeInTheDocument();
-    expect(screen.getByText(/aren't planning to build it right now/)).toBeInTheDocument();
   });
 
-  describe('the owner', () => {
-    const ownerNote = {
-      ...NOTE,
-      outcome: 'shipped' as const,
-      outcomeMessage: 'The roster now keeps walk-ins.',
-    };
-
-    it('reads the canned line in full owner view', () => {
-      signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: null });
-      noteDocs = [ownerNote];
-      render(<MyNotes />);
-      expect(screen.getByText(/This shipped! Thank you/)).toBeInTheDocument();
-    });
-
-    it('sees what a submitter sees once switched into owner view', () => {
-      signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: 'viewer' });
-      noteDocs = [ownerNote];
-      render(<MyNotes />);
-      expect(screen.getByText('The roster now keeps walk-ins.')).toBeInTheDocument();
-    });
-
-    it('reads a relayed comment raw, and its restatement under owner view', async () => {
-      const relayed = {
-        id: 'r1',
-        authorRole: 'team',
-        body: 'Superseded by #917, which specifies the toolbar fix.',
-        launderedBody: "We're handling this as part of a toolbar fix.",
-        relayed: true,
-        createdAt: '2026-09-02T12:00:00.000Z',
-      };
-      replyDocs = [relayed];
-      noteDocs = [ownerNote];
-
-      signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: null });
-      const { unmount } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getByText(/Superseded by #917/)).toBeInTheDocument();
-      unmount();
-
-      signIn({ user: { uid: 'u1', email: 'yilongwang05@gmail.com', displayName: 'Tony Wang', getIdToken: vi.fn() }, role: 'admin', ownerViewRole: 'viewer' });
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getByText("We're handling this as part of a toolbar fix.")).toBeInTheDocument();
-      expect(screen.queryByText(/Superseded by #917/)).not.toBeInTheDocument();
-    });
+  // Replies are cut (cut-or-keep §15): no Follow-up control, no thread, and no
+  // reply state on the card.
+  it('offers no follow-up thread or reply control', () => {
+    noteDocs = [{ ...NOTE, awaitingReply: false, replyCount: 2 }];
+    render(<MyNotes />);
+    expect(screen.queryByRole('button', { name: /Replies/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Read the reply/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('The team replied')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  describe('follow-ups', () => {
-    beforeEach(() => {
-      noteDocs = [NOTE];
+  // The owner view is cut with the admin console: the owner reads the same
+  // canned sentence as everyone else.
+  it('gives the owner the same canned sentence as a submitter', () => {
+    signIn({
+      user: { uid: 'u1', email: 'owner@test.com', displayName: 'Owner', getIdToken: vi.fn() },
+      role: 'admin',
     });
-
-    it('opens the thread and warns that a reply is public before anything is typed', async () => {
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getByText(/posted to our public issue tracker/i)).toBeInTheDocument();
-    });
-
-    // ADR 0019 decision 4: an unlinked Note's thread never leaves the app, so
-    // the one disclosure about where words go must not claim otherwise.
-    it('says an unlinked note is private, and does not claim its replies are public', async () => {
-      noteDocs = [{ ...NOTE, githubIssueUrl: undefined }];
-      const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-
-      expect(
-        screen.getByText(/Only you and the team can read replies on this report, because it isn't linked to an issue yet\./i)
-      ).toBeInTheDocument();
-      expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
-      // The globe is the same false claim in pictogram form.
-      expect(container.querySelector('.lucide-lock')).toBeTruthy();
-      expect(container.querySelector('.lucide-globe')).toBeNull();
-    });
-
-    it('treats a note whose issue was unlinked as private again', async () => {
-      noteDocs = [{ ...NOTE, githubIssueUrl: null }];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-
-      expect(screen.getByText(/Only you and the team can read replies on this report/i)).toBeInTheDocument();
-      expect(screen.queryByText(/posted to our public issue tracker/i)).not.toBeInTheDocument();
-    });
-
-    it('keeps the public sentence on a note linked to an issue', async () => {
-      const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-
-      expect(
-        screen.getByText('Replies are posted to our public issue tracker, where anyone can read them.')
-      ).toBeInTheDocument();
-      expect(screen.queryByText(/Only you and the team can read replies/i)).not.toBeInTheDocument();
-      expect(container.querySelector('.lucide-globe')).toBeTruthy();
-    });
-
-    it('keeps Send disabled until there is something to send', async () => {
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getByRole('button', { name: /^Send$/i })).toBeDisabled();
-    });
-
-    it('posts a follow-up through the server route, which is the only write path', async () => {
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.type(screen.getByRole('textbox'), 'Which screen is it on?');
-      await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/feedback/reply',
-          expect.objectContaining({
-            method: 'POST',
-            body: JSON.stringify({ id: 'n1', body: 'Which screen is it on?' }),
-          })
-        );
-      });
-    });
-
-    it('surfaces a failure instead of losing the reply silently', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.type(screen.getByRole('textbox'), 'Any news?');
-      await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(/didn't send/i);
-      });
-    });
-
-    it('labels who said what', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-        { id: 'r2', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      // Rows, not bubbles: your own name shows (never "You"), and the team
-      // is "The team" rather than whoever on it happened to write.
-      expect(screen.queryByText('You')).not.toBeInTheDocument();
-      expect(screen.getByText('Jane Student')).toBeInTheDocument();
-      expect(screen.getByText('The team')).toBeInTheDocument();
-      expect(screen.queryByText('Tony Wang')).not.toBeInTheDocument();
-    });
-
-    it('draws them as stream rows: a burst continues, and days are divided', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'First thought', createdAt: '2026-09-02T12:00:00.000Z' },
-        { id: 'r2', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'And another', createdAt: '2026-09-02T12:02:00.000Z' },
-        { id: 'r3', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
-      ];
-      const { container } = render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(container.querySelectorAll('[data-stream-row]')).toHaveLength(3);
-      // The second message within five minutes drops the name.
-      expect(screen.getAllByText('Jane Student')).toHaveLength(1);
-      expect(screen.getAllByRole('separator')).toHaveLength(2);
-    });
-
-    it('says Edited on a follow-up that has been edited, and only on that one', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z', editedAt: '2026-09-02T13:00:00.000Z' },
-        { id: 'r2', authorRole: 'team', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getAllByText(/Edited/)).toHaveLength(1);
-    });
-
-    it('keeps the public-tracker line under the composer', async () => {
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      const box = screen.getByRole('textbox');
-      const line = screen.getByText(/posted to our public issue tracker/i);
-      expect(box.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    });
-
-    it('keeps what you typed when the send fails', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.type(screen.getByRole('textbox'), 'Any news?');
-      await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
-      await screen.findByRole('alert');
-      expect(screen.getByRole('textbox')).toHaveValue('Any news?');
-    });
-
-    it('offers no @-mention button, thread reply or delete on a follow-up', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.queryByRole('button', { name: /mention/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /reply in thread/i })).not.toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
-      expect(screen.queryByRole('menuitem', { name: /delete/i })).not.toBeInTheDocument();
-    });
-
-    it('offers to edit only the author\'s own submitter replies', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-        { id: 'r2', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
-        { id: 'r3', authorRole: 'submitter', authorId: 'u2', authorName: 'Somebody Else', body: 'Not mine.', createdAt: '2026-09-04T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.getAllByRole('button', { name: /edit/i })).toHaveLength(1);
-      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
-    });
-
-    it('never offers to edit a relayed reply, even on the author\'s own note', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'team', authorName: 'Tony Wang', body: 'Superseded by #917.', launderedBody: 'Handled.', relayed: true, createdAt: '2026-09-02T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
-    });
-
-    it('saves an edit through the server route, which is the only write path', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      const editor = screen.getByRole('textbox', { name: /edit your reply/i });
-      await userEvent.clear(editor);
-      await userEvent.type(editor, 'Changed my question');
-      await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/feedback/reply/edit',
-          expect.objectContaining({
-            method: 'POST',
-            body: JSON.stringify({ id: 'n1', replyId: 'r1', body: 'Changed my question' }),
-          })
-        );
-      });
-      await waitFor(() => expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument());
-    });
-
-    it('cancel leaves the reply untouched and never calls the server', async () => {
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      const editor = screen.getByRole('textbox', { name: /edit your reply/i });
-      await userEvent.clear(editor);
-      await userEvent.type(editor, 'Should not persist');
-      await userEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
-
-      expect(global.fetch).not.toHaveBeenCalled();
-      expect(screen.getByText('Any news?')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument();
-    });
-
-    it('surfaces a failure instead of losing the edit silently', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
-      replyDocs = [
-        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
-      ];
-      render(<MyNotes />);
-      await userEvent.click(screen.getByRole('button', { name: /Replies/i }));
-      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-      await userEvent.clear(screen.getByRole('textbox', { name: /edit your reply/i }));
-      await userEvent.type(screen.getByRole('textbox', { name: /edit your reply/i }), 'Changed');
-      await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(/didn't save/i);
-      });
-    });
+    noteDocs = [{ ...NOTE, outcome: 'shipped', outcomeMessage: 'A PR-written sentence.' }];
+    render(<MyNotes />);
+    expect(screen.getByText(/This shipped! Thank you/)).toBeInTheDocument();
+    expect(screen.queryByText('A PR-written sentence.')).not.toBeInTheDocument();
   });
 });

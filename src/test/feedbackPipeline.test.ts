@@ -1,13 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  APP_RELAY_MARKER,
   DefaultGitHubFeedbackPort,
   FeedbackPipeline,
   isIssueInRepo,
-  isTeamCommentAuthor,
-  shouldDropComment,
   type GitHubFeedbackPort,
-  type FeedbackAIPort,
   type SubmitFeedbackNoteInput,
 } from '../server/feedbackPipeline';
 
@@ -162,7 +158,6 @@ function createFakeFirestore() {
 describe('FeedbackPipeline', () => {
   let db: any;
   let mockGitHub: GitHubFeedbackPort;
-  let mockAI: FeedbackAIPort;
   let pipeline: FeedbackPipeline;
 
   beforeEach(() => {
@@ -175,34 +170,11 @@ describe('FeedbackPipeline', () => {
       })),
       ensureLabel: vi.fn(async () => true),
       updateIssueState: vi.fn(async () => true),
-      postComment: vi.fn(async () => 555),
-      editComment: vi.fn(async () => true),
-      fetchIssueTimeline: vi.fn(async () => [
-        {
-          event: 'cross-referenced',
-          source: {
-            issue: {
-              pull_request: {
-                url: 'https://api.github.com/repos/org/repo/pulls/42',
-                merged_at: '2026-10-12T00:00:00Z',
-              },
-            },
-          },
-        },
-      ]),
-      fetchPullRequest: vi.fn(async () => ({ title: 'Fix bug', body: 'Fixed the issue' })),
-    };
-
-    mockAI = {
-      launderComment: vi.fn(async (raw: string) => `Laundered: ${raw}`),
-      summarizePRClose: vi.fn(async () => 'You can now view notifications directly.'),
     };
 
     pipeline = new FeedbackPipeline({
       db,
       githubPort: mockGitHub,
-      aiPort: mockAI,
-      ownerEmail: 'owner@example.com',
       githubRepo: 'org/repo',
     });
   });
@@ -350,154 +322,6 @@ describe('FeedbackPipeline', () => {
     });
   });
 
-  describe('updateNote', () => {
-    it('throws error when feedback note does not exist', async () => {
-      await expect(pipeline.updateNote({ id: 'missing_id', status: 'resolved' })).rejects.toThrow(
-        'not found',
-      );
-    });
-
-    it('updates Firestore and syncs state to GitHub issue', async () => {
-      db.seed('feedback', 'fb_1', {
-        status: 'in_progress',
-        githubIssueUrl: 'https://github.com/org/repo/issues/101',
-      });
-
-      const res = await pipeline.updateNote({
-        id: 'fb_1',
-        status: 'resolved',
-      });
-
-      expect(res.updates.status).toBe('resolved');
-      expect(mockGitHub.updateIssueState).toHaveBeenCalledWith(
-        'https://github.com/org/repo/issues/101',
-        'closed',
-        'completed',
-      );
-    });
-    it('refuses to link a note to an issue in another repository (Nov 2026)', async () => {
-      db.seed('feedback', 'fb_2', { status: 'new' });
-      await expect(
-        pipeline.updateNote({ id: 'fb_2', githubIssueUrl: 'https://github.com/evil/repo/issues/1' }),
-      ).rejects.toThrow('must be an issue in org/repo');
-      expect(db.getDoc('feedback', 'fb_2').githubIssueUrl).toBeUndefined();
-      expect(mockGitHub.updateIssueState).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('addFollowUp & editFollowUp', () => {
-    beforeEach(() => {
-      db.seed('feedback', 'fb_1', {
-        userId: 'submitter_uid',
-        userName: 'Submitter Sam',
-        githubIssueUrl: 'https://github.com/org/repo/issues/101',
-      });
-      db.seed('users', 'admin_uid', { role: 'admin' });
-    });
-
-    it('allows the submitter to add a follow-up, mirrors to GitHub, and sets awaitingReply', async () => {
-      const res = await pipeline.addFollowUp({
-        id: 'fb_1',
-        body: 'Can someone clarify the timeline?',
-        actor: { uid: 'submitter_uid', name: 'Submitter Sam' },
-      });
-
-      expect(res.mirroredToGitHub).toBe(true);
-      expect(mockGitHub.postComment).toHaveBeenCalledWith(
-        'https://github.com/org/repo/issues/101',
-        expect.stringContaining('**Reporter replied:**\n\nCan someone clarify the timeline?'),
-      );
-
-      const note = db.getDoc('feedback', 'fb_1');
-      expect(note.awaitingReply).toBe(true);
-
-      // Fans out notification to Full-timers
-      const notifs = db.getDocs('notifications');
-      expect(notifs.some((n: any) => n.userId === 'admin_uid' && n.title === 'A follow-up on a note')).toBe(true);
-    });
-
-    it('records how many follow-ups a note holds, and whose was last', async () => {
-      await pipeline.addFollowUp({
-        id: 'fb_1',
-        body: 'Any update on this?',
-        actor: { uid: 'submitter_uid', name: 'Submitter Sam' },
-      });
-
-      const note = db.getDoc('feedback', 'fb_1');
-      expect(note.replyCount).toBe(1);
-      expect(note.lastReplyRole).toBe('submitter');
-      expect(note.lastReplyAt).toBeTruthy();
-    });
-
-    it('counts the follow-ups a note already held before the field existed', async () => {
-      // The seeded thread in the issue: two replies, no count on the Note. A
-      // blind increment would report the newest reply as the whole thread.
-      db.seed('feedback/fb_1/replies', 'reply_1', { authorRole: 'team', body: 'One' });
-      db.seed('feedback/fb_1/replies', 'reply_2', { authorRole: 'team', body: 'Two' });
-
-      await pipeline.addFollowUp({
-        id: 'fb_1',
-        body: 'Thank you',
-        actor: { uid: 'submitter_uid' },
-      });
-
-      expect(db.getDoc('feedback', 'fb_1').replyCount).toBe(3);
-    });
-
-    it('increments a count it has already written, and the team has the last word', async () => {
-      db.seed('feedback', 'fb_1', {
-        userId: 'submitter_uid',
-        userName: 'Submitter Sam',
-        githubIssueUrl: 'https://github.com/org/repo/issues/101',
-        replyCount: 2,
-      });
-
-      await pipeline.addFollowUp({
-        id: 'fb_1',
-        body: 'We shipped this.',
-        actor: { uid: 'admin_uid', role: 'admin' },
-      });
-
-      const note = db.getDoc('feedback', 'fb_1');
-      expect(note.replyCount).toBe(3);
-      expect(note.lastReplyRole).toBe('team');
-      expect(note.awaitingReply).toBe(false);
-    });
-
-    it('forbids an unrelated user from replying', async () => {
-      await expect(
-        pipeline.addFollowUp({
-          id: 'fb_1',
-          body: 'Impostor comment',
-          actor: { uid: 'stranger_uid' },
-        }),
-      ).rejects.toThrow('Forbidden');
-    });
-
-    it('allows editing a submitter reply and updates mirrored GitHub comment', async () => {
-      db.seed('feedback/fb_1/replies', 'reply_1', {
-        authorRole: 'submitter',
-        authorId: 'submitter_uid',
-        body: 'Original text',
-        githubCommentId: 555,
-      });
-
-      const res = await pipeline.editFollowUp({
-        id: 'fb_1',
-        replyId: 'reply_1',
-        body: 'Updated text',
-        actorUid: 'submitter_uid',
-      });
-
-      expect(res.mirroredToGitHub).toBe(true);
-      expect(mockGitHub.editComment).toHaveBeenCalledWith(
-        'https://github.com/org/repo/issues/101',
-        555,
-        expect.stringContaining('Updated text'),
-      );
-    });
-  });
-
   describe('handleGitHubWebhook', () => {
     it('ignores unrecognized events', async () => {
       const res = await pipeline.handleGitHubWebhook({
@@ -507,60 +331,27 @@ describe('FeedbackPipeline', () => {
       expect(res.handled).toBe(false);
     });
 
-    it('relays laundered issue comments to replies and drops triage briefs (ADR 0019)', async () => {
+    // Issue comments are no longer imported (cut-or-keep §15): the only
+    // webhook left is the issue close/reopen that carries the outcome.
+    it('ignores issue comments instead of relaying them into a note', async () => {
       db.seed('feedback', 'fb_1', {
         userId: 'user_1',
         githubIssueUrl: 'https://github.com/org/repo/issues/101',
       });
 
-      // 1. Triage comment should be dropped before AI laundering
-      const triageRes = await pipeline.handleGitHubWebhook({
+      const res = await pipeline.handleGitHubWebhook({
         eventType: 'issue_comment',
         action: 'created',
         issue: { html_url: 'https://github.com/org/repo/issues/101' },
-        comment: {
-          id: 111,
-          body: 'generated by ai during triage\n## Agent Brief\nInvestigate layout.',
-          author_association: 'MEMBER',
-        },
       });
-      expect(triageRes.relayedCount).toBe(0);
-      expect(mockAI.launderComment).not.toHaveBeenCalled();
 
-      // 2. Real developer comment is laundered and relayed
-      const realRes = await pipeline.handleGitHubWebhook({
-        eventType: 'issue_comment',
-        action: 'created',
-        issue: { html_url: 'https://github.com/org/repo/issues/101' },
-        comment: {
-          id: 222,
-          body: 'We investigated and found the fix. Shipping soon!',
-          author_association: 'MEMBER',
-        },
-      });
-      expect(realRes.relayedCount).toBe(1);
-      expect(mockAI.launderComment).toHaveBeenCalledWith(
-        'We investigated and found the fix. Shipping soon!',
-      );
-
-      const replies = db.getDocs('feedback/fb_1/replies');
-      expect(replies.length).toBe(1);
-      expect(replies[0].body).toBe('Laundered: We investigated and found the fix. Shipping soon!');
-
-      // The collapsed card counts this reply and marks it new from the Note
-      // alone, so a relayed comment records itself there too.
-      const note = db.getDoc('feedback', 'fb_1');
-      expect(note.replyCount).toBe(1);
-      expect(note.lastReplyRole).toBe('team');
-      expect(note.lastReplyAt).toBeTruthy();
-      expect(note.awaitingReply).toBe(false);
-
-      // Notifies user
-      const notifs = db.getDocs('notifications');
-      expect(notifs.some((n: any) => n.userId === 'user_1' && n.title === 'A reply on your note')).toBe(true);
+      expect(res.handled).toBe(false);
+      expect(res.message).toContain('Ignored event type');
+      expect(db.getDocs('feedback/fb_1/replies')).toHaveLength(0);
+      expect(db.getDocs('notifications')).toHaveLength(0);
     });
 
-    it('resolves feedback on issue close, uses PR summary for shipped outcome, and notifies submitter', async () => {
+    it('resolves feedback on issue close with the canned sentence and notifies submitter', async () => {
       db.seed('feedback', 'fb_1', {
         userId: 'user_1',
         githubIssueUrl: 'https://github.com/org/repo/issues/101',
@@ -581,11 +372,15 @@ describe('FeedbackPipeline', () => {
       const doc = db.getDoc('feedback', 'fb_1');
       expect(doc.status).toBe('resolved');
       expect(doc.outcome).toBe('shipped');
-      expect(doc.outcomeMessage).toBe('You can now view notifications directly.');
+      // No PR-written sentence is stored or sent.
+      expect(doc.outcomeMessage).toBeUndefined();
 
-      // Notifies user with PR summary
       const notifs = db.getDocs('notifications');
-      expect(notifs.some((n: any) => n.userId === 'user_1' && n.message === 'You can now view notifications directly.')).toBe(true);
+      expect(
+        notifs.some(
+          (n: any) => n.userId === 'user_1' && /This shipped! Thank you/.test(n.message),
+        ),
+      ).toBe(true);
     });
   });
 });
@@ -608,26 +403,10 @@ describe('GitHub port scope (Nov 2026)', () => {
     const port = new DefaultGitHubFeedbackPort('org/repo');
     const foreign = 'https://github.com/someone/else/issues/1';
     expect(await port.updateIssueState(foreign, 'closed', 'completed')).toBe(false);
-    expect(await port.postComment(foreign, 'hi')).toBeNull();
-    expect(await port.editComment(foreign, 5, 'hi')).toBe(false);
-    expect(await port.fetchIssueTimeline(foreign)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('marks its own comments so the webhook can drop the echo', async () => {
-    const port = new DefaultGitHubFeedbackPort('org/repo');
-    expect(await port.postComment('https://github.com/Org/Repo/issues/3', 'Reporter replied')).toBe(7);
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body).body as string;
-    expect(body).toContain('Reporter replied');
-    expect(body).toContain(APP_RELAY_MARKER);
-    expect(shouldDropComment(body)).toBe(true);
-  });
-
-  it('knows who counts as the team and which issues are ours', () => {
-    expect(isTeamCommentAuthor({ author_association: 'OWNER' })).toBe(true);
-    expect(isTeamCommentAuthor({ author_association: 'collaborator' })).toBe(true);
-    expect(isTeamCommentAuthor({ author_association: 'NONE' })).toBe(false);
-    expect(isTeamCommentAuthor({})).toBe(false);
+  it('knows which issues are ours', () => {
     expect(isIssueInRepo('https://github.com/org/repo/issues/1', 'org/repo')).toBe(true);
     expect(isIssueInRepo('https://github.com/org/repo2/issues/1', 'org/repo')).toBe(false);
     expect(isIssueInRepo('https://evil.com/org/repo/issues/1', 'org/repo')).toBe(false);

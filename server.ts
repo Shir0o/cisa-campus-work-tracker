@@ -11,16 +11,15 @@ import { initializeApp, getApps, getApp } from "firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
-import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 import { FeedbackPipeline } from "./src/server/feedbackPipeline";
+import { OWNER_EMAIL } from "./src/lib/permissions";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
 import { type TagCombine } from "./src/lib/tags";
 import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
 import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testAccountPurgeEngine";
-import { failsClosed, rateLimitKey, secretMatches } from "./src/server/requestGuards";
-import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
+import { failsClosed, rateLimitKey } from "./src/server/requestGuards";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
@@ -42,7 +41,7 @@ export async function createApp() {
 
   // Terminal Request Logging Middleware to easily track incoming webhook/API requests in dev stdout console
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api/webhook") || req.path.startsWith("/api/quick-add")) {
+    if (req.path.startsWith("/api/webhook")) {
       console.log(`\n============== [INCOMING WEBHOOK/API REQUEST] ==============`);
       console.log(`Timestamp   : ${new Date().toISOString()}`);
       console.log(`Method      : ${req.method}`);
@@ -204,21 +203,13 @@ export async function createApp() {
 
 
 
-  // --- Feedback Follow-ups and submitter-facing copy (ADR 0019) ---------------
+  // --- Feedback: reports and their outcome ----------------------------------
   //
-  // A Feedback Note is a conversation: Follow-ups live in
-  // `feedback/{id}/replies` with Firestore as the source of truth, and mirror
-  // to the linked GitHub issue's comments in both directions. Everything
-  // arriving from GitHub is laundered by a model first, because the issue
-  // stream carries agent triage briefs, stack traces and internal shorthand
-  // that no submitter should read.
+  // A report is written to Firestore and filed on GitHub. When the issue
+  // closes, a webhook writes the outcome back and notifies the submitter with
+  // one fixed sentence. Replies and their GitHub mirror are cut.
 
-  // The owner's email, duplicated from OWNER_EMAIL in src/lib/permissions.ts.
-  // That module cannot be imported here: it reaches ./partners -> ./firebase,
-  // which initialises the *browser* Firebase SDK at module load.
-  const OWNER_EMAIL_SERVER = (process.env.OWNER_EMAIL || "yilongwang05@gmail.com").trim().toLowerCase();
-
-
+  const OWNER_EMAIL_SERVER = (process.env.OWNER_EMAIL || OWNER_EMAIL).trim().toLowerCase();
 
   /**
    * Both feedback write paths cost more than a database row: each creates or
@@ -293,119 +284,6 @@ export async function createApp() {
     }
   });
 
-  // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
-  app.post("/api/feedback/update", standardRateLimiter, async (req, res) => {
-    try {
-      // Authorize administrator role
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authorizeAdmin(req);
-        } catch (authErr: any) {
-          console.error("Admin authorization failed:", authErr);
-          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
-        }
-      }
-
-      const { id, status, archived, githubIssueUrl } = req.body;
-      if (!id) {
-        return res.status(400).json({ error: "Missing required 'id' parameter." });
-      }
-
-      const db = getAdminDb();
-      const pipeline = new FeedbackPipeline({ db });
-      const result = await pipeline.updateNote({ id, status, archived, githubIssueUrl });
-
-      res.status(200).json({ success: true, updates: result.updates });
-    } catch (error: any) {
-      if (error.status) {
-        return res.status(error.status).json({ error: error.message });
-      }
-      console.error("Error in POST /api/feedback/update: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
-  // Endpoint: post a Follow-up on a Feedback Note (ADR 0019)
-  // The only write path for `feedback/{id}/replies` — the rules refuse client
-  // writes — so that every Follow-up mirrors onto the linked issue and the
-  // awaiting-reply flag and notifications cannot be skipped.
-  app.post("/api/feedback/reply", feedbackWriteLimiter, async (req, res) => {
-    try {
-      let decoded: any;
-      try {
-        decoded = await authenticateFirebaseUser(req);
-      } catch (authErr: any) {
-        console.error("Firebase ID token verification failed:", authErr);
-        return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
-      }
-
-      const { id, body } = req.body;
-      if (!id || typeof body !== "string" || !body.trim()) {
-        return res.status(400).json({ error: "Missing required 'id' and 'body' parameters." });
-      }
-
-      const db = getAdminDb();
-      const pipeline = new FeedbackPipeline({ db });
-      const result = await pipeline.addFollowUp({
-        id,
-        body,
-        actor: {
-          uid: decoded.uid,
-          email: decoded.email,
-          name: decoded.name || decoded.displayName,
-        },
-      });
-
-      res.status(200).json({ success: true, mirroredToGitHub: result.mirroredToGitHub });
-    } catch (error: any) {
-      if (error.status) {
-        return res.status(error.status).json({ error: error.message });
-      }
-      console.error("Error in POST /api/feedback/reply: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
-  // Endpoint: edit a Follow-up on a Feedback Note (ADR 0019). Only the reply's
-  // author may rewrite it — Full-timers get no blanket edit rights, and a
-  // relayed reply belongs to the issue, not to any app user. The edit mirrors
-  // onto the comment posted when the reply was created, so the app and the
-  // public issue do not diverge; an edit never touches status, outcome, or the
-  // awaiting-reply flag, and never fires notifications.
-  app.post("/api/feedback/reply/edit", feedbackWriteLimiter, async (req, res) => {
-    try {
-      let decoded: any;
-      try {
-        decoded = await authenticateFirebaseUser(req);
-      } catch (authErr: any) {
-        console.error("Firebase ID token verification failed:", authErr);
-        return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
-      }
-
-      const { id, replyId, body } = req.body;
-      if (!id || !replyId || typeof body !== "string" || !body.trim()) {
-        return res.status(400).json({ error: "Missing required 'id', 'replyId', and 'body' parameters." });
-      }
-
-      const db = getAdminDb();
-      const pipeline = new FeedbackPipeline({ db });
-      const result = await pipeline.editFollowUp({
-        id,
-        replyId,
-        body,
-        actorUid: decoded.uid,
-      });
-
-      res.status(200).json({ success: true, mirroredToGitHub: result.mirroredToGitHub });
-    } catch (error: any) {
-      if (error.status) {
-        return res.status(error.status).json({ error: error.message });
-      }
-      console.error("Error in POST /api/feedback/reply/edit: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
   // Endpoint: GitHub Webhook to sync issue closure/reopening back to app feedback
   app.post("/api/webhook/github", async (req, res) => {
     try {
@@ -441,7 +319,7 @@ export async function createApp() {
       }
 
       const eventType = req.headers["x-github-event"] as string;
-      const { action, issue, comment } = req.body;
+      const { action, issue } = req.body;
 
       const db = getAdminDb();
       const pipeline = new FeedbackPipeline({ db });
@@ -449,14 +327,10 @@ export async function createApp() {
         eventType,
         action,
         issue,
-        comment,
       });
 
       if (result.message) {
         return res.status(200).json({ message: result.message });
-      }
-      if (result.relayedCount !== undefined) {
-        return res.status(200).json({ success: true, relayedCount: result.relayedCount });
       }
       return res.status(200).json({
         success: true,
@@ -468,939 +342,6 @@ export async function createApp() {
         return res.status(error.status).json({ error: error.message });
       }
       console.error("Error in POST /api/webhook/github: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
-  // Helper: Generates short, appropriate initials for names
-  function getInitials(fullName: string) {
-    const parts = fullName.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return "??";
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  }
-
-  // Core Service: Parses raw unstructured descriptions using Gemini
-  async function parseContactFromText(rawText: string) {
-    try {
-      const prompt = `Extract contact details from this unstructured notification, text message, or description: "${rawText}"`;
-      
-      const response = await getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: `You are an expert utility designed to parse raw notes or verbal descriptions about newly met contacts and format them into structured JSON.
-Analyze the input text carefully and extract the following:
-1. name: string (Strictly required. The full name of the contact. If only a single name is offered, use that. If multiple people are mentioned, prioritize the main contact).
-2. location: string (The dorm, building, venue, or context where they first connected, e.g., 'Campus Center', 'Miller Hall', 'Cafeteria'. Default to empty string if not mentioned).
-3. email: string (Any email mentioned. Format appropriately; empty string if not mentioned).
-4. phone: string (Any cell or phone number mentioned. Format in clean standard style: (XXX) XXX-XXXX; empty string if not mentioned).
-5. stage: string (The progress stage. MUST be one of: 'First Contact', 'Outreach', 'Unassigned'. Default to 'First Contact' if not specified).
-6. tags: array of strings (A maximum of 4 simple keyword tags. For example: ['Gospel', 'Inquisitive', 'Club Rush']. Never use a school year such as Freshman or Senior as a tag. Do not include space-padded commas).
-7. spiritualBackground: string (Optional. Choose EXACTLY one of: 'Christian', 'Catholic', 'Other', 'None', or empty string if not explicit).
-8. notes: string (Strictly required. A concise, polished summary of descriptions, what was discussed, their background, and key points of interest. Include any contextual cues like "Met in biology class").`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING, description: "Extract full name (First and/or Last name)." },
-              location: { type: Type.STRING, description: "Where they first met or live." },
-              email: { type: Type.STRING, description: "Extracted email address." },
-              phone: { type: Type.STRING, description: "Telephone formatted standard." },
-              stage: { type: Type.STRING, description: "Pipeline stage. Must be: First Contact, Outreach, or Unassigned." },
-              tags: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "Clean descriptive tags summarizing characters or interests."
-              },
-              spiritualBackground: { type: Type.STRING, description: "Religious background if specified: Christian, Catholic, Other, None, or empty." },
-              notes: { type: Type.STRING, description: "Clean structured meeting context summary." }
-            },
-            required: ["name", "notes"]
-          }
-        }
-      });
-
-      if (!response.text) {
-        throw new Error("No response returned from the Gemini API.");
-      }
-
-      return JSON.parse(response.text.trim());
-    } catch (error) {
-      console.error("Gemini Parsing Error: ", error);
-      throw error;
-    }
-  }
-
-  // Core Service: Parses subsequent/follow-up meeting details specifically for the interaction subcommand
-  async function parseInteractionFromText(rawText: string) {
-    try {
-      const prompt = `Extract interaction details from this description: "${rawText}"`;
-      
-      const response = await getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: `You are an expert utility designed to parse raw subsequent logs, meeting summaries, or prayer updates of conversations with existing contacts and format them into structured JSON.
-Analyze the input text carefully and extract the following:
-1. contactName: string (Strictly required. The name of the contact being met/interacted with. Extract the full name if available).
-2. content: string (Strictly required. A concise, polished summary of what was discussed, updates shared, prayer burdens, or key discussion items).
-3. type: string (The type of interaction, e.g., 'Chat', 'Coffee', 'Prayer', 'Bible Study', 'Call', 'Meeting', or 'General Discussion'. Default to 'Chat' if not specified).
-4. dateOffset: string (Optional. When it happened if mentioned, e.g., 'yesterday', 'today', 'last Friday', etc., otherwise defaults to empty).`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              contactName: { type: Type.STRING, description: "Extracted full name of the contact." },
-              content: { type: Type.STRING, description: "Polished context description of what was chatted or shared." },
-              type: { type: Type.STRING, description: "Type of interaction logged: Chat, Coffee, Prayer, Bible Study, Call, Meeting, etc." },
-              dateOffset: { type: Type.STRING, description: "Indicated timing of the interaction." }
-            },
-            required: ["contactName", "content"]
-          }
-        }
-      });
-
-      if (!response.text) {
-        throw new Error("No response returned from the Gemini API.");
-      }
-
-      return JSON.parse(response.text.trim());
-    } catch (error) {
-      console.error("Gemini Interaction Parsing Error: ", error);
-      throw error;
-    }
-  }
-
-  // Helper: Find an existing contact based on name overlap, email, or telephone number
-  async function findExistingContact(parsedName: string, parsedEmail: string, parsedPhone: string) {
-    const db = getAdminDb();
-    const snapshot = await db.collection("contacts").get();
-    const contacts: any[] = [];
-    snapshot.forEach(doc => {
-      contacts.push({ id: doc.id, ...doc.data() });
-    });
-
-    const cleanParsedPhone = parsedPhone ? parsedPhone.replace(/\D/g, "") : "";
-    const cleanParsedEmail = parsedEmail ? parsedEmail.trim().toLowerCase() : "";
-    const cleanParsedName = parsedName ? parsedName.trim().toLowerCase() : "";
-
-    // 1. Match by email first
-    if (cleanParsedEmail) {
-      const match = contacts.find(c => c.email && c.email.trim().toLowerCase() === cleanParsedEmail);
-      if (match) return match;
-    }
-
-    // 2. Match by phone
-    if (cleanParsedPhone) {
-      const match = contacts.find(c => {
-        if (!c.phone) return false;
-        const cleanPhone = c.phone.replace(/\D/g, "");
-        return cleanPhone === cleanParsedPhone;
-      });
-      if (match) return match;
-    }
-
-    // 3. Match by exact name
-    if (cleanParsedName) {
-      const match = contacts.find(c => c.name && c.name.trim().toLowerCase() === cleanParsedName);
-      if (match) return match;
-    }
-
-    // 4. Match by fuzzy name containment (case-insensitive substring overlap)
-    //    Only treat a substring hit as a match when it aligns on a word
-    //    boundary — otherwise prefix-only names like "Robert" wrongly fold
-    //    into existing contacts such as "Roberto Garcia" (#731).
-    if (cleanParsedName) {
-      const isWordBoundaryMatch = (haystack: string, needle: string) => {
-        if (!needle) return false;
-        let idx = haystack.indexOf(needle);
-        while (idx !== -1) {
-          const prev = idx === 0 ? " " : haystack[idx - 1];
-          const next = idx + needle.length === haystack.length ? " " : haystack[idx + needle.length];
-          if (!/[a-z0-9]/.test(prev) && !/[a-z0-9]/.test(next)) return true;
-          idx = haystack.indexOf(needle, idx + 1);
-        }
-        return false;
-      };
-      const potentials = contacts.filter(c => {
-        if (!c.name) return false;
-        const dbName = c.name.trim().toLowerCase();
-        return isWordBoundaryMatch(dbName, cleanParsedName)
-          || isWordBoundaryMatch(cleanParsedName, dbName);
-      });
-      // Return if exactly one unique contact matched fuzzy lookup
-      if (potentials.length === 1) {
-        return potentials[0];
-      }
-    }
-
-    return null;
-  }
-
-  // Helper: Match an external sender against registered team members in `groupme_aliases` or `users`
-  async function findMatchingTeamUser(senderName?: string, senderEmail?: string, senderId?: string) {
-    const db = getAdminDb();
-
-    // 1. If senderId is provided, check groupme_aliases collection first
-    if (senderId) {
-      try {
-        const aliasDoc = await db.collection("groupme_aliases").doc(senderId).get();
-        if (aliasDoc.exists) {
-          const aliasData = aliasDoc.data();
-          if (aliasData?.userId) {
-            const userDoc = await db.collection("users").doc(aliasData.userId).get();
-            if (userDoc.exists) {
-              return { id: userDoc.id, ...userDoc.data() };
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to check groupme_aliases for senderId:", err);
-      }
-    }
-
-    if (!senderName && !senderEmail) return null;
-    const snapshot = await db.collection("users").get();
-    const cleanName = (senderName || "").trim().toLowerCase();
-    const cleanEmail = (senderEmail || "").trim().toLowerCase();
-
-    let matchedUser: { id: string; displayName?: string; email?: string } | null = null;
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const uEmail = (data.email || "").trim().toLowerCase();
-      const uName = (data.displayName || data.name || "").trim().toLowerCase();
-
-      if (cleanEmail && uEmail && uEmail === cleanEmail) {
-        matchedUser = { id: doc.id, ...data };
-      } else if (!matchedUser && cleanName && uName) {
-        if (uName === cleanName || uName.startsWith(cleanName) || cleanName.startsWith(uName)) {
-          matchedUser = { id: doc.id, ...data };
-        }
-      }
-    });
-
-    return matchedUser;
-  }
-
-  // Helper: Resolve gospel partner co-creators for a user from settings/partners
-  async function resolvePartnerCoCreators(userId?: string): Promise<string[]> {
-    if (!userId || userId.startsWith("system-") || userId.startsWith("groupme-") || userId === "system-quick-add") {
-      return [];
-    }
-    try {
-      const partnersDoc = await getAdminDb().collection("settings").doc("partners").get();
-      if (!partnersDoc.exists) return [];
-      const data = partnersDoc.data() || {};
-      const pairings: PartnerPairing[] = Array.isArray(data.pairings)
-        ? cleanPairings(data.pairings)
-        : migrateByTermToPairings(data.byTerm as PartnersByTerm);
-      return partnersAt(pairings, userId, dayKey());
-    } catch (e) {
-      console.warn("Error resolving partner co-creators:", e);
-      return [];
-    }
-  }
-
-  // Developer Logging Helper: Records incoming API and webhook events for debugging purposes
-  async function logApiCall(source: string, payload: any, headers: any, status: "success" | "error" | "ignored", result: string, error?: string) {
-    try {
-      const cleanHeaders = {
-        host: headers.host,
-        "content-type": headers["content-type"],
-        "user-agent": headers["user-agent"],
-        "x-forwarded-for": headers["x-forwarded-for"]
-      };
-
-      await getAdminDb().collection("webhook_logs").add({
-        id: Math.random().toString(36).substr(2, 9),
-        timestamp: new Date().toISOString(),
-        serverTimestamp: FieldValue.serverTimestamp(),
-        source,
-        payload: typeof payload === "object" ? JSON.stringify(payload) : String(payload),
-        headers: JSON.stringify(cleanHeaders),
-        status,
-        result,
-        error: error || ""
-      });
-    } catch (e) {
-      console.error("Failed to write to firestore webhook_logs:", e);
-    }
-  }
-
-  // Helper: Extract optional subcommand and remaining text, handling optional !add prefixes
-  function extractSubcommandAndText(rawText: string) {
-    let text = rawText.trim();
-    
-    // 1. Remove standard command prefix if present (e.g. !add, /add, add:, add) followed by space
-    const prefixRegex = /^(?:!add|\/add|add:|add)\s+/i;
-    if (prefixRegex.test(text)) {
-      text = text.replace(prefixRegex, "").trim();
-    }
-    
-    // 2. Identify subcommand option (contact or interaction)
-    const contactSubcommandRegex = /^(?:contact|contacts)(?:\s+|:\s*|-\s*)/i;
-    const interactionSubcommandRegex = /^(?:interaction|interactions)(?:\s+|:\s*|-\s*)/i;
-    
-    if (contactSubcommandRegex.test(text)) {
-      return {
-        subcommand: "contact" as const,
-        remainingText: text.replace(contactSubcommandRegex, "").trim()
-      };
-    } else if (interactionSubcommandRegex.test(text)) {
-      return {
-        subcommand: "interaction" as const,
-        remainingText: text.replace(interactionSubcommandRegex, "").trim()
-      };
-    }
-    
-    // Default fallback to "contact" if no option matched explicitly
-    return {
-      subcommand: "contact" as const,
-      remainingText: text
-    };
-  }
-
-  // GroupMe bot hook always tags new contacts with the active semester (e.g.
-  // "Fall 2026"). The web app's tag normalizer displays compact variants as
-  // spaced seasons, but the bot can write the canonical form directly.
-  function currentSemesterTag(now = new Date()) {
-    const month = now.getMonth() + 1; // 1-12
-    const year = now.getFullYear();
-    if (month >= 8) return `Fall ${year}`;
-    if (month >= 5) return `Summer ${year}`;
-    return `Spring ${year}`;
-  }
-
-  // Core Endpoint Router: Dispatches to either contact addition/updating or specific interaction logging
-  async function performQuickAdd(text: string, operatorInfo?: { userId?: string, userName?: string }) {
-    const opUserId = operatorInfo?.userId || "system-quick-add";
-    const opUserName = operatorInfo?.userName || "Quick Add AI Service";
-
-    const { subcommand, remainingText } = extractSubcommandAndText(text);
-
-    if (subcommand === "interaction") {
-      const parsed = await parseInteractionFromText(remainingText);
-
-      if (!parsed.contactName) {
-        throw new Error("Failed to extract a valid contact name for committing subsequent interaction.");
-      }
-
-      // Find if contact exists
-      const existingContact = await findExistingContact(parsed.contactName, "", "");
-
-      if (existingContact) {
-        const loggedAt = new Date().toISOString();
-        // Update contact lastSeen and metadata
-        const updatePayload: any = {
-          lastSeen: "Just now",
-          updatedAt: new Date().toISOString(),
-          updatedBy: opUserId,
-          updatedByName: opUserName,
-          hasNewActivity: true,
-          // The interaction below reaches them (#1335).
-          reachedAt: loggedAt,
-        };
-
-        await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
-
-        // Add to interactions collection
-        await getAdminDb()
-          .collection("contacts")
-          .doc(existingContact.id)
-          .collection("interactions")
-          .add({
-            createdById: opUserId,
-            createdByName: opUserName,
-            contactId: existingContact.id,
-            contactName: existingContact.name,
-            content: parsed.content || `Interaction logged: "${remainingText}"`,
-            type: parsed.type || "Quick Add Note",
-            dateTime: loggedAt,
-            createdAt: new Date().toISOString(),
-            serverCreatedAt: FieldValue.serverTimestamp()
-          });
-
-        const detailedLog = [
-          `Logged interaction with existing contact: ${existingContact.name}`,
-          parsed.content ? `Details: ${parsed.content}` : "",
-          `Type: ${parsed.type || "Quick Add Note"}`
-        ].filter(Boolean).join("\n");
-
-        // Log the action in activities
-        await getAdminDb().collection("activities").add({
-          userId: opUserId,
-          userName: opUserName,
-          userPhoto: "",
-          action: "logged an interaction with existing contact",
-          targetId: existingContact.id,
-          targetName: existingContact.name,
-          targetType: "contact",
-          type: "comment",
-          description: detailedLog,
-          createdAt: new Date().toISOString()
-        });
-
-        // Notify admins
-        await getAdminDb().collection("notifications").add({
-          userId: "ALL_ACTIVE",
-          title: "📝 Interaction Logged via Quick Add",
-          message: `Logged a text interaction of type "${parsed.type || "Quick Add Note"}" for existing contact "${existingContact.name}".`,
-          type: "info",
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-          link: "/directory",
-          targetId: existingContact.id
-        });
-
-        return {
-          id: existingContact.id,
-          isExisting: true,
-          name: existingContact.name,
-          stage: existingContact.stage,
-          notes: parsed.content || ""
-        };
-      } else {
-        // Contact doesn't exist, create minimal contact and append interaction
-        const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
-        const loggedAt = new Date().toISOString();
-        const contactData = {
-          name: parsed.contactName,
-          email: "",
-          phone: "",
-          stage: "First Contact",
-          tags: ["Auto-Created"],
-          notes: `Created automatically via incoming interaction log: "${parsed.content}"`,
-          spiritualBackground: "",
-          initials: getInitials(parsed.contactName),
-          lastSeen: "Just now",
-          createdAt: new Date().toISOString(),
-          serverCreatedAt: FieldValue.serverTimestamp(),
-          createdBy: opUserId,
-          createdByName: opUserName,
-          ...(partnerCoCreators.length > 0 ? { coCreators: partnerCoCreators } : {}),
-          hasNewActivity: true,
-          // The interaction below reaches them (#1335).
-          reachedAt: loggedAt,
-        };
-        // `createdBy` is a persisted tie, so the access list the rules read has
-        // to be derived and written in the same breath (#1024 phase 4).
-        const docRef = await getAdminDb()
-          .collection("contacts")
-          .add({ ...contactData, visibleTo: visibleToOf(contactData as ContactTies) });
-
-        // Add interaction
-        await getAdminDb()
-          .collection("contacts")
-          .doc(docRef.id)
-          .collection("interactions")
-          .add({
-            createdById: opUserId,
-            createdByName: opUserName,
-            contactId: docRef.id,
-            contactName: contactData.name,
-            content: parsed.content || `Initial interaction logged.`,
-            type: parsed.type || "Quick Add Note",
-            dateTime: loggedAt,
-            createdAt: new Date().toISOString(),
-            serverCreatedAt: FieldValue.serverTimestamp()
-          });
-
-        const detailedLog = [
-          `Auto-created contact during interaction log: ${contactData.name}`,
-          parsed.content ? `Details: ${parsed.content}` : "",
-          `Type: ${parsed.type || "Quick Add Note"}`
-        ].filter(Boolean).join("\n");
-
-        // Log in activities
-        await getAdminDb().collection("activities").add({
-          userId: opUserId,
-          userName: opUserName,
-          userPhoto: "",
-          action: "created a new contact via external trigger",
-          targetId: docRef.id,
-          targetName: contactData.name,
-          targetType: "contact",
-          type: "create",
-          description: detailedLog,
-          createdAt: new Date().toISOString()
-        });
-
-        // Notify admins
-        await getAdminDb().collection("notifications").add({
-          userId: "ALL_ACTIVE",
-          title: "📞 New Contact Added via Quick Add",
-          message: `Successfully created ${contactData.name} (Student) and logged initial interaction ("${parsed.type || "Quick Add Note"}").`,
-          type: "success",
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-          link: "/directory",
-          targetId: docRef.id
-        });
-
-        return {
-          id: docRef.id,
-          isExisting: false,
-          name: contactData.name,
-          stage: contactData.stage,
-          notes: parsed.content || ""
-        };
-      }
-    } else {
-      // subcommand === "contact"
-      const parsed = await parseContactFromText(remainingText);
-
-      if (!parsed.name) {
-        throw new Error("Failed to extract a valid name from the text description.");
-      }
-
-      // Check if contact already exists
-      const existingContact = await findExistingContact(parsed.name, parsed.email, parsed.phone);
-
-      if (existingContact) {
-        const loggedAt = new Date().toISOString();
-        const updatePayload: any = {
-          lastSeen: "Just now",
-          updatedAt: new Date().toISOString(),
-          updatedBy: opUserId,
-          updatedByName: opUserName,
-          hasNewActivity: true,
-          // The interaction below reaches them (#1335).
-          reachedAt: loggedAt,
-        };
-
-        // Merge fields cleanly if they are empty on the existing contact record
-        if (!existingContact.email && parsed.email) updatePayload.email = parsed.email;
-        if (!existingContact.phone && parsed.phone) updatePayload.phone = parsed.phone;
-        if (!existingContact.spiritualBackground && parsed.spiritualBackground) {
-          updatePayload.spiritualBackground = parsed.spiritualBackground;
-        }
-
-        const existingTags = existingContact.tags || [];
-        const newTags = parsed.tags || [];
-        const combinedTags = Array.from(new Set([...existingTags, ...newTags]));
-        if (combinedTags.length > existingTags.length) {
-          updatePayload.tags = combinedTags;
-        }
-
-        // Update the contact in Firebase
-        await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
-
-        // Add to contact's interactions subcollection
-        await getAdminDb()
-          .collection("contacts")
-          .doc(existingContact.id)
-          .collection("interactions")
-          .add({
-            createdById: opUserId,
-            createdByName: opUserName,
-            contactId: existingContact.id,
-            contactName: existingContact.name,
-            content: parsed.notes || `Interaction logged via Quick Add: "${remainingText}"`,
-            type: "Quick Add Note",
-            dateTime: loggedAt,
-            createdAt: new Date().toISOString(),
-            serverCreatedAt: FieldValue.serverTimestamp()
-          });
-
-        // Format description logging message
-        const hasUpdates = Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity", "reachedAt"].includes(k)).length > 0;
-        const changeSummary = hasUpdates 
-          ? `Filled details: ${Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity", "reachedAt"].includes(k)).join(", ")}` 
-          : "No additional empty fields were present to fill.";
-
-        const detailedLog = [
-          `Logged interaction with existing contact: ${existingContact.name}`,
-          parsed.notes ? `Interaction details: ${parsed.notes}` : "",
-          changeSummary
-        ].filter(Boolean).join("\n");
-
-        // Log the action in activities
-        await getAdminDb().collection("activities").add({
-          userId: opUserId,
-          userName: opUserName,
-          userPhoto: "",
-          action: "logged an interaction with existing contact",
-          targetId: existingContact.id,
-          targetName: existingContact.name,
-          targetType: "contact",
-          type: "comment",
-          description: detailedLog,
-          createdAt: new Date().toISOString()
-        });
-
-        // Notify all system admins/operators
-        await getAdminDb().collection("notifications").add({
-          userId: "ALL_ACTIVE",
-          title: "📝 Interaction Logged via Quick Add",
-          message: `Logged a text interaction and updated fields for existing contact "${existingContact.name}".`,
-          type: "info",
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-          link: "/directory",
-          targetId: existingContact.id
-        });
-
-        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", stage: existingContact.stage };
-      }
-
-      // Creating new contact
-      const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
-      const contactData = {
-        name: parsed.name,
-        email: parsed.email || "",
-        phone: parsed.phone || "",
-        stage: parsed.stage || "First Contact",
-        tags: parsed.tags || [],
-        notes: parsed.notes || "",
-        spiritualBackground: parsed.spiritualBackground || "",
-        initials: getInitials(parsed.name),
-        lastSeen: "Just now",
-        createdAt: new Date().toISOString(),
-        serverCreatedAt: FieldValue.serverTimestamp(),
-        createdBy: opUserId,
-        createdByName: opUserName,
-        ...(partnerCoCreators.length > 0 ? { coCreators: partnerCoCreators } : {}),
-        hasNewActivity: true,
-      };
-      // Derived from the ties actually persisted above, so this agrees exactly
-      // with what scripts/backfill-contact-visible-to.ts would compute
-      // (#1024 phase 4). An automation label like "external-automation" is no
-      // real teammate's uid, so it grants nobody access -- but it has to be in
-      // the list for the backfill not to keep re-planning this row.
-      // Add directly to contacts collection using admin privileges
-      const docRef = await getAdminDb()
-        .collection("contacts")
-        .add({ ...contactData, visibleTo: visibleToOf(contactData as ContactTies) });
-
-      // Document formatted log message
-      const fieldsLog = [
-        `Stage: ${contactData.stage}`,
-        contactData.email ? `Email: ${contactData.email}` : "",
-        contactData.phone ? `Phone: ${contactData.phone}` : "",
-        contactData.spiritualBackground ? `Spiritual Background: ${contactData.spiritualBackground}` : "",
-        contactData.tags.length > 0 ? `Tags: ${contactData.tags.join(", ")}` : "",
-        contactData.notes ? `Quick Add Notes: ${contactData.notes}` : "Added via speech/text parsed quick-add description."
-      ].filter(Boolean).join("\n");
-
-      // Log the action in activities
-      await getAdminDb().collection("activities").add({
-        userId: opUserId,
-        userName: opUserName,
-        userPhoto: "",
-        action: "created a new contact via external trigger",
-        targetId: docRef.id,
-        targetName: contactData.name,
-        targetType: "contact",
-        type: "create",
-        description: fieldsLog,
-        createdAt: new Date().toISOString()
-      });
-
-      // Notify all system admins/operators
-      await getAdminDb().collection("notifications").add({
-        userId: "ALL_ACTIVE",
-        title: "📞 New Contact Added via Quick Add",
-        message: `Successfully created ${contactData.name} from text description.`,
-        type: "success",
-        read: false,
-        createdAt: FieldValue.serverTimestamp(),
-        link: "/directory",
-        targetId: docRef.id
-      });
-
-      return { id: docRef.id, isExisting: false, ...contactData };
-    }
-  }
-
-
-
-  // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
-  app.get("/api/webhook/logs", standardRateLimiter, async (req, res) => {
-    try {
-      // Admin-only: these logs contain raw contact PII and SMS/GroupMe message bodies.
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authorizeAdmin(req);
-        } catch (authErr: any) {
-          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
-        }
-      }
-
-      const limitVal = Math.min(parseInt(req.query.limit as string) || 10, 50);
-      const snapshot = await getAdminDb()
-        .collection("webhook_logs")
-        .orderBy("timestamp", "desc")
-        .limit(limitVal)
-        .get();
-      
-      const logs = snapshot.docs.map(doc => ({
-        dbId: doc.id,
-        ...doc.data()
-      }));
-      
-      res.status(200).json({ logs });
-    } catch (error: any) {
-      console.error("Error retrieving webhook logs via API: ", error);
-      res.status(500).json({ error: error.message || "Failed to retrieve webhook logs" });
-    }
-  });
-
-  // Endpoint 1: Direct JSON API endpoint for custom clients, Siri, Android Shortcuts, or browser tools
-  app.post("/api/quick-add", standardRateLimiter, async (req, res) => {
-    try {
-      const { text } = req.body;
-
-      // If a Firebase ID token is supplied (the in-app Quick Add box), verify it
-      // and attribute the contact to the real signed-in user. Otherwise (curl,
-      // Siri/Android Shortcuts) this is an intentionally public automation
-      // endpoint, so fall back to a generic label instead of trusting a
-      // client-supplied userId/userName, which anyone could otherwise forge to
-      // impersonate a specific teammate.
-      let userId = "external-automation";
-      let userName = "External Automation";
-      if (req.headers.authorization) {
-        try {
-          const decoded = await authenticateFirebaseUser(req);
-          userId = decoded.uid;
-          userName = decoded.name || decoded.email || "Teammate";
-        } catch (authErr: any) {
-          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
-        }
-      } else {
-        // Without a sign-in, the caller must hold the Shortcut key. Once
-        // QUICK_ADD_SECRET is set it is always required; production refuses
-        // keyless calls even before it is set.
-        const quickAddSecret = process.env.QUICK_ADD_SECRET;
-        if (quickAddSecret || failsClosed()) {
-          if (!secretMatches(req.get("x-quick-add-key"), quickAddSecret)) {
-            // Not written to webhook_logs: a flood of refused calls must not
-            // turn into a flood of database writes.
-            console.warn("Quick Add: refused a call without a valid key.");
-            return res.status(401).json({ error: "Unauthorized: sign in or send the Quick Add key." });
-          }
-        }
-      }
-
-      if (!text || typeof text !== "string") {
-        const errMsg = "No text description provided. Please include a 'text' property.";
-        await logApiCall("Quick Add API", req.body, req.headers, "error", errMsg, "Missing required 'text' parameter.");
-        return res.status(400).json({ error: errMsg });
-      }
-
-      console.log(`Processing Quick Add Request: "${text}"`);
-      const contact = await performQuickAdd(text, { userId, userName }) as any;
-      const outcome = contact.isExisting 
-        ? `Matched existing contact "${contact.name}" and logged interaction.`
-        : `Created new contact "${contact.name}".`;
-
-      await logApiCall("Quick Add API", req.body, req.headers, "success", outcome);
-      res.status(200).json({ success: true, contact });
-    } catch (error: any) {
-      console.error("Quick Add Service Error: ", error);
-      await logApiCall("Quick Add API", req.body, req.headers, "error", "Internal server quick-add error.", error.message || String(error));
-      res.status(500).json({ success: false, error: error.message || "Internal Server Error" });
-    }
-  });
-
-  function escapeXml(value: unknown): string {
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
-  }
-
-  // Endpoint 2: URL-Encoded Twilio Webhook compatibility endpoint (SMS & WhatsApp trigger)
-  app.post("/api/webhook/sms", standardRateLimiter, async (req, res) => {
-    try {
-      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-      if (twilioAuthToken) {
-        if (!verifyTwilioRequest(req, twilioAuthToken)) {
-          console.warn("Twilio SMS Webhook: Signature verification failed.");
-          return res.status(403).type("text/xml").send(`
-          <Response>
-            <Message>Forbidden: invalid signature.</Message>
-          </Response>
-        `);
-        }
-      } else if (failsClosed()) {
-        console.error("TWILIO_AUTH_TOKEN not configured; refusing an unverifiable SMS webhook.");
-        return res.status(503).type("text/xml").send(`
-          <Response>
-            <Message>This number is not set up to add contacts yet.</Message>
-          </Response>
-        `);
-      } else {
-        console.warn("TWILIO_AUTH_TOKEN not configured; skipping SMS webhook signature verification.");
-      }
-
-      const smsBody = req.body.Body;
-      const smsFrom = req.body.From;
-
-      if (!smsBody) {
-        const errMsg = "Error: Please provide a valid text description in the body.";
-        await logApiCall("Twilio SMS", req.body, req.headers, "error", "Body missing", "Twilio body parsed empty");
-        return res.status(400).type("text/xml").send(`
-          <Response>
-            <Message>${errMsg}</Message>
-          </Response>
-        `);
-      }
-
-      console.log(`Processing Webhook Trigger from ${smsFrom}: "${smsBody}"`);
-      const contact = await performQuickAdd(smsBody, {
-        userId: smsFrom ? `sms-${smsFrom}` : "system-sms",
-        userName: smsFrom ? `SMS: ${smsFrom}` : "SMS User"
-      }) as any;
-      const outcome = contact.isExisting 
-        ? `SMS from ${smsFrom} matched existing contact "${contact.name}" and logged interaction.`
-        : `SMS from ${smsFrom} created new contact "${contact.name}".`;
-
-      await logApiCall("Twilio SMS", req.body, req.headers, "success", outcome);
-
-      // Name, location and notes are model output from the sender's own text,
-      // so they are escaped before going into the TwiML document.
-      const contactNotes = String(contact.notes ?? "");
-      const twiml = `
-<Response>
-  <Message>
-🎉 ${contact.isExisting ? "Logged Interaction with" : "Added"} ${escapeXml(contact.name)}!
-📍 Location: ${contact.location ? escapeXml(contact.location) : "Not specified"}
-${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes: ${escapeXml(contactNotes.substring(0, 100))}${contactNotes.length > 100 ? "..." : ""}`}
-  </Message>
-</Response>
-      `.trim();
-
-      res.status(200).type("text/xml").send(twiml);
-    } catch (error: any) {
-      console.error("Webhook Quick Add Error: ", error);
-      await logApiCall("Twilio SMS", req.body, req.headers, "error", "Error parsing SMS to contact.", error.message || String(error));
-      const safeErrorMsg = escapeXml(error.message || "Internal server processing error.");
-      const twimlError = `
-<Response>
-  <Message>
-⚠️ Failed to parse/quick-add contact via AI service.
-Error: ${safeErrorMsg}
-  </Message>
-</Response>
-      `.trim();
-      res.status(500).type("text/xml").send(twimlError);
-    }
-  });
-
-  // Endpoint 2.5: GroupMe Bot Callback Endpoint to add contacts dynamically from GroupMe chats
-  app.post("/api/webhook/groupme", async (req, res) => {
-    try {
-      const { text, sender_type, name, sender_id, group_id } = req.body;
-
-      // GroupMe callbacks carry no cryptographic signature; if the bot's group
-      // is configured, restrict inbound triggers to that group.
-      const expectedGroupId = process.env.GROUPME_GROUP_ID;
-      if (expectedGroupId) {
-        if (group_id !== expectedGroupId) {
-          console.warn(`GroupMe Webhook: group_id mismatch (got "${group_id}").`);
-          return res.status(403).json({ error: "Forbidden: unrecognized group." });
-        }
-      } else if (failsClosed()) {
-        console.error("GROUPME_GROUP_ID not configured; refusing a GroupMe webhook from an unknown group.");
-        return res.status(503).json({ error: "GroupMe webhook is not configured." });
-      } else {
-        console.warn("GROUPME_GROUP_ID not configured; accepting GroupMe webhook from any group.");
-      }
-
-      if (sender_type === "bot") {
-        await logApiCall("GroupMe", req.body, req.headers, "ignored", `Ignored message from bot: "${text || ""}"`);
-        return res.status(200).json({ status: "ignored_bot_sender" });
-      }
-
-      if (!text || typeof text !== "string") {
-        const errMsg = "No message text provided.";
-        await logApiCall("GroupMe", req.body, req.headers, "error", "Missing parameter 'text'", errMsg);
-        return res.status(400).json({ error: errMsg });
-      }
-
-      const cleanText = text.trim();
-      let textToParse = "";
-      const lowerText = cleanText.toLowerCase();
-
-      if (lowerText.startsWith("!add ")) {
-        textToParse = cleanText.substring(5).trim();
-      } else if (lowerText.startsWith("add: ")) {
-        textToParse = cleanText.substring(5).trim();
-      } else if (lowerText.startsWith("/add ")) {
-        textToParse = cleanText.substring(5).trim();
-      } else {
-        const ignoreMsg = `Ignored message from "${name || "Unknown"}": No matching prefix trigger ("!add ", "add: " or "/add ") found.`;
-        await logApiCall("GroupMe", req.body, req.headers, "ignored", ignoreMsg);
-        return res.status(200).json({ status: "ignored_no_trigger_prefix" });
-      }
-
-      if (!textToParse) {
-        const ignoreMsg = `Ignored message from "${name || "Unknown"}": Empty contents after trigger.`;
-        await logApiCall("GroupMe", req.body, req.headers, "ignored", ignoreMsg);
-        return res.status(200).json({ status: "empty_content_after_prefix" });
-      }
-
-      console.log(`Processing GroupMe Bot incoming trigger from user "${name}": "${textToParse}"`);
-      const matchedUser = await findMatchingTeamUser(name, undefined, sender_id);
-      const opUserId = matchedUser ? matchedUser.id : (sender_id ? `groupme-${sender_id}` : "system-groupme");
-      const opUserName = matchedUser ? (matchedUser.displayName || matchedUser.email || name) : (name ? `${name} (GroupMe)` : "GroupMe User");
-
-      const contact = await performQuickAdd(textToParse, {
-        userId: opUserId,
-        userName: opUserName
-      }) as any;
-
-      // Always carry the active semester on GroupMe-added contacts (issue #410).
-      const semesterTag = currentSemesterTag();
-      const groupMeContactRef = getAdminDb().collection("contacts").doc(contact.id);
-      const groupMeContactSnap = await groupMeContactRef.get();
-      if (groupMeContactSnap.exists) {
-        const contactData = groupMeContactSnap.data() || {};
-        const existingTags = Array.isArray(contactData.tags) ? contactData.tags : [];
-        if (!existingTags.some((t: any) => String(t).toLowerCase() === semesterTag.toLowerCase())) {
-          await groupMeContactRef.update({ tags: [...existingTags, semesterTag] });
-        }
-      }
-
-      const outcome = contact.isExisting 
-        ? `GroupMe trigger from "${name}" matched existing contact "${contact.name}" and logged interaction.`
-        : `GroupMe trigger from "${name}" created new contact "${contact.name}".`;
-
-      await logApiCall("GroupMe", req.body, req.headers, "success", outcome);
-
-      // Confirm back into the group. This is best-effort: if the bot isn't
-      // configured or the GroupMe API is briefly down, the quick-add has
-      // already succeeded and we should not fail the webhook for it.
-      const groupMeBotId = process.env.GROUPME_BOT_ID;
-      if (groupMeBotId) {
-        const confirmationText = contact.isExisting
-          ? `✅ ${contact.name} was already on the list, so I logged the interaction.`
-          : `✅ Added ${contact.name} to the tracker.`;
-        try {
-          await fetch("https://api.groupme.com/v3/bots/post", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ bot_id: groupMeBotId, text: confirmationText }),
-          });
-        } catch (botError: any) {
-          console.error("GroupMe bot confirmation failed: ", botError.message || botError);
-        }
-      }
-
-      res.status(200).json({
-        success: true,
-        message: contact.isExisting 
-          ? `Successfully logged interaction with existing contact ${contact.name}` 
-          : `Successfully created contact ${contact.name}`,
-        contact
-      });
-    } catch (error: any) {
-      console.error("GroupMe Webhook Error: ", error);
-      await logApiCall("GroupMe", req.body, req.headers, "error", "Error parsing GroupMe bot message.", error.message || String(error));
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
@@ -1547,9 +488,7 @@ The current local date is: ${currentDate}.`,
         })
         .filter((c) => c.name !== "Unknown");
 
-      const currentDate = new Date().toISOString().split("T")[0];
-
-      const prompt = `Please parse the following unstructured text into structured contacts, interactions (1-on-1 conversations/touches/logs), and discussions (group coordination/meeting notes/board topics).
+      const prompt = `Please parse the following unstructured text into structured contacts.
 
 Input Text:
 ${text}
@@ -1561,10 +500,8 @@ ${JSON.stringify(contactsList)}`;
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
-          systemInstruction: `You are an expert assistant for a campus ministry work tracker. Parse the provided unstructured text into three categories:
-1. contacts: Individuals mentioned in the text. For each contact, infer their name, email, phone, stage ('lead', 'contact', 'follow-up', 'connected', or 'active'), spiritual background, notes/summary, and relevant tags. If a contact matches an existing contact from the provided Existing Contacts Database (by exact or close name/email/phone), set matchedContactId to their existing ID and matchedContactName to their existing name; otherwise set matchedContactId and matchedContactName to null. Assign a temporary ID 'c1', 'c2', etc.
-2. interactions: 1-on-1 touchpoints, phone calls, meetings, text exchanges, or notes logged about a contact. Set contactRef to the matching contact's temporary ID (e.g. 'c1') or matchedContactId, contactName, dateTime (ISO format YYYY-MM-DDTHH:mm or YYYY-MM-DD), type ('coffee', 'call', 'text', 'meeting', 'note'), and full interaction content summary. Assign a temporary ID 'i1', 'i2', etc. Current date is ${currentDate}.
-3. discussions: Group notes, strategy documents, team board notes, or topic discussions. Set title, audience ('team', 'trainees', or 'everyone'), content (in Markdown), tags, and mentioned contact names. Assign a temporary ID 'd1', 'd2', etc.`,
+          systemInstruction: `You are an expert assistant for a campus ministry work tracker. Parse the provided unstructured text into contacts:
+1. contacts: Individuals mentioned in the text. For each contact, infer their name, email, phone, stage ('lead', 'contact', 'follow-up', 'connected', or 'active'), spiritual background, notes/summary, and relevant tags. If a contact matches an existing contact from the provided Existing Contacts Database (by exact or close name/email/phone), set matchedContactId to their existing ID and matchedContactName to their existing name; otherwise set matchedContactId and matchedContactName to null. Assign a temporary ID 'c1', 'c2', etc.`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -1589,40 +526,8 @@ ${JSON.stringify(contactsList)}`;
                   required: ["tempId", "name"],
                 },
               },
-              interactions: {
-                type: Type.ARRAY,
-                description: "Parsed 1-on-1 interaction logs extracted from text",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    tempId: { type: Type.STRING },
-                    contactRef: { type: Type.STRING },
-                    contactName: { type: Type.STRING },
-                    dateTime: { type: Type.STRING },
-                    type: { type: Type.STRING },
-                    content: { type: Type.STRING },
-                  },
-                  required: ["tempId", "content"],
-                },
-              },
-              discussions: {
-                type: Type.ARRAY,
-                description: "Parsed discussion board notes extracted from text",
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    tempId: { type: Type.STRING },
-                    title: { type: Type.STRING },
-                    audience: { type: Type.STRING, description: "team, trainees, or everyone" },
-                    content: { type: Type.STRING, description: "Markdown body" },
-                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    mentionedContactNames: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  },
-                  required: ["tempId", "title", "content"],
-                },
-              },
             },
-            required: ["contacts", "interactions", "discussions"],
+            required: ["contacts"],
           },
         },
       });
@@ -1638,13 +543,9 @@ ${JSON.stringify(contactsList)}`;
         throw new Error(`Failed to parse AI response: ${parseErr.message || String(parseErr)}`);
       }
 
-      console.log(
-        `[AI Smart Import] Parse complete: ${parsed.contacts?.length || 0} contacts, ${
-          parsed.interactions?.length || 0
-        } interactions, ${parsed.discussions?.length || 0} discussions.`
-      );
+      console.log(`[AI Smart Import] Parse complete: ${parsed.contacts?.length || 0} contacts.`);
 
-      res.status(200).json({ success: true, data: parsed });
+      res.status(200).json({ success: true, data: { contacts: parsed.contacts || [] } });
     } catch (error: any) {
       console.error("AI Smart Import Error: ", error);
       res.status(500).json({ error: error.message || "Failed to parse text" });
@@ -1668,131 +569,56 @@ ${JSON.stringify(contactsList)}`;
         }
       }
 
-      const { contacts = [], interactions = [], discussions = [] } = req.body;
+      const { contacts = [] } = req.body;
       const db = getAdminDb();
       const batch = db.batch();
 
       let cCount = 0;
-      let iCount = 0;
-      let dCount = 0;
 
-      const tempIdToRealIdMap: Record<string, string> = {};
-
-      // 1. Process Contacts
+      // Process Contacts
       for (const contact of contacts) {
-        if (contact.matchedContactId) {
-          tempIdToRealIdMap[contact.tempId] = contact.matchedContactId;
-          tempIdToRealIdMap[contact.matchedContactId] = contact.matchedContactId;
-        } else {
-          const newContactRef = db.collection("contacts").doc();
-          const name = (contact.name || "Unnamed Contact").slice(0, 128);
-          const initials =
-            name
-              .split(" ")
-              .map((n: string) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase() || "??";
+        if (contact.matchedContactId) continue;
 
-          const newContactData = {
-            name,
-            email: (contact.email || "").slice(0, 128),
-            phone: (contact.phone || "").slice(0, 32),
-            stage: (contact.stage || "lead").slice(0, 64),
-            lastSeen: new Date().toISOString().split("T")[0],
-            initials,
-            notes: contact.notes || "",
-            tags: contact.tags || [],
-            spiritualBackground: contact.spiritualBackground || "",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            createdBy: uid,
-            createdByName: userName.slice(0, 128),
-          };
-          // `createdBy` is a persisted tie; without the derived list the
-          // importer cannot see what they just imported (#1024 phase 4).
-          batch.set(newContactRef, {
-            ...newContactData,
-            visibleTo: visibleToOf(newContactData as ContactTies),
-          });
-          tempIdToRealIdMap[contact.tempId] = newContactRef.id;
-          cCount++;
-        }
-      }
+        const newContactRef = db.collection("contacts").doc();
+        const name = (contact.name || "Unnamed Contact").slice(0, 128);
+        const initials =
+          name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "??";
 
-      // 2. Process Interactions
-      for (const interaction of interactions) {
-        let targetContactId = interaction.contactId || null;
-        if (!targetContactId && interaction.contactRef && tempIdToRealIdMap[interaction.contactRef]) {
-          targetContactId = tempIdToRealIdMap[interaction.contactRef];
-        }
-        if (!targetContactId && interaction.contactName) {
-          const found = contacts.find(
-            (c: any) => c.name?.toLowerCase() === interaction.contactName?.toLowerCase()
-          );
-          if (found && tempIdToRealIdMap[found.tempId]) {
-            targetContactId = tempIdToRealIdMap[found.tempId];
-          }
-        }
-
-        if (targetContactId) {
-          const interactionRef = db.collection("contacts").doc(targetContactId).collection("interactions").doc();
-          const dateStr = interaction.dateTime || new Date().toISOString().split("T")[0];
-          const interactionData = {
-            contactId: targetContactId,
-            contactName: (interaction.contactName || "Contact").slice(0, 128),
-            content: (interaction.content || "").slice(0, 5000),
-            dateTime: dateStr,
-            type: interaction.type || "note",
-            userId: uid,
-            userName: userName.slice(0, 128),
-            createdAt: FieldValue.serverTimestamp(),
-          };
-
-          batch.set(interactionRef, interactionData);
-          iCount++;
-
-          const contactRef = db.collection("contacts").doc(targetContactId);
-          batch.update(contactRef, {
-            lastSeen: dateStr,
-            lastContactedBy: userName,
-            lastContactedById: uid,
-            lastContactedDate: dateStr,
-            // The imported interaction reaches them (#1335).
-            reachedAt: dateStr,
-            updatedAt: new Date().toISOString(),
-          });
-        }
-      }
-
-      // 3. Process Discussions
-      for (const discussion of discussions) {
-        const boardDocRef = db.collection("board_docs").doc();
-        const dateStr = new Date().toISOString().split("T")[0];
-
-        const boardDocData = {
-          title: (discussion.title || "Imported Discussion").slice(0, 200),
-          audience: discussion.audience || "team",
-          md: (discussion.content || "").slice(0, 100000),
-          tags: discussion.tags || [],
-          date: dateStr,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-          deletedAt: null,
-          authorName: userName.slice(0, 128),
-          authorId: uid,
+        const newContactData = {
+          name,
+          email: (contact.email || "").slice(0, 128),
+          phone: (contact.phone || "").slice(0, 32),
+          stage: (contact.stage || "lead").slice(0, 64),
+          lastSeen: new Date().toISOString().split("T")[0],
+          initials,
+          notes: contact.notes || "",
+          tags: contact.tags || [],
+          spiritualBackground: contact.spiritualBackground || "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: uid,
+          createdByName: userName.slice(0, 128),
         };
-
-        batch.set(boardDocRef, boardDocData);
-        dCount++;
+        // `createdBy` is a persisted tie; without the derived list the
+        // importer cannot see what they just imported (#1024 phase 4).
+        batch.set(newContactRef, {
+          ...newContactData,
+          visibleTo: visibleToOf(newContactData as ContactTies),
+        });
+        cCount++;
       }
 
       await batch.commit();
 
-      console.log(`[AI Smart Import] Commit complete: ${cCount} contacts, ${iCount} interactions, ${dCount} discussions.`);
+      console.log(`[AI Smart Import] Commit complete: ${cCount} contacts.`);
       res.status(200).json({
         success: true,
-        summary: { contactsCount: cCount, interactionsCount: iCount, discussionsCount: dCount },
+        summary: { contactsCount: cCount },
       });
     } catch (error: any) {
       console.error("AI Smart Import Commit Error: ", error);
@@ -1814,129 +640,6 @@ ${JSON.stringify(contactsList)}`;
     } catch (error: any) {
       console.error("Mint Custom Token Error: ", error);
       res.status(401).json({ success: false, error: error.message || "Failed to mint custom token" });
-    }
-  });
-
-  // #1103: Save or update a mapping between GroupMe senderId and registered team user
-  app.post("/api/groupme-aliases", standardRateLimiter, async (req, res) => {
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authorizeAdmin(req);
-        } catch (authErr: any) {
-          return res.status(403).json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-        }
-      }
-      const { senderId, userId, name } = req.body;
-      if (!senderId || !userId) {
-        return res.status(400).json({ success: false, error: "senderId and userId are required" });
-      }
-
-      // Verify user exists
-      const userDoc = await getAdminDb().collection("users").doc(userId).get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ success: false, error: "User not found" });
-      }
-      const userData = userDoc.data() || {};
-      const userName = name || userData.displayName || userData.name || userData.email || "Unknown";
-
-      await getAdminDb().collection("groupme_aliases").doc(senderId).set({
-        senderId,
-        userId,
-        name: userName,
-        updatedAt: new Date().toISOString(),
-        serverUpdatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true });
-
-      res.status(200).json({ success: true, senderId, userId, name: userName });
-    } catch (error: any) {
-      console.error("Save GroupMe Alias Error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message || "Failed to save GroupMe alias",
-      });
-    }
-  });
-
-  // #1103: Retroactive repair endpoint: reassign contacts created by `groupme-<senderId>`
-  // to the real registered user, updating createdByName, partner coCreators, and visibleTo
-  app.post("/api/groupme-aliases/repair", standardRateLimiter, async (req, res) => {
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        try {
-          await authorizeAdmin(req);
-        } catch (authErr: any) {
-          return res.status(403).json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-        }
-      }
-      const { senderId, userId } = req.body;
-      if (!senderId || !userId) {
-        return res.status(400).json({ success: false, error: "senderId and userId are required" });
-      }
-
-      const userDoc = await getAdminDb().collection("users").doc(userId).get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ success: false, error: "Target user not found" });
-      }
-      const userData = userDoc.data() || {};
-      const targetUserName = userData.displayName || userData.name || userData.email || "Team Member";
-
-      // Also ensure alias is stored
-      await getAdminDb().collection("groupme_aliases").doc(senderId).set({
-        senderId,
-        userId,
-        name: targetUserName,
-        updatedAt: new Date().toISOString(),
-        serverUpdatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true });
-
-      const legacyCreatedBy = `groupme-${senderId}`;
-      const contactsSnap = await getAdminDb()
-        .collection("contacts")
-        .where("createdBy", "==", legacyCreatedBy)
-        .get();
-
-      const partnerCoCreators = await resolvePartnerCoCreators(userId);
-      let repairedCount = 0;
-
-      for (const contactDoc of contactsSnap.docs) {
-        const cData = contactDoc.data() || {};
-        const existingCoCreators: string[] = Array.isArray(cData.coCreators) ? cData.coCreators : [];
-        const mergedCoCreators = [...new Set([...existingCoCreators, ...partnerCoCreators])];
-
-        const ties: ContactTies = {
-          createdBy: userId,
-          addedBy: cData.addedBy,
-          coCreators: mergedCoCreators,
-          founders: cData.founders,
-          carers: cData.carers,
-        };
-
-        await contactDoc.ref.update({
-          createdBy: userId,
-          createdByName: targetUserName,
-          coCreators: mergedCoCreators,
-          visibleTo: visibleToOf(ties),
-          updatedAt: new Date().toISOString(),
-          updatedBy: userId,
-          updatedByName: targetUserName,
-        });
-
-        repairedCount++;
-      }
-
-      res.status(200).json({
-        success: true,
-        senderId,
-        userId,
-        repairedCount,
-      });
-    } catch (error: any) {
-      console.error("GroupMe Contacts Repair Error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message || "Failed to repair GroupMe contacts",
-      });
     }
   });
 
@@ -2477,14 +1180,9 @@ ${JSON.stringify(contactsList)}`;
 
   // Endpoint 3: Public endpoint to verify that the Gemini API is configured
 
-  app.get("/api/quick-add/status", (req, res) => {
-    res.json({
-      geminiConfigured: !!process.env.GEMINI_API_KEY,
-      endpointUrl: "/api/quick-add",
-      webhookUrl: "/api/webhook/sms",
-      groupmeWebhookUrl: "/api/webhook/groupme",
-      appUrl: process.env.APP_URL || "https://cisa-campus-work-tracker.pages.dev"
-    });
+  // An unmatched API path is a 404, never the SPA shell.
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "Not found" });
   });
 
   // Serve static UI and mount Vite Dev Server middleware

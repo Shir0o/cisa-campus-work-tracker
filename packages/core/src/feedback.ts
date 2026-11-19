@@ -1,7 +1,6 @@
-// Pure "Feedback" logic — kind metadata, kind<->type mapping, and the admin
-// list's combined filter. Shared by web (src/lib/feedbackKinds.ts +
-// src/views/FeedbackList.tsx's inline filtering) and mobile. Icon selection
-// stays out of this module (platform-specific, mirrors history.ts/
+// Pure "Feedback" logic — kind metadata, kind<->type mapping, and the
+// screenshot contract. Shared by web (src/lib/feedbackKinds.ts) and mobile.
+// Icon selection stays out of this module (platform-specific, mirrors history.ts/
 // answered.ts/notifications.ts's convention); so does web's Tailwind
 // TONE_CLASSES map — each platform owns its own tone->color mapping.
 import type { Feedback, FeedbackKind, FeedbackOutcome } from "./types";
@@ -60,34 +59,6 @@ export const kindMeta = (kind?: FeedbackKind): FeedbackKindMeta =>
   FEEDBACK_KINDS.find((k) => k.id === kind) ?? FEEDBACK_KINDS.find((k) => k.id === "thought")!;
 
 export type FeedbackStatus = Feedback["status"];
-
-export interface FeedbackFilters {
-  /** A FeedbackKind, or "all" for no kind filter. */
-  kind: FeedbackKind | "all";
-  /** A FeedbackStatus, or "all" for no status filter. */
-  status: FeedbackStatus | "all";
-  includeArchived: boolean;
-  search?: string;
-}
-
-const matchesSearch = (f: Feedback, q: string): boolean => {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return [f.message, f.userName, f.userEmail].some((v) => (v ?? "").toLowerCase().includes(needle));
-};
-
-/**
- * Filters the admin feedback list by kind/status/archive-state/free-text —
- * mirrors web's FeedbackList.tsx inline filter combination.
- */
-export function filterFeedback(items: Feedback[], filters: FeedbackFilters): Feedback[] {
-  const needle = (filters.search ?? "").trim();
-  return items
-    .filter((f) => (filters.includeArchived ? true : !f.archived))
-    .filter((f) => filters.kind === "all" || (f.kind ?? typeToKind(f.type)) === filters.kind)
-    .filter((f) => filters.status === "all" || f.status === filters.status)
-    .filter((f) => matchesSearch(f, needle));
-}
 
 // --- Screenshot capture contract -------------------------------------------
 // Feedback screenshots are captured in-app, stored on the Firestore feedback

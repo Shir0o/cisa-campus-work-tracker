@@ -37,12 +37,6 @@ vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ language: 'en', t: (_key: string, fallback?: string) => fallback ?? _key }),
 }));
 
-vi.mock('../views/FeedbackList', () => ({
-  default: () => {
-    const { createElement } = require('react');
-    return createElement('div', { 'data-testid': 'feedback-list' }, 'FeedbackList');
-  },
-}));
 vi.mock('motion/react', () => {
   const { forwardRef, createElement, Fragment } = require('react');
   return {
@@ -282,13 +276,11 @@ describe('Settings', () => {
         'Data management & danger zone',
         'API & webhook console',
         'Quick add by text',
+        'Roles & access',
+        "What's New",
       ]) {
         expect(within(container).queryByRole('heading', { name }), name).not.toBeInTheDocument();
       }
-
-      const traineeCard = within(container).getByText(/Cares for the people they are tied to/).closest('div.rounded-xl') as HTMLElement;
-      expect(within(traineeCard).getByText('Settings')).toBeInTheDocument();
-      expect(within(traineeCard).queryByText('Gatherings')).not.toBeInTheDocument();
     });
   });
 
@@ -836,44 +828,24 @@ describe('Settings', () => {
     });
   });
 
-  // ── 9. Roles reference cards ──
+  // ── 9. The cut sections (cut-or-keep §26) ──
 
-  describe('roles reference cards', () => {
-    it('renders the 2 role cards: Full-timer and Trainee, and no Student or Community', () => {
-      setupTraineeAuth();
-
+  describe('cut sections', () => {
+    it('no longer renders roles & access, quick add, the webhook console or What’s New', () => {
+      setupManagerAuth();
       render(<Settings />);
 
-      expect(screen.getByText('FT')).toBeInTheDocument();
-      expect(screen.getByText('TR')).toBeInTheDocument();
-      expect(screen.queryByText('ST')).not.toBeInTheDocument();
-      expect(screen.queryByText('CM')).not.toBeInTheDocument();
-
-      // Check descriptions are present (partial)
-      expect(screen.getByText(/Full-time staff/)).toBeInTheDocument();
-      expect(screen.getByText(/Cares for the people they are tied to/)).toBeInTheDocument();
-    });
-  });
-
-  // ── 10. Current role highlighted ──
-
-  describe('current role highlighted', () => {
-    it('shows "your role" badge on the admin card when role is admin', () => {
-      setupTraineeAuth({ role: 'admin' });
-
-      render(<Settings />);
-
-      expect(screen.getByText('your role')).toBeInTheDocument();
-    });
-
-    it('does not show "your role" badge on non-matching cards', () => {
-      setupTraineeAuth();
-
-      render(<Settings />);
-
-      // "your role" should appear exactly once (on the Trainee card)
-      const badges = screen.getAllByText('your role');
-      expect(badges).toHaveLength(1);
+      for (const name of [
+        'Roles & access',
+        'Quick add by text',
+        'API & webhook console',
+        "What's New",
+        'What people are telling us',
+      ]) {
+        expect(screen.queryByRole('heading', { level: 2, name }), name).not.toBeInTheDocument();
+      }
+      expect(screen.queryByText(/Full-time staff\. Sees the whole work/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Natural-language playground/)).not.toBeInTheDocument();
     });
   });
 
@@ -1106,294 +1078,6 @@ describe('Settings', () => {
 
       // Verify menu is closed
       expect(screen.queryByText('Edit member')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Quick Add / Integrations Section', () => {
-    it('performs quick add with success response', async () => {
-      setupManagerAuth();
-      
-      const mockFetchResponse = {
-        success: true,
-        contact: {
-          name: 'Jane Smith',
-          role: 'Student',
-          location: 'Dorm C',
-          stage: 'Interested',
-          notes: 'Likes books'
-        }
-      };
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-        Promise.resolve({
-          json: () => Promise.resolve(mockFetchResponse),
-        } as Response)
-      );
-
-      render(<Settings />);
-
-      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
-      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
-
-      const tryItButton = screen.getByRole('button', { name: /Try it/i });
-      fireEvent.click(tryItButton);
-
-      // Wait for success screen
-      await waitFor(() => {
-        expect(screen.getByText('Parsed into a contact')).toBeInTheDocument();
-        expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-        expect(screen.getByText('Dorm C')).toBeInTheDocument();
-      });
-
-      expect(fetchSpy).toHaveBeenCalledWith(
-        '/api/quick-add',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({ Authorization: 'Bearer mock-id-token' }),
-          body: JSON.stringify({ text: 'Met Jane Smith at Dorm C' })
-        })
-      );
-
-      fetchSpy.mockRestore();
-    });
-
-    it('still submits quick add without a token when getIdToken fails', async () => {
-      setupManagerAuth({
-        user: {
-          uid: 'u-admin',
-          displayName: 'Admin User',
-          email: 'admin@test.com',
-          photoURL: null,
-          getIdToken: vi.fn().mockRejectedValue(new Error('token fetch failed')),
-        },
-      });
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-        Promise.resolve({
-          json: () => Promise.resolve({ success: true, contact: { name: 'Jane Smith', role: 'Student', location: 'Dorm C', stage: 'Interested', notes: 'Likes books' } }),
-        } as Response)
-      );
-
-      render(<Settings />);
-
-      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
-      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
-      fireEvent.click(screen.getByRole('button', { name: /Try it/i }));
-
-      await waitFor(() => {
-        expect(fetchSpy).toHaveBeenCalledWith(
-          '/api/quick-add',
-          expect.objectContaining({
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-          })
-        );
-      });
-
-      fetchSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('performs quick add with failure response', async () => {
-      setupManagerAuth();
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-        Promise.resolve({
-          json: () => Promise.resolve({ success: false, error: 'AI processing failed' }),
-        } as Response)
-      );
-
-      render(<Settings />);
-
-      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
-      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
-
-      const tryItButton = screen.getByRole('button', { name: /Try it/i });
-      fireEvent.click(tryItButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-        expect(screen.getByText('AI processing failed')).toBeInTheDocument();
-      });
-      fetchSpy.mockRestore();
-    });
-
-    it('performs quick add with network exception', async () => {
-      setupManagerAuth();
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-        Promise.reject(new Error('Network offline'))
-      );
-
-      render(<Settings />);
-
-      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
-      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
-
-      const tryItButton = screen.getByRole('button', { name: /Try it/i });
-      fireEvent.click(tryItButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-        expect(screen.getByText('Network offline')).toBeInTheDocument();
-      });
-      fetchSpy.mockRestore();
-    });
-
-    // Live diagnostics: the Settings "Quick add by text" section surfaces a
-    // badge that reads `/api/quick-add/status` and reflects whether Gemini is
-    // configured on the backend (Cloud Run). This lets admins self-verify
-    // without curling — and surfaces immediately if the key drops out.
-    // The test mocks must include `ok: true`; otherwise the real code path
-    // falls through to `Promise.reject(new Error("HTTP undefined"))` and the
-    // badge would always land on 'missing'.
-    it('shows a "Gemini AI ready" badge when the backend reports geminiConfigured:true', async () => {
-      setupManagerAuth();
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url: unknown) => {
-        if (typeof url === 'string' && url.includes('/api/quick-add/status')) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            json: () => Promise.resolve({
-              geminiConfigured: true,
-              endpointUrl: '/api/quick-add',
-              webhookUrl: '/api/webhook/sms',
-              groupmeWebhookUrl: '/api/webhook/groupme',
-              appUrl: 'https://example.test',
-            }),
-          } as Response);
-        }
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response);
-      });
-      render(<Settings />);
-
-      // Don't capture a stale element reference; let waitFor re-query each tick.
-      await waitFor(
-        () => expect(screen.getByTestId('gemini-status-badge')).toHaveTextContent(/Gemini AI ready/i),
-        { timeout: 5000 },
-      );
-
-      fetchSpy.mockRestore();
-    });
-
-    it('shows a "Gemini AI not configured" badge when the backend reports geminiConfigured:false', async () => {
-      setupManagerAuth();
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url: unknown) => {
-        if (typeof url === 'string' && url.includes('/api/quick-add/status')) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            json: () => Promise.resolve({
-              geminiConfigured: false,
-              endpointUrl: '/api/quick-add',
-              webhookUrl: '/api/webhook/sms',
-              groupmeWebhookUrl: '/api/webhook/groupme',
-              appUrl: 'https://example.test',
-            }),
-          } as Response);
-        }
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response);
-      });
-
-      render(<Settings />);
-
-      await waitFor(
-        () => expect(screen.getByTestId('gemini-status-badge')).toHaveTextContent(/Gemini AI not configured/i),
-        { timeout: 5000 },
-      );
-
-      fetchSpy.mockRestore();
-    });
-
-    it('shows an indeterminate "Checking Gemini…" badge while the status fetch is in-flight', async () => {
-      setupManagerAuth();
-
-      // Pending promise that never resolves — keeps the badge in its loading
-      // state. Executor form (vs Promise.withResolvers) because the repo's CI
-      // currently runs on Node 20, which predates withResolvers.
-      const pending: Promise<Response> = new Promise(() => {});
-      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => pending);
-
-      render(<Settings />);
-
-      expect(await screen.findByText(/Checking Gemini/i)).toBeInTheDocument();
-
-      fetchSpy.mockRestore();
-    });
-  });
-
-  describe('Webhook Logs Console', () => {
-    const mockWebhookLogs = [
-      {
-        id: 'log1',
-        data: () => ({
-          source: 'GroupMe',
-          status: 'success',
-          result: 'Contact added: Jerry Doe',
-          timestamp: '2026-06-17T12:00:00Z',
-          payload: '{"text": "add contact Jerry"}',
-          headers: '{"content-type": "application/json"}',
-        }),
-      },
-      {
-        id: 'log2',
-        data: () => ({
-          source: 'SMS',
-          status: 'error',
-          result: 'Parsing failed',
-          timestamp: '2026-06-17T12:05:00Z',
-          payload: 'invalid payload',
-          headers: '{"content-type": "text/plain"}',
-          error: 'Invalid format',
-        }),
-      },
-    ];
-
-    it('renders and manages logs', async () => {
-      setupManagerAuth();
-
-      // Hook up onSnapshot to return webhook logs when path is webhook_logs
-      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-        if (ref?.path === 'webhook_logs') {
-          callback({ docs: mockWebhookLogs });
-        } else if (ref?.path === 'users') {
-          callback({ docs: mockUsers });
-        } else if (ref?.path === 'invitations') {
-          callback({ docs: mockInvitations });
-        } else {
-          callback({ docs: [] });
-        }
-        return vi.fn();
-      });
-
-      render(<Settings />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2, name: 'API & webhook console' })).toBeInTheDocument();
-        expect(screen.getByText('Contact added: Jerry Doe')).toBeInTheDocument();
-        expect(screen.getByText('Parsing failed')).toBeInTheDocument();
-      });
-
-      // Expand a success log
-      fireEvent.click(screen.getByText('Contact added: Jerry Doe'));
-      expect(screen.getByText('Raw payload (POST body)')).toBeInTheDocument();
-      expect(screen.getByText('Request headers')).toBeInTheDocument();
-
-      // Expand an error log
-      fireEvent.click(screen.getByText('Parsing failed'));
-      expect(screen.getByText('Failure detail')).toBeInTheDocument();
-      expect(screen.getByText('Invalid format')).toBeInTheDocument();
-
-      // Test clearing logs
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const clearButton = screen.getByRole('button', { name: /Clear/i });
-      fireEvent.click(clearButton);
-
-      expect(confirmSpy).toHaveBeenCalledWith('Clear all webhook debugging logs?');
-      confirmSpy.mockRestore();
     });
   });
 
@@ -1658,46 +1342,6 @@ describe('Settings', () => {
     });
   });
 
-  describe("What's New Video & IAM settings", () => {
-    it('allows an admin to configure video URL and audience visibility', async () => {
-      setupManagerAuth();
-      render(<Settings />);
-
-      expect(screen.getByText('Video Walkthrough Companion')).toBeInTheDocument();
-      const input = screen.getByPlaceholderText('https://drive.google.com/file/d/.../view');
-      const select = screen.getByLabelText('Video audience');
-      const saveBtn = screen.getByRole('button', { name: /save video settings/i });
-
-      fireEvent.change(input, {
-        target: { value: 'https://drive.google.com/file/d/testAdminVideo/view' },
-      });
-      fireEvent.change(select, { target: { value: 'admin' } });
-      fireEvent.click(saveBtn);
-
-      await waitFor(() => {
-        expect(setDoc).toHaveBeenCalledWith(
-          { path: 'settings/whats_new', id: 'whats_new' },
-          {
-            videoUrl: 'https://drive.google.com/file/d/testAdminVideo/view',
-            videoRoles: ['admin'],
-            updatedAt: 'mock-timestamp',
-            updatedBy: 'admin@test.com',
-          },
-          { merge: true },
-        );
-      });
-    });
-
-    it('does not display video configuration form for non-admins', () => {
-      setupTraineeAuth();
-      render(<Settings />);
-
-      expect(screen.getByText("What's New")).toBeInTheDocument();
-      expect(screen.queryByText('Video Walkthrough Companion')).not.toBeInTheDocument();
-      expect(screen.queryByPlaceholderText('https://drive.google.com/file/d/.../view')).not.toBeInTheDocument();
-    });
-  });
-
   describe('SecuritySection (second factor)', () => {
     beforeEach(() => {
       vi.clearAllMocks();
@@ -1848,8 +1492,6 @@ describe('Settings', () => {
       render(<Settings />);
 
       expect(screen.getByLabelText('Find a teammate')).toHaveAttribute('type', 'text');
-      expect(screen.getByLabelText('A description to parse into a contact')).toBeInTheDocument();
-      expect(screen.getByLabelText('Video link')).toHaveAttribute('type', 'url');
     });
 
     it('says a failed team query failed, and retries it', async () => {
@@ -2141,12 +1783,11 @@ describe('Settings', () => {
       }
     });
 
-    it('includes the owner-only sections in the rail for the owner', () => {
+    it('includes only sections that are rendered for the owner', () => {
       setupManagerAuth({
         user: {
           uid: 'u-owner',
           displayName: 'Owner User',
-          email: 'yilongwang05@gmail.com',
           photoURL: null,
           getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
         },
@@ -2160,7 +1801,8 @@ describe('Settings', () => {
       expect(chips.map((chip) => chip.textContent?.trim())).toEqual(
         sections.map((section) => section.heading),
       );
-      expect(chips.map((chip) => chip.textContent?.trim())).toContain(
+      // The feedback owner view is cut with the admin console (§15).
+      expect(chips.map((chip) => chip.textContent?.trim())).not.toContain(
         'What people are telling us',
       );
     });
@@ -2268,22 +1910,20 @@ describe('Settings', () => {
       window.history.replaceState({}, '', '/settings');
     });
 
-    it('keeps the integration sections locked until the build number is tapped seven times', () => {
+    it('keeps the developer sections locked until the build number is tapped seven times', () => {
       setupManagerAuth();
       render(<Settings />);
 
       expect(screen.getByTestId('settings-about')).toBeInTheDocument();
-      expect(screen.getByTestId('settings-build')).toHaveTextContent(/^Build 2026-/);
-      expect(section('Quick add by text')).not.toBeInTheDocument();
-      expect(section('API & webhook console')).not.toBeInTheDocument();
+      expect(screen.getByTestId('settings-build')).toHaveTextContent(/^Build/);
+      expect(section('Developer options')).not.toBeInTheDocument();
 
       const build = screen.getByTestId('settings-build');
       for (let tap = 0; tap < 6; tap += 1) fireEvent.click(build);
-      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('Developer options')).not.toBeInTheDocument();
 
       fireEvent.click(build);
-      expect(section('Quick add by text')).toBeInTheDocument();
-      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(section('Developer options')).toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveTextContent('Developer options unlocked');
     });
 
@@ -2313,7 +1953,7 @@ describe('Settings', () => {
       now.mockReturnValue(1_000 + 60_000);
       fireEvent.click(build);
 
-      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('Developer options')).not.toBeInTheDocument();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
       now.mockRestore();
     });
@@ -2328,11 +1968,11 @@ describe('Settings', () => {
       first.unmount();
 
       render(<Settings />);
-      expect(section('Quick add by text')).toBeInTheDocument();
+      expect(section('Developer options')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'Lock developer options' }));
       expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBeNull();
-      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('Developer options')).not.toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveTextContent('Developer options hidden');
     });
 
@@ -2342,7 +1982,7 @@ describe('Settings', () => {
       const first = render(<Settings />);
 
       expect(
-        await screen.findByRole('heading', { level: 2, name: 'Quick add by text' }),
+        await screen.findByRole('heading', { level: 2, name: 'Developer options' }),
       ).toBeInTheDocument();
       first.unmount();
 
@@ -2350,7 +1990,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       await waitFor(() => expect(window.localStorage.getItem('cisa.settings.devUnlocked')).toBeNull());
-      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('Developer options')).not.toBeInTheDocument();
     });
 
     it('still respects roles once unlocked', () => {
@@ -2358,8 +1998,7 @@ describe('Settings', () => {
 
       ownerAuth();
       const owner = render(<Settings />);
-      expect(section('Quick add by text')).toBeInTheDocument();
-      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(section('Developer options')).toBeInTheDocument();
       expect(screen.getAllByText('What the app is costing').length).toBeGreaterThan(0);
       // The BNPB token card is cut (cut-or-keep §4): not even the owner gets it.
       expect(screen.queryByRole('button', { name: 'Tempo' })).not.toBeInTheDocument();
@@ -2368,8 +2007,7 @@ describe('Settings', () => {
       // A Full-timer who unlocks is not the owner: no cost.
       setupManagerAuth();
       render(<Settings />);
-      expect(section('Quick add by text')).toBeInTheDocument();
-      expect(section('API & webhook console')).toBeInTheDocument();
+      expect(section('Developer options')).toBeInTheDocument();
       expect(screen.queryAllByText('What the app is costing')).toHaveLength(0);
     });
 
@@ -2380,7 +2018,7 @@ describe('Settings', () => {
       render(<Settings />);
 
       expect(screen.queryByTestId('settings-build')).not.toBeInTheDocument();
-      expect(section('Quick add by text')).not.toBeInTheDocument();
+      expect(section('Developer options')).not.toBeInTheDocument();
     });
 
     it('takes keyboard activation of the build number as a tap', () => {
@@ -2394,7 +2032,7 @@ describe('Settings', () => {
       expect(build).toHaveFocus();
 
       for (let tap = 0; tap < 7; tap += 1) fireEvent.click(build);
-      expect(section('Quick add by text')).toBeInTheDocument();
+      expect(section('Developer options')).toBeInTheDocument();
     });
   });
 });

@@ -48,7 +48,6 @@ import { DrawerButton, QueueDrawer } from './QueueDrawer';
 import { ReplySheet } from './ReplySheet';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { QueueSkeleton } from '../skeleton/QueueSkeleton';
-import { M2Release } from '../release/M2Release';
 import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel';
 
 /** What the "done for today" toast calls a card: its person, else the thing itself. */
@@ -558,10 +557,6 @@ export function QueueScreen() {
         onFeedback={() => setFeedbackOpen(true)}
       />
       <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} targetRef={captureRef} />
-      {/* What changed since you last opened this (#546) — held while the
-          on-campus window is open, so it never interrupts the two hours you're
-          actually on campus. */}
-      <M2Release role={role} inWindow={onCampus} />
     </SafeAreaView>
   );
 }

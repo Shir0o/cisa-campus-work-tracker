@@ -66,7 +66,6 @@ export function QueueDrawer({
     const labels: Record<string, string> = {
       people: t('mobile.nav.people'),
       signup: t('mobile.nav.sign_up_form'),
-      tutorial: t('mobile.nav.how_this_works'),
       settings: t('mobile.nav.your_app'),
     };
     return labels[key] ?? key;
@@ -137,7 +136,7 @@ export function QueueDrawer({
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
                   <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>{drawerLabel(item.key)}</Text>
                 </Pressable>
-                {item.key === 'tutorial' && (
+                {item.key === 'settings' && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t('mobile.nav.tell_us_how_its_going', "Report a problem or idea")}

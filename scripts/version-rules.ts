@@ -120,34 +120,22 @@ export function applyVersion<T extends ExpoAppConfig>(
 
 export interface VersionConsistencyInput {
   staticConfig: ExpoAppConfig;
-  manifestVersions: string[];
-  latestTag?: string | null;
 }
 
 export interface VersionConsistencyResult {
   failures: string[];
-  warnings: string[];
-}
-
-function compareVersions(a: ParsedVersion, b: ParsedVersion): number {
-  return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
 }
 
 /**
  * Decide whether the repository's committed version-like values are consistent
- * with the derived-only rule and the release tag.
+ * with the derived-only rule.
  *
  * Failures break the invariant (a version literal has been committed back).
- * Warnings are informational and must never block a release; a manifest that
- * merely lags the tag is surfaced, not treated as an error.
  */
 export function evaluateVersionConsistency({
   staticConfig,
-  manifestVersions,
-  latestTag,
 }: VersionConsistencyInput): VersionConsistencyResult {
   const failures: string[] = [];
-  const warnings: string[] = [];
   const expo = staticConfig?.expo ?? {};
 
   if (expo.version !== undefined) {
@@ -166,22 +154,5 @@ export function evaluateVersionConsistency({
     );
   }
 
-  const parsedManifests = manifestVersions
-    .map(readComponents)
-    .filter((parsed): parsed is ParsedVersion => parsed !== null);
-  const newest = parsedManifests.reduce<ParsedVersion | null>(
-    (highest, candidate) =>
-      highest === null || compareVersions(candidate, highest) > 0 ? candidate : highest,
-    null,
-  );
-  const tag = latestTag ? readComponents(latestTag) : null;
-
-  if (newest !== null && tag !== null && compareVersions(newest, tag) < 0) {
-    const newestLabel = `${newest.major}.${newest.minor}.${newest.patch}`;
-    warnings.push(
-      `The newest content/whats-new manifest (${newestLabel}) is behind the newest tag (${latestTag}); store release notes will fall back to it.`,
-    );
-  }
-
-  return { failures, warnings };
+  return { failures };
 }

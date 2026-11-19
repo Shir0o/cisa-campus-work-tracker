@@ -9,7 +9,7 @@ Repository automation and developer tooling directory containing CI/CD verificat
 - UI Strings & i18n Guard: `collectUsedMobileKeys`, `findMissingMobileKeys`, `checkMobileI18n`, `run` (`check-hardcoded-ui-strings.ts`)
 - Architecture Seams Guard: `matchesGlob`, `parseSeamMap`, `findDeadEntries`, `findUnguardedSeams`, `formatWarning` (`seam-rules.ts`, `check-seams.ts`)
 - Version Consistency Guard: `deriveVersion`, `resolveVersion`, `applyVersion`, `evaluateVersionConsistency` (`version-rules.ts`, `check-version.ts`)
-- Corpus Compilers: `runCompile` (`compile-help.ts`, `compile-whats-new.ts`), `runDraft` (`draft-whats-new.ts`)
+- Corpus Compiler: `runCompile` (`compile-help.ts`)
 - Improvement Discovery: `discoverAssetImprovements`, `discoverBundleBudgetAnomalies`, `discoverDesignTokenDrift`, `generateDiscoveryReport` (`discover-improvements.ts`)
 - Bundle Size Measurement: `runBundleMeasurement` (`measure-bundle.ts`), `measureMobileBundle`, `runCli` (`measure-mobile-bundle.ts`)
 - Performance Scorecard: `parseLighthouseManifest`, `evaluateQualityChecks`, `composeScorecardMarkdown`, `syncWithGitHubIssue` (`generate-scorecard.ts`)
@@ -30,7 +30,6 @@ Repository automation and developer tooling directory containing CI/CD verificat
 ## Side Effects
 - Populates Firebase Auth and Firestore emulator collections (`seed-emulator.ts`).
 - Writes comprehensive mock dataset to `qa-db` Firestore database (`seed-qa.ts`).
-- Writes compiled release manifests to `src/generated/whats-new.json` and `apps/mobile/assets/whats-new.json` (`compile-whats-new.ts`).
 - Writes compiled help manifest to `src/generated/help.json` (`compile-help.ts`).
 - Writes scorecard to `dist/bundle-scorecard.json` and `.cache/bundle-baseline.json` (`measure-bundle.ts`).
 - Updates `.cache/rolling-history.json` and syncs daily metrics scorecard to GitHub issue via `gh issue` CLI (`generate-scorecard.ts`).

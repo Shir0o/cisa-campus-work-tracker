@@ -1,62 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { motion, AnimatePresence } from 'motion/react';
-import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe, Lock } from 'lucide-react';
+import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
-import { followUpSummary, FOLLOW_UPS_SEEN_KEY } from '../lib/feedbackFollowUps';
-import { isAppOwner } from '../lib/permissions';
-import { Feedback, FeedbackReply } from '../types';
+import { Feedback } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
-import Stream from '../components/stream/Stream';
-import { followUpAdapter } from '../components/stream/followUpAdapter';
 
 /**
- * "Your notes" — the submitter's own side of the feedback loop (ADR 0019).
+ * "Your reports" — the submitter's own side of the feedback loop.
  *
- * This page used to be a second composer. It is now the place a Note comes
- * back to you: what became of it, and the Follow-up thread that lets either
- * side ask a question. Submitting happens only through the FAB.
- *
- * Two renderings live here. Everyone sees the submitter's one: the outcome
- * message written at close and the laundered restatement of anything said on
- * the linked issue. The owner sees the tracker raw by default, and switches to
- * the submitter's rendering through the existing owner view ("see it as they
- * do") rather than a control of this page's own.
+ * A report comes back here with what became of it: the fixed sentence for its
+ * outcome. Replies and their GitHub mirror are cut, so this page is read-only.
  */
 export default function MyNotes() {
-  const { user, ownerViewRole } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
 
   const [notes, setNotes] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [openNoteId, setOpenNoteId] = useState<string | null>(null);
-
-  // When did this reader last have this page open? "New" is a comparison
-  // against that, remembered per user on this device. A first visit has no
-  // baseline and therefore claims nothing is new.
-  const [lastVisit, setLastVisit] = useState<number | null>(null);
-  const visitRecorded = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.uid || typeof window === 'undefined') return;
-    // StrictMode mounts the page twice in development; the second mount must
-    // compare against the visit that came before, not the stamp it just wrote.
-    if (visitRecorded.current === user.uid) return;
-    visitRecorded.current = user.uid;
-
-    const key = `${FOLLOW_UPS_SEEN_KEY}:${user.uid}`;
-    const stored = Number(window.localStorage.getItem(key));
-    setLastVisit(Number.isFinite(stored) && stored > 0 ? stored : null);
-    window.localStorage.setItem(key, String(Date.now()));
-  }, [user?.uid]);
-
-  // The owner reads it raw unless they have switched into someone else's view.
-  const asSubmitter = !isAppOwner(user?.email) || ownerViewRole !== null;
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -78,7 +43,6 @@ export default function MyNotes() {
             id: d.id,
             ...data,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
-            lastReplyAt: data.lastReplyAt?.toDate?.()?.toISOString() || data.lastReplyAt,
           } as Feedback);
         });
         setNotes(items);
@@ -148,14 +112,7 @@ export default function MyNotes() {
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              asSubmitter={asSubmitter}
-              lastVisit={lastVisit}
-              expanded={openNoteId === note.id}
-              onToggle={() => setOpenNoteId(openNoteId === note.id ? null : note.id)}
-            />
+            <NoteCard key={note.id} note={note} />
           ))}
         </div>
       )}
@@ -163,42 +120,10 @@ export default function MyNotes() {
   );
 }
 
-function NoteCard({
-  note,
-  asSubmitter,
-  lastVisit,
-  expanded,
-  onToggle,
-}: {
-  note: Feedback;
-  asSubmitter: boolean;
-  lastVisit: number | null;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
+function NoteCard({ note }: { note: Feedback }) {
   const { t, language } = useLanguage();
   const meta = kindMeta(note.kind ?? 'thought');
   const tone = TONE_CLASSES[meta.tone];
-
-  // `awaitingReply` is the one reply fact stored on the note: a Follow-up from
-  // the team writes false, one from the submitter writes true. So a reader can
-  // see that an answer is waiting inside the thread without the page having to
-  // subscribe to every thread on the list.
-  const teamReplied = note.awaitingReply === false;
-
-  // How many Follow-ups the thread holds, and whether its newest team answer
-  // arrived after this reader's last visit. Both come from the Note, so a
-  // collapsed card can say them without a listener per thread.
-  const { count, isNew } = followUpSummary(note, lastVisit);
-  const countText =
-    count === null
-      ? ''
-      : count === 1
-        ? t('stream.replies_one', '1 reply')
-        : t('stream.replies_many', '{n} replies').replace('{n}', String(count));
-
-  const toggleLabel = teamReplied ? t('feedback.read_the_reply') : t('feedback.follow_ups');
-  const newText = isNew ? t('stream.new', 'New') : '';
 
   const formattedDate = (() => {
     try {
@@ -211,8 +136,6 @@ function NoteCard({
       return note.createdAt;
     }
   })();
-
-  const toggleName = [toggleLabel, countText, newText, formattedDate].filter(Boolean).join(' · ');
 
   const OUTCOME_ICONS = {
     shipped: <Sparkles className="w-3.5 h-3.5" />,
@@ -247,17 +170,10 @@ function NoteCard({
               {t(`feedback.outcome_${note.outcome.replace(/-/g, '_')}`, outcomeLabel(note.outcome))}
             </div>
             <p className="text-on-surface-variant leading-relaxed">
-              {/* The written-at-close message when there is one; the canned
-                  sentence is the guarantee that something always arrives. */}
-              {asSubmitter
-                ? note.outcomeMessage || t(`feedback.outcome_copy_${note.outcome.replace(/-/g, '_')}`, outcomeCopy(note.outcome))
-                : outcomeCopy(note.outcome)}
+              {/* The fixed sentence is the guarantee that something always
+                  arrives; nothing written in a pull request stands in for it. */}
+              {t(`feedback.outcome_copy_${note.outcome.replace(/-/g, '_')}`, outcomeCopy(note.outcome))}
             </p>
-          </div>
-        ) : teamReplied ? (
-          <div className="flex items-center gap-1.5 font-semibold text-stage-accent">
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>{t('feedback.team_replied')}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-on-surface-variant">
@@ -268,138 +184,6 @@ function NoteCard({
             <span>{t('feedback.no_news_yet')}</span>
           </div>
         )}
-      </div>
-
-      <div className="pl-1">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          aria-label={toggleName}
-          className="flex w-full min-h-11 items-center justify-between gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-        >
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{toggleLabel}</span>
-            {count !== null && (
-              // The count the Note carries. Not known on a Note written before
-              // the field existed, and then nothing is claimed. A pale pill on
-              // the card's own tone needs the lightest surface step to read.
-              <span
-                aria-hidden
-                className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest px-1.5 text-[11px] font-semibold tabular-nums text-on-surface-variant"
-              >
-                {count}
-              </span>
-            )}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-2">
-            {isNew && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-stage-accent-soft px-2 py-0.5 text-[11px] font-semibold text-stage-accent">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-stage-accent" />
-                {newText}
-              </span>
-            )}
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          </span>
-        </button>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="thread"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden pl-1"
-          >
-            <FollowUpThread noteId={note.id} linked={Boolean(note.githubIssueUrl)} asSubmitter={asSubmitter} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function FollowUpThread({
-  noteId,
-  linked,
-  asSubmitter,
-}: {
-  noteId: string;
-  linked: boolean;
-  asSubmitter: boolean;
-}) {
-  const { user, role } = useAuth();
-  const { t } = useLanguage();
-
-  const [replies, setReplies] = useState<FeedbackReply[]>([]);
-  const [threadError, setThreadError] = useState(false);
-
-  useEffect(() => {
-    const q = query(collection(db, 'feedback', noteId, 'replies'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items: FeedbackReply[] = [];
-        snapshot.forEach((d) => {
-          const data = d.data();
-          items.push({
-            id: d.id,
-            ...data,
-            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
-            ...(data.editedAt ? { editedAt: data.editedAt.toDate?.()?.toISOString() || data.editedAt } : {}),
-          } as FeedbackReply);
-        });
-        setReplies(items);
-        setThreadError(false);
-      },
-      (err) => {
-        console.error(`Failed to subscribe to follow-ups on ${noteId}:`, err);
-        setThreadError(true);
-      }
-    );
-    return () => unsubscribe();
-  }, [noteId]);
-
-  const adapter = followUpAdapter({
-    noteId,
-    replies,
-    me: { uid: user?.uid ?? '', name: user?.displayName ?? '', role },
-    asSubmitter,
-    getIdToken: user && typeof user.getIdToken === 'function' ? () => user.getIdToken() : undefined,
-    t,
-  });
-
-  return (
-    <div className="pt-3">
-      {threadError && (
-        <p role="alert" className="text-xs text-on-surface-variant pb-2">
-          {t('feedback.follow_ups_load_failed')}
-        </p>
-      )}
-      <div className="strm-inline">
-        <Stream
-          adapter={adapter}
-          viewer={{ uid: user?.uid ?? '', role }}
-          threadMode="replace"
-          footer={
-            // Where the words go follows the Note's own link state (ADR 0019
-            // decision 4): a linked thread mirrors onto a public issue tracker,
-            // an unlinked one stays between its author and the team. The mark
-            // has to follow too, or it is the same false claim in pictogram form.
-            <p className="strm-foot">
-              {linked ? (
-                <Globe className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
-              ) : (
-                <Lock className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
-              )}
-              <span>{linked ? t('feedback.reply_is_public') : t('feedback.reply_is_private')}</span>
-            </p>
-          }
-        />
       </div>
     </div>
   );

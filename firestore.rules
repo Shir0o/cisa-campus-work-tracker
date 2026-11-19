@@ -771,9 +771,8 @@ service cloud.firestore {
     }
 
     // 6c. Settings — small team-wide singletons (e.g. settings/season). Only
-    // settings/season and settings/whats_new are publicly readable, so the
-    // public sign-up reflects the active season / club-rush; only managers may
-    // change them.
+    // settings/season is publicly readable, so the public sign-up reflects the
+    // active season / club-rush; only managers may change it.
     match /settings/{docId} {
       function isValidSeasonSettings(data) {
         return data.keys().hasOnly(['override', 'clubRush', 'bfa']) &&
@@ -832,16 +831,6 @@ service cloud.firestore {
                  (data.attdSyncUrl is string && data.attdSyncUrl.size() <= 512));
       }
 
-      function isValidWhatsNewSettings(data) {
-        return data.keys().hasOnly(['videoUrl', 'videoRoles', 'updatedAt', 'updatedBy']) &&
-               (!('videoUrl' in data) || data.videoUrl == null ||
-                 (data.videoUrl is string && data.videoUrl.size() <= 1024)) &&
-               (!('videoRoles' in data) || data.videoRoles == null ||
-                 (data.videoRoles is list && data.videoRoles.size() <= 10)) &&
-               (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp) &&
-               (!('updatedBy' in data) || data.updatedBy == null || (data.updatedBy is string && data.updatedBy.size() <= 128));
-      }
-
       // The Full-timer-edited standard tags list (#1437, ADR 0039): one ordered
       // list serving the suggestion chips and the combine targets. Season tags
       // are standard by pattern and are never stored here.
@@ -851,15 +840,14 @@ service cloud.firestore {
       }
 
       allow create, update: if docId == 'integrations' && isAdmin() && isValidIntegrationsSettings(incoming());
-      allow create, update: if docId == 'whats_new' && isAdmin() && isValidWhatsNewSettings(incoming());
       allow create, update: if docId == 'reminder_schedule' && isAdmin() && isValidReminderSchedule(incoming());
 
       // Standard tags are readable by approved users, not the public.
-      // Only the season (the public sign-up form reads it) and the What's new
-      // card stay readable without signing in. Everything else, pairings,
-      // walking pairs, goals and reminder times included, needs an approved
-      // member (Nov 2026); integrations stays Full-timer only.
-      allow read: if docId == 'season' || docId == 'whats_new';
+      // Only the season (the public sign-up form reads it) stays readable
+      // without signing in. Everything else, pairings, walking pairs, goals and
+      // reminder times included, needs an approved member (Nov 2026);
+      // integrations stays Full-timer only.
+      allow read: if docId == 'season';
       allow read: if docId != 'integrations' && isApprovedUser();
       allow read: if isAdmin();
       allow read: if docId == 'standard_tags' && isApprovedUser();
@@ -959,10 +947,6 @@ service cloud.firestore {
     }
 
     match /attendee_aliases/{aliasId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /groupme_aliases/{aliasId} {
       allow read, write: if isAdmin();
     }
 
@@ -1173,29 +1157,7 @@ service cloud.firestore {
       allow delete: if isValidId(feedbackId) && isAdmin();
     }
 
-    // 11b. Follow-ups on a Feedback Note (ADR 0019)
-    // Every Follow-up is written by the server (`POST /api/feedback/reply` and
-    // the `issue_comment` webhook) so that each one mirrors to the linked
-    // GitHub issue and every relayed comment is laundered before it is stored.
-    // Clients therefore read only: a client-written doc would silently skip
-    // both halves of that mirror.
-    match /feedback/{feedbackId}/replies/{replyId} {
-      function noteAuthorId() {
-        return get(/databases/$(database)/documents/feedback/$(feedbackId)).data.userId;
-      }
-
-      allow get, list: if isAdmin() ||
-                          (isApprovedUser() && isOwner(noteAuthorId()));
-      allow create, update, delete: if false;
-    }
-
-    // 12. Webhook Logs Collection
-    match /webhook_logs/{logId} {
-      allow get, delete: if isValidId(logId) && isManager();
-      allow list: if isManager();
-    }
-
-    // 13. Coordination Notes Collection
+    // 12. Coordination Notes Collection
     match /coordination_notes/{noteId} {
       function isValidCoordinationNote(data) {
         return data.keys().hasAll(['title', 'date', 'content', 'category', 'todos']) &&
