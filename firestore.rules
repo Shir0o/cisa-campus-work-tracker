@@ -1066,27 +1066,8 @@ service cloud.firestore {
       allow delete: if isOwner(existing().uid) || isManager();
     }
 
-    // 9c. Hospitality Offers — a Community member's standing offer to host
-    // students at their table (mobile v2's "Open your home"). Doc id IS the
-    // uid, so one household has one offer.
-    match /hospitalityOffers/{userId} {
-      function isValidOffer(data) {
-        return data.keys().hasAll(['uid', 'name', 'availability', 'seats', 'note', 'updatedAt']) &&
-               data.uid == userId &&
-               data.name is string && data.name.size() > 0 && data.name.size() <= 128 &&
-               data.availability is list && data.availability.size() <= 8 &&
-               data.seats is string && data.seats.size() <= 128 &&
-               data.note is string && data.note.size() <= 2000 &&
-               data.updatedAt is string && data.updatedAt.size() <= 64;
-      }
-
-      allow get: if isApprovedUser() && (isOwner(userId) || isManager());
-      // Staff list every open home; a member only ever reads their own doc by
-      // id, so the list rule is staff-only.
-      allow list: if isManager();
-      allow create, update: if isApprovedUser() && isOwner(userId) && isValidOffer(incoming());
-      allow delete: if isOwner(userId) || isManager();
-    }
+    // 9c. Hospitality Offers — the Community role's "Open your home" is cut
+    // (cut-or-keep §1): no match, so the stored offers stay but nobody reads them.
 
     // 10. Tasks Collection
     match /tasks/{taskId} {
