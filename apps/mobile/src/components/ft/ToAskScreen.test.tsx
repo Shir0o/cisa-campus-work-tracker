@@ -324,7 +324,7 @@ describe('ToAskScreen', () => {
       }),
       {
         messages: [
-          { id: 'm1', contactId: 'c1', interactionId: 'i9', from: 'ft-1', kind: 'nudge', body: 'text her', at: '2026-11-01T00:00:00.000Z', scope: 'team' },
+          { id: 'm1', contactId: 'c1', interactionId: 'i9', from: 'ft-1', kind: 'nudge', body: 'text her', at: '2026-11-01T00:00:00.000Z' },
         ],
       },
     );
@@ -338,7 +338,7 @@ describe('ToAskScreen', () => {
 
     expect(addThreadMessage).toHaveBeenCalledWith(
       'c1',
-      { interactionId: 'i9', parentId: 'm1', scope: 'team', from: 'ft-1', fromName: 'Jae Park', kind: 'comment', body: 'She is coming' },
+      { interactionId: 'i9', parentId: 'm1', from: 'ft-1', fromName: 'Jae Park', kind: 'comment', body: 'She is coming' },
       expect.objectContaining({ contactName: 'Priya' }),
     );
     expect(addInteraction).not.toHaveBeenCalled();
