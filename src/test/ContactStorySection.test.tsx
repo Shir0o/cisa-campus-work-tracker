@@ -30,7 +30,6 @@ const story: StoryEntry[] = [
 
 function renderSection(overrides: {
   currentContact?: Contact;
-  prayers?: PrayerRecord[];
   onSetPrayerTeamPrayer?: (on: boolean) => void;
 } = {}) {
   return render(
@@ -49,7 +48,6 @@ function renderSection(overrides: {
       onUpdatePrayerStatus={vi.fn()}
       onSetPrayerTeamPrayer={overrides.onSetPrayerTeamPrayer ?? vi.fn()}
       onUpdatePrayerBurden={vi.fn()}
-      prayers={overrides.prayers ?? [prayer]}
       teamMembers={[]}
     />,
   );
@@ -79,10 +77,11 @@ describe('ContactStorySection — team prayer footer', () => {
     expect(onSetTeamPrayer).toHaveBeenCalledWith(true);
   });
 
-  // TRANSITIONAL (fix round 1): until the migration runs, an un-stamped
-  // person counts while one of their prayers carries the old flag.
-  it('reads the legacy per-prayer flag while the person has no flag yet', () => {
-    renderSection({ prayers: [{ ...prayer, teamPrayer: undefined }] });
-    expect(screen.getByRole('link', { name: /On our hearts/ })).toBeInTheDocument();
+  // TRANSITIONAL (fix round 1): the migration has run, so an un-stamped
+  // person is off the list and the card offers to bring them back.
+  it('offers "Bring to team prayer" for an un-stamped person', () => {
+    renderSection();
+    expect(screen.queryByRole('link', { name: /On our hearts/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Bring to team prayer' })).toBeInTheDocument();
   });
 });

@@ -310,8 +310,8 @@ export interface PrayerRecord {
    * sheet's "Bring it to team prayer" toggle, off by default.
    *
    * ABSENT MEANS TEAM. Every prayer written before the toggle existed has no
-   * field, and all of them stay where they were — read it through
-   * `isTeamPrayer`, never as a bare truthiness check.
+   * field, and all of them stay where they were — never a bare truthiness
+   * check.
    *
    * Not an access boundary: a private prayer is still readable by the team
    * under the Firestore rules, it just isn't surfaced on that page. It always

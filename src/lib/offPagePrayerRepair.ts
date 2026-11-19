@@ -1,11 +1,11 @@
 /**
  * Pure planner for the one-off off-page prayer repair (issue #1418).
  *
- * `isTeamPrayer` (packages/core/src/prayerThread.ts, mirrored by
- * src/lib/prayers.ts) reads an ABSENT `teamPrayer` flag as the team's — correct
- * for every prayer written before the flag existed, since those were all
- * prayer-page prayers. But three off-page write paths also left the flag off,
- * so their contacts wrongly reach "On our hearts":
+ * An ABSENT `teamPrayer` flag reads as the team's (the reading shared by
+ * packages/core/src/prayerThread.ts and src/lib/prayers.ts) — correct for every
+ * prayer written before the flag existed, since those were all prayer-page
+ * prayers. But three off-page write paths also left the flag off, so their
+ * contacts wrongly reach "On our hearts":
  *
  *   - the web contact-tab Prayer composer (until #1062 added `teamPrayer: false`),
  *   - the web "Log a visit" prayer field and the mobile contact-sheet Pray sheet
@@ -37,7 +37,7 @@
 export interface OffPagePrayerInput {
   id: string;
   contactId: string;
-  /** ABSENT means team — read through `isTeamPrayer`, never bare truthiness. */
+  /** ABSENT means team — never bare truthiness. */
   teamPrayer?: boolean | null;
   /** Whether this doc was written from the prayer page. */
   prayerPage?: boolean | null;

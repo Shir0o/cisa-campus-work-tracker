@@ -35,9 +35,6 @@ export interface ContactStorySectionProps {
   onUpdatePrayerStatus: (prayer: PrayerRecord, status: PrayerRecord["status"]) => void;
   onSetPrayerTeamPrayer: (on: boolean) => void;
   onUpdatePrayerBurden(prayer: PrayerRecord, words: { text: string; context: string }): Promise<void>;
-  /** Every prayer of this person, so the team-prayer footer can read the
-   *  transitional per-prayer fallback (§21 fix round 1). */
-  prayers: PrayerRecord[];
   /** The roster, so a story row can show the reacher's portrait (#1669). */
   teamMembers: ContactTeamMember[];
 }
@@ -59,7 +56,6 @@ export default function ContactStorySection({
   onUpdatePrayerStatus,
   onSetPrayerTeamPrayer,
   onUpdatePrayerBurden,
-  prayers,
   teamMembers,
 }: ContactStorySectionProps) {
   const [editingInteractionId, setEditingInteractionId] = useState<string | null>(null);
@@ -126,7 +122,7 @@ export default function ContactStorySection({
   // The footer (and the "Bring to team prayer" it offers) belongs to the
   // person, including the team's own removal, which hides them from
   // "On our hearts" (§21 fix round 1).
-  const onTeam = isOnTeamPrayer(currentContact, prayers);
+  const onTeam = isOnTeamPrayer(currentContact);
   const renderPrayerCard = (p: PrayerRecord) =>
     editingPrayerId === p.id ? (
       <ContactComposer

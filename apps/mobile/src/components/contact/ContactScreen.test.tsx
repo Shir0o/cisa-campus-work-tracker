@@ -364,16 +364,17 @@ describe('ContactScreen', () => {
       expect(set).toHaveBeenCalledWith(true);
     });
 
-    // TRANSITIONAL (fix round 1): until the migration runs, an un-stamped
-    // person counts while one of their prayers carries the old flag.
-    it('reads the legacy per-prayer flag while the person has no flag yet', async () => {
-      const { getByText } = await renderWith(false, jest.fn(), true, { teamPrayer: undefined }, [
-        prayer({ teamPrayer: undefined }),
+    // Fix round 2: the migration has run, so a legacy per-prayer flag no
+    // longer puts an un-stamped person on the shared list.
+    it('keeps an un-stamped person off, whatever their prayer said', async () => {
+      const { queryByText, getByText } = await renderWith(false, jest.fn(), true, { teamPrayer: undefined }, [
+        prayer({ teamPrayer: true }),
       ]);
-      expect(getByText('On our hearts · Team prayers →')).toBeTruthy();
+      expect(queryByText('On our hearts · Team prayers →')).toBeNull();
+      expect(getByText('Bring to team prayer')).toBeTruthy();
     });
 
-    it('does not fall back when every prayer was kept private', async () => {
+    it('keeps an un-stamped person off when their prayer was kept private', async () => {
       const { queryByText, getByText } = await renderWith(false, jest.fn(), true, { teamPrayer: undefined }, [
         prayer({ teamPrayer: false }),
       ]);

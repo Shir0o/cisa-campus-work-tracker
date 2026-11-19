@@ -3,12 +3,12 @@
  * contacts stop reaching "On our hearts", without touching real prayer-page
  * prayers.
  *
- * Issue #1418. `isTeamPrayer` reads an ABSENT `teamPrayer` flag as the team's —
- * correct for prayer-page prayers written before the flag existed. But three
- * off-page write paths also left the flag off (the web contact Prayer tab until
- * #1062, and the web "Log a visit" prayer field / mobile contact-sheet Pray
- * sheet until #1406). The code fix that stops new off-page prayers is #1406;
- * this script repairs the rows already written.
+ * Issue #1418. An ABSENT `teamPrayer` flag reads as the team's — correct for
+ * prayer-page prayers written before the flag existed. But three off-page write
+ * paths also left the flag off (the web contact Prayer tab until #1062, and the
+ * web "Log a visit" prayer field / mobile contact-sheet Pray sheet until #1406).
+ * The code fix that stops new off-page prayers is #1406; this script repairs the
+ * rows already written.
  *
  * The judgment lives in src/lib/offPagePrayerRepair.ts, a pure planner that
  * sorts every prayer into write / skip / ask and records the matched signal per

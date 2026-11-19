@@ -4,7 +4,6 @@ import {
   addPrayerBurden,
   addTeamPrayer,
   isOnTeamPrayer,
-  isTeamPrayer,
   setTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
@@ -135,14 +134,6 @@ describe('updatePrayerStatus', () => {
   });
 });
 
-describe('isTeamPrayer', () => {
-  it('treats an absent flag as the team’s, so old prayers need no backfill', () => {
-    expect(isTeamPrayer({})).toBe(true);
-    expect(isTeamPrayer({ teamPrayer: true })).toBe(true);
-    expect(isTeamPrayer({ teamPrayer: false })).toBe(false);
-  });
-});
-
 describe('isOnTeamPrayer (§21)', () => {
   it('reads the person’s flag, and an absent one as off', () => {
     expect(isOnTeamPrayer({})).toBe(false);
@@ -150,22 +141,17 @@ describe('isOnTeamPrayer (§21)', () => {
     expect(isOnTeamPrayer({ teamPrayer: true })).toBe(true);
   });
 
-  // TRANSITIONAL (fix round 1): before the migration has run, an un-stamped
-  // contact still counts while one of their prayers carries the old flag.
-  it('falls back to the old per-prayer flag while the person has none', () => {
-    expect(isOnTeamPrayer({}, [{ teamPrayer: true }])).toBe(true);
-    expect(isOnTeamPrayer({}, [{}])).toBe(true);
-    expect(isOnTeamPrayer({}, [{ teamPrayer: false }])).toBe(false);
-  });
-
-  it('reads an explicit false as off, whatever the prayers say', () => {
-    expect(isOnTeamPrayer({ teamPrayer: false }, [{ teamPrayer: true }])).toBe(false);
+  // The migration has run, so a legacy per-prayer flag no longer decides
+  // anything: only the person's own flag can put them on the page.
+  it('does not count a person whose prayers carried the old per-prayer flag', () => {
+    expect(isOnTeamPrayer({})).toBe(false);
+    expect(isOnTeamPrayer({ teamPrayer: undefined })).toBe(false);
   });
 
   it('never counts a person the team removed', () => {
     const removed = { at: '2026-10-01T00:00:00.000Z', by: 'u-admin' };
     expect(isOnTeamPrayer({ teamPrayer: true, prayerListRemoved: removed })).toBe(false);
-    expect(isOnTeamPrayer({ prayerListRemoved: removed }, [{ teamPrayer: true }])).toBe(false);
+    expect(isOnTeamPrayer({ prayerListRemoved: removed })).toBe(false);
   });
 });
 

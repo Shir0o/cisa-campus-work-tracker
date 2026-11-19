@@ -741,7 +741,6 @@ export default function ContactDetailsModal({
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
       onSetPrayerTeamPrayer={handleSetPrayerTeamPrayer}
       onUpdatePrayerBurden={handleUpdatePrayerBurden}
-      prayers={prayers}
       teamMembers={teamMembers}
     />
   );
