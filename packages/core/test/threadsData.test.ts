@@ -51,13 +51,6 @@ describe('deleteThreadMessage', () => {
     expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(DOC_REF);
   });
 
-  it('deletes a Full-timers message from teamThreads', async () => {
-    firestoreMock.doc.mockReturnValue(DOC_REF);
-
-    await deleteThreadMessage(db, 'c1', 'm1', 'team');
-
-    expect(firestoreMock.doc).toHaveBeenCalledWith(db, 'contacts', 'c1', 'teamThreads', 'm1');
-  });
 });
 
 describe('closeFollowUpAsk', () => {
@@ -133,53 +126,20 @@ describe('addThreadMessage', () => {
     expect(onNotify.mock.calls[0][0].title).toBe('Grace mentioned you on Daniel');
   });
 
-  it('never mentions a Trainee into the Full-timers stream', async () => {
-    applyRoster([
-      { uid: 'ft1', role: 'admin' },
-      { uid: 'tr1', role: 'manager' },
-    ]);
-    const onNotify = vi.fn();
 
+  it('writes every message to the open thread, with no team scope', async () => {
+    const onNotify = vi.fn();
     await addThreadMessage(
       db,
       'c1',
-      {
-        interactionId: null,
-        scope: 'team',
-        from: 'ft1',
-        fromName: 'Ruth Chen',
-        kind: 'comment',
-        body: 'Be gentle',
-        mentionedUserIds: ['tr1'],
-      },
-      { contactName: 'Daniel' },
-      onNotify,
-    );
-
-    expect(onNotify).not.toHaveBeenCalled();
-  });
-
-  it('writes a Full-timers message to teamThreads and tells only Full-timers', async () => {
-    applyRoster([
-      { uid: 'ft1', role: 'admin' },
-      { uid: 'ft2', role: 'admin' },
-      { uid: 'tr1', role: 'manager' },
-    ]);
-    const onNotify = vi.fn();
-
-    await addThreadMessage(
-      db,
-      'c1',
-      { interactionId: null, scope: 'team', from: 'ft1', fromName: 'Ruth Chen', kind: 'comment', body: 'Be gentle' },
-      { contactName: 'Daniel', stakeholders: { createdBy: 'tr1', coCreators: ['ft2'] } },
+      { interactionId: null, from: 'ft1', fromName: 'Ruth Chen', kind: 'comment', body: 'Be gentle' },
+      { contactName: 'Daniel', stakeholders: { createdBy: 'tr1' } },
       onNotify,
     );
 
     const [col, data] = firestoreMock.addDoc.mock.calls[0];
-    expect(col).toEqual({ path: 'contacts/c1/teamThreads' });
-    expect(data).toMatchObject({ scope: 'team' });
-    expect(onNotify.mock.calls.map(([p]) => p.userId)).toEqual(['ft2']);
-    expect(onNotify.mock.calls[0][0].title).toBe('Ruth posted in the Full-timers thread on Daniel');
+    expect(col).toEqual({ path: 'contacts/c1/threads' });
+    expect(data).toMatchObject({ scope: null });
   });
 });
 
@@ -221,27 +181,20 @@ describe('subscribeThreads', () => {
     ]);
   });
 
-  it('adds the Full-timers stream, marked team, only when asked to', () => {
+  it('reads only the open thread and skips a legacy team document', () => {
     const cb = vi.fn();
-    firestoreMock.onSnapshot.mockImplementation((q, next) => {
-      const team = q.path.endsWith('teamThreads');
-      next(snap([{ id: team ? 't1' : 'o1', data: { from: 'u', fromName: 'U', kind: 'comment', body: 'b', at: team ? '2026-09-02T00:00:00.000Z' : '2026-09-01T00:00:00.000Z' } }]));
+    firestoreMock.onSnapshot.mockImplementation((_q, next) => {
+      next(snap([
+        { id: 'o1', data: { from: 'u', fromName: 'U', kind: 'comment', body: 'b', at: '2026-09-01T00:00:00.000Z' } },
+        { id: 't1', data: { from: 'u', fromName: 'U', kind: 'comment', body: 'b', at: '2026-09-02T00:00:00.000Z', scope: 'team' } },
+      ]));
       return () => {};
     });
 
     subscribeThreads(db, 'c1', cb);
     expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(1);
-
-    cb.mockClear();
-    firestoreMock.onSnapshot.mockClear();
-    subscribeThreads(db, 'c1', cb, undefined, { includeTeam: true });
-
-    expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(2);
     const last = cb.mock.calls[cb.mock.calls.length - 1][0];
-    expect(last.map((m: { id: string; scope: string | null }) => [m.id, m.scope])).toEqual([
-      ['o1', null],
-      ['t1', 'team'],
-    ]);
+    expect(last.map((m: { id: string }) => m.id)).toEqual(['o1']);
   });
 });
 
@@ -274,23 +227,21 @@ describe('subscribeAllThreads', () => {
     ]);
   });
 
-  it('adds the Full-timers stream, marked team and newest first, only when asked to', () => {
+  it('reads only the open threads and skips a legacy team document', () => {
     const cb = vi.fn();
     firestoreMock.collectionGroup.mockImplementation((_db, name: string) => ({ group: name }));
-    firestoreMock.onSnapshot.mockImplementation((q, next) => {
-      const team = q.group === 'teamThreads';
-      next({ docs: [docOf(team ? 't1' : 'o1', 'c1', { from: 'u', kind: 'question', body: 'b', at: team ? '2026-09-02T00:00:00.000Z' : '2026-09-01T00:00:00.000Z' })] });
+    firestoreMock.onSnapshot.mockImplementation((_q, next) => {
+      next({ docs: [
+        docOf('o1', 'c1', { from: 'u', kind: 'question', body: 'b', at: '2026-09-01T00:00:00.000Z' }),
+        docOf('t1', 'c1', { from: 'u', kind: 'question', body: 'b', at: '2026-09-02T00:00:00.000Z', scope: 'team' }),
+      ] });
       return () => {};
     });
 
-    subscribeAllThreads(db, cb, undefined, { includeTeam: true });
-
-    expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(2);
+    subscribeAllThreads(db, cb);
+    expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(1);
     const last = cb.mock.calls[cb.mock.calls.length - 1][0];
-    expect(last.map((m: { id: string; scope: string | null }) => [m.id, m.scope])).toEqual([
-      ['t1', 'team'],
-      ['o1', null],
-    ]);
+    expect(last.map((m: { id: string }) => m.id)).toEqual(['o1']);
   });
 });
 
@@ -326,7 +277,7 @@ describe('addThreadMessage reaches teammates In the Conversation', () => {
     ]);
   });
 
-  it('tells nobody twice, keeps Trainees off the Full-timers stream, and ignores other streams', async () => {
+  it('tells nobody twice and ignores other streams', async () => {
     firestoreMock.getDocs.mockResolvedValueOnce({
       docs: [recent('tim'), recent('tony'), recent('tony', { interactionId: 'i1' })],
     });
@@ -334,7 +285,7 @@ describe('addThreadMessage reaches teammates In the Conversation', () => {
     await addThreadMessage(
       db,
       'c1',
-      { scope: 'team', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
+      { from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
       { contactName: 'Mark', stakeholders: { coCreators: ['tony'] } },
       onNotify,
     );
@@ -423,18 +374,6 @@ describe('addThreadMessage reaches the author of the message it answers', () => 
     expect(failed.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
   });
 
-  it('never tells a Trainee about the Full-timers stream', async () => {
-    firestoreMock.getDoc.mockResolvedValueOnce(parent('tim'));
-    const onNotify = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { scope: 'team', parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
-      { contactName: 'Mark' },
-      onNotify,
-    );
-    expect(onNotify.mock.calls.map((c) => c[0].userId)).not.toContain('tim');
-  });
 
   it('never tells a parent author who can no longer see the person', async () => {
     firestoreMock.getDoc.mockResolvedValueOnce(parent('tim'));

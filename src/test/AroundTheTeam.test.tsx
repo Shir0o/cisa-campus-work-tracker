@@ -806,14 +806,14 @@ describe('Around the team — the conversation in place, and one state (#1012)',
 
   it('opens the strip on that button and closes it again', () => {
     renderOne([msg({})]);
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/write something/i)).not.toBeInTheDocument();
 
     openStrip();
-    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/write something/i)).toBeInTheDocument();
     expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
 
     openStrip();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/write something/i)).not.toBeInTheDocument();
   });
 
   it('adds no new row of buttons — the action row keeps the one control', () => {
@@ -823,53 +823,20 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.getAllByRole('button', { name: /Conversation · 1/ })).toHaveLength(1);
   });
 
-  // ── Both threads, as tabs, in the contact page's order ───────────────────
-  it('carries both staff threads as tabs, with Conversation open first', () => {
+  // ── Conversation only: the Full-timers tab is cut (§24) ─────────────────
+  it('carries no Full-timers tab, and never shows a legacy team message', () => {
     renderOne([msg({}), msg({ id: 'm2', scope: 'team', body: 'Worth pairing Mei with him.' })]);
     openStrip();
 
-    const tabs = screen.getAllByRole('tab');
-    expect(tabs.map((el) => el.textContent?.replace(/\d+$/, '').trim())).toEqual([
-      'Conversation',
-      'Full-timers',
-    ]);
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
-    expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
-  });
-
-  it('counts each tab separately', () => {
-    renderOne([
-      msg({}),
-      msg({ id: 'm2', body: 'I can drive.' }),
-      msg({ id: 'm3', scope: 'team', body: 'Worth pairing Mei with him.' }),
-    ]);
-    openStrip();
-
-    const tabs = screen.getAllByRole('tab');
-    expect(tabs[0].textContent).toContain('2');
-    expect(tabs[1].textContent).toContain('1');
-  });
-
-  it('shows the Full-timers thread from the card, and only under its own tab', () => {
-    renderOne([msg({}), msg({ id: 'm2', scope: 'team', body: 'Worth pairing Mei with him.' })]);
-    openStrip();
-
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
     expect(screen.queryByText('Worth pairing Mei with him.')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
-    expect(screen.getByText('Worth pairing Mei with him.')).toBeInTheDocument();
-    expect(screen.queryByText('She said she would come Thursday.')).not.toBeInTheDocument();
   });
 
   it('says whose eyes a message will reach before Post is pressed', () => {
     renderOne([msg({})]);
     openStrip();
     expect(screen.getByText('Everyone tied to Kofi sees this.')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
-    expect(screen.getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
-    expect(screen.queryByText('Everyone tied to Kofi sees this.')).not.toBeInTheDocument();
   });
 
   it('closes an open Follow-up ask right on the card — I followed up', () => {
@@ -888,7 +855,7 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.getByText('Follow-up ask')).toBeInTheDocument();
     // The card's own "I followed up" (a worklist verb) is a different control
     // from the one in the stream; scope to the strip.
-    const strip = screen.getByRole('tablist').parentElement!.parentElement!;
+    const strip = screen.getByPlaceholderText(/write something/i).closest('.strm') as HTMLElement;
     fireEvent.click(within(strip).getByRole('button', { name: 'I followed up' }));
     expect(closeFollowUpAsk).toHaveBeenCalledWith('kofi', 'ask1', { uid: 'u1', name: 'Ruth' });
   });
@@ -901,17 +868,16 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     openStrip();
     fireEvent.click(screen.getByRole('button', { name: /1 reply/ }));
 
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/write something/i)).not.toBeInTheDocument();
     const thread = screen.getByRole('region', { name: 'Thread' });
     expect(within(thread).getByText('A reply.')).toBeInTheDocument();
     fireEvent.click(within(thread).getByRole('button', { name: 'Back to Conversation' }));
-    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/write something/i)).toBeInTheDocument();
   });
 
   it('opens an empty strip with the composer ready when nothing has been written', () => {
     renderOne([]);
     openStrip();
-    expect(screen.getByRole('tablist')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/write something/i)).toBeInTheDocument();
   });
 
@@ -1028,19 +994,18 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.queryByText(/Praying for you both/)).not.toBeInTheDocument();
   });
 
-  it('sends the message to whichever tab is open', async () => {
+  it('sends the message to the conversation, with no scope', async () => {
     renderOne([]);
     openStrip();
-    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
 
-    fireEvent.change(screen.getByPlaceholderText(/only full-timers will see/i), {
-      target: { value: 'Let us not pair him with a first-termer.' },
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Pair him with a second-termer.' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
 
     expect(h.addThreadMessage).toHaveBeenCalledWith(
       'kofi',
-      expect.objectContaining({ scope: 'team', body: 'Let us not pair him with a first-termer.' }),
+      expect.objectContaining({ interactionId: null, body: 'Pair him with a second-termer.' }),
       expect.anything(),
     );
   });
@@ -1093,11 +1058,11 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     const aishaCard = screen.getByText('Aisha Rahman').closest('div.rounded-2xl') as HTMLElement;
 
     openStrip(kofiCard);
-    expect(within(kofiCard).getByRole('tablist')).toBeInTheDocument();
+    expect(within(kofiCard).getByPlaceholderText(/write something/i)).toBeInTheDocument();
 
     openStrip(aishaCard);
-    expect(within(aishaCard).getByRole('tablist')).toBeInTheDocument();
-    expect(within(kofiCard).queryByRole('tablist')).not.toBeInTheDocument();
+    expect(within(aishaCard).getByPlaceholderText(/write something/i)).toBeInTheDocument();
+    expect(within(kofiCard).queryByPlaceholderText(/write something/i)).not.toBeInTheDocument();
   });
 
   it('releases the two-line clamp on the interaction body when the card opens, and keeps it when collapsed', () => {

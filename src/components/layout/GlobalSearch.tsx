@@ -1,89 +1,45 @@
-import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Search,
-  X,
-  Command,
-  UserPlus,
-  Coffee,
-  Globe,
-  Compass,
-  User,
-  MessageSquare,
-  Clock,
-  Keyboard,
-  ExternalLink as ExternalLinkIcon,
-  type LucideIcon,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, X, Command, User } from 'lucide-react';
 import {
   collection,
-  collectionGroup,
   onSnapshot,
   query,
-  orderBy,
-  limit,
-  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
-import { Contact, Interaction, SystemActivity } from '../../types';
-import { cn, relTime } from '../../lib/utils';
-import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../../lib/commands';
+import { Contact } from '../../types';
+import { cn } from '../../lib/utils';
+import { useCommand } from '../../lib/commands';
 import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
-import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../../lib/contactQueries';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
-import { hasMinRole, AppRole, navItemsForRole, navExternalFor, canSeeHistory, seesAllPeople } from '../../lib/permissions';
 import { matchContact, type ContactMatch } from '../../lib/contactMatch';
 import { motion, AnimatePresence } from 'motion/react';
 
-// Cap per group so the panel stays scannable.
+// Cap so the panel stays scannable.
 const GS_MAX = 4;
-
-// Tonal 28px icon nodes — slate-blue / terracotta / sage / plum, matching
-// History ("Looking back"). Static strings so Tailwind keeps the classes.
-type Tone = 'accent' | 'amber' | 'teal' | 'violet' | 'neutral';
-const TONE_NODE: Record<Tone, string> = {
-  accent: 'bg-stage-accent-soft text-stage-accent',
-  amber: 'bg-stage-amber-soft text-stage-amber',
-  teal: 'bg-stage-teal-soft text-stage-teal',
-  violet: 'bg-stage-violet-soft text-stage-violet',
-  neutral: 'bg-surface-container-highest text-on-surface-variant',
-};
 
 interface NavItem {
   key: string;
   run: () => void;
 }
 
-const snippet = (text: string, max = 64) => {
-  const s = (text || '').replace(/\s+/g, ' ').trim();
-  return s.length > max ? s.slice(0, max).trimEnd() + '…' : s;
-};
-
 export default function GlobalSearch() {
-  const { setSelectedContact, openNewContact, openLogInteraction, searchOpen, setSearchOpen } =
-    useLayout();
-  const { isAdmin, isManager, role } = useAuth();
+  const { setSelectedContact, searchOpen, setSearchOpen } = useLayout();
+  const { role } = useAuth();
   const { t } = useLanguage();
-  const navigate = useNavigate();
 
-  const isStaff = isManager; // Trainee+ (manager/admin)
-  // The rules deny anyone who can't see every person the whole activity feed.
-  const seesHistory = canSeeHistory(role);
   const currentUid = auth.currentUser?.uid || '';
   useFrecency(currentUid);
 
   const [q, setQ] = useState('');
   const [cursor, setCursor] = useState(-1);
-  const [inclHistory, setInclHistory] = useState(false);
   const resolvedRef = useRef(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [activities, setActivities] = useState<(SystemActivity & { id: string })[]>([]);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const desktopInputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +64,7 @@ export default function GlobalSearch() {
     setCursor(-1);
   };
 
-  // ── data listeners (live only while the panel is open, gated by role) ──────
+  // ── the one data listener: the people this role may see ────────────────────
   useEffect(() => {
     if (!searchOpen || !auth.currentUser) return;
     const unsub = onSnapshot(
@@ -119,39 +75,7 @@ export default function GlobalSearch() {
     return () => unsub();
   }, [searchOpen, role, currentUid]);
 
-  useEffect(() => {
-    if (!searchOpen || !isStaff) return;
-    const onDocs = (docs: QueryDocumentSnapshot[]) =>
-      setInteractions(
-        docs.map((d) => ({
-          ...(d.data() as Interaction),
-          id: d.id,
-          contactId: d.ref.parent.parent?.id,
-        })),
-      );
-    const onError = (err: unknown) => console.error('GlobalSearch interactions listener:', err);
-    // A Trainee may not list the interactions collection group (it spans
-    // people outside their visibleTo); they search each visible person's.
-    const unsub = seesAllPeople(role) || !currentUid
-      ? onSnapshot(collectionGroup(db, 'interactions'), (snap) => onDocs(snap.docs), onError)
-      : subscribeTiedSubcollection(currentUid, 'interactions', onDocs, onError);
-    return () => unsub();
-  }, [searchOpen, isStaff, role, currentUid]);
-
-  useEffect(() => {
-    if (!searchOpen || !seesHistory || !inclHistory) return;
-    const unsub = onSnapshot(
-      query(collection(db, 'activities'), orderBy('createdAt', 'desc'), limit(100)),
-      (snap) =>
-        setActivities(
-          snap.docs.map((d) => ({ ...(d.data() as SystemActivity), id: d.id })),
-        ),
-      (err) => console.error('GlobalSearch activities listener:', err),
-    );
-    return () => unsub();
-  }, [searchOpen, seesHistory, inclHistory]);
-
-  // ── results ───────────────────────────────────────────────────────────────
+  // ── results: recent people, or the people a query matches ─────────────────
   const recentPeople = useMemo(() => {
     // serverTimestamp() stamps arrive as Timestamp objects even though the
     // Contact type types them as strings — normalize before localeCompare,
@@ -196,52 +120,6 @@ export default function GlobalSearch() {
     const field = rankByFrecency(currentUid, scored.filter((s) => s.match.quality === 'field').map((s) => s.c), (c) => c.id);
     return [...name, ...field].slice(0, GS_MAX);
   }, [hasQ, q, contacts, currentUid]);
-  const convResults = useMemo(() => {
-    if (!hasQ || !isStaff) return [];
-    return interactions
-      .filter((i) => (i.content || '').toLowerCase().includes(ql))
-      .slice(0, GS_MAX);
-  }, [hasQ, ql, isStaff, interactions]);
-
-  // Every place the current role can reach — the top bar's tabs + More menu, so
-  // ⌘K can jump anywhere, not just search. ("Everything is reachable from search".)
-  const destinations = useMemo(() => {
-    const items = navItemsForRole(role).map((item) => ({
-      key: `dest:${item.href}`,
-      label: item.href === '/' ? (isAdmin ? t('search.my_day') : t('search.home')) : item.label,
-      href: item.href,
-      tone: 'violet' as Tone,
-      icon: Compass,
-      external: false,
-    }));
-    const ext = navExternalFor(role).map((item) => ({
-      key: `dest:${item.href}`,
-      label: item.label,
-      href: item.href,
-      tone: 'neutral' as Tone,
-      icon: Globe,
-      external: true,
-    }));
-    return [...items, ...ext];
-  }, [role, isAdmin]);
-
-  const historyResults = useMemo(() => {
-    if (!hasQ || !seesHistory || !inclHistory) return [];
-    return activities
-      .filter(
-        (a) =>
-          (a.action || '').toLowerCase().includes(ql) ||
-          (a.description || '').toLowerCase().includes(ql) ||
-          (a.targetName || '').toLowerCase().includes(ql),
-      )
-      .slice(0, GS_MAX);
-  }, [hasQ, ql, seesHistory, inclHistory, activities]);
-
-  const destResults = useMemo(() => {
-    if (!hasQ) return [];
-    const matched = destinations.filter((d) => d.label.toLowerCase().includes(ql));
-    return rankByFrecency(currentUid, matched, (d) => d.key).slice(0, GS_MAX);
-  }, [hasQ, ql, destinations, currentUid]);
 
   // ── actions ─────────────────────────────────────────────────────────────
   const openContactById = (id?: string) => {
@@ -255,92 +133,18 @@ export default function GlobalSearch() {
     }
     close();
   };
-  const go = (path: string, state?: object, entityKey?: string) => {
-    if (currentUid && entityKey) {
-      Frecency.recordOpen(currentUid, entityKey);
-    }
-    resolvedRef.current = true;
-    navigate(path, state ? { state } : undefined);
-    close();
-  };
 
-  const quickActions = [
-    {
-      key: 'qa-new',
-      label: t('search.new_contact'),
-      sub: t('search.add_new_person'),
-      icon: UserPlus,
-      tone: 'accent' as Tone,
-      show: isStaff,
-      run: () => {
-        resolvedRef.current = true;
-        close();
-        openNewContact();
-      },
-    },
-    {
-      key: 'qa-log',
-      label: t('search.log_visit'),
-      sub: t('search.record_conversation'),
-      icon: Coffee,
-      tone: 'amber' as Tone,
-      show: isStaff,
-      run: () => {
-        resolvedRef.current = true;
-        close();
-        openLogInteraction();
-      },
-    },
-    {
-      key: 'qa-signup',
-      label: t('search.signup_form'),
-      sub: t('search.signup_form_sub'),
-      icon: Globe,
-      tone: 'teal' as Tone,
-      show: true,
-      run: () => go('/signup'),
-    },
-  ].filter((a) => a.show);
-
-  // Registry-backed shortcuts the user can actually take right now, filtered
-  // by role — the same commands that own the key bindings (#337).
-  const registeredCommands = useSyncExternalStore(subscribeCommands, getCommands);
-  const shortcutCommands = registeredCommands.filter(
-    (c) =>
-      !c.hidden &&
-      (!c.minRole || hasMinRole(role as AppRole, c.minRole)) &&
-      (!c.available || c.available()),
-  );
-
-  // ── flat list for keyboard nav (recomputed each render; small) ────────────
+  // ── flat list for keyboard nav ────────────────────────────────────────────
   const navItems: NavItem[] = [];
   if (!hasQ) {
-    destinations.forEach((d) =>
-      navItems.push({
-        key: d.key,
-        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key)),
-      }),
-    );
     recentPeople.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
-    quickActions.forEach((a) => navItems.push({ key: a.key, run: a.run }));
-    shortcutCommands.forEach((c) => navItems.push({ key: `cmd:${c.id}`, run: c.handler }));
   } else {
-    destResults.forEach((d) =>
-      navItems.push({
-        key: d.key,
-        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key)),
-      }),
-    );
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
-    convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
-    historyResults.forEach((a) => navItems.push({ key: `h:${a.id}`, run: () => go('/history') }));
   }
   const indexByKey: Record<string, number> = {};
   navItems.forEach((it, idx) => (indexByKey[it.key] = idx));
 
-  const hasResults = hasQ
-    ? peopleResults.length + convResults.length + historyResults.length + destResults.length > 0
-    : true;
+  const hasResults = !hasQ || peopleResults.length > 0;
 
   // Keep latest nav state in a ref so the keydown handler stays stable.
   const navRef = useRef<{ items: NavItem[]; cursor: number }>({ items: navItems, cursor });
@@ -417,24 +221,16 @@ export default function GlobalSearch() {
     };
   }, [searchOpen]);
 
-  // ── row + group primitives ────────────────────────────────────────────────
+  // ── row primitives ────────────────────────────────────────────────────────
   const Row = ({
     navKey,
-    tone,
-    icon: Icon,
     title,
     sub,
-    dim,
-    badge,
     onClick,
   }: {
     navKey: string;
-    tone: Tone;
-    icon: LucideIcon;
     title: string;
     sub?: string;
-    dim?: boolean;
-    badge?: React.ReactNode;
     onClick: () => void;
   }) => {
     const idx = indexByKey[navKey];
@@ -449,26 +245,15 @@ export default function GlobalSearch() {
           active ? 'bg-surface-container-highest' : 'hover:bg-[rgba(203,212,225,0.2)]',
         )}
       >
-        <span
-          className={cn(
-            'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-            TONE_NODE[tone],
-          )}
-        >
-          <Icon className="w-3.5 h-3.5" />
+        <span className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-stage-accent-soft text-stage-accent">
+          <User className="w-3.5 h-3.5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span
-            className={cn(
-              'block text-[13.5px] font-semibold truncate',
-              dim ? 'text-on-surface-variant' : 'text-on-surface',
-            )}
-          >
+          <span className="block text-[13.5px] font-semibold truncate text-on-surface">
             {title}
           </span>
           {sub && <span className="block text-[12px] text-on-surface-variant truncate">{sub}</span>}
         </span>
-        {badge}
       </button>
     );
   };
@@ -479,188 +264,35 @@ export default function GlobalSearch() {
     </div>
   );
 
+  const personRow = (c: Contact) => (
+    <Row
+      key={c.id}
+      navKey={`c:${c.id}`}
+      title={c.name}
+      sub={[c.year, c.major].filter(Boolean).join(' · ') || undefined}
+      onClick={() => openContactById(c.id)}
+    />
+  );
+
   // ── panel body (shared by desktop dropdown + mobile overlay) ───────────────
   const panelBody = (
     <div className="px-2 pb-2">
       {!hasQ ? (
-        <>
+        recentPeople.length > 0 ? (
           <div>
-            <GroupLabel>{t('search.go_to')}</GroupLabel>
-            {destinations.map((d) => (
-              <Row
-                key={d.key}
-                navKey={d.key}
-                tone={d.tone}
-                icon={d.icon}
-                title={d.label}
-                onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key))}
-                badge={
-                  d.external ? (
-                    <ExternalLinkIcon className="w-3.5 h-3.5 opacity-60" />
-                  ) : undefined
-                }
-              />
-            ))}
+            <GroupLabel>{t('search.recent_people')}</GroupLabel>
+            {recentPeople.map(personRow)}
           </div>
-          {recentPeople.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.recent_people')}</GroupLabel>
-              {recentPeople.map((c) => (
-                <Row
-                  key={c.id}
-                  navKey={`c:${c.id}`}
-                  tone="accent"
-                  icon={User}
-                  title={c.name}
-                  sub={[c.year, c.major].filter(Boolean).join(' · ') || undefined}
-                  onClick={() => openContactById(c.id)}
-                />
-              ))}
-            </div>
-          )}
-          <div>
-            <GroupLabel>{t('search.quick_actions')}</GroupLabel>
-            {quickActions.map((a, i) => (
-              <Row
-                key={a.key}
-                navKey={a.key}
-                tone={a.tone}
-                icon={a.icon}
-                title={a.label}
-                sub={a.sub}
-                onClick={a.run}
-                badge={
-                  i === 0 ? (
-                    <kbd className="text-[11px] font-sans px-1.5 py-0.5 rounded-md border border-outline-variant text-on-surface-variant">
-                      ↵
-                    </kbd>
-                  ) : undefined
-                }
-              />
-            ))}
-          </div>
-          {shortcutCommands.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.shortcuts')}</GroupLabel>
-              {shortcutCommands.map((c) => (
-                <Row
-                  key={c.id}
-                  navKey={`cmd:${c.id}`}
-                  tone="neutral"
-                  icon={Keyboard}
-                  title={c.description}
-                  onClick={c.handler}
-                  badge={
-                    <kbd className="text-[11px] font-sans px-1.5 py-0.5 rounded-md border border-outline-variant text-on-surface-variant">
-                      {shortcutLabel(c.shortcut)}
-                    </kbd>
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </>
+        ) : null
       ) : !hasResults ? (
         <div className="px-3 py-10 text-center text-[13.5px] text-on-surface-variant italic">
           {t('search.nothing_came_up').replace('{q}', q)}
         </div>
       ) : (
-        <>
-          {destResults.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.go_to')}</GroupLabel>
-              {destResults.map((d) => (
-                <Row
-                  key={d.key}
-                  navKey={d.key}
-                  tone={d.tone}
-                  icon={d.icon}
-                  title={d.label}
-                  onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key))}
-                />
-              ))}
-            </div>
-          )}
-
-          {peopleResults.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.people')}</GroupLabel>
-              {peopleResults.map((c) => (
-                <Row
-                  key={c.id}
-                  navKey={`c:${c.id}`}
-                  tone="accent"
-                  icon={User}
-                  title={c.name}
-                  sub={[c.year, c.major].filter(Boolean).join(' · ') || undefined}
-                  onClick={() => openContactById(c.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {convResults.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.conversations')}</GroupLabel>
-              {convResults.map((i) => {
-                const c = contacts.find((x) => x.id === i.contactId);
-                const name = c?.name || i.contactName || '';
-                return (
-                  <Row
-                    key={i.id}
-                    navKey={`i:${i.id}`}
-                    tone="amber"
-                    icon={MessageSquare}
-                    title={snippet(i.content) || t('search.conversation')}
-                    sub={[name, relTime(i.createdAt)].filter(Boolean).join(' · ') || undefined}
-                    onClick={() => openContactById(i.contactId)}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-          {seesHistory && (
-            <div className="px-2.5 pt-3 pb-1">
-              <button
-                type="button"
-                onClick={() => setInclHistory((v) => !v)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors',
-                  inclHistory
-                    ? 'border-primary bg-primary text-on-primary'
-                    : 'border-outline-variant text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                <span
-                  className={cn(
-                    'w-1.5 h-1.5 rounded-full',
-                    inclHistory ? 'bg-on-primary' : 'bg-outline',
-                  )}
-                />
-                {t('search.search_history_too')}
-              </button>
-            </div>
-          )}
-
-          {historyResults.length > 0 && (
-            <div>
-              <GroupLabel>{t('search.history')}</GroupLabel>
-              {historyResults.map((a) => (
-                <Row
-                  key={a.id}
-                  navKey={`h:${a.id}`}
-                  tone="violet"
-                  icon={Clock}
-                  dim
-                  title={snippet(a.description || a.action) || t('search.a_moment')}
-                  sub={[a.userName, relTime(a.createdAt)].filter(Boolean).join(' · ') || undefined}
-                  onClick={() => go('/history')}
-                />
-              ))}
-            </div>
-          )}
-        </>
+        <div>
+          <GroupLabel>{t('search.people')}</GroupLabel>
+          {peopleResults.map(personRow)}
+        </div>
       )}
     </div>
   );
@@ -691,7 +323,7 @@ export default function GlobalSearch() {
             <Search className="w-4 h-4" />
           </span>
           <span className="flex-1 min-w-0 pr-12 text-sm font-medium text-on-surface-variant/70 truncate">
-            {t('search.search_or_jump')}
+            {t('search.search_people')}
           </span>
           {/* The ⌘K hint is permanent now — nothing swaps into its slot. */}
           <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 h-5 px-1.5 rounded-sm bg-background border border-outline-variant text-[12px] font-medium text-on-surface-variant pointer-events-none">
@@ -739,7 +371,7 @@ export default function GlobalSearch() {
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     className="flex-1 min-w-0 h-full bg-transparent outline-none text-[15px] text-on-surface font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
-                    placeholder={t('search.search_or_jump')}
+                    placeholder={t('search.search_people')}
                     aria-label={t('nav.search')}
                   />
                   {q ? (
@@ -794,7 +426,7 @@ export default function GlobalSearch() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   className="flex-1 h-full bg-transparent outline-none text-base text-on-surface placeholder:text-on-surface-variant/70"
-                  placeholder={t('search.people_conversations_notes')}
+                  placeholder={t('search.search_people_mobile')}
                   aria-label={t('nav.search')}
                 />
                 {q && (

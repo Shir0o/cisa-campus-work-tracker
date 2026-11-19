@@ -29,17 +29,13 @@ describe("mentions helper", () => {
     expect(extractMentionCandidate("Hello world", 11)).toBeNull();
   });
 
-  it("filters candidates by query and role for team scope", () => {
-    // Normal scope: matches Tony and Zion
-    expect(filterMentionCandidates(users, "on", false).map((u) => u.name)).toEqual([
+  it("filters candidates by query", () => {
+    expect(filterMentionCandidates(users, "on").map((u) => u.name)).toEqual([
       "Tony Wang",
       "Zion Park",
     ]);
-
-    // Team scope: only admin / full-timers allowed
-    expect(filterMentionCandidates(users, "on", true).map((u) => u.name)).toEqual([
-      "Tony Wang",
-    ]);
+    expect(filterMentionCandidates(users, "tony").map((u) => u.name)).toEqual(["Tony Wang"]);
+    expect(filterMentionCandidates(users, "").length).toBe(users.length);
   });
 
   it("reconciles mentionedUserIds by verifying names are still present in text", () => {

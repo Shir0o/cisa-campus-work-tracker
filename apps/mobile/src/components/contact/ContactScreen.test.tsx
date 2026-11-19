@@ -422,32 +422,15 @@ describe('ContactScreen', () => {
       expect(getByText('Remove')).toBeTruthy();
     });
 
-    it('asks for confirmation when the interaction has thread messages', async () => {
+    it('removes an interaction with old thread messages without asking (§24)', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-      const { getByText } = await renderStory({
+      const { getByText, queryByText } = await renderStory({
         threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
       });
 
       await fireEvent.press(getByText('Remove'));
 
-      expect(alertSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('message'),
-        expect.any(Array),
-      );
-      alertSpy.mockRestore();
-    });
-
-    it('removes after confirming the thread warning', async () => {
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-        buttons?.[1]?.onPress?.();
-      });
-      const { queryByText, getByText } = await renderStory({
-        threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
-      });
-
-      await fireEvent.press(getByText('Remove'));
-
+      expect(alertSpy).not.toHaveBeenCalled();
       expect(queryByText('Coffee chat')).toBeNull();
       alertSpy.mockRestore();
     });
@@ -784,43 +767,33 @@ describe('ContactScreen', () => {
       expect(queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
     });
 
-    it('hides team-scope discussion from a tied trainee, and keeps it for a full-timer', async () => {
+    it('never shows a legacy team-scope message, even to a Full-timer (§24)', async () => {
       const mine = {
         ...mockContact,
         id: 'mine',
         name: 'My Person',
-        createdBy: 'enoch',
-        addedBy: 'enoch',
-        coCreators: ['enoch'],
+        stage: 'Interested',
+        createdBy: 'tony',
+        createdByName: 'Tony',
+        addedBy: 'tony',
+        coCreators: ['tony', 'grace'],
       };
 
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'enoch', user: { displayName: 'Enoch' }, role: 'manager' });
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
         contact: mine,
         threadMessages: [teamMessage, openMessage],
       });
 
-      const asTrainee = await render(
-        <ThemeProvider>
-          <ContactScreen contactId="mine" initialTab="conversation" />
-        </ThemeProvider>,
-      );
-      expect(asTrainee.getByText('My Person')).toBeTruthy();
-      expect(asTrainee.getByText('ORDINARY-COMMENT')).toBeTruthy();
-      expect(asTrainee.queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
-
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
       const asFullTimer = await render(
         <ThemeProvider>
           <ContactScreen contactId="mine" initialTab="conversation" />
         </ThemeProvider>,
       );
-      // Never in the Conversation list — only behind the Full-timers switch.
+      expect(asFullTimer.getByText('ORDINARY-COMMENT')).toBeTruthy();
       expect(asFullTimer.queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
-      await fireEvent.press(asFullTimer.getByRole('tab', { name: /Full-timers/ }));
-      expect(asFullTimer.getByText('FULLTIMER-ONLY-DISCUSSION')).toBeTruthy();
-      expect(asFullTimer.queryByText('ORDINARY-COMMENT')).toBeNull();
+      expect(asFullTimer.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
     });
   });
 
@@ -905,15 +878,16 @@ describe('ContactScreen', () => {
       expect(queryByText(/Alongside/)).toBeNull();
     });
 
-    it('gives a Full-timer the Conversation / Full-timers switch, and a Trainee none', async () => {
+    it('gives no one a Full-timers switch (§24)', async () => {
       const ft = await renderAs({ uid: 'tony', role: 'admin' }, [graceSays, staffOnly]);
-      expect(ft.getByRole('tab', { name: /Full-timers/ })).toBeTruthy();
+      expect(ft.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
+      await ft.unmount();
 
       const trainee = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, staffOnly]);
       expect(trainee.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
     });
 
-    it('reads the side it shows, and only that stream, so Today drops its card (#1793)', async () => {
+    it('reads the Conversation and only that stream, so Today drops its card (#1793)', async () => {
       const reader = 'reader-1793';
       const read = (id: string) => InboxReads.isRead(reader, 'thread:' + id);
       const story = await renderAs({ uid: reader, role: 'admin' }, [graceSays, onInteraction, staffOnly], 'story');
@@ -924,39 +898,21 @@ describe('ContactScreen', () => {
       expect(read('m-grace')).toBe(true);
       expect(read('m-int')).toBe(false);
       expect(read('m-team')).toBe(false);
-
-      await fireEvent.press(ft.getByRole('tab', { name: /Full-timers/ }));
-      expect(read('m-team')).toBe(true);
-      expect(read('m-int')).toBe(false);
     });
 
-    it('a discussion deep link opens Conversation on the Full-timers side for a Full-timer, plain Conversation for anyone else (#1303)', async () => {
+    it('a legacy ?tab=discussion deep link opens the Conversation (§24)', async () => {
       (useAuth as jest.Mock).mockReturnValue({ user: { displayName: 'tony' }, uid: 'tony', role: 'admin' });
       (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, threadMessages: [graceSays, staffOnly], interactions: [] });
       const ft = await render(
         <ThemeProvider>
-          <ContactScreen contactId="contact1" initialTab="conversation" initialStream="team" />
+          <ContactScreen contactId="contact1" initialTab="conversation" />
         </ThemeProvider>,
       );
-      expect(ft.getByText('STAFF-ONLY')).toBeTruthy();
-      expect(ft.queryByText('GRACE-OPEN')).toBeNull();
+      expect(ft.getByText('GRACE-OPEN')).toBeTruthy();
+      expect(ft.queryByText('STAFF-ONLY')).toBeNull();
       await ft.unmount();
-
-      (useAuth as jest.Mock).mockReturnValue({ user: { displayName: 'user1' }, uid: 'user1', role: 'manager' });
-      const trainee = await render(
-        <ThemeProvider>
-          <ContactScreen contactId="contact1" initialTab="conversation" initialStream="team" />
-        </ThemeProvider>,
-      );
-      expect(trainee.getByText('GRACE-OPEN')).toBeTruthy();
-      expect(trainee.queryByText('STAFF-ONLY')).toBeNull();
-      await trainee.unmount();
     });
 
-    it('cuts the switch on the effective role, so "See it as they do" hides it', async () => {
-      const { queryByRole } = await renderAs({ uid: 'user1', role: 'manager', isImpersonating: true }, [graceSays]);
-      expect(queryByRole('tab', { name: /Full-timers/ })).toBeNull();
-    });
 
     it('lists only the contact-level open stream — never staff-only messages or Interaction threads', async () => {
       const { getByText, queryByText } = await renderAs(
@@ -971,15 +927,6 @@ describe('ContactScreen', () => {
       expect(getByText('Everyone tied to Sarah sees this.')).toBeTruthy();
     });
 
-    it('shows the Full-timers stream behind a lock that says Trainees cannot see it', async () => {
-      const { getByRole, getByText, queryByText, queryByRole } = await renderAs({ uid: 'tony', role: 'admin' }, [graceSays, staffOnly]);
-      await fireEvent.press(getByRole('tab', { name: /Full-timers/ }));
-      expect(getByText('STAFF-ONLY')).toBeTruthy();
-      expect(queryByText('GRACE-OPEN')).toBeNull();
-      expect(getByText("Only Full-timers see this — Trainees can't.")).toBeTruthy();
-      // No kind chips on Full-timers.
-      expect(queryByRole('button', { name: 'Ask someone to follow up' })).toBeNull();
-    });
 
     it('offers no kind chips on the Conversation composer, and posts a plain comment', async () => {
       const post = jest.fn();
@@ -993,34 +940,13 @@ describe('ContactScreen', () => {
       expect(queryByRole('button', { name: 'Ask someone to follow up' })).toBeNull();
       await fireEvent.changeText(getByLabelText('Write to everyone tied to Sarah'), 'Text her Thursday');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
-      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'comment', body: 'Text her Thursday', mentionedUserIds: [] });
+      expect(post).toHaveBeenCalledWith({ interactionId: null, kind: 'comment', body: 'Text her Thursday', mentionedUserIds: [] });
     });
 
     it('names your own messages with your name, not "You"', async () => {
       const { getByText, queryByText } = await renderAs({ uid: 'user1', role: 'manager' }, [mine]);
       expect(getByText('Staffer')).toBeTruthy();
       expect(queryByText('You')).toBeNull();
-    });
-
-    describe('Story Threads', () => {
-      it('carries a replies chip on an Interaction with replies, and "Think it through together" on one without', async () => {
-        const { getByText, getByRole } = await renderAs(
-          { uid: 'user1', role: 'manager' },
-          [onInteraction],
-          'story',
-          [coffee, walk],
-        );
-        expect(getByText('1 reply')).toBeTruthy();
-        expect(getByRole('button', { name: 'Think it through together' })).toBeTruthy();
-      });
-
-      it('opens the Interaction Thread as a pushed screen', async () => {
-        const { getByText, getByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [onInteraction], 'story', [coffee, walk]);
-        await fireEvent.press(getByText('1 reply'));
-        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?interaction=int-coffee');
-        await fireEvent.press(getByRole('button', { name: 'Think it through together' }));
-        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?interaction=int-walk');
-      });
     });
 
     describe('Follow-up asks', () => {
@@ -1116,13 +1042,6 @@ describe('ContactScreen', () => {
         expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?parent=m-grace');
       });
 
-      it('opens the Full-timers Thread on its own stream', async () => {
-        const { getByText, getByRole } = await renderAs({ uid: 'tony', role: 'admin' }, [staffOnly]);
-        await fireEvent.press(getByRole('tab', { name: /Full-timers/ }));
-        await fireEvent(getByText('STAFF-ONLY'), 'longPress');
-        await fireEvent.press(getByRole('button', { name: 'Reply in thread' }));
-        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?parent=m-team&stream=team');
-      });
 
       it('starts a to-do from the message', async () => {
         const { getByText, getByRole, getByTestId } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays]);

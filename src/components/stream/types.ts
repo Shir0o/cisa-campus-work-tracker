@@ -25,37 +25,11 @@ export interface TeamMemberLike {
   initials?: string;
 }
 
-/** Something staged in the composer to go with the next post (C5): a chat's
- *  contact card or reference data. Each is removable before sending. */
-export interface StreamStagedItem {
-  key: string;
-  label: string;
-  /** A contact reads as a card with its initials; anything else as a file. */
-  kind: "contact" | "file";
-}
-
-/** A source's own entry in a row's More menu (a chat's Pin, Hide from my view). */
-export interface StreamMenuAction {
-  label: string;
-  run(): void;
-}
-
 export interface StreamCapabilities {
-  /** An attach button in the tools row. No contact stream has one. */
-  attachments: boolean;
   /** This viewer may post top-level messages. */
   canPost: boolean;
   /** This viewer may reply in a Thread. */
   canReply: boolean;
-}
-
-/** An adapter that is one Thread. `parentId` names the message in `messages`
- *  the replies hang off; the parent is drawn as a quote, not as a row. */
-export interface StreamThreadOf {
-  parentId: string;
-  /** The line under the Thread's title: where it lives and who reads it. */
-  subtitle: string;
-  quote: { label: string; body: string };
 }
 
 export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessage> {
@@ -73,38 +47,22 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   empty?: string;
   /** Placeholder in a Thread's reply box, where the default is "Reply…". */
   replyPlaceholder?: string;
-  /** Set when the adapter is itself one Thread — an Interaction's: the stream
-   *  opens straight on it, quoting `quote` as the parent, with no stream
-   *  behind it to go back to. */
-  thread?: StreamThreadOf;
   capabilities: StreamCapabilities;
   /** Who may be @mentioned here (ADR 0007), already cut to this stream. */
   mentionCandidates: MentionUser[];
   /** The viewer's last-read point, where the source has read state. */
   lastReadAt?: string | null;
-  /** Held first, above the stream, under this strip ("Pinned by …"); null
-   *  keeps the message in date order. */
-  pinnedLabel?(message: M): string | null;
   /** A neutral tag beside the author's name ("Full-timer"). */
   badge?(message: M): string | null;
   /** The author's photo, where the source has one. The row falls back to
    *  initials without it, or when it fails to load. */
   avatarUrl?(message: M): string | null;
-  /** A message taken back: the line that reads in its place. It has no actions. */
-  goneLabel?(message: M): string | null;
   /** A line from the system ("Josh joined"), drawn centred rather than as a row. */
   notice?(message: M): boolean;
   /** The More menu's delete item, where delete is softer than "Delete message". */
   deleteLabel?(message: M): string;
   /** Ask before deleting. */
   deleteConfirm?: { prompt: string; yes: string; no: string };
-  /** Source-specific More menu entries, above Delete. */
-  moreActions?(message: M): StreamMenuAction[];
-  /** With `capabilities.attachments`: what is staged to go with the next post,
-   *  the paperclip, and removing one item. A post may then have no text. */
-  staged?: StreamStagedItem[];
-  attach?(): void;
-  unstage?(key: string): void;
   /** Every post is a plain comment; an @mention is what puts it on someone's list. */
   post(input: { body: string; mentionedUserIds: string[] }): unknown;
   reply(parent: M, input: { body: string; mentionedUserIds: string[] }): unknown;

@@ -2,7 +2,7 @@
  * The Full-timer journey (#1477).
  *
  * Around the team (the team toggle shows the roster) → a contact page → move
- * the stage → post a team discussion → Add to story → combine two contacts,
+ * the stage → post a Conversation message → Add to story → combine two contacts,
  * one a sign-up with a Timestamp `createdAt` and a `null` email → transfer an
  * older contact with no `owner` → turn on the BFA intake flag. Alongside: the
  * to-work-through count matching across My Day and Around, a reached person
@@ -168,7 +168,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(pointerAfter.locator('.tabular-nums')).toHaveText(String(remaining), { timeout: 10_000 });
   });
 
-  test('the contact page moves the stage and posts a team discussion (#1627, #1666, #1671)', async ({ page }) => {
+  test('the contact page moves the stage, has no Full-timers pane, and posts to the Conversation (#1666, #1671)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -201,39 +201,11 @@ test.describe('Full-timer journey (#1477)', () => {
     // post landed before the next one goes into the same shared box.
     await expect(convo).toHaveValue('', { timeout: 10_000 });
 
-    // Post a team (Full-timers-only) discussion note.
-    await contactPage.getByRole('button', { name: /^full-timers/i }).click();
-    await expect(contactPage.getByText(/Confidential Staff Note/i).first()).toBeVisible({ timeout: 10_000 });
-    const note = `Staff coordination note ${Date.now()}`;
-    const composer = contactPage.getByPlaceholder(/Write something only Full-timers will see/i).first();
-    await expect(composer).toBeVisible({ timeout: 5_000 });
-    await composer.fill(note);
-    await expect(contactPage.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
-    await composer.press('Meta+Enter');
-    await expect(contactPage.getByText(note).first()).toBeVisible({ timeout: 10_000 });
-    await expect(contactPage.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
-
-    // #1627: the viewer's own team note never raises the unread dot. Switching
-    // the pane back to Conversation shows no dot on the Full-timers tab (nor on
-    // the header's Conversation button), matching the stream's own-messages-are-
-    // read rule.
-    await contactPage
-      .getByRole('group', { name: 'Which Conversation' })
-      .getByRole('button', { name: /^Conversation/ })
-      .click();
-    await expect(contactPage.locator('[aria-label="New in Full-timers"]')).toHaveCount(0);
-
-    // #1671: Delegate is not a header button — it opens from More actions.
-    await expect(contactPage.getByRole('button', { name: 'Delegate' })).toHaveCount(0);
-    // The stream's per-message toolbars are "More actions" too, and they are in
-    // the accessibility tree now that a tap (not just hover) reveals them
-    // (#1764) — the page's own header button comes first in the DOM.
-    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
-    await contactPage.getByRole('button', { name: 'Delegate' }).click();
-    const delegateSheet = page.getByRole('dialog', { name: /Delegate Lila Chen/i });
-    await expect(delegateSheet).toBeVisible({ timeout: 5_000 });
-    await delegateSheet.getByRole('button', { name: 'Cancel' }).click();
-    await expect(delegateSheet).toBeHidden({ timeout: 5_000 });
+    // The Full-timers pane is cut (cut-or-keep §24): no switch, and the
+    // confidential staff note is never shown — not even to a Full-timer.
+    await expect(contactPage.getByRole('button', { name: /^full-timers/i })).toHaveCount(0);
+    await expect(contactPage.getByText(/Confidential Staff Note/i)).toHaveCount(0);
+    await expect(contactPage.getByPlaceholder(/Write something only Full-timers will see/i)).toHaveCount(0);
 
     // #1666: "Edit details" is a header action, not something buried in the
     // overflow menu. It stays the only instance while the menu is open.

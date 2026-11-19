@@ -55,7 +55,6 @@ export interface TeamMember {
 export interface UseContactStoryOptions {
   enabled?: boolean;
   initialContact?: Contact | null;
-  includeTeam?: boolean;
   t?: (key: string, fallback?: string) => string;
   threadMessages?: ThreadMessage[];
 }
@@ -203,7 +202,7 @@ export function useContactStory(
   contactOrId: string | Contact | null | undefined,
   options: UseContactStoryOptions = {}
 ): UseContactStoryResult {
-  const { enabled = true, initialContact, includeTeam = false, t, threadMessages: overrideThreads } = options;
+  const { enabled = true, initialContact, t, threadMessages: overrideThreads } = options;
 
   const contactId = typeof contactOrId === "string" ? contactOrId : contactOrId?.id ?? null;
   const initial = typeof contactOrId === "object" && contactOrId !== null ? contactOrId : initialContact ?? null;
@@ -393,9 +392,7 @@ export function useContactStory(
     try {
       const unsub = subscribeThreads(
         contactId,
-        (msgs) => setInternalThreadMessages(msgs),
-        undefined,
-        { includeTeam }
+        (msgs) => setInternalThreadMessages(msgs)
       );
       if (unsub) unsubs.push(unsub);
     } catch {

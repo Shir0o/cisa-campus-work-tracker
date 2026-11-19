@@ -279,10 +279,10 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge", {
       uid: "u1",
       name: "Tony Wang",
-    }, undefined);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge", undefined);
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge");
   });
 
   it("closes an open @mention of the reader for everyone it named when Done is pressed", () => {
@@ -296,10 +296,10 @@ describe("the worklist card, through On you (#813, #943)", () => {
     );
     expect(screen.getByText(/Zion mentioned you/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Done$/ }));
-    expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn", { uid: "u1", name: "Tony Wang" }, null);
+    expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn", { uid: "u1", name: "Tony Wang" });
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn", null);
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_mn");
   });
 
   it("an encouragement is summarised on the person's card, never a card of its own", () => {

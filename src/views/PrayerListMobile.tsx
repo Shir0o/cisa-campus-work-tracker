@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useRef, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ChevronRight, Clock, MessageSquare, Plus, Trash2, X } from 'lucide-react';
+import { ChevronRight, Clock, Plus, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction, prayerCarrySummary, isPlaceholderPrayerBurden } from '../lib/prayers';
 import { useLanguage } from '../components/LanguageProvider';
-import { useLayout } from '../App';
 import { useCommand } from '../lib/commands';
 import PickHeldModal from '../components/modals/PickHeldModal';
 
@@ -36,7 +35,6 @@ interface PrayerListMobileProps {
   setComposeFor: (id: string | null) => void;
   onRemoveFromPrayerList: (contact: Contact) => void;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
   onPickHeld?(added: string[]): Promise<void> | void;
@@ -121,7 +119,6 @@ export default function PrayerListMobile({
   setComposeFor,
   onRemoveFromPrayerList,
   isOperator,
-  onMakeTodo,
   isManager,
   onClearPrayer,
   onPickHeld,
@@ -264,7 +261,6 @@ export default function PrayerListMobile({
             onRemove={() => onRemoveFromPrayerList(e.contact)}
             setComposeFor={setComposeFor}
             isOperator={isOperator}
-            onMakeTodo={onMakeTodo}
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
@@ -294,7 +290,6 @@ interface PrayerThreadCardProps {
   onRemove: () => void;
   setComposeFor: (id: string | null) => void;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   team?: { uid?: string; id?: string; name?: string }[];
   isManager: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
@@ -312,13 +307,11 @@ function PrayerThreadCard({
   onRemove,
   setComposeFor,
   isOperator,
-  onMakeTodo,
   isManager,
   onClearPrayer,
 }: PrayerThreadCardProps) {
   const { t } = useLanguage();
   const [showEarlier, setShowEarlier] = useState(false);
-  const { openLogInteraction } = useLayout();
  
    const isStale = isContactStale(contact);
 
@@ -394,33 +387,6 @@ function PrayerThreadCard({
         )}
       </div>
 
-      {/* Stale Contact Quick Actions */}
-      {isStale && isOperator && (
-        <div
-          data-testid="stale-quick-actions"
-          className="mt-1 p-2.5 bg-surface-container-low/60 rounded-lg border border-outline-variant/60 flex items-center justify-between gap-2 flex-wrap text-xs"
-        >
-          <div className="text-on-surface-variant font-medium flex items-center gap-1.5 text-[11px]">
-            <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>
-              {daysSinceInteraction !== null
-                ? t('prayers.no_interaction_days', `No contact in ${daysSinceInteraction}d`).replace('{n}', String(daysSinceInteraction))
-                : t('prayers.no_interaction_recorded', 'No interactions')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 ml-auto">
-            <button
-              type="button"
-              onClick={() => openLogInteraction(contact.id)}
-              className="prt-log-interaction inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 hover:bg-primary/15 text-primary text-[11px] font-semibold transition-colors"
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── The thread, on one spine (#709). Same move as the desktop card:
            the rail was carrying both where-you-are and how-it-landed, so it ran
            from `--primary` down to an undrawn `--outline-variant`. One neutral
@@ -440,7 +406,6 @@ function PrayerThreadCard({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
-            onMakeTodo={onMakeTodo}
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
@@ -477,7 +442,6 @@ function PrayerThreadCard({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
-            onMakeTodo={onMakeTodo}
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
@@ -515,8 +479,7 @@ function PrayerThreadCard({
                     onUpdateStatus={onUpdateStatus}
                     onUpdateBurden={onUpdateBurden}
                     isOperator={isOperator}
-                    onMakeTodo={onMakeTodo}
-                    isManager={isManager}
+                            isManager={isManager}
                     onClearPrayer={onClearPrayer}
                   />
                 ))}
@@ -570,7 +533,6 @@ function PrayerItemMobile({
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
-  onMakeTodo,
   isManager,
   onClearPrayer,
 }: {
@@ -584,7 +546,6 @@ function PrayerItemMobile({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, photos?: any, archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
-  onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager?: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
@@ -650,28 +611,7 @@ function PrayerItemMobile({
               {t('actions.edit')}
             </button>
           )}
-          {!editing && onMakeTodo && (
-            <span className="inline-flex items-center gap-2">
-              <button
-                onClick={() => onMakeTodo(prayer)}
-                title={t('prayers.make_todo_from_prayer')}
-                className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
-              >
-                {t('prayers.make_a_todo')}
-              </button>
-              {isManager && onClearPrayer && (
-                <button
-                  onClick={() => onClearPrayer(prayer)}
-                  title={t('prayers.clear_prayer')}
-                  className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80 hover:text-error transition-colors prt-prayer-clear prt-prayer-clear--m"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>{t('prayers.clear_prayer')}</span>
-                </button>
-              )}
-            </span>
-          )}
-          {!editing && !onMakeTodo && isManager && onClearPrayer && (
+          {!editing && isManager && onClearPrayer && (
             <button
               onClick={() => onClearPrayer(prayer)}
               title={t('prayers.clear_prayer')}

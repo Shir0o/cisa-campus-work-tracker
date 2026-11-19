@@ -229,7 +229,7 @@ export default function AroundTheTeam({
   useEffect(() => {
     if (propsThreads) return;
     try {
-      const unsubThreads = subscribeAllThreads(setLiveThreads, undefined, { includeTeam: role === "admin" });
+      const unsubThreads = subscribeAllThreads(setLiveThreads);
       return () => unsubThreads();
     } catch {
       // Degrade gracefully in test environments without live firestore
@@ -441,7 +441,6 @@ export default function AroundTheTeam({
         stack.contactId!,
         ask.id.replace(/^thread:/, ""),
         { uid, name: meName },
-        ask.scope,
       );
     }
     InboxState.markCompleted(uid, stack.id);
@@ -456,7 +455,7 @@ export default function AroundTheTeam({
         return next;
       });
       for (const ask of asks) {
-        void reopenFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""), ask.scope);
+        void reopenFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""));
       }
     });
   };

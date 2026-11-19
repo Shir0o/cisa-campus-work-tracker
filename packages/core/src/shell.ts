@@ -87,7 +87,6 @@ export const TRAINEE_DRAWER_FOOT = "The queue is the app. Everything else lives 
  *  tab for this role, so it isn't repeated here; The Journey is People's
  *  Step pills (ADR 0047), so it has no row either. */
 export const FT_MORE: ShellLink[] = [
-  { key: "prayers", label: "Prayer log", href: "/prayer-log" },
   { key: "signup", label: "Sign-up form", href: "/signup" },
   { key: "settings", label: "Settings", href: "/settings" },
 ];

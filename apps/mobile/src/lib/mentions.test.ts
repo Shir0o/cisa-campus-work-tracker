@@ -23,9 +23,9 @@ describe('mentions helper', () => {
     expect(extractMentionCandidate('@Zio\nmore', 9)).toBeNull();
   });
 
-  it('filters by query, and to Full-timers only in team scope (ADR 0007)', () => {
-    expect(filterMentionCandidates(users, 'on', false).map((u) => u.name)).toEqual(['Tony Wang', 'Zion Park']);
-    expect(filterMentionCandidates(users, 'on', true).map((u) => u.name)).toEqual(['Tony Wang']);
+  it('filters by query', () => {
+    expect(filterMentionCandidates(users, 'on').map((u) => u.name)).toEqual(['Tony Wang', 'Zion Park']);
+    expect(filterMentionCandidates(users, 'tony').map((u) => u.name)).toEqual(['Tony Wang']);
   });
 
   it('reconciles picked mentions against the body, case-insensitively', () => {

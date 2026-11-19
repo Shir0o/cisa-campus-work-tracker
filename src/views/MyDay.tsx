@@ -71,7 +71,6 @@ import {
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
-import { useDayGoal, goalNewToday, isDayGoalShowing } from "../lib/goal";
 import { reachByContact } from "../lib/reach";
 import {
   parseMs,
@@ -82,7 +81,7 @@ import {
   cardClass,
   getGreeting,
 } from "../components/landing/helpers";
-import { Avatar, StageChip, SectionHead, Figure } from "../components/landing/primitives";
+import { Avatar, StageChip, SectionHead } from "../components/landing/primitives";
 import {
   TeamPrayerRow,
   PersonalPrayerRow,
@@ -94,10 +93,8 @@ import OnYouCard from "../components/landing/OnYouCard";
 import PointerCard from "../components/landing/PointerCard";
 import ToAskPointerCard from "../components/landing/ToAskPointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
-import FirstRunCard from "../components/landing/FirstRunCard";
 import AnnouncementCards from "../components/announcements/AnnouncementCards";
 import AnnouncementComposer from "../components/announcements/AnnouncementComposer";
-import { useFirstRunRecords } from "../lib/firstRunRecords";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 import KindChip from "../components/ui/KindChip";
@@ -480,7 +477,6 @@ export default function MyDay() {
   const navigate = useNavigate();
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
   const uid = effectiveUserId || user?.uid;
-  const firstRunRecords = useFirstRunRecords(role, uid);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -500,11 +496,6 @@ export default function MyDay() {
   const { getAwaySentence } = useCalendarSync(contacts);
   const calWeekFrom = useMemo(() => calStartOfDay(new Date()), []);
   const calWeekTo = useMemo(() => calAddDays(calWeekFrom, 8), [calWeekFrom]);
-
-  // The day's goal (#544): the full-timer sees the day in aggregate — one
-  // quiet figure, and only when there is one. Never a per-trainee column.
-  const { goal } = useDayGoal();
-  const newPeopleToday = useMemo(() => goalNewToday(contacts), [contacts]);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -622,10 +613,8 @@ export default function MyDay() {
 
     const unsubThreads = subscribeAllThreads(
       (messages) => {
-        // Threads are the single per-person conversation surface. Team-scope
-        // Discussion messages are Full-timer-only, so don't surface them as a
-        // public "last connected" touch — but a Full-timer's pointer card does
-        // count them, so the subscription must include `teamThreads` (#1339).
+        // Threads are the single per-person conversation surface. Legacy
+        // team-scope Discussion messages are never a "last connected" touch.
         commentTouches = messages
           .filter((m) => m.scope !== "team")
           .map((m) => ({
@@ -637,7 +626,6 @@ export default function MyDay() {
         publish();
       },
       undefined,
-      { includeTeam: role === "admin" },
     );
 
     return () => {
@@ -951,10 +939,10 @@ export default function MyDay() {
   //     split days (#823) and render exactly once.
   const personalColumn = (
           <div className="flex flex-col gap-10 min-w-0">
-            {/* On the horizon */}
+            {/* To-dos */}
             <section>
               <SectionHead
-                title={t('myDay.on_the_horizon')}
+                title={t('myDay.todos')}
                 sub={
                   leftToDo > 0
                     ? t('myDay.small_things_this_week').replace('{n}', String(leftToDo))
@@ -1024,7 +1012,7 @@ export default function MyDay() {
                 )}
                 {assignedTasks.length === 0 && personalTasks.length === 0 && !addingTask && (
                   <p className="text-sm text-on-surface-variant py-4">
-                    {t('myDay.nothing_on_horizon')}
+                    {t('myDay.nothing_todo')}
                   </p>
                 )}
                 {addingTask ? (
@@ -1277,14 +1265,14 @@ export default function MyDay() {
           )}
         </div>
 
-        {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
+        {/* ── Next up — this week's soonest gathering ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
           {/* Next up — a dark slab in both themes: near-black in light, an
               elevated panel in dark, via the `--nextup-*` token namespace.
               It must NOT use `bg-accent-strong`/`text-accent-on`: that pair
               inverts to a near-white fill in dark and painted a blinding
               white slab. docs/design/DRIFT.md #9, #67. */}
-          <div className="lg:col-span-6 rounded-3xl p-6 md-next-slab flex flex-col justify-between shadow-xs md-next">
+          <div className="lg:col-span-12 rounded-3xl p-6 md-next-slab flex flex-col justify-between shadow-xs md-next">
             {thisWeek.length > 0 ? (() => {
               const lead = thisWeek[0];
               const d = lead.date;
@@ -1326,45 +1314,7 @@ export default function MyDay() {
               </div>
             )}
           </div>
-
-          {/* Figures card */}
-          <div className="lg:col-span-6 bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col justify-between gap-4">
-            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-4">
-              <Figure n={myLeaders.length} label={t('myDay.contacts_in_care')} />
-              <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
-              <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
-              <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
-              {role === 'admin' && goal.on && isDayGoalShowing(goal.dayGoalUntil) && newPeopleToday > 0 && (
-                <Figure
-                  n={newPeopleToday}
-                  label={t('myDay.new_people_today_across_team', 'new people today, across the team')}
-                />
-              )}
-            </div>
-            <span className="text-xs text-on-surface-variant/80 italic mt-2">
-              {t('myDay.numbers_notice')}
-            </span>
-          </div>
         </div>
-
-        <FirstRunCard
-          role={role}
-          userId={uid}
-          context={{
-            contactsCount: contacts.length,
-            // Only this reader's own work counts: the interaction feed and the
-            // prayers collection span the whole team.
-            interactionsCount: interactions.filter((i) => i.userId === uid).length,
-            prayersCount:
-              personalPrayers.length + prayers.filter((p) => p.updatedBy === uid).length,
-            todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
-            // A follow-up ask this reader closed; an asker retracting their own
-            // ask (closedBy === from) is not a follow-up.
-            todosCompletedCount: threads.filter((m) => m.closedBy === uid && m.from !== uid).length,
-            ...firstRunRecords,
-          }}
-          className="mt-8"
-        />
 
         {/* ── Bento: the personal column, then Your sheep + Your week. The
             column is never lent anywhere (issue 943) — the feed is gone, so

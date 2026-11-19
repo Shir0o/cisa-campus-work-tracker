@@ -98,38 +98,11 @@ describe('a Thread on the phone (#1261)', () => {
     const { getByLabelText, getByRole, d } = await renderThread({ contactId: 'c1', parentId: 'p1' });
     await fireEvent.changeText(getByLabelText('Reply in thread'), 'Count me in');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'p1', scope: null, kind: 'comment', body: 'Count me in', mentionedUserIds: [] });
+    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'p1', kind: 'comment', body: 'Count me in', mentionedUserIds: [] });
   });
 
-  it('replies to a Full-timers message in the Full-timers stream', async () => {
-    const { getByLabelText, getByRole, getByText, d } = await renderThread(
-      { contactId: 'c1', parentId: 'tp', team: true },
-      { threadMessages: [teamParent] },
-      { uid: 'tony', role: 'admin' },
-    );
-    expect(getByText('STAFF-ONLY')).toBeTruthy();
-    await fireEvent.changeText(getByLabelText('Reply in thread'), 'Agreed');
-    await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'tp', scope: 'team', kind: 'comment', body: 'Agreed', mentionedUserIds: [] });
-  });
 
-  it("quotes an Interaction as its Thread's parent and replies onto that Interaction", async () => {
-    const { getByText, getByLabelText, getByRole, queryByText, d } = await renderThread({ contactId: 'c1', interactionId: 'int-coffee' });
-    expect(getByText('Sat with Daniel at the Thursday gathering.')).toBeTruthy();
-    expect(getByText('He asked about the retreat.')).toBeTruthy();
-    expect(queryByText('Perfect.')).toBeNull();
-    expect(getByRole('button', { name: 'Back to Interactions' })).toBeTruthy();
-    await fireEvent.changeText(getByLabelText('Reply in thread'), 'Ask him Sunday');
-    await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: 'int-coffee', parentId: null, scope: null, kind: 'comment', body: 'Ask him Sunday', mentionedUserIds: [] });
-  });
 
-  it("reads an Interaction's Thread when it is shown, so Today drops its card (#1793)", async () => {
-    const reader = 'thread-reader-1793';
-    await renderThread({ contactId: 'c1', interactionId: 'int-coffee' }, undefined, { uid: reader, role: 'admin' });
-    expect(InboxReads.isRead(reader, 'thread:ic1')).toBe(true);
-    expect(InboxReads.isRead(reader, 'thread:p1')).toBe(false);
-  });
 
   it('says the message is gone once its parent is deleted', async () => {
     const { getByText, queryByLabelText } = await renderThread({ contactId: 'c1', parentId: 'nope' });
@@ -184,16 +157,6 @@ describe('a Thread on the phone (#1261)', () => {
     await fireEvent(input as never, 'selectionChange', { nativeEvent: { selection: { start: 1, end: 1 } } });
   };
 
-  it('offers only Full-timers as @mentions in the Full-timers stream (ADR 0007)', async () => {
-    const { getByLabelText, queryByLabelText } = await renderThread(
-      { contactId: 'c1', parentId: 'tp', team: true },
-      { threadMessages: [teamParent], teamMembers: roster },
-      { uid: 'tony', role: 'admin' },
-    );
-    await openMentions(getByLabelText('Reply in thread'));
-    expect(getByLabelText('@Ruth Chen')).toBeTruthy();
-    expect(queryByLabelText('@Sam Lee')).toBeNull();
-  });
 
   it('offers any teammate as @mentions on a Conversation', async () => {
     const { getByLabelText } = await renderThread(

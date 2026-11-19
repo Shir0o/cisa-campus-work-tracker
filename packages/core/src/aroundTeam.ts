@@ -28,7 +28,8 @@ export interface AroundTeamInteraction {
   createdById?: string | null;
 }
 
-/** A message from a contact's `threads` or `teamThreads`. */
+/** A message from a contact's `threads`. A legacy team-scope message is
+ *  filtered out by the readers (cut-or-keep §24). */
 export interface AroundTeamThread {
   id: string;
   contactId: string;
@@ -37,7 +38,7 @@ export interface AroundTeamThread {
   /** ISO; the web reads a missing one as "now". */
   at: string;
   interactionId?: string | null;
-  /** "team" for a Full-timers stream message; it is its own stream. */
+  /** Legacy Full-timers scope, kept so stored messages still compare level. */
   scope?: "team" | null;
   mentionedUserIds?: string[] | null;
 }

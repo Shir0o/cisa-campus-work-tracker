@@ -1,7 +1,7 @@
 // The write every contact stream shares: one message into the contact's
-// `threads` or `teamThreads` subcollection through the existing data layer, with
-// the notify options each adapter used to repeat. No path, shape or rule
-// changes — only one place that calls addThreadMessage for the streams.
+// `threads` subcollection through the existing data layer, with the notify
+// options each adapter used to repeat. No path, shape or rule changes — only
+// one place that calls addThreadMessage for the streams.
 import { addThreadMessage, type ThreadMessage, type ThreadStakeholders } from "../../lib/threads";
 
 export interface ContactWriteContext {
@@ -18,7 +18,6 @@ export interface ContactWriteContext {
 
 export interface ContactWrite {
   interactionId: string | null;
-  scope: "team" | null;
   parentId: string | null;
   kind: ThreadMessage["kind"];
   body: string;

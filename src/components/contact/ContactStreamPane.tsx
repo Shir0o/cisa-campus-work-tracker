@@ -1,4 +1,4 @@
-import { Lock, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useId } from "react";
 import Stream from "../stream/Stream";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
@@ -6,31 +6,19 @@ import { useLanguage } from "../LanguageProvider";
 import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
 import type { ThreadMessage } from "../../lib/threads";
-import type { interactionAdapter } from "../stream/interactionAdapter";
 import type { conversationAdapter } from "../stream/conversationAdapter";
-import type { fullTimersAdapter } from "../stream/fullTimersAdapter";
 import type { StreamViewer } from "../../lib/stream";
 import type { ContactTeamMember } from "./types";
 
-/** Which of a contact's two streams the pane is showing. */
-export type ContactPaneView = "conversation" | "fullTimers";
-
 /** The contact's Conversation, pinned beside the story (ADR 0034). On a narrow
- *  screen the same pane opens full-screen over the page. Full-timers share the
- *  pane behind a Conversation · Full-timers switch; a Trainee sees no switch.
- *  An Interaction's Thread replaces the stream inside the pane, with a back
- *  arrow to the stream behind it. */
+ *  screen the same pane opens full-screen over the page. A reply's Thread
+ *  replaces the stream inside the pane, with a back arrow to the stream behind
+ *  it; the Full-timers pane is cut (cut-or-keep §24). */
 export default function ContactStreamPane({
   isMobile,
   open,
-  view,
-  onViewChange,
   conversation,
-  fullTimers,
-  interactionThread,
   viewer,
-  isFullTimer,
-  onBack,
   onClose,
   onMakeTodo,
   onAddToStory,
@@ -43,23 +31,15 @@ export default function ContactStreamPane({
   meName,
   openAskCount,
   onJumpToAsk,
-  fullTimersUnread,
   initialThreadId,
 }: {
   isMobile: boolean;
   open: boolean;
-  view: ContactPaneView;
-  onViewChange: (view: ContactPaneView) => void;
   conversation: ReturnType<typeof conversationAdapter>;
-  fullTimers: ReturnType<typeof fullTimersAdapter>;
-  interactionThread: ReturnType<typeof interactionAdapter> | null;
   viewer: StreamViewer;
-  isFullTimer: boolean;
-  onBack: () => void;
   onClose: () => void;
   onMakeTodo: (message: ThreadMessage) => void;
-  /** Conversation only: add a message to the person's story, or take it back
-   *  out. Never offered on the Full-timers stream. */
+  /** Add a message to the person's story, or take it back out. */
   onAddToStory: (message: ThreadMessage) => void;
   storyMessageIds: ReadonlySet<string>;
   todoFrom: ThreadMessage | null;
@@ -70,15 +50,11 @@ export default function ContactStreamPane({
   meName: string;
   openAskCount: number;
   onJumpToAsk: () => void;
-  fullTimersUnread: boolean;
   /** A deep link onto one message's Thread (#1303). */
   initialThreadId?: string | null;
 }) {
   const { t } = useLanguage();
   const conversationLabel = t('modals.contactDetails.follow_up');
-  const fullTimersLabel = t('modals.contactDetails.discussion');
-  const baseLabel = view === "fullTimers" ? fullTimersLabel : conversationLabel;
-  const baseAdapter = view === "fullTimers" ? fullTimers : conversation;
   const whoId = useId();
 
   // On a narrow screen the pane only exists while it is open; the head's
@@ -94,92 +70,50 @@ export default function ContactStreamPane({
     <aside
       className={cn("cd-pane-stream", isMobile && open && "is-open")}
       role="region"
-      aria-label={baseLabel}
+      aria-label={conversationLabel}
       aria-describedby={isMobile ? whoId : undefined}
-      data-pane-stream={view}
+      data-pane-stream="conversation"
     >
-      {interactionThread ? (
+      <div className="cd-pane-head">
+        <div className="cd-pane-heading">
+          <h3 className="cd-pane-title">{conversationLabel}</h3>
+          {/* The pane covers the page (#1781), so the title alone loses whose
+              thread this is. The name sits under it and is the region's
+              description. */}
+          {isMobile && (
+            <p className="cd-pane-who" id={whoId}>
+              {contact.name}
+            </p>
+          )}
+        </div>
+        {openAskCount > 0 && (
+          <button type="button" className="cd-pane-asks" onClick={onJumpToAsk}>
+            {askCountLabel}
+          </button>
+        )}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onClose}
+            title={t('modals.contactDetails.close_drawer').replace('{thread}', conversationLabel)}
+            aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', conversationLabel)}
+            className="cd-pane-close shrink-0 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <div className="cd-pane-body">
         <Stream
-          adapter={interactionThread}
+          adapter={conversation}
           viewer={viewer}
           threadMode="replace"
-          back={{ label: t('stream.back_to').replace('{name}', baseLabel), onClick: onBack }}
           onMakeTodo={onMakeTodo}
+          onAddToStory={onAddToStory}
+          storyMessageIds={storyMessageIds}
+          initialThreadId={initialThreadId}
         />
-      ) : (
-        <>
-          <div className="cd-pane-head">
-            <div className="cd-pane-heading">
-              <h3 className="cd-pane-title inline-flex items-center gap-2">
-                {view === "fullTimers" && <Lock className="w-4 h-4" aria-hidden />}
-                {baseLabel}
-              </h3>
-              {/* The pane covers the page (#1781), so the title alone loses
-                  whose thread this is. The name sits under it and is the
-                  region's description. */}
-              {isMobile && (
-                <p className="cd-pane-who" id={whoId}>
-                  {contact.name}
-                </p>
-              )}
-            </div>
-            {isFullTimer && (
-              <div className="cd-pane-switch" role="group" aria-label={t('modals.contactDetails.conversation_switch')}>
-                <button
-                  type="button"
-                  aria-pressed={view === "conversation"}
-                  onClick={() => onViewChange("conversation")}
-                  className={cn("cd-pane-tab", view === "conversation" && "on")}
-                >
-                  {conversationLabel}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={view === "fullTimers"}
-                  onClick={() => onViewChange("fullTimers")}
-                  className={cn("cd-pane-tab", view === "fullTimers" && "on")}
-                >
-                  {fullTimersLabel}
-                  {fullTimersUnread && (
-                    <span
-                      className="cd-pane-dot"
-                      aria-label={t('modals.contactDetails.full_timers_unread')}
-                      title={t('modals.contactDetails.full_timers_unread')}
-                    />
-                  )}
-                </button>
-              </div>
-            )}
-            {openAskCount > 0 && (
-              <button type="button" className="cd-pane-asks" onClick={onJumpToAsk}>
-                {askCountLabel}
-              </button>
-            )}
-            {isMobile && (
-              <button
-                type="button"
-                onClick={onClose}
-                title={t('modals.contactDetails.close_drawer').replace('{thread}', baseLabel)}
-                aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', baseLabel)}
-                className="cd-pane-close shrink-0 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="cd-pane-body">
-            <Stream
-              adapter={baseAdapter}
-              viewer={viewer}
-              threadMode="replace"
-              onMakeTodo={onMakeTodo}
-              onAddToStory={view === "conversation" ? onAddToStory : undefined}
-              storyMessageIds={view === "conversation" ? storyMessageIds : undefined}
-              initialThreadId={initialThreadId}
-            />
-          </div>
-        </>
-      )}
+      </div>
       {todoFrom && (
         <FromEntryTodoComposer
           text={todoFrom.body}

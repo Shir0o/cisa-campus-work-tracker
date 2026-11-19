@@ -26,10 +26,9 @@ import { mentionsClosedByReply } from "../../packages/core/src/mentions";
 //   contacts/{contactId}/threads/{threadId}
 // interactionId === null is the contact-level thread; otherwise it hangs off that
 // interaction. The old contacts/{id}/comments subcollection has been retired.
-// Full-timers Discussion (`scope: "team"`) lives apart, in
-//   contacts/{contactId}/teamThreads/{threadId}
-// because every approved role lists `threads` unfiltered and a list rule
-// cannot drop single documents from a result. No word "mentor" anywhere.
+// The Full-timers Discussion pane and its `teamThreads` collection are cut
+// (cut-or-keep §24); any documents left there stay put and no reader here
+// reaches them. No word "mentor" anywhere.
 
 export type ThreadKind = "note" | "question" | "comment" | "encouragement" | "nudge";
 
@@ -70,21 +69,23 @@ export const THREAD_KINDS: Record<
   nudge: { label: "Follow-up", tone: "warn", verb: "nudged" },
 };
 
-type Scope = "team" | null | undefined;
-const sub = (scope: Scope) => (scope === "team" ? "teamThreads" : "threads");
-const col = (contactId: string, scope?: Scope) => collection(db, "contacts", contactId, sub(scope));
-const ref = (contactId: string, messageId: string, scope?: Scope) =>
-  doc(db, "contacts", contactId, sub(scope), messageId);
+const col = (contactId: string) => collection(db, "contacts", contactId, "threads");
+const ref = (contactId: string, messageId: string) =>
+  doc(db, "contacts", contactId, "threads", messageId);
+
+/** Legacy Full-timers messages may still sit in `threads` with this scope;
+ *  nothing reads them any more. */
+const isLegacyTeam = (data: { scope?: unknown }) => data.scope === "team";
 
 const norm = (val?: string | null) => (val === "" || val === undefined ? null : val);
 
-function toMessage(d: QueryDocumentSnapshot, team: boolean): ThreadMessage {
+function toMessage(d: QueryDocumentSnapshot): ThreadMessage {
   const data = d.data() as Partial<ThreadMessage>;
   return {
     id: d.id,
     interactionId: data.interactionId ?? null,
     parentId: data.parentId ?? null,
-    scope: team ? "team" : ((data.scope as "team") ?? null),
+    scope: (data.scope as "team") ?? null,
     from: data.from ?? "",
     fromName: data.fromName ?? "",
     kind: (data.kind as ThreadKind) ?? "comment",
@@ -96,12 +97,6 @@ function toMessage(d: QueryDocumentSnapshot, team: boolean): ThreadMessage {
     closedByName: data.closedByName ?? null,
     closedAt: data.closedAt ?? null,
   };
-}
-
-/** Only a Full-timer may read teamThreads; everyone else opens the open
- *  thread alone, or the rules refuse the whole listener. */
-export interface ThreadSubscribeOptions {
-  includeTeam?: boolean;
 }
 
 /** One listener per query, handed back as a single list, newest first. */
@@ -129,15 +124,15 @@ export function subscribeThreads(
   contactId: string,
   onUpdate: (messages: ThreadMessage[]) => void,
   onError?: (err: unknown) => void,
-  { includeTeam = false }: ThreadSubscribeOptions = {},
 ): () => void {
-  const scopes: Scope[] = includeTeam ? [null, "team"] : [null];
   return listen(
-    scopes.map((scope) => [
-      query(col(contactId, scope), orderBy("at", "desc")),
-      (d: QueryDocumentSnapshot) => toMessage(d, scope === "team"),
-    ]),
-    onUpdate,
+    [
+      [
+        query(col(contactId), orderBy("at", "desc")),
+        (d: QueryDocumentSnapshot) => toMessage(d),
+      ],
+    ],
+    (messages) => onUpdate(messages.filter((m) => m.scope !== "team")),
     (e) => (onError ? onError(e) : console.error("threads subscription error", e)),
   );
 }
@@ -188,26 +183,26 @@ export function inTheConversation(messages: readonly ConversationMessage[], of: 
 /** A thread message tagged with the contact it belongs to. */
 export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
 
-const toMessageWithContact = (d: QueryDocumentSnapshot, team = false): ThreadMessageWithContact => {
+const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContact => {
   const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
-  return { ...toMessage(d, team), contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "" };
+  return { ...toMessage(d), contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "" };
 };
 
 /** Subscribe to all thread messages across every contact via collectionGroup.
  * The rules allow this only for roles that see every person; a Trainee reads
- * through `subscribeTiedThreads`. */
+ * through `subscribeTiedThreads`. Legacy team-scope documents are skipped. */
 export function subscribeAllThreads(
   onUpdate: (messages: ThreadMessageWithContact[]) => void,
   onError?: (err: unknown) => void,
-  { includeTeam = false }: ThreadSubscribeOptions = {},
 ): () => void {
-  const scopes: Scope[] = includeTeam ? [null, "team"] : [null];
   return listen(
-    scopes.map((scope) => [
-      query(collectionGroup(db, sub(scope)), orderBy("at", "desc")),
-      (d: QueryDocumentSnapshot) => toMessageWithContact(d, scope === "team"),
-    ]),
-    onUpdate,
+    [
+      [
+        query(collectionGroup(db, "threads"), orderBy("at", "desc")),
+        (d: QueryDocumentSnapshot) => toMessageWithContact(d),
+      ],
+    ],
+    (messages) => onUpdate(messages.filter((m) => m.scope !== "team")),
     (e) =>
       onError ? onError(e) : console.error("all-threads subscription error", e),
   );
@@ -223,7 +218,13 @@ export function subscribeTiedThreads(
   return subscribeTiedSubcollection(
     staffId,
     "threads",
-    (docs) => onUpdate(docs.map((d) => toMessageWithContact(d)).sort((a, b) => b.at.localeCompare(a.at))),
+    (docs) =>
+      onUpdate(
+        docs
+          .filter((d) => !isLegacyTeam(d.data()))
+          .map((d) => toMessageWithContact(d))
+          .sort((a, b) => b.at.localeCompare(a.at)),
+      ),
     onError,
   );
 }
@@ -232,13 +233,12 @@ export function subscribeTiedThreads(
 export function threadsFor(
   messages: ThreadMessage[],
   interactionId: string | null = null,
-  scope: "team" | null = null,
 ): ThreadMessage[] {
   return messages.filter(
     (m) =>
       !m.parentId &&
       norm(m.interactionId) === norm(interactionId) &&
-      norm(m.scope) === norm(scope),
+      norm(m.scope) === null,
   );
 }
 
@@ -254,12 +254,11 @@ export function repliesOf(
 export function countFor(
   messages: ThreadMessage[],
   interactionId: string | null = null,
-  scope: "team" | null = null,
 ): number {
   return messages.filter(
     (m) =>
       norm(m.interactionId) === norm(interactionId) &&
-      norm(m.scope) === norm(scope),
+      norm(m.scope) === null,
   ).length;
 }
 
@@ -274,9 +273,6 @@ const NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: string) => string>
   encouragement: (who, c) => `${who} encouraged you about ${c}`,
   nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
 };
-
-const TEAM_NOTIFY_TITLE = (who: string, contact: string) =>
-  `${who} posted in the Full-timers thread on ${contact}`;
 
 /** Everyone tied to a contact: they added them, they are the adder's gospel
  *  partner, or they are a co-creator. The fourth tie — teammates keeping this
@@ -338,20 +334,19 @@ export function stakeholderUidsOf(
  *  just its stream (#1303). */
 export function threadNotificationLink(
   contactId: string,
-  input: { interactionId?: string | null; parentId?: string | null; scope?: "team" | null },
+  input: { interactionId?: string | null; parentId?: string | null },
 ): string {
   if (input.interactionId) return `/people/${contactId}?interaction=${input.interactionId}`;
-  const tab = input.scope === "team" ? "discussion" : "thread";
-  return `/people/${contactId}?tab=${tab}${input.parentId ? `&parent=${input.parentId}` : ""}`;
+  return `/people/${contactId}?tab=thread${input.parentId ? `&parent=${input.parentId}` : ""}`;
 }
 
 /** The stream's last 14 days, to work out who is In the Conversation. A failed
  *  read only narrows who hears; the message itself is already written. */
-async function recentInStream(contactId: string, scope?: Scope): Promise<ThreadMessageWithContact[]> {
+async function recentInStream(contactId: string): Promise<ThreadMessageWithContact[]> {
   const since = new Date(Date.now() - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   try {
-    const snap = await getDocs(query(col(contactId, scope), where("at", ">=", since)));
-    return snap.docs.map((d) => toMessageWithContact(d, scope === "team"));
+    const snap = await getDocs(query(col(contactId), where("at", ">=", since)));
+    return snap.docs.map((d) => toMessageWithContact(d)).filter((m) => m.scope !== "team");
   } catch {
     return [];
   }
@@ -363,13 +358,13 @@ async function recentInStream(contactId: string, scope?: Scope): Promise<ThreadM
  *  already written. */
 async function parentOf(
   contactId: string,
-  input: { parentId?: string | null; scope?: "team" | null },
+  input: { parentId?: string | null },
 ): Promise<ThreadMessageWithContact | null> {
   if (!input.parentId) return null;
   try {
-    const snap = await getDoc(ref(contactId, input.parentId, input.scope));
+    const snap = await getDoc(ref(contactId, input.parentId));
     if (!snap.exists()) return null;
-    return { ...toMessage(snap as unknown as QueryDocumentSnapshot, input.scope === "team"), id: input.parentId, contactId };
+    return { ...toMessage(snap as unknown as QueryDocumentSnapshot), id: input.parentId, contactId };
   } catch {
     return null;
   }
@@ -382,7 +377,6 @@ export async function addThreadMessage(
   input: {
     interactionId?: string | null;
     parentId?: string | null;
-    scope?: "team" | null;
     from: string;
     fromName: string;
     kind: ThreadKind;
@@ -404,10 +398,10 @@ export async function addThreadMessage(
   let written: string | null = null;
   const at = new Date().toISOString();
   try {
-    const created = await addDoc(col(contactId, input.scope), {
+    const created = await addDoc(col(contactId), {
       interactionId: input.interactionId ?? null,
       parentId: input.parentId ?? null,
-      scope: input.scope ?? null,
+      scope: null,
       from: input.from,
       fromName: input.fromName,
       kind: input.kind,
@@ -419,7 +413,6 @@ export async function addThreadMessage(
     // cannot learn the id from losing the write itself over it.
     written = created?.id ?? null;
 
-    const isTeamScope = input.scope === "team";
     const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
     const contactName = notify?.contactName || "this person";
     const truncatedBody = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
@@ -431,12 +424,6 @@ export async function addThreadMessage(
     // Legacy notify.to: receives kind-shaped alert
     const notifiedUserIds = new Set<string>();
 
-    // Helper to check if a user is allowed to receive team-scoped messages
-    const isAllowedRecipient = (uid: string) => {
-      if (!isTeamScope) return true;
-      return isFullTimer(uid);
-    };
-
     // Every bell entry below is pushed to the recipient's devices by the
     // notification function. `coalesceKey` holds a back-and-forth about one
     // person to one buzz per hour each (#813); an @mention carries none — it is
@@ -444,14 +431,11 @@ export async function addThreadMessage(
     const aboutThisPerson = `contact:${contactId}`;
 
     for (const mUid of mentionedUserIds) {
-      if (mUid !== input.from && isAllowedRecipient(mUid)) {
+      if (mUid !== input.from) {
         notifiedUserIds.add(mUid);
-        const title = isTeamScope
-          ? `${who} mentioned you in the Full-timers thread on ${contactName}`
-          : `${who} mentioned you on ${contactName}`;
         void sendNotification({
           userId: mUid,
-          title,
+          title: `${who} mentioned you on ${contactName}`,
           message: truncatedBody,
           type: "info",
           targetId: contactId,
@@ -462,14 +446,11 @@ export async function addThreadMessage(
 
     // Everyone tied to the contact: creator, gospel partners, and co-creators.
     for (const sUid of stakeholderUidsOf(notify?.stakeholders, input.from)) {
-      if (notifiedUserIds.has(sUid) || !isAllowedRecipient(sUid)) continue;
+      if (notifiedUserIds.has(sUid)) continue;
       notifiedUserIds.add(sUid);
-      const title = isTeamScope
-        ? TEAM_NOTIFY_TITLE(who, contactName)
-        : NOTIFY_TITLE[input.kind](who, contactName);
       void sendNotification({
         userId: sUid,
-        title,
+        title: NOTIFY_TITLE[input.kind](who, contactName),
         message: truncatedBody,
         type: "info",
         targetId: contactId,
@@ -480,16 +461,16 @@ export async function addThreadMessage(
 
     // Everyone In the Conversation here (#1604): they wrote in this stream in
     // the last 14 days. Not a tie, so a Release does not silence it.
-    const recent = await recentInStream(contactId, input.scope);
+    const recent = await recentInStream(contactId);
     // Writing there once is no access: someone unshared since must not keep
     // reading the person's messages through the bell.
     const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
     for (const cUid of inTheConversation(recent, { ...input, contactId, at })) {
-      if (notifiedUserIds.has(cUid) || !isAllowedRecipient(cUid) || !canStillSee(cUid)) continue;
+      if (notifiedUserIds.has(cUid) || !canStillSee(cUid)) continue;
       notifiedUserIds.add(cUid);
       void sendNotification({
         userId: cUid,
-        title: isTeamScope ? TEAM_NOTIFY_TITLE(who, contactName) : NOTIFY_TITLE[input.kind](who, contactName),
+        title: NOTIFY_TITLE[input.kind](who, contactName),
         message: truncatedBody,
         type: "info",
         targetId: contactId,
@@ -506,13 +487,12 @@ export async function addThreadMessage(
       parentAuthor &&
       parentAuthor !== input.from &&
       !notifiedUserIds.has(parentAuthor) &&
-      isAllowedRecipient(parentAuthor) &&
       canStillSee(parentAuthor)
     ) {
       notifiedUserIds.add(parentAuthor);
       void sendNotification({
         userId: parentAuthor,
-        title: isTeamScope ? TEAM_NOTIFY_TITLE(who, contactName) : NOTIFY_TITLE[input.kind](who, contactName),
+        title: NOTIFY_TITLE[input.kind](who, contactName),
         message: truncatedBody,
         type: "info",
         targetId: contactId,
@@ -528,12 +508,12 @@ export async function addThreadMessage(
       if (parent) pool.set(parent.id, parent);
       const reply = { id: written, from: input.from, at, parentId: input.parentId };
       for (const m of mentionsClosedByReply([...pool.values()], reply)) {
-        void closeFollowUpAsk(contactId, m.id, { uid: input.from, name: input.fromName }, input.scope);
+        void closeFollowUpAsk(contactId, m.id, { uid: input.from, name: input.fromName });
       }
     }
 
     // Legacy fallback: notify.to when the caller passed no stakeholders.
-    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to) && isAllowedRecipient(notify.to)) {
+    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to)) {
       const title = NOTIFY_TITLE[input.kind](who, contactName);
       void sendNotification({
         userId: notify.to,
@@ -546,7 +526,7 @@ export async function addThreadMessage(
       });
     }
   } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/${sub(input.scope)}`);
+    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
   return written;
 }
@@ -567,10 +547,9 @@ export async function closeFollowUpAsk(
   contactId: string,
   messageId: string,
   by: { uid: string; name?: string | null },
-  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await updateDoc(ref(contactId, messageId, scope), {
+    await updateDoc(ref(contactId, messageId), {
       closedBy: by.uid,
       closedByName: by.name || null,
       closedAt: new Date().toISOString(),
@@ -588,10 +567,9 @@ export async function closeFollowUpAsk(
 export async function reopenFollowUpAsk(
   contactId: string,
   messageId: string,
-  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await updateDoc(ref(contactId, messageId, scope), {
+    await updateDoc(ref(contactId, messageId), {
       closedBy: null,
       closedByName: null,
       closedAt: null,
@@ -646,15 +624,14 @@ export async function editThreadMessage(
 export async function deleteThreadMessage(
   contactId: string,
   messageId: string,
-  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await deleteDoc(ref(contactId, messageId, scope));
+    await deleteDoc(ref(contactId, messageId));
   } catch (e) {
     handleFirestoreError(
       e,
       OperationType.DELETE,
-      `contacts/${contactId}/${sub(scope)}/${messageId}`,
+      `contacts/${contactId}/threads/${messageId}`,
     );
   }
 }
@@ -664,18 +641,15 @@ export async function deleteThreadMessage(
  * (sorted oldest-first); re-renders on every post. Safe to call with an
  * absent contactId (e.g. a closed modal) — it just yields an empty list.
  */
-export function useThreads(
-  contactId?: string | null,
-  { includeTeam = false }: ThreadSubscribeOptions = {},
-): ThreadMessage[] {
+export function useThreads(contactId?: string | null): ThreadMessage[] {
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   useEffect(() => {
     if (!contactId) {
       setMessages([]);
       return;
     }
-    return subscribeThreads(contactId, setMessages, undefined, { includeTeam });
-  }, [contactId, includeTeam]);
+    return subscribeThreads(contactId, setMessages);
+  }, [contactId]);
   return messages;
 }
 

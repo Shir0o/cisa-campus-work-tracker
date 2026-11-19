@@ -9,8 +9,7 @@
  *
  *  - the trainee's People surface — the tied person shows, the untied ones do
  *    not;
- *  - the trainee half of `walking-together-threads.spec.ts` — the Full-timers
- *    stream stays hidden;
+ *  - the contact page carries no Full-timers pane at all (cut-or-keep §24);
  *  - `mobile-and-pwa-contact-editing.spec.ts` and `mobile-viewport.spec.ts` —
  *    the mobile viewport lives here as a describe.
  *
@@ -78,7 +77,7 @@ test.describe('Trainee journey (#1475)', () => {
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 
-  test('the contact page hides the Full-timers stream and logs an interaction', async ({ page }) => {
+  test('the contact page has no Full-timers stream and logs an interaction', async ({ page }) => {
     const interaction = `Trainee coffee catch-up ${Date.now()}`;
 
     await signInAs(page, 'trainee');
@@ -94,8 +93,8 @@ test.describe('Trainee journey (#1475)', () => {
     const dialog = page.getByRole('main');
     await expect(dialog.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({ timeout: 5_000 });
 
-    // Row 5 web analogue: a trainee has no Full-timers switch and never sees the
-    // team-confidential post — only the shared Conversation.
+    // Row 5 web analogue: no Full-timers pane at all, for any role, and the
+    // team-confidential post is never shown — only the shared Conversation.
     await expect(dialog.getByRole('button', { name: /^full-timers/i })).toHaveCount(0);
     await expect(dialog.getByText(/confidential staff note/i)).toHaveCount(0);
     await expect(

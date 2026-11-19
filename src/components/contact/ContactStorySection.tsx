@@ -25,8 +25,6 @@ export interface ContactStorySectionProps {
   user: { uid?: string } | null;
   isAdmin: boolean;
   canUpdatePrayers: boolean;
-  openThread: string | null;
-  onOpenThread: (id: string) => void;
   onOpenConversation: (messageId?: string) => void;
   onRemoveInteraction: (interaction: Interaction) => void;
   onUpdateInteraction(
@@ -36,8 +34,6 @@ export interface ContactStorySectionProps {
   onUpdatePrayerStatus: (prayer: PrayerRecord, status: PrayerRecord["status"]) => void;
   onSetPrayerTeamPrayer: (prayer: PrayerRecord, teamPrayer: boolean) => void;
   onUpdatePrayerBurden(prayer: PrayerRecord, words: { text: string; context: string }): Promise<void>;
-  interactionAdapterFor: (interaction: Interaction) => any;
-  streamViewer: { uid: string; role?: string };
   /** The roster, so a story row can show the reacher's portrait (#1669). */
   teamMembers: ContactTeamMember[];
 }
@@ -53,16 +49,12 @@ export default function ContactStorySection({
   user,
   isAdmin,
   canUpdatePrayers,
-  openThread,
-  onOpenThread,
   onOpenConversation,
   onRemoveInteraction,
   onUpdateInteraction,
   onUpdatePrayerStatus,
   onSetPrayerTeamPrayer,
   onUpdatePrayerBurden,
-  interactionAdapterFor,
-  streamViewer,
   teamMembers,
 }: ContactStorySectionProps) {
   const [editingInteractionId, setEditingInteractionId] = useState<string | null>(null);
@@ -105,10 +97,6 @@ export default function ContactStorySection({
       onUpdate={handleUpdate}
       updating={isUpdatingInteraction}
       onRemove={() => onRemoveInteraction(interaction)}
-      adapterFor={interactionAdapterFor}
-      viewer={streamViewer}
-      threadOpen={openThread === interaction.id}
-      onOpenThread={() => onOpenThread(interaction.id)}
       firstName={firstName}
       teamMembers={teamMembers}
     />

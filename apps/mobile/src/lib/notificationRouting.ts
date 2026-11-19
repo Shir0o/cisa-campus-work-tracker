@@ -13,17 +13,14 @@ export function routeForNotificationLink(link: unknown): string {
   let m: RegExpMatchArray | null;
   if ((m = path.match(/^\/people\/([^/]+)$/))) {
     const id = m[1];
-    // A message on an Interaction's Thread opens that Thread itself (#1303).
-    const interaction = q.get('interaction');
-    if (interaction) return `/contact/${id}/thread?interaction=${interaction}`;
-    // A reply opens the Thread under its parent; a Full-timers one names its side.
+    // An old Interaction-Thread link lands on the person's Story: threads
+    // under an Interaction are cut (§24).
+    if (q.get('interaction')) return `/contact/${id}`;
+    // A reply opens the Thread under its parent. `tab=discussion` is an old
+    // Full-timers link; it lands on the Conversation like any other.
     const parent = q.get('parent');
-    const team = q.get('tab') === 'discussion';
-    if (parent) return `/contact/${id}/thread?parent=${parent}${team ? '&stream=team' : ''}`;
-    // A top-level Full-timers message opens the Conversation on its side; a
-    // top-level Conversation message just opens the Conversation.
-    if (team) return `/contact/${id}?tab=conversation&stream=team`;
-    if (q.get('tab') === 'thread') return `/contact/${id}?tab=conversation`;
+    if (parent) return `/contact/${id}/thread?parent=${parent}`;
+    if (q.get('tab') === 'thread' || q.get('tab') === 'discussion') return `/contact/${id}?tab=conversation`;
     return `/contact/${id}`;
   }
   if (path === '/directory') return '/people';

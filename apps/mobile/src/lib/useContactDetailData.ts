@@ -122,11 +122,7 @@ export function useContactDetailData(contactId: string) {
         },
         (e) => onLoadError(e, 'prayers'),
       ),
-      // The Full-timers stream only for a Full-timer, on the EFFECTIVE role:
-      // "See it as they do" never reads it (#1024 phase 2).
-      subscribeThreads(contactId, setThreadMessages, (e) => onLoadError(e, `contacts/${contactId}/threads`), {
-        includeTeam: role === 'admin',
-      }),
+      subscribeThreads(contactId, setThreadMessages, (e) => onLoadError(e, `contacts/${contactId}/threads`)),
       // "In your care" — the picker's choice, else the people I added. The same
       // notion of ownership People, My Day and the full-timer's home all read.
       subscribeUserPreferences(uid, (prefs) => setPrefContactIds(prefs.personalContactIds ?? null)),
@@ -152,8 +148,7 @@ export function useContactDetailData(contactId: string) {
     [prefContactIds, contact, uid],
   );
 
-  // Team-scope discussion is Full-timer-only (#1024 phase 2). Cut it here on the
-  // reader's effective role, so every consumer of this hook sees one shape.
+  // Legacy team-scope messages are never shown, whatever the reader's role.
   const visibleThreadMessages = useMemo(
     () => feedVisibleThreads(threadMessages, role),
     [threadMessages, role],
@@ -250,7 +245,6 @@ export function useContactDetailData(contactId: string) {
     postThreadMessage: async (input: {
       interactionId?: string | null;
       parentId?: string | null;
-      scope?: 'team' | null;
       kind: ThreadKind;
       body: string;
       mentionedUserIds?: string[];
@@ -261,7 +255,6 @@ export function useContactDetailData(contactId: string) {
         {
           interactionId: input.interactionId ?? null,
           parentId: input.parentId ?? null,
-          scope: input.scope ?? null,
           from: uid,
           fromName: by.name,
           kind: input.kind,
@@ -282,7 +275,7 @@ export function useContactDetailData(contactId: string) {
 
     deleteThreadMessage: async (message: ThreadMessage) => {
       if (!contact || !uid) return;
-      await deleteThreadMessageApi(contactId, message.id, message.scope);
+      await deleteThreadMessageApi(contactId, message.id);
     },
 
     // The author rewrites their own message; the rules refuse anyone else.
@@ -296,7 +289,7 @@ export function useContactDetailData(contactId: string) {
     // withdrawn (#813).
     closeAsk: async (message: ThreadMessage) => {
       if (!contact || !uid) return;
-      await closeFollowUpAsk(contactId, message.id, { uid, name: by.name }, message.scope);
+      await closeFollowUpAsk(contactId, message.id, { uid, name: by.name });
     },
 
     addCollaborator: async (staffId: string, staffName: string) => {

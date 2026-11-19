@@ -416,43 +416,13 @@ describe('ContactDetailsModal Component', () => {
     expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
   });
 
-  it('Full-timers drawer lays the stream out with the composer pinned after the list', async () => {
-    (useAuth as any).mockReturnValue({
-      isAdmin: true,
-      role: 'admin',
-    });
-    hoisted.messages = [
-      { id: 'm1', from: 'u3', fromName: 'Zion Park', kind: 'note', body: 'first', at: new Date().toISOString(), scope: 'team' },
-      { id: 'm2', from: 'u1', fromName: 'Admin One', kind: 'note', body: 'second', at: new Date().toISOString(), scope: 'team' },
-    ];
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Full-timers/i }));
-
-    const pane = (await screen.findByPlaceholderText('Write something only Full-timers will see…'))
-      .closest('.strm');
-    expect(pane).toBeTruthy();
-    const list = pane!.querySelector('[data-stream-list]');
-    const composer = pane!.querySelector('[data-stream-composer]');
-    expect(list).toBeTruthy();
-    expect(composer).toBeTruthy();
-    // DOM order: list before composer so the flex column can lay them out as a fill pane.
-    expect(
-      list!.compareDocumentPosition(composer!) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it('shows the story on the page and the Conversation in the pane, with Full-timers behind the switch', async () => {
+  it('shows the story on the page and the Conversation in the pane', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     expect(screen.getByRole('region', { name: 'The story so far' })).toBeInTheDocument();
-    // The pane is open on the Conversation by default.
     expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
-    });
-    expect(await screen.findByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Write something…')).toBeInTheDocument();
   });
 
   it('allows adding a tag', async () => {
@@ -487,14 +457,8 @@ describe('ContactDetailsModal Component', () => {
   it('allows posting a comment', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    // Switch to the Full-timers tab
-    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
-    await act(async () => {
-      fireEvent.click(commentsTab);
-    });
-
-    // Type comment
-    const commentInput = await screen.findByPlaceholderText("Write something only Full-timers will see…");
+    // Type into the Conversation's composer
+    const commentInput = await screen.findByPlaceholderText('Write something…');
     await act(async () => {
       fireEvent.change(commentInput, { target: { value: 'John is doing great!' } });
     });
@@ -1059,11 +1023,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    // Switch to the Full-timers tab
-    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
-    fireEvent.click(commentsTab);
-
-    const commentInput = await screen.findByPlaceholderText("Write something only Full-timers will see…");
+    const commentInput = await screen.findByPlaceholderText('Write something…');
 
     // Type comment
     await act(async () => {
@@ -2936,7 +2896,7 @@ describe('removing interactions (#650)', () => {
     expect(firestore.deleteDoc).not.toHaveBeenCalled();
   });
 
-  it('asks for confirmation when the interaction has thread messages', async () => {
+  it('removes an interaction with old thread messages without asking (§24)', async () => {
     hoisted.messages = [
       { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' },
     ];
@@ -2945,22 +2905,9 @@ describe('removing interactions (#650)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('message'));
-    expect(firestore.deleteDoc).not.toHaveBeenCalled();
-    expect(screen.getByText('Coffee chat')).toBeInTheDocument();
-    confirmSpy.mockRestore();
-  });
-
-  it('proceeds past the thread confirmation and removes', async () => {
-    vi.useFakeTimers();
-    hoisted.messages = [
-      { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' },
-    ];
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    renderWithInteractions(interactionDoc('int-1'));
-
-    fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
-
+    // Threads under interactions are cut, so a stored reply is not a reason to
+    // ask; the removal + undo is the whole interaction.
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
     expect(screen.getByText('Interaction removed')).toBeInTheDocument();
     confirmSpy.mockRestore();
@@ -3555,16 +3502,12 @@ describe('desktop story layout (design D)', () => {
     expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
   });
 
-  it('offers the Full-timers thread to Full-timers only', () => {
-    asRole('manager');
-    const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    expect(screen.queryByRole('button', { name: /^Full-timers/ })).toBeNull();
-    unmount();
-
+  it('renders the contact page for a Full-timer with no Full-timers switch (cut-or-keep §24)', () => {
     asRole('admin');
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
-    expect(screen.getByRole('region', { name: 'Full-timers' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Full-timers/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Full-timers' })).toBeNull();
   });
 
   it('closes the full-screen pane on Escape before closing the page', () => {
@@ -3598,13 +3541,9 @@ describe('desktop story layout (design D)', () => {
     }
   });
 
-  it('deep-link parameters open the pane on the matching side', () => {
-    const first = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+  it('a thread deep link opens the Conversation pane', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
     expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
-    first.unmount();
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="discussion" />);
-    expect(screen.getByRole('region', { name: 'Full-timers' })).toBeInTheDocument();
   });
 
   it('a reply deep-link opens the Thread under its parent (#1303)', () => {
@@ -3620,7 +3559,7 @@ describe('desktop story layout (design D)', () => {
     expect(within(thread).getByText('REPLY')).toBeInTheDocument();
   });
 
-  it("an Interaction deep-link opens that Interaction's Thread (#1303)", () => {
+  it("an old Interaction deep-link opens the story, not a Thread (§24)", () => {
     feed({
       interactions: [
         docOf('inter-1', { userId: 'user-9', userName: 'Maria Santos', content: 'Coffee at the Union', dateTime: '2026-09-21T10:00', createdAt: '2026-09-21T10:05:00.000Z' }),
@@ -3629,181 +3568,8 @@ describe('desktop story layout (design D)', () => {
     render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialInteractionId="inter-1" />,
     );
-    const thread = screen.getByRole('region', { name: 'Thread' });
-    expect(within(thread).getByText('Coffee at the Union')).toBeInTheDocument();
-  });
-
-  describe('Full-timers drawer on the shared stream', () => {
-    const roster = () =>
-      feed({
-        users: [
-          docOf('u-ft', { name: 'Ruth Chen', role: 'admin' }),
-          docOf('u-tr', { name: 'Josh Park', role: 'manager' }),
-        ],
-      });
-    const openDrawer = () => {
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
-      return screen.getByRole('region', { name: 'Full-timers' });
-    };
-
-    it('titles the drawer with a lock and says who sees it once, above the box', () => {
-      const drawer = openDrawer();
-      expect(within(drawer).getByRole('heading', { name: 'Full-timers' })).toBeInTheDocument();
-      expect(within(drawer).getAllByText("Only Full-timers see this — Trainees can't.")).toHaveLength(1);
-      expect(drawer.querySelector('[data-stream-composer]')).toContainElement(
-        within(drawer).getByText("Only Full-timers see this — Trainees can't."),
-      );
-      expect(within(drawer).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
-      expect(within(drawer).getByText('Nothing here yet — start it below.')).toBeInTheDocument();
-    });
-
-    it('offers no kind chips', () => {
-      const drawer = openDrawer();
-      expect(within(drawer).queryByRole('group', { name: 'What are you writing' })).toBeNull();
-    });
-
-    it('offers only Full-timers as @mentions (ADR 0007)', () => {
-      roster();
-      const drawer = openDrawer();
-      fireEvent.click(within(drawer).getByRole('button', { name: 'Mention someone' }));
-      const list = screen.getByRole('listbox', { name: 'Teammate mentions' });
-      expect(list).toHaveTextContent('Ruth Chen');
-      expect(list).not.toHaveTextContent('Josh Park');
-    });
-
-    it('posts into the team scope', () => {
-      const drawer = openDrawer();
-      fireEvent.change(within(drawer).getByPlaceholderText('Write something only Full-timers will see…'), {
-        target: { value: 'Gentle with him for a few weeks' },
-      });
-      fireEvent.click(within(drawer).getByRole('button', { name: 'Post' }));
-      expect(addThreadMessage).toHaveBeenCalledWith(
-        'contact-abc',
-        expect.objectContaining({ scope: 'team', kind: 'comment', parentId: null, interactionId: null, body: 'Gentle with him for a few weeks' }),
-        expect.anything(),
-      );
-    });
-
-    it('makes a to-do from a Full-timers message', () => {
-      hoisted.messages = [
-        { id: 'ft-1', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Staff only', at: new Date().toISOString() },
-      ];
-      const drawer = openDrawer();
-      expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
-      fireEvent.click(within(drawer).getByRole('button', { name: 'Make a to-do' }));
-      expect(screen.getByDisplayValue('Staff only')).toBeInTheDocument();
-    });
-
-    it('offers no Add to story from a Full-timers message', () => {
-      hoisted.messages = [
-        { id: 'ft-1', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Staff only', at: new Date().toISOString() },
-      ];
-      const drawer = openDrawer();
-      expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
-      expect(within(drawer).queryByRole('button', { name: 'Add to story' })).toBeNull();
-    });
-
-    it("never raises the unread dot for the viewer's own team message, but does for another's (#1627)", () => {
-      localStorage.setItem('cisa.contactFullTimersSeen.contact-abc', new Date(2026, 8, 20, 9, 0).toISOString());
-
-      // The viewer's own top-level team message lands after the seen stamp.
-      hoisted.messages = [
-        { id: 'ft-mine', interactionId: null, scope: 'team', from: 'user-123', fromName: 'Admin Tony', kind: 'comment', body: 'My own note', at: new Date(2026, 8, 24, 9, 0).toISOString() },
-      ];
-      const mine = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      expect(screen.queryAllByLabelText('New in Full-timers')).toHaveLength(0);
-      mine.unmount();
-
-      // A teammate's top-level team message after the stamp does raise it.
-      hoisted.messages = [
-        { id: 'ft-theirs', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Ruth notes', at: new Date(2026, 8, 24, 9, 0).toISOString() },
-      ];
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      expect(screen.queryAllByLabelText('New in Full-timers').length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Interaction Threads', () => {
-    const interactions = () =>
-      feed({
-        interactions: [
-          docOf('inter-1', { userId: 'user-9', userName: 'Josh Park', content: 'Sat with him at the Thursday gathering', dateTime: '2026-09-17T12:00', createdAt: '2026-09-17T12:05:00.000Z' }),
-        ],
-      });
-    const story = () => screen.getByRole('region', { name: 'The story so far' });
-
-    it('invites a first reply on an entry with none, and opens a Thread that quotes the Interaction', () => {
-      interactions();
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
-
-      const thread = screen.getByRole('region', { name: 'Thread' });
-      expect(within(thread).getByText(/^Josh's interaction · /)).toBeInTheDocument();
-      expect(within(thread).getByText('Sat with him at the Thursday gathering')).toBeInTheDocument();
-      expect(within(thread).getByText('On an interaction · everyone tied to John sees this.')).toBeInTheDocument();
-      expect(within(thread).queryByRole('group', { name: 'What are you writing' })).toBeNull();
-      // #1290: the Thread opens inside the pane with a back arrow, not a close.
-      fireEvent.click(within(thread).getByRole('button', { name: 'Back to Conversation' }));
-      expect(screen.queryByRole('region', { name: 'Thread' })).toBeNull();
-      expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
-    });
-
-    it('replies on the Interaction through the existing data layer', () => {
-      interactions();
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
-      const thread = screen.getByRole('region', { name: 'Thread' });
-      fireEvent.change(within(thread).getByPlaceholderText('Think it through together…'), { target: { value: 'Mention the scholarship' } });
-      fireEvent.click(within(thread).getByRole('button', { name: 'Reply' }));
-
-      expect(addThreadMessage).toHaveBeenCalledWith(
-        'contact-abc',
-        expect.objectContaining({ interactionId: 'inter-1', scope: null, parentId: null, kind: 'comment', body: 'Mention the scholarship' }),
-        expect.anything(),
-      );
-    });
-
-    it('carries a replies chip once someone has replied, marked while its Thread is open', () => {
-      interactions();
-      hoisted.messages = [
-        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'First', at: '2026-09-17T13:00:00.000Z' },
-        { id: 'r2', interactionId: 'inter-1', from: 'user-7', fromName: 'Maria Santos', kind: 'comment', body: 'Second', at: '2026-09-18T13:00:00.000Z' },
-      ];
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      expect(within(story()).queryByRole('button', { name: 'Think it through together' })).toBeNull();
-
-      const chip = within(story()).getByRole('button', { name: /2 replies/ });
-      expect(chip).toHaveAttribute('aria-pressed', 'false');
-      fireEvent.click(chip);
-      expect(within(story()).getByRole('button', { name: /2 replies/ })).toHaveAttribute('aria-pressed', 'true');
-
-      const thread = screen.getByRole('region', { name: 'Thread' });
-      expect(within(thread).getByText('First')).toBeInTheDocument();
-      expect(within(thread).getByText('Second')).toBeInTheDocument();
-    });
-
-    it('keeps an Interaction\'s messages out of the Conversation stream', () => {
-      interactions();
-      hoisted.messages = [
-        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'On the interaction', at: '2026-09-17T13:00:00.000Z' },
-      ];
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
-      expect(within(screen.getByRole('region', { name: 'Conversation' })).queryByText('On the interaction')).toBeNull();
-    });
-
-    it('makes a to-do from a reply in an Interaction Thread', () => {
-      interactions();
-      hoisted.messages = [
-        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'Mention the scholarship', at: '2026-09-17T13:00:00.000Z' },
-      ];
-      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-      fireEvent.click(within(story()).getByRole('button', { name: /1 reply/ }));
-      const thread = screen.getByRole('region', { name: 'Thread' });
-      fireEvent.click(within(thread).getByRole('button', { name: 'Make a to-do' }));
-      expect(screen.getByDisplayValue('Mention the scholarship')).toBeInTheDocument();
-    });
+    expect(screen.getByRole('region', { name: 'The story so far' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Thread' })).toBeNull();
   });
 
   describe('on a phone (≤768px)', () => {
@@ -3846,13 +3612,6 @@ describe('desktop story layout (design D)', () => {
       expect(within(pane).getByText('Everyone tied to John sees this.')).toBeInTheDocument();
     });
 
-    it('offers the Full-timers side behind the switch, locked and with no kinds', () => {
-      const pane = openPane();
-      fireEvent.click(within(pane).getByRole('button', { name: /^Full-timers/ }));
-      expect(within(pane).getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
-      expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
-      expect(within(pane).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
-    });
 
     // #1781: the pane covers the whole page, so the header has to say whose
     // thread this is — the title alone leaves the reader without a person.
@@ -3907,104 +3666,7 @@ describe('desktop story layout (design D)', () => {
   });
 });
 
-describe('Reach prompt after Text or Call (#1297)', () => {
-  const onClose = vi.fn();
-  const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState');
-
-  const setVisibility = (state: 'hidden' | 'visible') => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
-    fireEvent(document, new Event('visibilitychange'));
-  };
-
-  const tapThenReturn = (name: RegExp) => {
-    fireEvent.click(screen.getByRole('button', { name }));
-    act(() => setVisibility('hidden'));
-    act(() => setVisibility('visible'));
-  };
-
-  const prompt = () => screen.queryByRole('button', { name: /Messaged John\? Log it/ });
-  const selectedType = (name: string) =>
-    screen.getByRole('button', { name, pressed: true }) as HTMLButtonElement;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.stubGlobal('open', vi.fn());
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Admin Tony' },
-      isAdmin: true,
-      role: 'admin',
-    });
-    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
-      if (typeof cb === 'function') cb({ docs: [] });
-      return () => {};
-    });
-    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
-  });
-
-  afterEach(() => {
-    if (originalVisibility) {
-      Object.defineProperty(document, 'visibilityState', originalVisibility);
-    } else {
-      delete (document as any).visibilityState;
-    }
-  });
-
-  it('offers to log a Text as a chat message when the page comes back', async () => {
-    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-    await screen.findByText('John Doe');
-
-    tapThenReturn(/^Text$/);
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
-
-    // The composer arrives in Interaction mode with the chat type selected and
-    // the time chip defaulting to now.
-    expect(selectedType('Chat')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Now' })).toBeInTheDocument();
-  });
-
-  it('offers to log a Call as a phone call when the page comes back', async () => {
-    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-    await screen.findByText('John Doe');
-
-    tapThenReturn(/^Call$/);
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
-    expect(selectedType('Call')).toBeInTheDocument();
-  });
-
-  it('does not prompt after Email, nor when the page was never hidden', async () => {
-    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-    await screen.findByText('John Doe');
-
-    tapThenReturn(/^Email$/);
-    expect(prompt()).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /^Text$/ }));
-    act(() => setVisibility('visible'));
-    expect(prompt()).not.toBeInTheDocument();
-
-    expect(firestore.addDoc).not.toHaveBeenCalled();
-  });
-
-  it('dismissing the prompt writes nothing and opens no form', async () => {
-    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-    await screen.findByText('John Doe');
-
-    tapThenReturn(/^Text$/);
-    await screen.findByRole('button', { name: 'Messaged John? Log it' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
-
-    expect(prompt()).not.toBeInTheDocument();
-    // The composer stays at rest: no Log button, and nothing typed.
-    expect(screen.queryByRole('button', { name: 'Log' })).not.toBeInTheDocument();
-    expect((screen.getByPlaceholderText(/What happened with John/i) as HTMLTextAreaElement).value).toBe('');
-    expect(firestore.addDoc).not.toHaveBeenCalled();
-  });
-});
-
-describe('contact head, About sheet, Delegate and kind (#1299)', () => {
+describe('contact head, About sheet and kind (#1299)', () => {
   const mockOnClose = vi.fn();
   const teammateDoc = { id: 'ft2', data: () => ({ name: 'Sam Lee', role: 'admin' }) };
 
@@ -4125,48 +3787,6 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
     expect(screen.queryByText(/Released \{name\}/)).not.toBeInTheDocument();
   });
 
-  it('delegates: shares the person and posts a mention carrying the note', async () => {
-    render(
-      <ContactDetailsModal
-        isOpen={true}
-        onClose={mockOnClose}
-        contact={{ ...mockContact, coCreators: [], founders: [] }}
-      />,
-    );
-
-    // #1671: Delegate is a More-actions item, not a header button.
-    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
-    const sheet = await screen.findByRole('dialog', { name: /Delegate John Doe/i });
-    // #1455: the side panel uses the shared popup frame's header and pinned footer.
-    expect(within(sheet).getByRole('button', { name: 'Close' })).toBeInTheDocument();
-    expect(within(sheet).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-
-    fireEvent.change(within(sheet).getByLabelText('Choose a teammate'), {
-      target: { value: 'ft2' },
-    });
-    fireEvent.change(within(sheet).getByLabelText('Add a note (optional)'), {
-      target: { value: 'Please call him this week' },
-    });
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Delegate' }));
-
-    await waitFor(() => {
-      expect(addThreadMessage).toHaveBeenCalledWith(
-        'contact-abc',
-        expect.objectContaining({
-          kind: 'comment',
-          mentionedUserIds: ['ft2'],
-          body: expect.stringContaining('Please call him this week'),
-        }),
-        expect.anything(),
-      );
-    });
-    expect(firestore.updateDoc).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ coCreators: ['ft2'] }),
-    );
-  });
 
   it('lets a Full-timer change the kind from the head chip', async () => {
     render(

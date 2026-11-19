@@ -226,7 +226,6 @@ function ToAsk() {
           {
             interactionId: target.interactionId,
             parentId: target.parentId,
-            scope: target.scope,
             from: user.uid,
             fromName: loggerName,
             kind: 'comment',

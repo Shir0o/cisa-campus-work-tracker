@@ -1,5 +1,5 @@
 // Live data for the To ask screen (#1649): the same feeds the web page reads
-// (people, interactions, Thread messages incl. the Full-timers stream,
+// (people, interactions, open-thread messages,
 // gatherings, the roster, and the private notepad), fed to the shared
 // @cisa/core `buildToAsk` so the phone shows exactly the list and count the
 // web page does.
@@ -100,7 +100,6 @@ export function useToAskData(uid: string | null) {
           arrive('threads');
         },
         onLoadError('threads', 'threads (collectionGroup)'),
-        { includeTeam: true },
       ),
       subscribeUsers((next) => {
         setUsers(next);

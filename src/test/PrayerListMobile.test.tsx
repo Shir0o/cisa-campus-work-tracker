@@ -558,26 +558,17 @@ describe('PrayerListMobile', () => {
     expect(screen.getByText(/Everyone's already here/)).toBeInTheDocument();
   });
 
-  it('renders stale badge and quick actions on mobile for stale contacts', () => {
-    mockOpenLogInteraction.mockClear();
+  it('keeps the no-interaction line on a stale card, with no quick actions (§21)', () => {
     const staleDate = new Date(Date.now() - 40 * 86_400_000).toISOString();
     const stalePerson = contact({ lastContactedDate: staleDate });
-    const onRemoveFromPrayerList = vi.fn();
 
     renderWithRouter({
       entries: [{ contact: stalePerson, prayers: [prayer()] }],
-      onRemoveFromPrayerList,
     });
 
     expect(screen.getByTestId('stale-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('stale-quick-actions')).toBeInTheDocument();
-
-    // Click "Log Interaction"
-    fireEvent.click(screen.getByRole('button', { name: /Log Interaction/i }));
-    expect(mockOpenLogInteraction).toHaveBeenCalledWith('c1');
-
-    // Removal is the card's × now, not a second spelling on the strip (#714).
-    expect(screen.queryByRole('button', { name: /^Archive$/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stale-quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Log Interaction/i })).not.toBeInTheDocument();
   });
 
   it('does not render stale badge or quick actions on mobile when contact is active', () => {

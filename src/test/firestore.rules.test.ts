@@ -1717,12 +1717,6 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/threads/ask'), closed('manager1')));
     });
 
-    it('refuses an untied Trainee posting to Full-timers', async () => {
-      await seed();
-      await assertFails(setDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/teamThreads/new'),
-        message('manager1', { scope: 'team' })));
-    });
-
     it('lets a tied Trainee log, comment, post, edit their own and close an ask', async () => {
       await seed();
       const trainee = getFirestore({ uid: 'manager1' });
@@ -1745,7 +1739,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(fullTimer, 'contacts/unlisted/interactions/onbehalf'),
         interaction('admin1', { reachedById: 'manager2', reachedByName: 'M2' })));
       await assertSucceeds(updateDoc(doc(fullTimer, 'contacts/untied/interactions/mine'), { content: 'Corrected' }));
-      await assertSucceeds(setDoc(doc(fullTimer, 'contacts/untied/teamThreads/new'), message('admin1', { scope: 'team' })));
     });
 
     it('refuses an untied Trainee removing someone else\'s interaction or comment', async () => {
@@ -1764,11 +1757,6 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(deleteDoc(doc(trainee, 'contacts/nobody/interactions/orphan')));
     });
 
-    it('refuses an untied Trainee removing a Full-timers message', async () => {
-      await seed();
-      await assertFails(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/teamThreads/team')));
-    });
-
     it('lets a tied Trainee remove their own entries and someone else\'s interaction or comment', async () => {
       await seed();
       const trainee = getFirestore({ uid: 'manager1' });
@@ -1785,7 +1773,6 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/interactions/theirs')));
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/comments/theirs')));
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/threads/theirs')));
-      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/teamThreads/team')));
       await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/nobody/interactions/orphan')));
     });
   });
@@ -3348,63 +3335,49 @@ describeRules('Firestore Security Rules', () => {
       }
     });
 
-    describe('Full-timers Discussion (teamThreads)', () => {
+    // The Full-timers pane is cut (cut-or-keep §24). Its documents stay in
+    // Firestore, unread: no rule reaches `teamThreads` any more, for any role.
+    describe('the cut teamThreads collection is closed to everyone (data kept)', () => {
       const teamMsg = (over: Record<string, unknown> = {}) => newMsg({ from: 'admin1', scope: 'team', ...over });
       const seedTeam = async (id: string) => {
         await testEnv.withSecurityRulesDisabled(async (c) => {
           const fs = c.firestore();
-          await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
-          await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+          await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com' });
           await setDoc(doc(fs, `contacts/tied/teamThreads/${id}`), teamMsg());
         });
       };
 
-      it('lets a Full-timer post, read, list and delete it', async () => {
+      it('denies a Full-timer reading, listing, writing or deleting it', async () => {
         await seedThreadUsers();
         await seedTeam('seeded');
         const adminDb = getFirestore({ uid: 'admin1' });
-        await assertSucceeds(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t1'), teamMsg()));
-        await assertSucceeds(getDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
-        await assertSucceeds(getDocs(query(collection(adminDb, 'contacts', 'tied', 'teamThreads'), orderBy('at', 'desc'))));
-        await assertSucceeds(getDocs(query(collectionGroup(adminDb, 'teamThreads'), orderBy('at', 'desc'))));
-        await assertSucceeds(deleteDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
-      });
-
-      it('refuses a Full-timer posting as someone else, or without the team scope', async () => {
-        await seedThreadUsers();
-        await seedTeam('seeded');
-        const adminDb = getFirestore({ uid: 'admin1' });
-        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t2'), teamMsg({ from: 'teammate1' })));
-        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t3'), teamMsg({ scope: null })));
+        await assertFails(getDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
+        await assertFails(getDocs(query(collection(adminDb, 'contacts', 'tied', 'teamThreads'), orderBy('at', 'desc'))));
+        await assertFails(getDocs(query(collectionGroup(adminDb, 'teamThreads'), orderBy('at', 'desc'))));
+        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t1'), teamMsg()));
         await assertFails(updateDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded'), { body: 'edited' }));
+        await assertFails(deleteDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
       });
 
-      it('lets a Full-timer it @mentions close a mention there, and nothing else move', async () => {
-        await seedThreadUsers();
-        await testEnv.withSecurityRulesDisabled(async (c) => {
-          const fs = c.firestore();
-          await setDoc(doc(fs, 'users', 'admin2'), { role: 'admin', approved: true });
-          await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com' });
-          await setDoc(doc(fs, 'contacts/tied/teamThreads/mn'), teamMsg({ mentionedUserIds: ['admin2'] }));
-          await setDoc(doc(fs, 'contacts/tied/teamThreads/plain'), teamMsg());
-        });
-        const closing = (uid: string) => ({ closedBy: uid, closedByName: uid, closedAt: new Date().toISOString() });
-        await assertFails(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/mn'), { ...closing('admin2'), body: 'x' }));
-        await assertFails(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/plain'), closing('admin2')));
-        await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'admin2' }), 'contacts/tied/teamThreads/mn'), closing('admin2')));
-      });
-
-      it('keeps every other role out, even a Trainee tied to the person', async () => {
+      it('keeps every role out, a tied Trainee included', async () => {
         await seedThreadUsers();
         await seedTeam('seeded');
         for (const uid of ['manager1']) {
           const db = getFirestore({ uid });
           await assertFails(getDoc(doc(db, 'contacts/tied/teamThreads/seeded')));
           await assertFails(getDocs(query(collection(db, 'contacts', 'tied', 'teamThreads'))));
-          await assertFails(getDocs(query(collectionGroup(db, 'teamThreads'))));
           await assertFails(setDoc(doc(db, 'contacts/tied/teamThreads/x'), teamMsg({ from: uid })));
           await assertFails(deleteDoc(doc(db, 'contacts/tied/teamThreads/seeded')));
         }
+      });
+
+      it('leaves the stored documents in place, unread (data kept)', async () => {
+        await seedThreadUsers();
+        await seedTeam('seeded');
+        await testEnv.withSecurityRulesDisabled(async (c) => {
+          const snap = await c.firestore().doc('contacts/tied/teamThreads/seeded').get();
+          expect(snap.exists).toBe(true);
+        });
       });
     });
 

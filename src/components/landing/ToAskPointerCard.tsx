@@ -61,7 +61,7 @@ export default function ToAskPointerCard({
 
   useEffect(() => {
     if (propsThreads) return;
-    return subscribeAllThreads(setLiveThreads, undefined, { includeTeam: true });
+    return subscribeAllThreads(setLiveThreads);
   }, [propsThreads]);
 
   useEffect(() => {

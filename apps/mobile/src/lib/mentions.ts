@@ -27,15 +27,10 @@ export function extractMentionCandidate(text: string, cursorPos: number): Mentio
   return { query, atIndex };
 }
 
-/** Narrow the roster by the typed query, and to Full-timers only in the
- *  Full-timers stream. */
-export function filterMentionCandidates(users: MentionUser[], query: string, isTeamScope: boolean): MentionUser[] {
+/** Narrow the roster by the typed query. */
+export function filterMentionCandidates(users: MentionUser[], query: string): MentionUser[] {
   const q = query.trim().toLowerCase();
-  return users.filter((u) => {
-    if (isTeamScope && u.role !== 'admin') return false;
-    if (!q) return true;
-    return u.name.toLowerCase().includes(q);
-  });
+  return users.filter((u) => !q || u.name.toLowerCase().includes(q));
 }
 
 /** The picked mentions whose '@Name' still appears in the body as sent —

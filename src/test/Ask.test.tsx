@@ -358,7 +358,7 @@ describe('To ask — Post an update', () => {
     );
     expect(h.threadReply).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ parentId: 'q1', scope: null, from: 'ft', kind: 'comment', body: 'Yes, Friday' }),
+      expect.objectContaining({ parentId: 'q1', from: 'ft', kind: 'comment', body: 'Yes, Friday' }),
       expect.objectContaining({ contactName: 'Priya Nair' }),
     );
   });

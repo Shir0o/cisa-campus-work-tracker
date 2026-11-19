@@ -82,7 +82,7 @@ export default function PointerCard({
   useEffect(() => {
     if (propsThreads) return;
     try {
-      const unsubThreads = subscribeAllThreads(setLiveThreads, undefined, { includeTeam: role === "admin" });
+      const unsubThreads = subscribeAllThreads(setLiveThreads);
       return () => unsubThreads();
     } catch {
       // Degrade gracefully in test environments without live firestore

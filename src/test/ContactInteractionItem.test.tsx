@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import ContactInteractionItem from '../components/contact/ContactInteractionItem';
-import { interactionAdapter } from '../components/stream/interactionAdapter';
 import type { Interaction } from '../types';
 import type { ContactTeamMember } from '../components/contact/types';
 import { emptyComposer } from '../lib/contactComposer';
@@ -28,20 +27,6 @@ const renderItem = (interaction: Interaction, teamMembers: ContactTeamMember[] =
       onUpdate={noop}
       updating={false}
       onRemove={noop}
-      adapterFor={(i) =>
-        interactionAdapter({
-          contactId: 'c1',
-          contactName: 'John Doe',
-          interaction: i,
-          messages: [],
-          me: { uid: 'me', name: 'Me' },
-          teamMembers: [],
-          t: (key: string) => key,
-        })
-      }
-      viewer={{ uid: 'me', role: 'admin' }}
-      threadOpen={false}
-      onOpenThread={noop}
       teamMembers={teamMembers}
     />,
   );

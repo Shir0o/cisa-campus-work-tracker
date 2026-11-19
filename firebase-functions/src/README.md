@@ -39,7 +39,7 @@ Core Cloud Functions triggers, notification transport dispatchers, Expo receipt 
 - Outbound HTTPS push requests to browser push service endpoints (`transports.ts`).
 - Deletes handled or expired ticket documents from `pushTickets` collection (`receipts.ts`).
 - Adds reminder notifications to `notifications` collection; updates `contacts/{contactId}/threads/{messageId}` with `remindedAt` timestamp (`reminders.ts`).
-- Reads users, contacts, interactions, events, threads, teamThreads, inboxState, userPreferences; writes to `notifications`; updates `users/{uid}` with `weeklyReminderAt` (`reminders.ts`).
+- Reads users, contacts, interactions, events, threads, inboxState, userPreferences; writes to `notifications`; updates `users/{uid}` with `weeklyReminderAt` (`reminders.ts`).
 
 ## Verification
 - Run: `npm --prefix firebase-functions test`

@@ -752,18 +752,17 @@ describe("To ask line helpers", () => {
     expect(newToAskUpdate("x", "line", NOW).id).not.toBe(u.id);
   });
 
-  it("targets the Thread reply at the signal's own message and stream", () => {
+  it("targets the Thread reply at the signal's own message", () => {
     const messages = [
       message({ id: "q1", kind: "question", interactionId: "i9" }),
-      message({ id: "a1", kind: "nudge", scope: "team" }),
+      message({ id: "a1", kind: "nudge" }),
     ];
     expect(toAskThreadTarget("question|c1|q1", messages)).toEqual({
       contactId: "c1",
       parentId: "q1",
       interactionId: "i9",
-      scope: null,
     });
-    expect(toAskThreadTarget("ask|c1|a1", messages)).toMatchObject({ parentId: "a1", scope: "team" });
+    expect(toAskThreadTarget("ask|c1|a1", messages)).toMatchObject({ parentId: "a1" });
     expect(toAskThreadTarget("ask|c1|gone", messages)).toBeNull();
     expect(toAskThreadTarget("notReached|c1", messages)).toBeNull();
     expect(toAskThreadTarget("note:n1", messages)).toBeNull();

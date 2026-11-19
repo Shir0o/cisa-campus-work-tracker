@@ -206,53 +206,16 @@ describe('PrayerList', () => {
     expect(container.querySelector('.ans-lit')).not.toBeInTheDocument();
   });
 
-  it('turns a prayer burden into a to-do linked to the prayer (issue #336)', async () => {
+  it('offers no to-do or log-interaction shortcut on a prayer card (§21)', async () => {
     render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
 
-    await waitFor(() => {
-      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
-
-    // The composer opens pre-filled with the burden, tied to the person.
-    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Strength for finals');
-    expect(screen.getByText('Prayer for Alice')).toBeInTheDocument();
+    expect(screen.queryByTitle('Make a to-do from this prayer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Make a to-do/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stale-quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Log Interaction/i })).not.toBeInTheDocument();
   });
 
-  it('excludes service accounts (cisa-*, reviewer-*) from the to-do assignees (issues #348/#349)', async () => {
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 2 });
-      } else if (ref?.path === 'prayers') {
-        callback({ docs: mockPrayers, size: 2 });
-      } else if (ref?.path === 'users') {
-        callback({
-          docs: [
-            { id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) },
-            { id: 'u-cisa', data: () => ({ displayName: 'cisa-trainee', approved: true, role: 'manager' }) },
-            { id: 'u-reviewer', data: () => ({ displayName: 'reviewer-appstore', approved: true, role: 'admin' }) },
-          ],
-          size: 3,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<PrayerList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
-
-    expect(screen.getAllByTitle('Test User').length).toBeGreaterThan(0);
-    expect(screen.queryByTitle('cisa-trainee')).not.toBeInTheDocument();
-    expect(screen.queryByTitle('reviewer-appstore')).not.toBeInTheDocument();
-  });
 
   it('filters the roster by gender (Brothers/Sisters)', async () => {
     render(<PrayerList />);
@@ -1274,41 +1237,16 @@ describe('PrayerList', () => {
     });
   });
 
-  it('renders stale badge and quick actions for stale contacts (>30 days or no interaction)', async () => {
-    const mockOpenLog = vi.fn();
-    (useLayout as any).mockReturnValue({
-      setSelectedContact: vi.fn(),
-      openLogInteraction: mockOpenLog,
-    });
-
+  it('keeps the no-interaction line on a stale card, with no quick actions (§21)', async () => {
     render(<PrayerList />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
 
-    // Alice and Bob have no interaction dates in mockContacts, so they are stale
-    const staleBadges = screen.getAllByTestId('stale-badge');
-    expect(staleBadges.length).toBeGreaterThanOrEqual(1);
-
-    // Stale quick actions should be visible
-    const staleActionBars = screen.getAllByTestId('stale-quick-actions');
-    expect(staleActionBars.length).toBeGreaterThanOrEqual(1);
-
-    // Click "Log Interaction" button on first stale card
-    const logBtns = screen.getAllByRole('button', { name: /Log Interaction/i });
-    fireEvent.click(logBtns[0]);
-    expect(mockOpenLog).toHaveBeenCalledWith('c1');
+    // Alice and Bob have no interaction dates in mockContacts, so they are stale.
+    expect(screen.getAllByTestId('stale-badge').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('stale-quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Log Interaction/i })).not.toBeInTheDocument();
   });
 
-  it('no longer spells removal as archiving on the stale strip (#714)', async () => {
-    render(<PrayerList />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-    });
-
-    expect(screen.getAllByTestId('stale-quick-actions').length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByRole('button', { name: /Archive from Prayer List/i })).not.toBeInTheDocument();
-  });
 
   it('displays Cared for by and Added by in contact header metadata (issue #716)', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
@@ -1439,17 +1377,6 @@ describe('PrayerList', () => {
     expect(container.querySelector('textarea')).toHaveValue('');
   });
 
-  it('starts a to-do from a placeholder prayer with an empty draft (#1691)', async () => {
-    seedDesktop([desktopAlice], [standInPrayer()]);
-
-    render(<PrayerList />);
-
-    await screen.findByText('What are we praying for Alice this week?');
-    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
-
-    // The stand-in burden is not content, so it must not pre-fill the composer.
-    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('');
-  });
 
   it('renders PrayerListMobile on mobile viewport even while loading', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');

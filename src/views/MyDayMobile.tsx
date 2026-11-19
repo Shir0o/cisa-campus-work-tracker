@@ -20,7 +20,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/primitives';
+import { Avatar, StageChip, SectionHead } from '../components/landing/primitives';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 import OnYouCard from '../components/landing/OnYouCard';
 import PointerCard from '../components/landing/PointerCard';
@@ -326,10 +326,10 @@ export default function MyDayMobile({
       {/* ── A Full-timer posts an announcement and sees who has not got it ── */}
       <AnnouncementComposer className="px-5 mt-4" />
 
-      {/* ── On the horizon checklist ── */}
+      {/* ── To-dos ── */}
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between gap-2 mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.on_the_horizon')}</h2>
+          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.todos')}</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-on-surface-variant dash-sec-sub">
               {leftToDo > 0 ? t('myDay.small_things_this_week').replace('{n}', String(leftToDo)) : t('myDay.all_clear')}
@@ -708,17 +708,6 @@ export default function MyDayMobile({
           )}
         </div>
       </section>
-
-      {/* ── Mobile Figures Footer ── */}
-      <div className="mt-10 px-5 pt-5 border-t border-outline-variant/30 flex flex-wrap gap-x-8 gap-y-4 mdm-figures">
-        <Figure n={myLeaders.length} label={t('myDay.contacts_label')} />
-        <Figure n={prayersCount} label={t('myDay.prayers_label')} />
-        <Figure n={leftToDo} label={t('myDay.tasks_label')} />
-        <Figure n={thisWeek.length} label={t('myDay.gatherings_label')} />
-        <span className="text-[13px] text-on-surface-variant/70 italic w-full mt-2">
-          {t('myDay.numbers_notice')}
-        </span>
-      </div>
 
       {/* ── Your-contacts picker bottom sheet ── */}
       {pickerOpen && (

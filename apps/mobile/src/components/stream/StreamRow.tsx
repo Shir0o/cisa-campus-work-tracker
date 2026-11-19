@@ -40,8 +40,6 @@ export interface StreamRowProps<M extends StreamMessage> {
   onRowLayout?: (id: string, box: { top: number; height: number }) => void;
   /** A neutral badge beside the name — a Full-timer's post in an announcement. */
   badge?: (m: M) => string | null;
-  /** A taken-back message: this label stands where the body was. */
-  goneLabel?: (m: M) => string | null;
   /** A system notice, drawn centred and plain. */
   notice?: (m: M) => boolean;
   /** The body, where the source draws it itself (translation, attachments). */
@@ -69,7 +67,6 @@ export function StreamRowView<M extends StreamMessage>({
   nameOf,
   avatarUrl,
   badge,
-  goneLabel,
   notice,
   renderBody,
   renderFooter,
@@ -87,7 +84,6 @@ export function StreamRowView<M extends StreamMessage>({
   const actions = readOnly ? [] : row.askActions;
   const withdrawn = ask?.status === 'withdrawn';
   const tone = tag === 'question' ? c.card.tones.ask : c.card.tones.due;
-  const gone = goneLabel?.(m) ?? null;
   const badgeText = badge?.(m) ?? null;
   const bodyStyle: TextStyle = { fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.5), color: c.card.ink, marginTop: 1 };
 
@@ -104,10 +100,10 @@ export function StreamRowView<M extends StreamMessage>({
 
   return (
     <Pressable
-      onLongPress={onLongPress && !gone && !editing ? () => onLongPress(row) : undefined}
+      onLongPress={onLongPress && !editing ? () => onLongPress(row) : undefined}
       delayLongPress={350}
       onLayout={onRowLayout ? (e) => onRowLayout(m.id, { top: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height }) : undefined}
-      accessibilityHint={onLongPress && !gone && !editing ? t('mobile.stream.message_actions') : undefined}
+      accessibilityHint={onLongPress && !editing ? t('mobile.stream.message_actions') : undefined}
       style={({ pressed }) => ({
         flexDirection: 'row',
         gap: GAP,
@@ -115,7 +111,7 @@ export function StreamRowView<M extends StreamMessage>({
         paddingHorizontal: 8,
         marginHorizontal: -8,
         borderRadius: 12,
-        backgroundColor: pressed && onLongPress && !gone && !editing ? c.card.bg2 : 'transparent',
+        backgroundColor: pressed && onLongPress && !editing ? c.card.bg2 : 'transparent',
       })}
     >
       <View style={{ width: AVATAR }}>
@@ -150,19 +146,17 @@ export function StreamRowView<M extends StreamMessage>({
         )}
         {editing && onSaveEdit ? (
           <EditBody initial={m.body} onSave={onSaveEdit} onCancel={onCancelEdit} failure={editFailure} />
-        ) : gone ? (
-          <Text style={{ ...bodyStyle, fontFamily: font.medium, fontStyle: 'italic', color: c.card.ink3 }}>{gone}</Text>
         ) : renderBody ? (
           renderBody(row, bodyStyle)
         ) : (
           <Text style={bodyStyle}>{m.body}</Text>
         )}
 
-        {!editing && !gone && !!m.editedAt && (
+        {!editing && !!m.editedAt && (
           <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.card.ink3, marginTop: 2 }}>{t('mobile.stream.edited')}</Text>
         )}
 
-        {!editing && !gone && !!ask && (
+        {!editing && !!ask && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <Text
               style={{
@@ -182,7 +176,7 @@ export function StreamRowView<M extends StreamMessage>({
           </View>
         )}
 
-        {!editing && !gone && !!mention && (mention.status !== 'open' || mentionActions.length > 0) && (
+        {!editing && !!mention && (mention.status !== 'open' || mentionActions.length > 0) && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             {(mention.status !== 'open' || mentionActions.includes('neverMind')) && (
               <Text
@@ -205,7 +199,7 @@ export function StreamRowView<M extends StreamMessage>({
         )}
 
         {!editing &&
-          (gone || !renderFooter
+          (!renderFooter
             ? !!thread && onOpenThread && <ThreadChip thread={thread} now={now} onPress={() => onOpenThread(row)} />
             : renderFooter(row))}
       </View>

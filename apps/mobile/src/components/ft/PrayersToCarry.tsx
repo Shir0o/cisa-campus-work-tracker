@@ -22,13 +22,11 @@ export function PrayersToCarry({
   prayedToday,
   onPray,
   onAnswered,
-  onOpenPrayers,
 }: {
   rows: FtCarryRow[];
   prayedToday: (rowId: string) => boolean;
   onPray: (row: FtCarryRow) => void;
   onAnswered: (row: FtCarryRow) => void;
-  onOpenPrayers: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -41,8 +39,6 @@ export function PrayersToCarry({
       label={t('mobile.prayer.prayers_to_carry')}
       count={rows.length}
       tone="deep"
-      link={t('mobile.prayer.whole_prayer_log')}
-      onLink={onOpenPrayers}
     >
       {shown.length === 0 && <WidgetEmpty>{t('mobile.prayer.nothing_open')}</WidgetEmpty>}
       {shown.map((row, i) => {

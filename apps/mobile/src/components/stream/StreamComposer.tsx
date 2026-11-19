@@ -24,22 +24,12 @@ import {
   type MentionUser,
 } from '../../lib/mentions';
 
-/** A file or contact card staged to go with the next post (C5). */
-export interface StreamStagedItem {
-  key: string;
-  label: string;
-  kind: 'contact' | 'file';
-}
-
 export function StreamComposer({
   audience,
   locked,
   placeholder,
   label,
   candidates,
-  staged,
-  onAttach,
-  onUnstage,
   onSend,
 }: {
   /** Whose eyes a message reaches (C3). */
@@ -51,11 +41,6 @@ export function StreamComposer({
   label: string;
   /** Who may be @mentioned here (ADR 0007); none means no @ tool. */
   candidates?: MentionUser[];
-  /** Staged files and contact cards, above the text, each removable (C5). */
-  staged?: StreamStagedItem[];
-  /** The paperclip — offered only where the source takes attachments (chat). */
-  onAttach?: () => void;
-  onUnstage?: (key: string) => void;
   onSend: (input: { body: string; mentionedUserIds: string[] }) => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
@@ -67,7 +52,6 @@ export function StreamComposer({
   const [picked, setPicked] = useState<Array<{ uid: string; name: string }>>([]);
 
   const roster = candidates ?? [];
-  const hasStaged = !!staged && staged.length > 0;
   // Who the draft names, as it stands: a name picked and then edited out is
   // nobody's (ADR 0007).
   const named = reconcileMentionedUsers(body, picked);
@@ -84,7 +68,7 @@ export function StreamComposer({
 
   const mention = useMemo(() => extractMentionCandidate(body, sel), [body, sel]);
   const matches = useMemo(
-    () => (mention ? filterMentionCandidates(roster, mention.query, false) : []),
+    () => (mention ? filterMentionCandidates(roster, mention.query) : []),
     [mention, roster],
   );
   const choosing = !!mention && matches.length > 0;
@@ -115,7 +99,7 @@ export function StreamComposer({
 
   const send = () => {
     const said = body.trim();
-    if (!said && !hasStaged) return;
+    if (!said) return;
     const mentionedUserIds = reconcileMentionedUsers(said, picked);
     setBody('');
     setPicked([]);
@@ -148,37 +132,6 @@ export function StreamComposer({
           paddingBottom: 4,
         }}
       >
-        {hasStaged && (
-          <View accessibilityLabel={t('mobile.stream.staged')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 6, paddingBottom: 2 }}>
-            {staged!.map((s) => (
-              <View
-                key={s.key}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  paddingLeft: 10,
-                  borderRadius: radius.chip,
-                  backgroundColor: c.card.bg2,
-                }}
-              >
-                <Ionicons name={s.kind === 'contact' ? 'person-outline' : 'document-outline'} size={13} color={c.card.ink2} />
-                <Text numberOfLines={1} style={{ fontFamily: font.semi, fontSize: fs(12), color: c.card.ink2, maxWidth: 180 }}>
-                  {s.label}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('mobile.stream.remove_staged').replace('{name}', s.label)}
-                  onPress={() => onUnstage?.(s.key)}
-                  style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons name="close" size={16} color={c.card.ink2} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        )}
-
         {choosing && (
           <View
             accessibilityLabel={t('mobile.stream.mention_list')}
@@ -207,9 +160,6 @@ export function StreamComposer({
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-          {onAttach && (
-            <ToolButton icon="attach" label={t('mobile.stream.attach')} onPress={onAttach} />
-          )}
           {roster.length > 0 && (
             <ToolButton icon="at" label={t('mobile.stream.mention')} onPress={startMention} />
           )}
@@ -242,8 +192,8 @@ export function StreamComposer({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('mobile.stream.send')}
-            accessibilityState={{ disabled: !body.trim() && !hasStaged }}
-            disabled={!body.trim() && !hasStaged}
+            accessibilityState={{ disabled: !body.trim() }}
+            disabled={!body.trim()}
             onPress={send}
             style={({ pressed }) => ({
               width: 44,
@@ -252,7 +202,7 @@ export function StreamComposer({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: c.card.inverse,
-              opacity: !body.trim() && !hasStaged ? 0.35 : pressed ? 0.8 : 1,
+              opacity: !body.trim() ? 0.35 : pressed ? 0.8 : 1,
             })}
           >
             <Ionicons name="arrow-up" size={20} color={c.card.onInverse} />

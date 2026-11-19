@@ -47,8 +47,7 @@ export async function runAskReminders(deps: ReminderDeps): Promise<ReminderRunRe
 }
 
 /** The live deps over Firestore. `collectionGroup("threads")` reaches every
- *  contact Conversation; the Full-timers stream lives in `teamThreads` and is
- *  deliberately out of scope. */
+ *  contact Conversation; the Full-timers stream is cut (§24). */
 export function firestoreReminderDeps(db: Firestore): ReminderDeps {
   return {
     async candidates() {
@@ -171,13 +170,13 @@ type AroundTeamDocs = Omit<AroundTeamInput, "uid" | "personalContactIds">;
 
 /** The team half of a Full-timer's **to work through** count (#1336): the same
  *  docs Around the team and My Day's pointer card read — every contact, the
- *  500 newest interactions, and every message in `threads` and `teamThreads`. */
+ *  500 newest interactions, and every open-thread message. Legacy team-scope
+ *  messages and the cut `teamThreads` collection are left out (§24). */
 async function aroundTeamDocs(db: Firestore, nowIso: string): Promise<AroundTeamDocs> {
-  const [contactsSnap, interactionsSnap, threadsSnap, teamThreadsSnap] = await Promise.all([
+  const [contactsSnap, interactionsSnap, threadsSnap] = await Promise.all([
     db.collection("contacts").get(),
     db.collectionGroup("interactions").orderBy("createdAt", "desc").limit(500).get(),
     db.collectionGroup("threads").get(),
-    db.collectionGroup("teamThreads").get(),
   ]);
   const toThread = (d: (typeof threadsSnap.docs)[number]) => {
     const data = d.data();
@@ -198,10 +197,7 @@ async function aroundTeamDocs(db: Firestore, nowIso: string): Promise<AroundTeam
       ...d.data(),
       contactId: d.ref.parent.parent?.id ?? "",
     })),
-    threads: [
-      ...threadsSnap.docs.map(toThread),
-      ...teamThreadsSnap.docs.map((d) => ({ ...toThread(d), scope: "team" as const })),
-    ],
+    threads: threadsSnap.docs.filter((d) => d.data().scope !== "team").map(toThread),
   };
 }
 

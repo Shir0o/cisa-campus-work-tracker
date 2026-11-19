@@ -187,7 +187,7 @@ function CardComposer({
     setBusy(true);
     await addThreadMessage(
       contact.id,
-      { interactionId: null, scope: null, from: uid, fromName: meName, kind: "comment", body },
+      { interactionId: null, from: uid, fromName: meName, kind: "comment", body },
       {
         contactName: contact.name,
         stakeholders: contactStakeholdersOf(contact),
@@ -300,7 +300,7 @@ export function WorklistCard({
   // The card's own view of the conversation, so the count on the toggle and
   // the messages in the strip are one fact rather than two.
   const { messages, justPosted, notePosted } = useCardThread(threads ?? EMPTY_MESSAGES);
-  const conversationCount = countFor(messages, null, null);
+  const conversationCount = countFor(messages, null);
   // Praise belongs to the person (#1624): this card carries the encouragements
   // this person's thread holds for the reader, rather than one line on My Day
   // that spoke about everybody at once.

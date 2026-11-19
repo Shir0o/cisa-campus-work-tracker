@@ -1,25 +1,24 @@
-// A Thread on the phone (ADR 0033, T2–T4): replies to one message, one level
-// deep, as a pushed screen with a back control to where it lives. Header:
-// "Thread" over the person's name. The parent sits on top — a Conversation or
-// Full-timers message, or an Interaction quoted from the Story — then "N
-// replies", the replies, and a reply box pinned at the foot.
+// A Thread on the phone (ADR 0033, T2–T4): replies to one Conversation message,
+// one level deep, as a pushed screen with a back control to where it lives.
+// Header: "Thread" over the person's name. The parent sits on top, then "N
+// replies", the replies, and a reply box pinned at the foot. An Interaction's
+// Thread is cut (cut-or-keep §24).
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { buildThread, canSeeContact, storyRowLine, type StreamRow, type ThreadMessage } from '@cisa/core';
+import { buildThread, canSeeContact, type StreamRow, type ThreadMessage } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { useInboxReads } from '../../lib/data/inboxReads';
-import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
+import { conversationMessages } from '../../lib/contactStreams';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { SafeAreaView } from '../ui/SafeArea';
 import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { KeyboardScrollView } from '../ui/KeyboardField';
 import { Snackbar } from '../ui';
-import { Kicker } from '../queue/atoms';
 import { Room, V2Empty } from '../v2/Widget';
 import { StreamRowView } from '../stream/StreamRow';
 import { Divider } from '../stream/StreamList';
@@ -29,12 +28,8 @@ import { repliesLabel } from '../stream/format';
 
 export interface ContactThreadScreenProps {
   contactId: string;
-  /** A Conversation or Full-timers message's Thread. */
+  /** A Conversation message's Thread. */
   parentId?: string | null;
-  /** The parent is in the Full-timers stream. */
-  team?: boolean;
-  /** An Interaction's Thread, from its Story entry. */
-  interactionId?: string | null;
 }
 
 export function ContactThreadScreen(props: ContactThreadScreenProps) {
@@ -46,7 +41,7 @@ export function ContactThreadScreen(props: ContactThreadScreenProps) {
   );
 }
 
-function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadScreenProps) {
+function ThreadBody({ contactId, parentId }: ContactThreadScreenProps) {
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const { uid, role, isImpersonating } = useAuth();
@@ -61,29 +56,21 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
   const viewer = { uid: uid ?? '', role: canWrite ? role : null };
   // Read once per visit: "Today" and "Open N days" are said against it.
   const [now] = useState(Date.now);
-  const interaction = interactionId ? data.interactions.find((i) => i.id === interactionId) ?? null : null;
-  const streamName = interactionId
-    ? t('mobile.contact.thread_back_story')
-    : team
-      ? t('mobile.contact.full_timers')
-      : t('mobile.contact.conversation');
+  const streamName = t('mobile.contact.conversation');
 
-  const thread = interactionId
-    ? interaction && interactionThread({ interaction, messages: data.threadMessages, viewer, now })
-    : buildThread(
-        { messages: team ? fullTimersMessages(data.threadMessages) : conversationMessages(data.threadMessages), viewer, now },
-        parentId ?? '',
-      );
+  const thread = buildThread(
+    { messages: conversationMessages(data.threadMessages), viewer, now },
+    parentId ?? '',
+  );
 
   const back = () => (router.canGoBack() ? router.back() : router.replace(`/contact/${contactId}` as never));
   const contact = data.contact;
   const visible = !!contact && canSeeContact(role, uid, contact);
 
-  // Seeing a Thread reads what it shows (#1793), so Today drops its card. An
-  // Interaction's quoted parent is not a message, so it has nothing to read.
+  // Seeing a Thread reads what it shows (#1793), so Today drops its card.
   const reads = useInboxReads();
   const shown = thread
-    ? [thread.parent, ...thread.replies].map((r) => r.message.id).filter((id) => !id.startsWith('interaction:')).join(',')
+    ? [thread.parent, ...thread.replies].map((r) => r.message.id).join(',')
     : '';
   useEffect(() => {
     if (!uid || !visible || !shown) return;
@@ -123,31 +110,22 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <KeyboardScrollView contentContainerStyle={{ padding: 12 }} keyboardShouldPersistTaps="handled">
             <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 10 }}>
-              {interaction ? (
-                <View style={{ borderLeftWidth: 3, borderLeftColor: c.card.quoteLine, paddingLeft: 12, paddingVertical: 4 }}>
-                  <Kicker>{storyRowLine(interaction, uid ?? '')}</Kicker>
-                  <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.5), color: c.card.said, marginTop: 6 }}>
-                    {interaction.content}
-                  </Text>
-                </View>
-              ) : (
-                <StreamRowView
-                  row={thread.parent}
-                  now={now}
-                  readOnly={!canWrite}
-                  onLongPress={setHeld}
-                  onCloseAsk={(row) => void data.closeAsk(row.message)}
-                  nameOf={(uid) => data.teamMembers.find((m) => m.uid === uid)?.displayName ?? ''}
-                  editingId={editingMessage?.id ?? null}
-                  onSaveEdit={async (body) => {
-                    if (!editingMessage) return;
-                    await data.editThreadMessage(editingMessage, body);
-                    setEditingMessage(null);
-                  }}
-                  onCancelEdit={() => setEditingMessage(null)}
-                  editFailure={t('mobile.stream.edit_failed')}
-                />
-              )}
+              <StreamRowView
+                row={thread.parent}
+                now={now}
+                readOnly={!canWrite}
+                onLongPress={setHeld}
+                onCloseAsk={(row) => void data.closeAsk(row.message)}
+                nameOf={(uid) => data.teamMembers.find((m) => m.uid === uid)?.displayName ?? ''}
+                editingId={editingMessage?.id ?? null}
+                onSaveEdit={async (body) => {
+                  if (!editingMessage) return;
+                  await data.editThreadMessage(editingMessage, body);
+                  setEditingMessage(null);
+                }}
+                onCancelEdit={() => setEditingMessage(null)}
+                editFailure={t('mobile.stream.edit_failed')}
+              />
               {thread.replies.length > 0 && (
                 <Divider
                   label={
@@ -183,26 +161,19 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
             <StreamComposer
               placeholder={t('mobile.stream.reply_placeholder')}
               label={t('mobile.stream.reply_label')}
-              candidates={
-                (team ? data.teamMembers.filter((m) => m.role === 'admin') : data.teamMembers).map((m) => ({
-                  uid: m.uid,
-                  name: m.displayName,
-                  role: m.role,
-                }))
-              }
+              candidates={data.teamMembers.map((m) => ({
+                uid: m.uid,
+                name: m.displayName,
+                role: m.role,
+              }))}
               onSend={({ body, mentionedUserIds }) =>
-                void data.postThreadMessage(
-                  interactionId
-                    ? { interactionId, parentId: null, scope: null, kind: 'comment', body, mentionedUserIds }
-                    : {
-                        interactionId: null,
-                        parentId: parentId ?? null,
-                        scope: team ? 'team' : null,
-                        kind: 'comment',
-                        body,
-                        mentionedUserIds,
-                      },
-                )
+                void data.postThreadMessage({
+                  interactionId: null,
+                  parentId: parentId ?? null,
+                  kind: 'comment',
+                  body,
+                  mentionedUserIds,
+                })
               }
             />
           )}
@@ -219,12 +190,8 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
           setToast(t('mobile.stream.copied'));
         }}
         onDelete={canWrite ? (row) => void data.deleteThreadMessage(row.message) : undefined}
-        // Author-only, and not the Full-timers stream (posted and removed, never edited).
-        onEdit={
-          canWrite && !team && held?.message.from === uid
-            ? (row) => setEditingMessage(row.message)
-            : undefined
-        }
+        // Author-only.
+        onEdit={canWrite && held?.message.from === uid ? (row) => setEditingMessage(row.message) : undefined}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
