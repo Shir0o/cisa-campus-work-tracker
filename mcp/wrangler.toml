@@ -16,6 +16,7 @@ MCP_MEMBER_ID = "cisa-team"
 # Secrets (never in this file):
 #   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT   # the service-account JSON, one line
 #   npx wrangler secret put MCP_ACCESS_PASSWORD        # the consent-screen password
+#   npx wrangler secret put MCP_AUTH_TOKEN             # optional static Bearer token for CLI/IDE clients
 #
 # For local `wrangler dev`, put the same two values in mcp/.dev.vars.
 

@@ -3,6 +3,10 @@
 // The consent screen is a shared access-password gate. The password lives in a
 // Worker secret (`wrangler secret put MCP_ACCESS_PASSWORD`) and is never stored
 // anywhere else; the Worker compares SHA-256 digests instead of the raw strings.
+//
+// Headless MCP clients (Antigravity, Claude Code) may alternatively present a
+// static `Authorization: Bearer <MCP_AUTH_TOKEN>` token when the `MCP_AUTH_TOKEN`
+// Worker secret is configured.
 import OAuthProvider, { type OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { handleMcp } from './mcp.ts';
 import { handleConsent } from './consent.ts';
@@ -19,12 +23,31 @@ export interface Env {
   FIREBASE_SERVICE_ACCOUNT: string;
   /** Consent-screen password, set with `wrangler secret put`. */
   MCP_ACCESS_PASSWORD: string;
+  /** Optional static Bearer token for headless CLI / IDE MCP clients. */
+  MCP_AUTH_TOKEN?: string;
+}
+
+const MCP_RESOURCE = `${PUBLIC_URL}/mcp`;
+
+async function constantTimeMatches(provided: string, expected: string | undefined): Promise<boolean> {
+  if (!expected || !provided) return false;
+  const encoder = new TextEncoder();
+  const [left, right] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(provided)),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+  ]);
+  const a = new Uint8Array(left);
+  const b = new Uint8Array(right);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
 
 const defaultHandler = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === '/authorize') return handleConsent(request, env, ctx);
+    if (pathname === '/healthz') return new Response('ok', { headers: { 'content-type': 'text/plain' } });
     if (pathname === '/') return landing();
     return new Response('Not found', { status: 404 });
   },
@@ -49,7 +72,7 @@ export default new OAuthProvider<Env>({
   tokenEndpoint: '/token',
   clientRegistrationEndpoint: '/register',
   resourceMetadata: {
-    resource: `${PUBLIC_URL}/mcp`,
+    resource: MCP_RESOURCE,
     resource_name: 'CISA Campus Work Tracker',
   },
   scopesSupported: ['work-tracker'],
@@ -58,6 +81,14 @@ export default new OAuthProvider<Env>({
   // Registered clients can be revoked by deleting their KV entry; the default
   // TTL also stops abandoned registrations accumulating forever.
   clientRegistrationTTL: 90 * 24 * 60 * 60,
+  resolveExternalToken: async ({ token, env }) => {
+    if (!(await constantTimeMatches(token, env.MCP_AUTH_TOKEN))) return null;
+    const memberId = env.MCP_MEMBER_ID || 'cisa-team';
+    return {
+      props: { member: memberId, source: 'bearer-token' },
+      audience: MCP_RESOURCE,
+    };
+  },
 });
 
 function landing(): Response {
