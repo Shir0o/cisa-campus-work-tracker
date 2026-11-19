@@ -34,6 +34,20 @@ describe('subscribeNotifications (packages/core)', () => {
     expect(firestoreMock.where).not.toHaveBeenCalledWith('userId', '==', 'ALL_ADMINS');
   });
 
+  it('shows everything it receives — nothing is filtered out as set aside', () => {
+    const cb = vi.fn();
+    firestoreMock.onSnapshot.mockImplementation((_q: unknown, next: (snap: unknown) => void) => {
+      next({
+        docs: [
+          { id: 'n1', data: () => ({ userId: 'u1', title: 'Set aside once', type: 'info', read: false, dismissedBy: ['u1'] }) },
+        ],
+      });
+      return () => {};
+    });
+    subscribeNotifications({} as never, 'u1', cb);
+    expect(cb).toHaveBeenCalledWith([expect.objectContaining({ id: 'n1', title: 'Set aside once' })]);
+  });
+
   it('also queries the ALL_ADMINS broadcasts when includeBroadcast is set (Full-timers)', () => {
     const cb = vi.fn();
     subscribeNotifications({} as never, 'u1', cb, undefined, { includeBroadcast: true });

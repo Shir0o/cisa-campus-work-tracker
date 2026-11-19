@@ -14,8 +14,6 @@ Global navigation bars, navigation rail, mobile navigation drawer, impersonation
 - `NavChromeStrip` (`NavChromeStrip.tsx`)
 - `NavRailProps` (`NavRail.tsx`)
 - `NavRail` (`NavRail.tsx`)
-- `NtfFeedItem` (`NotificationCenter.tsx`)
-- `groupNotificationsIntoStacks` (`NotificationCenter.tsx`)
 - `NotificationCenter` (`NotificationCenter.tsx`)
 - `OwnerViewBanner` (`OwnerViewBanner.tsx`)
 - `PageWidth` (`PageContainer.tsx`)

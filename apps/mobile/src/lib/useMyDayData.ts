@@ -24,7 +24,6 @@ import {
   thisWeekEvents,
   isFullTimer,
   setContactCarer,
-  contactStakeholdersOf,
   type Contact,
   type Event,
   type InboxItem,
@@ -299,11 +298,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
       void addThreadMessage(
         item.contactId,
         { interactionId: item.interactionId ?? null, from: uid, fromName: meName, kind, body },
-        {
-          to: item.by,
-          contactName: contact?.name,
-          stakeholders: contactStakeholdersOf(contact),
-        },
+        { contactName: contact?.name },
       );
       InboxReads.markRead(uid, item.id);
     },

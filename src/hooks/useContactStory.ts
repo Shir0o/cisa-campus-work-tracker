@@ -5,7 +5,6 @@ import {
   handleFirestoreError,
   OperationType,
   logActivity,
-  sendNotification,
 } from "../lib/firebase";
 import { buildContactActivityPatch } from "../lib/contactActivity";
 import { activityTypeFor } from "../lib/logInteraction";
@@ -133,9 +132,8 @@ export interface NewContactInteraction {
   t?: (key: string, fallback?: string) => string;
 }
 
-/** Log an interaction on a contact: the record, the contact's activity stamp,
- *  the "logged on your behalf" bell for a named reacher (#1288) and the
- *  History entry. The story composer's write, shared with To ask's
+/** Log an interaction on a contact: the record, the contact's activity stamp
+ *  and the History entry. The story composer's write, shared with To ask's
  *  "Post an update" to a contact's page. */
 export async function addContactInteraction(
   c: { id: string; name: string },
@@ -165,29 +163,14 @@ export async function addContactInteraction(
   await announceInteraction(c, data);
 }
 
-/** What follows a logged interaction once it is saved: the "logged on your
- *  behalf" bell for a named reacher (#1288) and the History entry. Split from
- *  the write so a Visit logged for several people in one batch can announce each
- *  person's entry afterwards. */
+/** What follows a logged interaction once it is saved: the History entry.
+ *  Split from the write so a Visit logged for several people in one batch can
+ *  announce each person's entry afterwards. Logging a teammate's interaction
+ *  for them tells them nothing (cut-or-keep §28). */
 export async function announceInteraction(
   c: { id: string; name: string },
   data: NewContactInteraction,
 ): Promise<void> {
-  if (data.reacher) {
-    sendNotification({
-      userId: data.reacher.id,
-      title: data.t ? data.t("modals.contactDetails.on_behalf_title") : "Logged on your behalf",
-      message: data.t
-        ? data.t("modals.contactDetails.on_behalf_message")
-            .replace("{logger}", data.userName)
-            .replace("{name}", c.name)
-        : `${data.userName} logged an interaction with ${c.name} on your behalf.`,
-      type: "info",
-      targetId: c.id,
-      link: `/people/${c.id}`,
-    });
-  }
-
   await logActivity({
     action: "logged an interaction for",
     targetId: c.id,

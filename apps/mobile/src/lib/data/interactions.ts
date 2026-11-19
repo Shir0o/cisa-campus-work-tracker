@@ -4,7 +4,7 @@
 // History tab.
 import * as core from '@cisa/core';
 import type { Interaction } from '@cisa/core';
-import { db, handleFirestoreError, logActivity, OperationType, sendNotification } from '../firebase';
+import { db, handleFirestoreError, logActivity, OperationType } from '../firebase';
 
 export function subscribeInteractions(
   contactId: string,
@@ -25,17 +25,7 @@ export async function addInteraction(
 ): Promise<void> {
   try {
     await core.addInteraction(db, contactId, input, by, reacher);
-    // The teammate it was logged for hears about it, as on the web composer.
-    if (reacher && reacher.uid !== by.uid) {
-      void sendNotification({
-        userId: reacher.uid,
-        title: 'Logged on your behalf',
-        message: `${by.name} logged an interaction with ${contactName}.`,
-        type: 'info',
-        targetId: contactId,
-        link: `/people/${contactId}`,
-      });
-    }
+    // Logging it on a teammate's behalf tells them nothing (cut-or-keep §28).
     void logActivity({
       action: 'logged an interaction for',
       targetId: contactId,

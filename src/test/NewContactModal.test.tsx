@@ -487,7 +487,7 @@ describe('NewContactModal', () => {
 
   // ── Modal not rendered when closed ─────────────────────────────────
 
-  it('sends notification linking to /people/:id upon creation', async () => {
+  it('sends no notification when a contact is added', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     const { sendNotification } = await import('../lib/firebase');
@@ -504,12 +504,9 @@ describe('NewContactModal', () => {
     await user.click(submitBtn);
 
     await waitFor(() => {
-      expect(sendNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          link: expect.stringMatching(/^\/people\//),
-        })
-      );
+      expect(onClose).toHaveBeenCalled();
     });
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
   it('renders localized spiritual background options and placeholder without raw i18n keys', async () => {

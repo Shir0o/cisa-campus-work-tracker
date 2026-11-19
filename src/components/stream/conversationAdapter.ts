@@ -7,7 +7,6 @@ import {
   deleteThreadMessage,
   editThreadMessage,
   type ThreadMessage,
-  type ThreadStakeholders,
 } from "../../lib/threads";
 import { contactWriter } from "./contactWriter";
 import type { StreamAdapter } from "./types";
@@ -22,9 +21,6 @@ export interface ConversationAdapterInput {
    *  scope and level; this adapter keeps the Conversation's own. */
   messages: ThreadMessage[];
   me: { uid: string; name: string; role?: string | null };
-  /** Legacy single recipient, passed through to the notify path unchanged. */
-  recipientUid?: string | null;
-  stakeholders?: ThreadStakeholders | null;
   teamMembers: { id: string; name: string; role?: string }[];
   /** Told what was just posted, so a surface can show it before the write returns. */
   onPosted?: (message: ThreadMessage, landed: Promise<string | null>) => void;
@@ -36,15 +32,13 @@ export function conversationAdapter({
   contactName,
   messages,
   me,
-  recipientUid,
-  stakeholders,
   teamMembers,
   onPosted,
   t,
 }: ConversationAdapterInput): StreamAdapter<ThreadMessage> {
   const first = (contactName || "").trim().split(/\s+/)[0] || contactName;
   const mayWrite = WRITERS.has(me.role ?? "");
-  const write = contactWriter({ contactId, contactName, me, recipientUid, stakeholders, onPosted });
+  const write = contactWriter({ contactId, contactName, me, onPosted });
 
   return {
     messages: messages.filter((m) => !m.interactionId && !m.scope),

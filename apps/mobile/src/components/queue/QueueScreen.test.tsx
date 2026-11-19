@@ -415,7 +415,7 @@ describe('QueueScreen', () => {
       expect(addThreadMessage).toHaveBeenCalledWith(
         'c1',
         expect.objectContaining({ interactionId: null, kind: 'note', body: 'Yes, Friday works.' }),
-        expect.objectContaining({ to: 'ft1' }),
+        { contactName: 'Sam Lee' },
       );
       expect(readIds(InboxReads.markRead as jest.Mock)).toEqual(['thread:m1', 'thread:m2', 'thread:m3']);
     });

@@ -40,7 +40,6 @@ vi.mock('../lib/threads', () => ({
   closeFollowUpAsk: vi.fn(() => Promise.resolve()),
   reopenFollowUpAsk: vi.fn(() => Promise.resolve()),
   deleteThreadMessage: vi.fn(() => Promise.resolve()),
-  contactStakeholdersOf: vi.fn((c) => c || {}),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
 }));
 
@@ -2237,10 +2236,8 @@ describe('ContactDetailsModal Component', () => {
         expect.objectContaining({ lastContactedBy: 'Jae', updatedByName: 'Admin Tony' }),
       ),
     );
-    // The teammate named as reacher gets a bell entry.
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'jae', targetId: 'contact-abc' }),
-    );
+    // Logging it on a teammate's behalf tells them nothing (cut-or-keep §28).
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
   it('hides the By chip from a Trainee (#1288)', async () => {
@@ -3350,7 +3347,7 @@ describe('desktop story layout (design D)', () => {
     expect(within(pane).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
   });
 
-  it('posts a plain comment from the drawer to everyone tied', async () => {
+  it('posts a plain comment from the drawer and notifies nobody', async () => {
     const contact = { ...mockContact, createdBy: 'user-9', carers: ['user-7'] };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} initialTab="thread" />);
     const drawer = screen.getByRole('region', { name: 'Conversation' });
@@ -3361,7 +3358,7 @@ describe('desktop story layout (design D)', () => {
     expect(addThreadMessage).toHaveBeenCalledWith(
       'contact-abc',
       expect.objectContaining({ kind: 'comment', body: 'Text John about Thursday', parentId: null, from: 'user-123', fromName: 'Admin Tony' }),
-      expect.objectContaining({ contactName: 'John Doe', stakeholders: contact }),
+      { contactName: 'John Doe' },
     );
   });
 

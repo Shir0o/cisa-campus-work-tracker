@@ -33,15 +33,12 @@ const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
   ...over,
 });
 
-const stakeholders = { createdBy: "maria", carers: ["josh"] };
 const make = (role = "manager", messages: ThreadMessage[] = []) =>
   conversationAdapter({
     contactId: "c1",
     contactName: "Daniel Reyes",
     messages,
     me: { uid: "maria", name: "Maria Santos", role },
-    recipientUid: "ruth",
-    stakeholders,
     teamMembers: [
       { id: "josh", name: "Josh Park", role: "Trainee" },
       { id: "ruth", name: "Ruth Chen", role: "Full-timer" },
@@ -86,7 +83,7 @@ describe("conversationAdapter", () => {
     ]);
   });
 
-  it("posts a plain comment through addThreadMessage with mentions, and everyone tied to notify", () => {
+  it("posts a plain comment through addThreadMessage with its mentions", () => {
     make().post({ body: "Text him", mentionedUserIds: ["josh"] });
     expect(addThreadMessage).toHaveBeenCalledWith(
       "c1",
@@ -99,7 +96,7 @@ describe("conversationAdapter", () => {
         body: "Text him",
         mentionedUserIds: ["josh"],
       },
-      { to: "ruth", contactName: "Daniel Reyes", stakeholders },
+      { contactName: "Daniel Reyes" },
     );
   });
 
@@ -109,7 +106,7 @@ describe("conversationAdapter", () => {
     expect(addThreadMessage).toHaveBeenCalledWith(
       "c1",
       expect.objectContaining({ parentId: "ask", kind: "comment", body: "I can", interactionId: null }),
-      { to: "ruth", contactName: "Daniel Reyes", stakeholders },
+      { contactName: "Daniel Reyes" },
     );
     expect(closeFollowUpAsk).not.toHaveBeenCalled();
   });

@@ -8,8 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertCircle, Check, Coffee, House, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
-import { isTrainee, fullTimerIds } from '../../lib/walking';
+import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { activityTypeFor, logInteraction } from '../../lib/logInteraction';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
@@ -170,26 +169,6 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
           role: role || undefined,
           meta: 'interaction',
         });
-      }
-
-      // No pairing (#549): when a trainee logs time, the whole full-timer team
-      // is pinged, so nothing the team does goes unseen.
-      if (isTrainee(user?.uid)) {
-        const who = (user?.displayName || 'A trainee').split(' ')[0];
-        const snippet = notes.length > 140 ? notes.slice(0, 140).trimEnd() + '…' : notes;
-        for (const ftId of fullTimerIds()) {
-          for (const contactId of selectedContactIds) {
-            const contact = contacts.find(c => c.id === contactId);
-            await sendNotification({
-              userId: ftId,
-              title: `${who} logged time with ${contact?.name || 'someone'}`,
-              message: snippet,
-              type: 'info',
-              targetId: contactId,
-              link: `/people/${contactId}`,
-            });
-          }
-        }
       }
 
       // Log system activity outside batch (helper adds its own doc)

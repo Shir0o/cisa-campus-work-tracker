@@ -22,9 +22,7 @@ import { useAuth } from "../AuthProvider";
 import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, canReleaseContact } from "../../lib/permissions";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { conversationAdapter } from "../stream/conversationAdapter";
-import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, type ThreadMessage } from "../../lib/threads";
-import { walkingRecipient } from "../../lib/walking";
 import { isTrainee as isTraineeUid } from "../../lib/walking";
 import AddToAskModal from "../contact/AddToAskModal";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
@@ -236,16 +234,12 @@ export default function ContactDetailsModal({
 
   const currentUid = effectiveUserId || user?.uid;
   const hasAccess = canSeeContact(role, currentUid, contact);
-  const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
-
   const streamViewer = { uid: currentUid ?? "", role };
   const adapterBase = {
     contactId: contact.id,
     contactName: contact.name,
     messages: threadMessages,
     me: { uid: currentUid ?? "", name: user?.displayName || "Someone", role },
-    recipientUid: threadRecipient,
-    stakeholders: contactStakeholdersOf(contact),
     teamMembers,
     t,
   };

@@ -222,8 +222,8 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await seedDoc(db, 'contacts/c-mine/threads/t-team', {
         from: ADMIN, fromName: 'Admin', kind: 'comment', body: 'team only', at: ISO, scope: 'team',
       });
-      // Row 21: a Full-timer wrote on the trainee's person just now, so they
-      // are In the Conversation there without being tied (#1604).
+      // Row 21: a Full-timer wrote on the trainee's person just now, so the
+      // trainee's reply can answer a message they are not tied to (#1604).
       await seedDoc(db, 'contacts/c-mine/threads/t-recent', {
         from: ADMIN, fromName: 'Admin', kind: 'nudge', body: 'can someone text them?',
         at: new Date().toISOString(), interactionId: null,
@@ -463,20 +463,22 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     })).resolves.toBeUndefined();
   });
 
-  // ── Row 21: a reply reaches teammates In the Conversation (#1604) ────────
-  // addThreadMessage reads the stream's last 14 days to find who wrote there.
-  // That read swallows a denial (it only narrows who hears), so a rule that
-  // refused it would silently notify nobody. Pin it as the Trainee who runs it.
-  it('row 21 — a Trainee’s reply reads the stream and reaches the untied Full-timer who asked', async () => {
+  // ── Row 21: a reply notifies nobody without an @mention (§28) ────────────
+  // addThreadMessage still reads the stream's last 14 days to close an open
+  // @mention a reply answers. A denial there leaves the ask open, never sends
+  // a bell entry; only a picked @mention does.
+  it('row 21 — a Trainee’s reply to the Full-timer who asked writes and notifies nobody', async () => {
     const onNotify = vi.fn();
-    await addThreadMessage(
-      dbFor(TRAINEE),
-      'c-mine',
-      { parentId: 't-recent', from: TRAINEE, fromName: 'Trainee', kind: 'comment', body: 'I texted them.' },
-      { contactName: 'Mine', stakeholders: { createdBy: TRAINEE } },
-      onNotify,
-    );
-    expect(onNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: ADMIN }));
+    await expect(
+      addThreadMessage(
+        dbFor(TRAINEE),
+        'c-mine',
+        { parentId: 't-recent', from: TRAINEE, fromName: 'Trainee', kind: 'comment', body: 'I texted them.' },
+        { contactName: 'Mine' },
+        onNotify,
+      ),
+    ).resolves.toBeUndefined();
+    expect(onNotify).not.toHaveBeenCalled();
   });
 
   // ── Rows 3/5 (db side): the collection-group thread feed ─────────────────

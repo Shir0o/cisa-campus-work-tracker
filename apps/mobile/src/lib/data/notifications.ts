@@ -28,14 +28,3 @@ export async function markAllNotificationsRead(ids: string[], uid: string): Prom
     handleFirestoreError(e, OperationType.UPDATE, 'notifications');
   }
 }
-
-export async function setAsideNotification(
-  notif: Pick<Notification, 'id' | 'userId'>,
-  uid: string,
-): Promise<void> {
-  try {
-    await core.setAsideNotification(db, notif, uid);
-  } catch (e) {
-    handleFirestoreError(e, OperationType.WRITE, `notifications/${notif.id}`);
-  }
-}

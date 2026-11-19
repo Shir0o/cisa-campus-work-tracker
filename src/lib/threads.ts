@@ -16,7 +16,6 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
-import { isFullTimer } from "./walking";
 import { subscribeTiedSubcollection } from "./contactQueries";
 import { calendarDaysOpen } from "./stream";
 import { mentionsClosedByReply } from "../../packages/core/src/mentions";
@@ -138,9 +137,10 @@ export function subscribeThreads(
 }
 
 // ── In the Conversation (#1604, CONTEXT.md, ADR 0007 amendment) ─────────────
-// Having written in a stream within the last 14 days reaches you with what
-// others write there after, whether or not it answers you. Worked out from the
-// messages themselves: nothing is stored on the contact and it grants nothing.
+// Having written in a stream within the last 14 days puts what others write
+// there after on your own list (inbox, queue, attention) — never a bell entry,
+// since nothing there is addressed to you. Worked out from the messages
+// themselves: nothing is stored on the contact and it grants nothing.
 // Mirrored in the other app's copy; src/test/inTheConversation.test.ts runs
 // both against one corpus.
 
@@ -262,72 +262,6 @@ export function countFor(
   ).length;
 }
 
-// Plain-spoken bell title for a posted message, from the poster's view. Every
-// recipient gets the title for the KIND that was written — a question must not
-// arrive as "commented on", which is what the stakeholder path used to send
-// regardless of kind (#813).
-const NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: string) => string> = {
-  note: (who, c) => `${who} left a note on ${c}`,
-  comment: (who, c) => `${who} commented on ${c}`,
-  question: (who, c) => `${who} asked about ${c}`,
-  encouragement: (who, c) => `${who} encouraged you about ${c}`,
-  nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
-};
-
-/** Everyone tied to a contact: they added them, they are the adder's gospel
- *  partner, or they are a co-creator. The fourth tie — teammates keeping this
- *  person on their own My Day — is private to each of them and is resolved on
- *  their own feed instead, never fanned out from here (#813). */
-export interface ThreadStakeholders {
-  createdBy?: string | null;
-  addedBy?: string | null;
-  coCreators?: string[] | null;
-  founders?: string[] | null;
-  carers?: string[] | null;
-  unfollowedBy?: string[] | null;
-  /** Who can open the person besides those who see everyone. Never a reason to
-   *  notify; it only bounds who In the Conversation may still hear (#1604). */
-  visibleTo?: string[] | null;
-}
-
-/** Extracts all stakeholders from a contact record. */
-export function contactStakeholdersOf(
-  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy" | "visibleTo"> | null,
-): ThreadStakeholders {
-  if (!contact) return {};
-  const stakeholders: ThreadStakeholders = {
-    createdBy: contact.createdBy ?? null,
-    addedBy: contact.addedBy ?? null,
-    coCreators: contact.coCreators ?? null,
-    founders: contact.founders ?? null,
-    carers: contact.carers ?? null,
-  };
-  if (contact.unfollowedBy) {
-    stakeholders.unfollowedBy = contact.unfollowedBy;
-  }
-  if (contact.visibleTo) {
-    stakeholders.visibleTo = contact.visibleTo;
-  }
-  return stakeholders;
-}
-
-/** The uids on the contact document, deduped, minus the poster and any unfollowedBy teammates. */
-export function stakeholderUidsOf(
-  stakeholders: ThreadStakeholders | null | undefined,
-  from: string,
-): string[] {
-  if (!stakeholders) return [];
-  const unfollowed = new Set(stakeholders.unfollowedBy || []);
-  const all = [
-    stakeholders.createdBy,
-    stakeholders.addedBy,
-    ...(stakeholders.coCreators || []),
-    ...(stakeholders.founders || []),
-    ...(stakeholders.carers || []),
-  ].filter((id): id is string => !!id && !unfollowed.has(id));
-  return [...new Set(all)].filter((id) => id !== from);
-}
-
 /** Where a notification about a written message opens, in whichever app reads
  *  it. A message on an Interaction's Thread carries the interaction id; a reply
  *  carries its parent so the Thread opens under it; a top-level message opens
@@ -340,8 +274,9 @@ export function threadNotificationLink(
   return `/people/${contactId}?tab=thread${input.parentId ? `&parent=${input.parentId}` : ""}`;
 }
 
-/** The stream's last 14 days, to work out who is In the Conversation. A failed
- *  read only narrows who hears; the message itself is already written. */
+/** The stream's last 14 days, read only to work out whether a reply answers
+ *  an open @mention. A failed read changes nothing: the message is already
+ *  written and the ask simply stays open. */
 async function recentInStream(contactId: string): Promise<ThreadMessageWithContact[]> {
   const since = new Date(Date.now() - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   try {
@@ -352,10 +287,8 @@ async function recentInStream(contactId: string): Promise<ThreadMessageWithConta
   }
 }
 
-/** The message a reply answers: its author must hear the reply even after
- *  the 14-day window lapses and with no tie (#1640), and the reply may close
- *  its @mention. A failed read only narrows who hears; the reply itself is
- *  already written. */
+/** The message a reply answers, so a reply can close the @mention it answers.
+ *  A failed read leaves the mention open; the reply itself is already written. */
 async function parentOf(
   contactId: string,
   input: { parentId?: string | null },
@@ -370,8 +303,10 @@ async function parentOf(
   }
 }
 
-/** Post a new message to a contact (and optionally to one interaction). Dispatches
- * notifications to mentioned users, contact stakeholders, or legacy notify.to. */
+/** Post a new message to a contact (and optionally to one interaction).
+ *  Only an @mention is addressed to someone, so only an @mention sends a bell
+ *  entry (cut-or-keep §28). Every other message lands in the stream and tells
+ *  nobody; the people tied to the person read it where they read the person. */
 export async function addThreadMessage(
   contactId: string,
   input: {
@@ -384,9 +319,8 @@ export async function addThreadMessage(
     mentionedUserIds?: string[];
   },
   notify?: {
-    to?: string | null;
+    /** The person's name, so a mention reads "mentioned you on <name>". */
     contactName?: string;
-    stakeholders?: ThreadStakeholders | null;
   },
   /** The id of the message just written, or `null` if the write failed. A
    *  caller showing the message before the round trip needs this to recognise
@@ -418,112 +352,32 @@ export async function addThreadMessage(
     const truncatedBody = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
     const targetLink = threadNotificationLink(contactId, input);
 
-    // 1. Resolve recipients:
-    // Mentions: receive mention-specific alert
-    // Stakeholders: receive comment alert
-    // Legacy notify.to: receives kind-shaped alert
-    const notifiedUserIds = new Set<string>();
-
-    // Every bell entry below is pushed to the recipient's devices by the
-    // notification function. `coalesceKey` holds a back-and-forth about one
-    // person to one buzz per hour each (#813); an @mention carries none — it is
-    // addressed to that person, so it always buzzes.
-    const aboutThisPerson = `contact:${contactId}`;
-
+    // An @mention is addressed to that person and always buzzes. It carries no
+    // coalesceKey: the point of the key is to quiet a conversation nobody was
+    // called into, and everyone left who hears this one was called in.
     for (const mUid of mentionedUserIds) {
-      if (mUid !== input.from) {
-        notifiedUserIds.add(mUid);
-        void sendNotification({
-          userId: mUid,
-          title: `${who} mentioned you on ${contactName}`,
-          message: truncatedBody,
-          type: "info",
-          targetId: contactId,
-          link: targetLink,
-        });
-      }
-    }
-
-    // Everyone tied to the contact: creator, gospel partners, and co-creators.
-    for (const sUid of stakeholderUidsOf(notify?.stakeholders, input.from)) {
-      if (notifiedUserIds.has(sUid)) continue;
-      notifiedUserIds.add(sUid);
+      if (mUid === input.from) continue;
       void sendNotification({
-        userId: sUid,
-        title: NOTIFY_TITLE[input.kind](who, contactName),
+        userId: mUid,
+        title: `${who} mentioned you on ${contactName}`,
         message: truncatedBody,
         type: "info",
         targetId: contactId,
         link: targetLink,
-        coalesceKey: aboutThisPerson,
-      });
-    }
-
-    // Everyone In the Conversation here (#1604): they wrote in this stream in
-    // the last 14 days. Not a tie, so a Release does not silence it.
-    const recent = await recentInStream(contactId);
-    // Writing there once is no access: someone unshared since must not keep
-    // reading the person's messages through the bell.
-    const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
-    for (const cUid of inTheConversation(recent, { ...input, contactId, at })) {
-      if (notifiedUserIds.has(cUid) || !canStillSee(cUid)) continue;
-      notifiedUserIds.add(cUid);
-      void sendNotification({
-        userId: cUid,
-        title: NOTIFY_TITLE[input.kind](who, contactName),
-        message: truncatedBody,
-        type: "info",
-        targetId: contactId,
-        link: targetLink,
-        coalesceKey: aboutThisPerson,
-      });
-    }
-
-    // The author of the message being answered (#1640): a reply must reach
-    // them even when the 14-day window has lapsed and they are not tied.
-    const parent = await parentOf(contactId, input);
-    const parentAuthor = parent?.from || null;
-    if (
-      parentAuthor &&
-      parentAuthor !== input.from &&
-      !notifiedUserIds.has(parentAuthor) &&
-      canStillSee(parentAuthor)
-    ) {
-      notifiedUserIds.add(parentAuthor);
-      void sendNotification({
-        userId: parentAuthor,
-        title: NOTIFY_TITLE[input.kind](who, contactName),
-        message: truncatedBody,
-        type: "info",
-        targetId: contactId,
-        link: targetLink,
-        coalesceKey: aboutThisPerson,
       });
     }
 
     // A reply from someone an open @mention names closes it, for everyone it
     // named — the parent, or an earlier mention in the same Thread.
     if (written && input.parentId) {
+      const recent = await recentInStream(contactId);
+      const parent = await parentOf(contactId, input);
       const pool = new Map(recent.map((m) => [m.id, m]));
       if (parent) pool.set(parent.id, parent);
       const reply = { id: written, from: input.from, at, parentId: input.parentId };
       for (const m of mentionsClosedByReply([...pool.values()], reply)) {
         void closeFollowUpAsk(contactId, m.id, { uid: input.from, name: input.fromName });
       }
-    }
-
-    // Legacy fallback: notify.to when the caller passed no stakeholders.
-    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to)) {
-      const title = NOTIFY_TITLE[input.kind](who, contactName);
-      void sendNotification({
-        userId: notify.to,
-        title,
-        message: truncatedBody,
-        type: "info",
-        targetId: contactId,
-        link: targetLink,
-        coalesceKey: aboutThisPerson,
-      });
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);

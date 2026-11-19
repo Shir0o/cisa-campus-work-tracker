@@ -1,5 +1,5 @@
 // Logging an Interaction on a teammate's behalf (#1288): the Full-timer's
-// reacher goes through to core, and the teammate hears about it.
+// reacher goes through to core, and nobody is notified (cut-or-keep §28).
 import * as core from '@cisa/core';
 import { sendNotification } from '../firebase';
 import { addInteraction } from './interactions';
@@ -22,13 +22,11 @@ const by = { uid: 'ft1', name: 'Jae' };
 beforeEach(() => jest.clearAllMocks());
 
 describe('addInteraction', () => {
-  it('passes the reacher to core and tells them it was logged for them', async () => {
+  it('passes the reacher to core without telling them it was logged', async () => {
     await addInteraction('c1', 'Priya', input, by, { uid: 'tr1', name: 'Zion' });
 
     expect(core.addInteraction).toHaveBeenCalledWith({}, 'c1', input, by, { uid: 'tr1', name: 'Zion' });
-    expect(sendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'tr1', targetId: 'c1', message: 'Jae logged an interaction with Priya.' }),
-    );
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
   it('is unchanged without a reacher: no one else is told', async () => {

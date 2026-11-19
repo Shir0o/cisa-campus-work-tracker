@@ -4,7 +4,7 @@ import Stream from "../stream/Stream";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { conversationAdapter } from "../stream/conversationAdapter";
 import type { TeamMemberLike } from "../stream/types";
-import { contactStakeholdersOf, type ThreadMessage } from "../../lib/threads";
+import type { ThreadMessage } from "../../lib/threads";
 import { useAuth } from "../AuthProvider";
 import { useLanguage } from "../LanguageProvider";
 
@@ -119,7 +119,6 @@ export function CardConversation({
     contactName: contact.name,
     messages,
     me: { uid, name: user?.displayName || "Someone", role },
-    stakeholders: contactStakeholdersOf(contact),
     teamMembers: teamMembers ?? [],
     onPosted,
     t,

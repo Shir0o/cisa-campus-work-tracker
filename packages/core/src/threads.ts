@@ -75,74 +75,11 @@ export function countFor(
   return threadsFor(messages, interactionId).length;
 }
 
-// Plain-spoken bell title for a posted message, from the poster's view. Kept
-// here (data, not JSX) so both the web and native notify paths share the copy.
-export const THREAD_NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: string) => string> = {
-  note: (who, c) => `${who} left a note on ${c}`,
-  comment: (who, c) => `${who} commented on ${c}`,
-  question: (who, c) => `${who} asked about ${c}`,
-  encouragement: (who, c) => `${who} encouraged you about ${c}`,
-  nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
-};
-
-/** Everyone tied to a contact: they added them, they are the adder's gospel
- *  partner, or they are a co-creator. The fourth tie — teammates keeping this
- *  person on their own My Day — is private to each of them and is resolved on
- *  their own feed, never fanned out from a write. */
-export interface ThreadStakeholders {
-  createdBy?: string | null;
-  addedBy?: string | null;
-  coCreators?: string[] | null;
-  founders?: string[] | null;
-  carers?: string[] | null;
-  unfollowedBy?: string[] | null;
-  /** Who can open the person besides those who see everyone. Never a reason to
-   *  notify; it only bounds who In the Conversation may still hear (#1604). */
-  visibleTo?: string[] | null;
-}
-
-/** Extracts all stakeholders from a contact record. */
-export function contactStakeholdersOf(
-  contact?: Pick<import("./types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy" | "visibleTo"> | null,
-): ThreadStakeholders {
-  if (!contact) return {};
-  const stakeholders: ThreadStakeholders = {
-    createdBy: contact.createdBy ?? null,
-    addedBy: contact.addedBy ?? null,
-    coCreators: contact.coCreators ?? null,
-    founders: contact.founders ?? null,
-    carers: contact.carers ?? null,
-  };
-  if (contact.unfollowedBy) {
-    stakeholders.unfollowedBy = contact.unfollowedBy;
-  }
-  if (contact.visibleTo) {
-    stakeholders.visibleTo = contact.visibleTo;
-  }
-  return stakeholders;
-}
-
-/** The uids on the contact document, deduped, minus the poster and any unfollowedBy teammates. */
-export function stakeholderUidsOf(
-  stakeholders: ThreadStakeholders | null | undefined,
-  from: string,
-): string[] {
-  if (!stakeholders) return [];
-  const unfollowed = new Set(stakeholders.unfollowedBy || []);
-  const all = [
-    stakeholders.createdBy,
-    stakeholders.addedBy,
-    ...(stakeholders.coCreators || []),
-    ...(stakeholders.founders || []),
-    ...(stakeholders.carers || []),
-  ].filter((id): id is string => !!id && !unfollowed.has(id));
-  return [...new Set(all)].filter((id) => id !== from);
-}
-
 // ── In the Conversation (#1604, CONTEXT.md, ADR 0007 amendment) ─────────────
-// Having written in a stream within the last 14 days reaches you with what
-// others write there after, whether or not it answers you. Worked out from the
-// messages themselves: nothing is stored on the contact and it grants nothing.
+// Having written in a stream within the last 14 days puts what others write
+// there after on your own list (inbox, queue, attention) — never a bell entry,
+// since nothing there is addressed to you. Worked out from the messages
+// themselves: nothing is stored on the contact and it grants nothing.
 // Mirrored in the other app's copy; src/test/inTheConversation.test.ts runs
 // both against one corpus.
 

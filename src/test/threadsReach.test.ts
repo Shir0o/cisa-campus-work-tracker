@@ -1,41 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { buildStream } from "../lib/stream";
-import { stakeholderUidsOf, isOpenAsk, daysOpen, THREAD_KINDS } from "../lib/threads";
+import { isOpenAsk, daysOpen, THREAD_KINDS } from "../lib/threads";
 
-// #813 — who a message on a contact reaches, and when a follow-up ask is done.
-
-describe("stakeholderUidsOf — everyone tied to the contact", () => {
-  it("includes the creator and co-creators, which the notify path used to miss", () => {
-    const uids = stakeholderUidsOf({ createdBy: "t1", coCreators: ["t2", "t3"] }, "ft1");
-    expect(uids).toEqual(expect.arrayContaining(["t1", "t2", "t3"]));
-  });
-
-  it("never tells the poster about their own message", () => {
-    expect(stakeholderUidsOf({ createdBy: "t1", coCreators: ["t1"] }, "t1")).toEqual([]);
-  });
-
-  it("dedupes someone who holds two ties at once", () => {
-    // The adder is very often also a co-creator; they must be notified once.
-    expect(stakeholderUidsOf({ createdBy: "t1", coCreators: ["t1"] }, "ft1")).toEqual(["t1"]);
-  });
-
-  it("is empty when the caller passed no stakeholders", () => {
-    expect(stakeholderUidsOf(null, "ft1")).toEqual([]);
-    expect(stakeholderUidsOf(undefined, "ft1")).toEqual([]);
-  });
-
-  it("ignores empty and missing ids rather than notifying nobody-shaped uids", () => {
-    expect(stakeholderUidsOf({ createdBy: "", coCreators: [""] }, "ft1")).toEqual([]);
-  });
-
-  it("excludes users present in unfollowedBy (#1498)", () => {
-    const uids = stakeholderUidsOf(
-      { createdBy: "t1", coCreators: ["t2", "t3"], unfollowedBy: ["t1", "t3"] },
-      "ft1",
-    );
-    expect(uids).toEqual(["t2"]);
-  });
-});
+// #813 — when a follow-up ask is done.
 
 describe("a follow-up ask is open until someone says they did it", () => {
   const at = "2026-09-01T00:00:00.000Z";

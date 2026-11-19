@@ -164,33 +164,6 @@ describe('Toaster', () => {
     expect(screen.getByText('New ISO Reminder')).toBeInTheDocument();
   });
 
-  it('ignores notifications the current user dismissed in the bell (#1636)', () => {
-    setCurrentUser({ uid: 'user-123' });
-    render(<Toaster />);
-
-    const dismissedChange = {
-      type: 'added',
-      doc: {
-        id: 'toast-dismissed',
-        data: () => ({
-          userId: 'user-123',
-          title: 'Dismissed Reminder',
-          message: 'Set aside in the bell',
-          type: 'info',
-          read: false,
-          dismissedBy: ['user-123'],
-          createdAt: new Date(Date.now() + 1000).toISOString(),
-        }),
-      },
-    };
-
-    act(() => {
-      mockOnSnapshotCallback({ docChanges: () => [dismissedChange] });
-    });
-
-    expect(screen.queryByText('Dismissed Reminder')).not.toBeInTheDocument();
-  });
-
   it('does not re-toast the same notification within a page load (#1636)', () => {
     setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);

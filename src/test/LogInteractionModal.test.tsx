@@ -315,7 +315,7 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     expect(screen.getByRole('button', { name: 'Pick someone' })).toBeDisabled();
   });
 
-  it('notifies the full-timer when a trainee logs an interaction', async () => {
+  it('sends no notification when a trainee logs an interaction', async () => {
     setupOnSnapshot(mockContacts);
     (useAuth as any).mockReturnValue({
       user: { uid: 'JfcxyTTTFuNUYMLQTisyq2ppoy82', displayName: 'Sam Trainee' },
@@ -331,14 +331,7 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log for 1 person' }));
 
     await waitFor(() => {
-      expect(sendNotification).toHaveBeenCalledWith({
-        userId: 'b5YPihN2cGRESPRgiTd8sMlNGBz2',
-        title: 'Sam logged time with Alice Smith',
-        message: expect.stringContaining('Great time'),
-        type: 'info',
-        targetId: 'c1',
-        link: '/people/c1',
-      });
+      expect(sendNotification).not.toHaveBeenCalled();
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'logged an interaction for', type: 'event' }),
       );

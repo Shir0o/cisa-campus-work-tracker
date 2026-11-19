@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X, Heart, Sparkles, Calendar, Users, CheckCircle2, ArrowRight, AlertCircle, ChevronDown } from 'lucide-react';
+import { Bell, Heart, Sparkles, Calendar, Users, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, orderBy, limit,
-  doc, updateDoc, deleteDoc, writeBatch, arrayUnion,
+  doc, updateDoc, writeBatch, arrayUnion,
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { db, auth, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -50,41 +50,6 @@ function ToneIcon({ tone, type, size = 15 }: { tone: Tone; type?: Notification['
     case 'sage':   return <CheckCircle2 className={cls} />;
     default:       return <Heart       className={cls} />;
   }
-}
-
-export type NtfFeedItem =
-  | { kind: 'single'; notif: Notification }
-  | { kind: 'stack'; targetId: string; notifs: Notification[] };
-
-export function groupNotificationsIntoStacks(items: Notification[]): NtfFeedItem[] {
-  const targetMap = new Map<string, Notification[]>();
-  const seenTargets = new Set<string>();
-  const feedItems: NtfFeedItem[] = [];
-
-  for (const item of items) {
-    if (item.targetId) {
-      const list = targetMap.get(item.targetId) || [];
-      list.push(item);
-      targetMap.set(item.targetId, list);
-    }
-  }
-
-  for (const item of items) {
-    if (item.targetId) {
-      if (seenTargets.has(item.targetId)) continue;
-      seenTargets.add(item.targetId);
-      const list = targetMap.get(item.targetId)!;
-      if (list.length > 1) {
-        feedItems.push({ kind: 'stack', targetId: item.targetId, notifs: list });
-      } else {
-        feedItems.push({ kind: 'single', notif: list[0] });
-      }
-    } else {
-      feedItems.push({ kind: 'single', notif: item });
-    }
-  }
-
-  return feedItems;
 }
 
 export default function NotificationCenter() {
@@ -136,9 +101,7 @@ export default function NotificationCenter() {
     };
 
     const unsubPersonal = onSnapshot(qPersonal, (snap) => {
-      localNotifs = snap.docs
-        .map(mapDoc)
-        .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
+      localNotifs = snap.docs.map(mapDoc) as Notification[];
 
       // No OS popup from here: every bell entry is pushed by the notification
       // function, and the service worker shows it — open tab or not.
@@ -154,9 +117,7 @@ export default function NotificationCenter() {
           orderBy('createdAt', 'desc'),
           limit(20),
         ), (snap) => {
-          globalNotifs = snap.docs
-            .map(mapDoc)
-            .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
+          globalNotifs = snap.docs.map(mapDoc) as Notification[];
           updateCombined();
         }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'))
       : () => {};
@@ -240,42 +201,6 @@ export default function NotificationCenter() {
     await batch.commit();
   };
 
-  const setAside = async (id: string) => {
-    if (!auth.currentUser) return;
-    const notif = notifications.find(n => n.id === id);
-    if (!notif) return;
-    try {
-      if (notif.userId === 'ALL_ADMINS') {
-        await updateDoc(doc(db, 'notifications', id), {
-          dismissedBy: arrayUnion(auth.currentUser.uid),
-        });
-      } else {
-        await deleteDoc(doc(db, 'notifications', id));
-      }
-    } catch (e) { console.error('Error setting aside:', e); }
-  };
-
-  const setAsideStack = async (notifList: Notification[]) => {
-    if (!auth.currentUser) return;
-    try {
-      const adminNotifs = notifList.filter(n => n.userId === 'ALL_ADMINS');
-      const userNotifs = notifList.filter(n => n.userId !== 'ALL_ADMINS');
-
-      if (adminNotifs.length > 0) {
-        const batch = writeBatch(db);
-        for (const n of adminNotifs) {
-          batch.update(doc(db, 'notifications', n.id), {
-            dismissedBy: arrayUnion(auth.currentUser.uid),
-          });
-        }
-        await batch.commit();
-      }
-      if (userNotifs.length > 0) {
-        await Promise.all(userNotifs.map(n => deleteDoc(doc(db, 'notifications', n.id))));
-      }
-    } catch (e) { console.error('Error setting aside stack:', e); }
-  };
-
   const unread = notifications.filter(n => !n.read);
   const read   = notifications.filter(n => n.read);
 
@@ -333,8 +258,6 @@ export default function NotificationCenter() {
           label={t('notifications.worth_a_look')}
           items={unread}
           onSelect={handleSelectNotification}
-          onSetAside={setAside}
-          onSetAsideStack={setAsideStack}
         />
       )}
       {read.length > 0 && (
@@ -342,8 +265,6 @@ export default function NotificationCenter() {
           label={t('notifications.earlier')}
           items={read}
           onSelect={handleSelectNotification}
-          onSetAside={setAside}
-          onSetAsideStack={setAsideStack}
           bordered={unread.length > 0}
         />
       )}
@@ -464,166 +385,21 @@ function NtfGroup({
   label,
   items,
   onSelect,
-  onSetAside,
-  onSetAsideStack,
   bordered = false,
 }: {
   label: string;
   items: Notification[];
   onSelect: (notif: Notification) => void;
-  onSetAside: (id: string) => void;
-  onSetAsideStack: (notifs: Notification[]) => void;
   bordered?: boolean;
 }) {
-  const { t } = useLanguage();
-  const feedItems = groupNotificationsIntoStacks(items);
-
   return (
     <div className={cn('py-1.5', bordered && 'border-t border-outline-variant')}>
       <div className="text-xs font-medium text-on-surface-variant px-[18px] pt-2.5 pb-1.5">
         {label}
       </div>
-      {feedItems.map(item => {
-        if (item.kind === 'stack') {
-          return (
-            <NtfStack
-              key={`stack-${item.targetId}`}
-              notifs={item.notifs}
-              targetId={item.targetId}
-              onSelect={onSelect}
-              onSetAside={onSetAside}
-              onSetAsideStack={onSetAsideStack}
-            />
-          );
-        }
-        return (
-          <NtfItem
-            key={item.notif.id}
-            notif={item.notif}
-            onSelect={onSelect}
-            onSetAside={onSetAside}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function NtfStack({
-  notifs,
-  targetId: _targetId,
-  onSelect,
-  onSetAside,
-  onSetAsideStack,
-}: {
-  notifs: Notification[];
-  targetId: string;
-  onSelect: (notif: Notification) => void;
-  onSetAside: (id: string) => void;
-  onSetAsideStack: (notifs: Notification[]) => void;
-}) {
-  const { t } = useLanguage();
-  const [expanded, setExpanded] = useState(false);
-  const latest = notifs[0];
-  const count = notifs.length;
-  const tone: Tone = latest.tone ?? typeToTone(latest.type);
-  const anyUnread = notifs.some(n => !n.read);
-
-  return (
-    <div className="group/stack relative">
-      {/* Stack Header Row */}
-      <div
-        className="group relative flex gap-[13px] items-start px-[18px] py-3 cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-        onClick={() => setExpanded(e => !e)}
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-label={t('notifications.notifications_on').replace('{n}', String(count)).replace('{title}', latest.title)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setExpanded(exp => !exp);
-          }
-        }}
-      >
-        {/* Tonal icon node */}
-        <span
-          className={cn(
-            'w-[30px] h-[30px] flex-none rounded-[9px] grid place-items-center mt-px transition-opacity',
-            TONE_CLASSES[tone],
-            !anyUnread && 'opacity-[0.62]',
-          )}
-        >
-          <ToneIcon tone={tone} type={latest.tone ? undefined : latest.type} />
-        </span>
-
-        {/* Content */}
-        <div className="min-w-0 flex-1 pr-[46px] sm:pr-[36px]">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn(
-              'text-[14px] leading-[1.35]',
-              anyUnread ? 'font-semibold text-on-surface' : 'font-medium text-on-surface-variant'
-            )}>
-              {latest.title}
-            </span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-accent-soft text-accent leading-none">
-              {count} updates
-            </span>
-          </div>
-
-          <div className="text-[13px] text-on-surface-variant leading-[1.5] mt-0.5 line-clamp-2 [text-wrap:pretty]">
-            {latest.message || (latest as any).body}
-          </div>
-
-          <div className="flex items-center gap-3 text-[11.5px] text-on-surface-variant mt-1.5">
-            <span>{ntfWhen(latest.createdAt)}</span>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 -my-3 min-h-11 py-3 text-accent hover:underline font-medium cursor-pointer"
-              onClick={e => {
-                e.stopPropagation();
-                setExpanded(exp => !exp);
-              }}
-            >
-              {expanded ? t('notifications.hide_updates') : t('notifications.show_all').replace('{n}', String(count))}
-              <ChevronDown className={cn('w-3 h-3 transition-transform duration-150', expanded && 'rotate-180')} />
-            </button>
-          </div>
-        </div>
-
-        {/* Unread dot */}
-        {anyUnread && (
-          <span className="absolute top-[17px] right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden" aria-hidden />
-        )}
-
-        {/* Set-aside entire stack button */}
-        <button
-          className="absolute top-[8px] right-2 w-9 h-9 grid place-items-center rounded-[6px] bg-surface-container text-on-surface-variant opacity-100 sm:opacity-0 sm:group-hover/stack:opacity-100 after:absolute after:-inset-1 after:content-[''] hover:text-on-surface hover:bg-surface-container-high transition-all"
-          title={t('notifications.set_stack_aside')}
-          aria-label={t('notifications.set_stack_aside')}
-          onClick={e => {
-            e.stopPropagation();
-            onSetAsideStack(notifs);
-          }}
-        >
-          <X className="w-[13px] h-[13px]" />
-        </button>
-      </div>
-
-      {/* Expanded Child Entries */}
-      {expanded && (
-        <div className="bg-surface-container-high/30 pl-5 border-l-2 border-accent/40 my-1 ml-6 mr-3 rounded-r-[8px] divide-y divide-outline-variant/30">
-          {notifs.map(n => (
-            <NtfItem
-              key={n.id}
-              notif={n}
-              onSelect={onSelect}
-              onSetAside={onSetAside}
-              isChild
-            />
-          ))}
-        </div>
-      )}
+      {items.map(notif => (
+        <NtfItem key={notif.id} notif={notif} onSelect={onSelect} />
+      ))}
     </div>
   );
 }
@@ -631,88 +407,52 @@ function NtfStack({
 function NtfItem({
   notif,
   onSelect,
-  onSetAside,
-  isChild = false,
 }: {
   notif: Notification;
   onSelect: (notif: Notification) => void;
-  onSetAside: (id: string) => void;
-  isChild?: boolean;
 }) {
-  const { t } = useLanguage();
   const tone: Tone = notif.tone ?? typeToTone(notif.type);
 
   return (
-    <div className="group relative">
-      {/* A real button (#1779), so Enter and Space both activate it natively
-          and the rotor reads one control. The dismissal is its sibling, not a
-          nested button, which is what flattened the row before. */}
-      <button
-        type="button"
+    <button
+      type="button"
+      className="relative flex w-full gap-[13px] items-start cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 px-[18px] py-3"
+      onClick={() => onSelect(notif)}
+    >
+      {/* Tonal icon node */}
+      <span
         className={cn(
-          "flex w-full gap-[13px] items-start cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30",
-          isChild ? "px-3 py-2.5" : "px-[18px] py-3"
+          'flex-none rounded-[9px] grid place-items-center mt-px transition-opacity w-[30px] h-[30px]',
+          TONE_CLASSES[tone],
+          notif.read && 'opacity-[0.62]',
         )}
-        onClick={() => onSelect(notif)}
       >
-        {/* Tonal icon node */}
-        <span
-          className={cn(
-            'flex-none rounded-[9px] grid place-items-center mt-px transition-opacity',
-            isChild ? 'w-[24px] h-[24px]' : 'w-[30px] h-[30px]',
-            TONE_CLASSES[tone],
-            notif.read && 'opacity-[0.62]',
-          )}
-        >
-          <ToneIcon tone={tone} type={notif.tone ? undefined : notif.type} size={isChild ? 12 : 15} />
-        </span>
+        <ToneIcon tone={tone} type={notif.tone ? undefined : notif.type} />
+      </span>
 
-        {/* Content */}
-        <div className="min-w-0 flex-1 pr-[46px] sm:pr-[18px]">
-          <div className={cn(
-            'leading-[1.35]',
-            isChild ? 'text-[13px]' : 'text-[14px]',
-            notif.read
-              ? 'font-medium text-on-surface-variant'
-              : 'font-semibold text-on-surface',
-          )}>
-            {notif.title}
-          </div>
-          <div className={cn(
-            'text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]',
-            isChild ? 'text-[12px]' : 'text-[13px]',
-          )}>
-            {notif.message || (notif as any).body}
-          </div>
-          <div className="text-[11.5px] text-on-surface-variant mt-1.5">
-            {ntfWhen(notif.createdAt)}
-          </div>
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className={cn(
+          'leading-[1.35] text-[14px]',
+          notif.read
+            ? 'font-medium text-on-surface-variant'
+            : 'font-semibold text-on-surface',
+        )}>
+          {notif.title}
         </div>
+        <div className="text-[13px] text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]">
+          {notif.message || (notif as any).body}
+        </div>
+        <div className="text-[11.5px] text-on-surface-variant mt-1.5">
+          {ntfWhen(notif.createdAt)}
+        </div>
+      </div>
 
-        {/* Unread dot — absolute, so it hangs off the row rather than the
-            button's content box */}
-        {!notif.read && (
-          <span className={cn(
-            "absolute right-4 w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden",
-            isChild ? "top-[14px]" : "top-[17px]"
-          )} aria-hidden />
-        )}
-      </button>
-
-      {/* Set-aside button (hover-reveal, sits on top of unread dot) */}
-      <button
-        type="button"
-        className={cn(
-          "absolute right-2 w-9 h-9 grid place-items-center rounded-[6px] bg-surface-container text-on-surface-variant opacity-100 sm:opacity-0 sm:group-hover:opacity-100 after:absolute after:-inset-1 after:content-[''] hover:text-on-surface hover:bg-surface-container-high transition-all",
-          isChild ? "top-[9px]" : "top-[11px]"
-        )}
-        title={t('notifications.set_aside')}
-        aria-label={t('notifications.set_aside')}
-        onClick={() => onSetAside(notif.id)}
-      >
-        <X className="w-[13px] h-[13px]" />
-      </button>
-    </div>
+      {/* Unread dot — absolute, so it hangs off the row rather than the
+          button's content box */}
+      {!notif.read && (
+        <span className="absolute right-4 top-[17px] w-[7px] h-[7px] rounded-full bg-primary max-sm:hidden" aria-hidden />
+      )}
+    </button>
   );
 }
-

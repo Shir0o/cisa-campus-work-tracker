@@ -1,9 +1,10 @@
 /**
  * The notification journey (#1479).
  *
- * A reply in a stream raises a bell entry for the other user → opening it lands
- * on the Thread, not the stream → a contact notification opens the contact. It
- * folds in `notification-bell-deep-linking.spec.ts` (#682) and
+ * Only something addressed to you rings the bell (§28): an @mention raises one,
+ * opening it lands on the Thread a reply answers, and a contact mention opens
+ * the contact. A message without a mention raises nothing. It folds in
+ * `notification-bell-deep-linking.spec.ts` (#682) and
  * `push-notifications.spec.ts`, both retired with this journey.
  *
  * Escape rows (docs/research/e2e-coverage-audit.md, research branch):
@@ -17,7 +18,7 @@
  *             appears — the reply test below goes red. Row 16 (payload over
  *             4096 bytes) is a unit test on #1440, covered elsewhere.
  *
- * Serial: the reply tests build on the comment the full-timer posts first.
+ * Serial: the reply test builds on the comment the full-timer posts first.
  */
 
 import { test, expect, type Locator, type Page } from '@playwright/test';
@@ -43,23 +44,10 @@ async function openBell(page: Page) {
   return panel;
 }
 
-/**
- * The notification row for `itemText`. When a later journey has raised a second
- * notification about the same person, the bell groups them under a collapsed
- * "N notifications on …" stack whose only control is its toggle, and the rows
- * are not in the DOM until it is opened. Expand it first, then take the row
- * itself — matching the stack toggle would just expand it and never navigate
- * (#1568).
- */
+/** The one row for `itemText`. The bell shows everything it receives, so each
+ *  entry is its own row (cut-or-keep §28). */
 async function notificationRow(panel: Locator, subject: RegExp, itemText: string) {
   const rowName = new RegExp(`^${subject.source}`);
-  const row = panel.getByRole('button', { name: rowName }).filter({ hasText: itemText }).first();
-  // Only open the stack if the row is not already showing, so an expanded
-  // stack is never toggled shut.
-  if ((await row.count()) === 0) {
-    const stack = panel.getByRole('button', { name: new RegExp(`notifications on ${subject.source}`) });
-    if ((await stack.count()) > 0) await stack.first().click();
-  }
   const target = panel.getByRole('button', { name: rowName }).filter({ hasText: itemText }).first();
   await expect(target).toBeVisible({ timeout: 15_000 });
   return target;
@@ -71,11 +59,12 @@ test.describe('Notification journey (#1479)', () => {
   const comment = `Coffee with Lila went well ${Date.now()}`;
   const reply = `Glad to hear it — let us follow up ${Date.now()}`;
 
-  test('a comment on a person raises a bell entry that opens the contact', async ({ browser }) => {
-    // Full-timer (a stakeholder) writes a top-level message on Lila's
-    // Conversation. Trainee is the other stakeholder, so the bell entry is hers.
-    // The writer is a separate context kept open: `signInAs` reloads its page,
-    // and reloading before the fire-and-forget bell write lands would drop it.
+  test('an @mention in a conversation raises a bell entry that opens the contact', async ({ browser }) => {
+    // Full-timer writes a top-level message on Lila's Conversation and names the
+    // Trainee. Only the mention is addressed to her, so it is the bell entry
+    // (cut-or-keep §28). The writer is a separate context kept open: `signInAs`
+    // reloads its page, and reloading before the fire-and-forget bell write
+    // lands would drop it.
     const writer = await browser.newContext();
     const writerPage = await writer.newPage();
     await signInAs(writerPage, 'fulltimer');
@@ -84,16 +73,17 @@ test.describe('Notification journey (#1479)', () => {
 
     const box = writerPage.getByPlaceholder(/Write something…/).first();
     await expect(box).toBeVisible({ timeout: 15_000 });
-    await box.fill(comment);
+    await box.fill(`${comment} @Zion`);
+    await writerPage.getByRole('option', { name: /Zion Adeyemi/ }).click();
     await box.press('Meta+Enter');
     await expect(writerPage.locator('[data-stream-row]').getByText(comment)).toBeVisible({ timeout: 10_000 });
 
-    // The trainee opens her bell; the notification about the comment is there.
+    // The trainee opens her bell; the mention's entry is there.
     const reader = await browser.newContext();
     const readerPage = await reader.newPage();
     await signInAs(readerPage, 'trainee');
     const panel = await openBell(readerPage);
-    const item = await notificationRow(panel, /Full-timer commented on Lila Chen/, comment);
+    const item = await notificationRow(panel, /Full-timer mentioned you on Lila Chen/, comment);
     await item.click();
 
     // A contact notification opens the contact — the Conversation, not a Thread.
@@ -109,10 +99,10 @@ test.describe('Notification journey (#1479)', () => {
     await reader.close();
   });
 
-  test('a reply in the thread raises a bell entry that opens its Thread (row 15)', async ({ browser }) => {
-    // The trainee replies under the full-timer's message. That reply notifies the
-    // full-timer, whose bell entry must open the Thread — not the stream. Again
-    // the writer stays on its page so the reply's bell write can land.
+  test('an @mention in a reply raises a bell entry that opens its Thread (row 15)', async ({ browser }) => {
+    // The trainee replies under the full-timer's message and names the
+    // Full-timer. That mention's bell entry must open the Thread — not the
+    // stream. Again the writer stays on its page so the bell write can land.
     const writer = await browser.newContext();
     const writerPage = await writer.newPage();
     await signInAs(writerPage, 'trainee');
@@ -128,16 +118,17 @@ test.describe('Notification journey (#1479)', () => {
     await expect(thread).toBeVisible({ timeout: 10_000 });
     await expect(thread.getByText(comment).first()).toBeVisible({ timeout: 10_000 });
     const replyBox = thread.locator('textarea').first();
-    await replyBox.fill(reply);
+    await replyBox.fill(`${reply} @Full`);
+    await writerPage.getByRole('option', { name: /Full-timer Test User/ }).click();
     await replyBox.press('Meta+Enter');
     await expect(thread.getByText(reply).first()).toBeVisible({ timeout: 10_000 });
 
-    // The full-timer opens the bell entry for that reply.
+    // The full-timer opens the bell entry for that mention.
     const reader = await browser.newContext();
     const readerPage = await reader.newPage();
     await signInAs(readerPage, 'fulltimer');
     const panel = await openBell(readerPage);
-    const item = await notificationRow(panel, /Zion commented on Lila Chen/, reply);
+    const item = await notificationRow(panel, /Zion mentioned you on Lila Chen/, reply);
     await item.click();
 
     // Row 15: opening it lands on the Thread, not the stream.
@@ -180,7 +171,6 @@ test.describe('Notification journey (#1479)', () => {
  * turn this suite red.
  */
 const PRIYA = 'e2e-push-priya';
-const AROUND = 'e2e-push-around';
 
 let db: Firestore;
 const uid = {} as Record<Role, string>;
@@ -256,82 +246,18 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
       createdAt: now,
       updatedAt: now,
     });
-    // A person trainee2 brought in and the trainee cares for — the trainee is
-    // tied only as a carer, which Around the team used to leave out (#1166).
-    const around = db.collection('contacts').doc(AROUND);
-    await around.set({
-      name: 'Omar Around',
-      email: '',
-      stage: 'First Contact',
-      createdBy: uid.trainee2,
-      createdByName: 'Caleb Owusu',
-      founders: [uid.trainee2],
-      carers: [uid.trainee],
-      visibleTo: [uid.trainee2, uid.trainee],
-      createdAt: now,
-      updatedAt: now,
-    });
-    await around.collection('interactions').doc('e2e-push-int').set({
-      userId: uid.trainee2,
-      userName: 'Caleb Owusu',
-      content: 'Met Omar after the club fair; he wants to read together.',
-      type: 'meetup',
-      title: 'Club fair',
-      createdAt: now,
-      dateTime: now,
-    });
   });
 
-  test("a full-timer's comment on a trainee's person buzzes the trainee", async ({ page }) => {
+  test('an @mention on a trainee\'s person buzzes the person named', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     const box = await openThread(page, PRIYA);
-    await box.fill('How did coffee with Priya go?');
+    await box.fill('Looping in about Priya @Zion');
+    await page.getByRole('option', { name: /Zion Adeyemi/ }).click();
     await box.press('Meta+Enter');
 
-    await expectPushTo('trainee', /commented on Priya Push/);
+    await expectPushTo('trainee', /mentioned you on Priya Push/);
     const [p] = (await pushes()).filter((x) => x.uid === uid.trainee);
     expect(p.link).toBe(`/people/${PRIYA}?tab=thread`);
-  });
-
-  test('an @mention always buzzes the person named, even inside the hourly window', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    const box = await openThread(page, PRIYA);
-    const traineeBellCount = async () =>
-      (await db.collection('notifications').where('userId', '==', uid.trainee).get()).size;
-    const traineeBellBefore = await traineeBellCount();
-    await box.fill('Looping in @Cal');
-    await page.getByRole('option', { name: /Caleb Owusu/ }).click();
-    await box.press('Meta+Enter');
-
-    await expectPushTo('trainee2', /mentioned you on Priya Push/);
-    // The trainee already heard about Priya this hour: the bell gets this one,
-    // the phone does not buzz again (#813 coalescing). Absence has no signal of
-    // its own, so wait for the trainee's bell entry for this comment: its push
-    // is dispatched alongside the mention's, which has already landed.
-    await expect.poll(traineeBellCount, { timeout: 20_000 }).toBeGreaterThan(traineeBellBefore);
-    expect((await pushes()).filter((p) => p.uid === uid.trainee)).toHaveLength(1);
-  });
-
-  test('a comment from Around the team reaches every trainee tied to the person, carers included', async ({ page }) => {
-    await signInAs(page, 'fulltimer');
-    await page.goto('/around');
-    const card = page
-      .locator('div')
-      .filter({ has: page.getByRole('button', { name: 'Omar Around' }) })
-      .filter({ has: page.getByRole('button', { name: 'Comment' }) })
-      .last();
-    await expect(card).toBeVisible({ timeout: 15_000 });
-    await card.getByRole('button', { name: 'Comment' }).click();
-    // One strip opens at a time, so its composer is the page's only one. The
-    // box now carries a "Write a message" label, so target its placeholder.
-    // Every message is a plain comment now: there are no kind chips.
-    await expect(page.getByRole('button', { name: 'Question', exact: true })).toHaveCount(0);
-    const box = page.getByPlaceholder('Write something…');
-    await box.fill('Is Omar coming Thursday?');
-    await page.getByRole('button', { name: 'Post' }).click();
-
-    await expectPushTo('trainee2', /commented on Omar Around/);
-    await expectPushTo('trainee', /commented on Omar Around/);
   });
 
   test('an announcement buzzes every other Full-timer and Trainee, and not the poster', async ({ page }) => {

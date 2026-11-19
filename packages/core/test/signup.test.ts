@@ -268,6 +268,21 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(contactCall![1].phone).toBeNull();
   });
 
+  it('notifies the Full-timers only: one broadcast entry, never a Trainee copy', async () => {
+    const mockDb: any = {};
+    await submitSignUp(mockDb, form(), []);
+
+    const bellCalls = mockAddDoc.mock.calls.filter((c) => c[0].path === 'notifications');
+    expect(bellCalls).toHaveLength(1);
+    expect(bellCalls[0][1]).toMatchObject({
+      // The broadcast audience is role `admin` — the notification function and
+      // the bell both route ALL_ADMINS to Full-timers alone.
+      userId: 'ALL_ADMINS',
+      title: 'New Student Sign-up',
+    });
+    expect(bellCalls.map((c) => c[1].userId)).not.toContain('manager');
+  });
+
   it('does not read the stages collection when assigning the contact stage (#678)', async () => {
     // #678: the stages collection no longer drives the default — sign-up is
     // "Unassigned" unconditionally. Asserting that `getDocs` is never called

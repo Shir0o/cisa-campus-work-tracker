@@ -25,8 +25,6 @@ import {
   subscribeAllThreads,
   subscribeThreads,
 } from '../src/data/threads';
-import { applyRoster } from '../src/walking';
-import { contactStakeholdersOf } from '../src/threads';
 
 const DOC_REF = { __docRef: true };
 const db = {} as never;
@@ -99,10 +97,6 @@ describe('addThreadMessage', () => {
   });
 
   it('writes a picked mention and notifies them — never the author (ADR 0007)', async () => {
-    applyRoster([
-      { uid: 'u1', role: 'admin' },
-      { uid: 'u2', role: 'manager' },
-    ]);
     const onNotify = vi.fn();
 
     await addThreadMessage(
@@ -116,7 +110,7 @@ describe('addThreadMessage', () => {
         body: 'Hey @Zion Park, can you look?',
         mentionedUserIds: ['u2', 'u1'],
       },
-      { contactName: 'Daniel', stakeholders: {} },
+      { contactName: 'Daniel' },
       onNotify,
     );
 
@@ -128,18 +122,44 @@ describe('addThreadMessage', () => {
 
 
   it('writes every message to the open thread, with no team scope', async () => {
-    const onNotify = vi.fn();
     await addThreadMessage(
       db,
       'c1',
       { interactionId: null, from: 'ft1', fromName: 'Ruth Chen', kind: 'comment', body: 'Be gentle' },
-      { contactName: 'Daniel', stakeholders: { createdBy: 'tr1' } },
-      onNotify,
+      { contactName: 'Daniel' },
     );
 
     const [col, data] = firestoreMock.addDoc.mock.calls[0];
     expect(col).toEqual({ path: 'contacts/c1/threads' });
     expect(data).toMatchObject({ scope: null });
+  });
+
+  it('sends nothing for a message with no @mention', async () => {
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { interactionId: null, from: 'ft1', fromName: 'Ruth Chen', kind: 'comment', body: 'He is doing well.' },
+      { contactName: 'Daniel', to: 'tr1', stakeholders: { createdBy: 'tr1' } } as never,
+      onNotify,
+    );
+    expect(onNotify).not.toHaveBeenCalled();
+  });
+
+  it('sends a reply to nobody but the people it @mentions', async () => {
+    firestoreMock.getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ from: 'tr1', fromName: 'Trainee', kind: 'comment', body: '?' }),
+    });
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'p1', from: 'ft1', fromName: 'Ruth Chen', kind: 'comment', body: 'Texted him.', mentionedUserIds: ['u9'] },
+      { contactName: 'Daniel', stakeholders: { createdBy: 'tr1' } } as never,
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map(([p]) => p.userId)).toEqual(['u9']);
   });
 });
 
@@ -242,150 +262,6 @@ describe('subscribeAllThreads', () => {
     expect(firestoreMock.onSnapshot).toHaveBeenCalledTimes(1);
     const last = cb.mock.calls[cb.mock.calls.length - 1][0];
     expect(last.map((m: { id: string }) => m.id)).toEqual(['o1']);
-  });
-});
-
-// #1604: mobile posts reach teammates In the Conversation the same way the web
-// app does (CONTEXT.md, ADR 0007 amendment).
-describe('addThreadMessage reaches teammates In the Conversation', () => {
-  const recent = (from: string, extra: Record<string, unknown> = {}) => ({
-    id: from + '-msg',
-    data: () => ({ from, fromName: from, kind: 'nudge', body: 'Can someone text Mark?', interactionId: null, at: new Date(Date.now() - 60_000).toISOString(), ...extra }),
-  });
-
-  beforeEach(() => {
-    applyRoster([
-      { uid: 'tony', role: 'admin' },
-      { uid: 'anna', role: 'admin' },
-      { uid: 'tim', role: 'manager' },
-    ]);
-  });
-
-  it('tells the asker of a Follow-up ask, not tied and released, when a teammate replies', async () => {
-    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tony')] });
-    const onNotify = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { parentId: 'tony-msg', from: 'anna', fromName: 'Anna Lee', kind: 'comment', body: 'I texted him.' },
-      { contactName: 'Mark', stakeholders: { createdBy: 'tim', unfollowedBy: ['tony'] } },
-      onNotify,
-    );
-    expect(onNotify.mock.calls.map((c) => c[0])).toEqual([
-      expect.objectContaining({ userId: 'tim', title: 'Anna commented on Mark' }),
-      expect.objectContaining({ userId: 'tony', title: 'Anna commented on Mark' }),
-    ]);
-  });
-
-  it('tells nobody twice and ignores other streams', async () => {
-    firestoreMock.getDocs.mockResolvedValueOnce({
-      docs: [recent('tim'), recent('tony'), recent('tony', { interactionId: 'i1' })],
-    });
-    const onNotify = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
-      { contactName: 'Mark', stakeholders: { coCreators: ['tony'] } },
-      onNotify,
-    );
-    expect(onNotify.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
-  });
-
-  it('never tells someone who can no longer see the person, and still tells one who can (security review)', async () => {
-    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim'), recent('tony')] });
-    const lost = vi.fn();
-    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Private.' },
-      { contactName: 'Mark', stakeholders: { createdBy: 'anna', visibleTo: ['anna'] } }, lost);
-    expect(lost.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
-
-    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim')] });
-    const kept = vi.fn();
-    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Hi' },
-      { contactName: 'Mark', stakeholders: contactStakeholdersOf({ createdBy: 'anna', visibleTo: ['anna', 'tim'] } as never) }, kept);
-    expect(kept.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
-  });
-
-  it('reads only the last 14 days of that stream, and a failed read keeps the message', async () => {
-    firestoreMock.getDocs.mockRejectedValueOnce(new Error('offline'));
-    const onNotify = vi.fn();
-    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Hi' }, { contactName: 'Mark' }, onNotify);
-    expect(firestoreMock.addDoc).toHaveBeenCalledTimes(1);
-    expect(onNotify).not.toHaveBeenCalled();
-    const [field, op, value] = firestoreMock.where.mock.calls[0];
-    expect([field, op]).toEqual(['at', '>=']);
-    expect(Math.round((Date.now() - Date.parse(value)) / 86_400_000)).toBe(14);
-  });
-});
-
-// #1640: a reply reaches the author of the message it answers, past the 14-day
-// window and with no tie (CONTEXT.md, ADR 0007). The mobile app posts through
-// this shared path, so it must behave like the web app's own copy.
-describe('addThreadMessage reaches the author of the message it answers', () => {
-  const parent = (from: string) => ({
-    exists: () => true,
-    data: () => ({ from, fromName: from, kind: 'question', body: '?' }),
-  });
-
-  beforeEach(() => {
-    applyRoster([
-      { uid: 'tony', role: 'admin' },
-      { uid: 'anna', role: 'admin' },
-      { uid: 'tim', role: 'manager' },
-    ]);
-  });
-
-  it('tells the parent author though they are untied and outside the 14-day window', async () => {
-    firestoreMock.getDoc.mockResolvedValueOnce(parent('tony'));
-    const onNotify = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { parentId: 'tony-msg', from: 'anna', fromName: 'Anna Lee', kind: 'comment', body: 'I texted him.' },
-      { contactName: 'Mark', stakeholders: { createdBy: 'tim' } },
-      onNotify,
-    );
-    expect(onNotify.mock.calls.map((c) => c[0])).toContainEqual(
-      expect.objectContaining({ userId: 'tony', title: 'Anna commented on Mark' }),
-    );
-  });
-
-  it('never tells the replier, and keeps the message when the parent read fails', async () => {
-    firestoreMock.getDoc.mockResolvedValueOnce(parent('anna'));
-    const own = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { parentId: 'anna-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Mine.' },
-      { contactName: 'Mark' },
-      own,
-    );
-    expect(own.mock.calls.map((c) => c[0].userId)).not.toContain('anna');
-
-    firestoreMock.getDoc.mockRejectedValueOnce(new Error('offline'));
-    const failed = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Hi' },
-      { contactName: 'Mark', stakeholders: { createdBy: 'tim' } },
-      failed,
-    );
-    expect(failed.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
-  });
-
-
-  it('never tells a parent author who can no longer see the person', async () => {
-    firestoreMock.getDoc.mockResolvedValueOnce(parent('tim'));
-    const onNotify = vi.fn();
-    await addThreadMessage(
-      db,
-      'c1',
-      { parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'note', body: 'Private.' },
-      { contactName: 'Mark', stakeholders: { createdBy: 'anna', visibleTo: ['anna'] } },
-      onNotify,
-    );
-    expect(onNotify.mock.calls.map((c) => c[0].userId)).not.toContain('tim');
   });
 });
 

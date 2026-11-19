@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import {
   GENERAL_GROUP,
-  contactStakeholdersOf,
   newToAskUpdate,
   toAskThreadTarget,
   toAskUpdateDestinations,
@@ -231,7 +230,7 @@ function ToAsk() {
             kind: 'comment',
             body,
           },
-          { contactName: contact.name, stakeholders: contactStakeholdersOf(contact) },
+          { contactName: contact.name },
         ),
       );
     }

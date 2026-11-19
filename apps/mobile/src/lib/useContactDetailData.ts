@@ -13,9 +13,7 @@ import {
   feedVisibleThreads,
   isTrainee,
   personalContactIdsOf,
-  walkingRecipient,
   carerNamesOf,
-  contactStakeholdersOf,
   type AppUser,
   type Contact,
   type PrayerRecord,
@@ -133,15 +131,13 @@ export function useContactDetailData(contactId: string) {
     return () => unsubs.forEach((unsub) => unsub());
   }, [uid, contactId, role]);
 
-  // "Alongside" tab label + who gets pinged on the bell when the viewer
-  // posts a thread message — mirrors ContactDetailsModal's inline derivations.
+  // "Alongside" tab label — mirrors ContactDetailsModal's inline derivation.
   const viewerWalksWithAdder = useMemo(
     () => !!contact?.createdBy && isTrainee(contact.createdBy),
     [contact?.createdBy],
   );
   const walkLabel =
     viewerWalksWithAdder && contact?.createdByName ? `Alongside ${contact.createdByName.split(' ')[0]}` : 'Alongside';
-  const threadRecipient = useMemo(() => walkingRecipient(uid, contact?.createdBy), [uid, contact?.createdBy]);
 
   const inYourCare = useMemo(
     () => (contact ? personalContactIdsOf(prefContactIds, [contact], uid).has(contact.id) : false),
@@ -263,13 +259,7 @@ export function useContactDetailData(contactId: string) {
             ? { mentionedUserIds: input.mentionedUserIds }
             : {}),
         },
-        {
-          to: threadRecipient,
-          contactName: contact.name,
-          // Without these, `walkingRecipient` returns null for a Trainee and the
-          // post notified nobody at all — web has always passed them (#813).
-          stakeholders: contactStakeholdersOf(contact),
-        },
+        { contactName: contact.name },
       );
     },
 

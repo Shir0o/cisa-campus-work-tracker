@@ -20,16 +20,11 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import {
-  THREAD_NOTIFY_TITLE,
   IN_THE_CONVERSATION_DAYS,
-  inTheConversation,
-  stakeholderUidsOf,
-  type ThreadStakeholders,
   type ThreadKind,
   type ThreadMessage,
   type ThreadMessageWithContact,
 } from "../threads";
-import { isFullTimer } from "../walking";
 import { mentionsClosedByReply } from "../mentions";
 import { subscribeTiedSubcollection } from "./contacts";
 
@@ -196,8 +191,9 @@ export interface ThreadNotifyPayload {
   targetId: string;
 }
 
-/** The stream's last 14 days, to work out who is In the Conversation. A failed
- *  read only narrows who hears; the message itself is already written. */
+/** The stream's last 14 days, read only to work out whether a reply answers
+ *  an open @mention. A failed read changes nothing: the message is already
+ *  written and the ask simply stays open. */
 async function recentInStream(db: Firestore, contactId: string): Promise<ThreadMessageWithContact[]> {
   const since = new Date(Date.now() - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   try {
@@ -210,10 +206,8 @@ async function recentInStream(db: Firestore, contactId: string): Promise<ThreadM
   }
 }
 
-/** The message a reply answers: its author hears the reply even after the
- *  14-day window lapses and with no tie (#1640), and the reply may close its
- *  @mention. A failed read only narrows who hears; the reply itself is
- *  already written. */
+/** The message a reply answers, so a reply can close the @mention it answers.
+ *  A failed read leaves the mention open; the reply itself is already written. */
 async function parentOf(
   db: Firestore,
   contactId: string,
@@ -229,9 +223,10 @@ async function parentOf(
 }
 
 /**
- * Post a new message to a contact. `onNotify`, when given, is called with the
- * bell payload for `notify.to` — each app supplies its own notification write
- * (e.g. mobile's sendNotification) so this module stays free of that side effect.
+ * Post a new message to a contact. Only an @mention is addressed to someone, so
+ * only an @mention calls `onNotify` (cut-or-keep §28); each app supplies its
+ * own notification write (e.g. mobile's sendNotification) so this module stays
+ * free of that side effect.
  */
 export async function addThreadMessage(
   db: Firestore,
@@ -248,9 +243,8 @@ export async function addThreadMessage(
     mentionedUserIds?: string[];
   },
   notify?: {
-    to?: string | null;
+    /** The person's name, so a mention reads "mentioned you on <name>". */
     contactName?: string;
-    stakeholders?: ThreadStakeholders | null;
   },
   onNotify?: (payload: ThreadNotifyPayload) => void,
 ): Promise<void> {
@@ -271,10 +265,9 @@ export async function addThreadMessage(
 
   // A reply from someone an open @mention names closes it, for everyone it
   // named — the parent, or an earlier mention in the same Thread.
-  const parent = await parentOf(db, contactId, input.parentId);
-  let recent: ThreadMessageWithContact[] | null = null;
   if (input.parentId && created?.id) {
-    recent = await recentInStream(db, contactId);
+    const parent = await parentOf(db, contactId, input.parentId);
+    const recent = await recentInStream(db, contactId);
     const pool = new Map<string, ThreadMessage>(recent.map((m) => [m.id, m]));
     if (parent) pool.set(parent.id, parent);
     const reply = { id: created.id, from: input.from, at, parentId: input.parentId };
@@ -287,13 +280,12 @@ export async function addThreadMessage(
   const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
   const contactName = notify?.contactName || "this person";
   const message = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
-  const notified = new Set<string>();
 
   // A picked @mention is addressed to that person, so it notifies them with its
-  // own title — never the author (ADR 0007).
-  for (const uid of mentionedUserIds) {
-    if (uid === input.from || notified.has(uid)) continue;
-    notified.add(uid);
+  // own title — never the author (ADR 0007). Nothing else sends: a message
+  // nobody is named in is read where the person is read (cut-or-keep §28).
+  for (const uid of new Set(mentionedUserIds)) {
+    if (uid === input.from) continue;
     onNotify({
       userId: uid,
       title: `${who} mentioned you on ${contactName}`,
@@ -301,28 +293,5 @@ export async function addThreadMessage(
       type: "info",
       targetId: contactId,
     });
-  }
-
-  // Everyone tied to the contact, then the legacy single recipient — deduped, so
-  // nobody is told twice. Before this, mobile passed only `to`, which
-  // `walkingRecipient` leaves null for a Trainee: a Trainee posting from the
-  // contact screen notified nobody at all (#813).
-  const recipients = new Set(stakeholderUidsOf(notify?.stakeholders, input.from));
-  if (notify?.to && notify.to !== input.from) recipients.add(notify.to);
-  // And everyone In the Conversation here (#1604): they wrote in this stream in
-  // the last 14 days. Not a tie, so a Release does not silence it.
-  recent ??= await recentInStream(db, contactId);
-  // Writing there once is no access: someone unshared since must not keep
-  // reading the person's messages through the bell.
-  const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
-  for (const uid of inTheConversation(recent, { ...input, contactId, at })) if (canStillSee(uid)) recipients.add(uid);
-  // The author of the message being answered (#1640): a reply reaches them even
-  // after the 14-day window lapses and with no tie.
-  const parentAuthor = parent?.from || null;
-  if (parentAuthor && parentAuthor !== input.from && canStillSee(parentAuthor)) recipients.add(parentAuthor);
-  const title = THREAD_NOTIFY_TITLE[input.kind](who, contactName);
-  for (const userId of recipients) {
-    if (notified.has(userId)) continue;
-    onNotify({ userId, title, message, type: "info", targetId: contactId });
   }
 }
