@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
+import { useQuickActionRouting } from 'expo-quick-actions/router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -106,12 +107,25 @@ function RootNavigator() {
               <Stack.Screen name="signup" />
             </Stack>
             <MobileNotificationPermissionBanner />
+            {/* A shortcut can cold-start the app; this mounts only once the
+                session has resolved and an approved teammate is signed in, so
+                the action routes into the stack. A signed-out cold start still
+                lands on login (the Redirect below). */}
+            {user && role && isApproved && <QuickActionRouter />}
           </ImpersonateLayer>
         </View>
       </AccessGate>
       {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
     </V2RoomTintContext.Provider>
   );
+}
+
+// Routes a shortcut's `href` once the app shell exists. Mounted by
+// RootNavigator only after auth resolves, so a cold start from the quick-action
+// shortcut lands in the stack instead of navigating before it mounts.
+function QuickActionRouter() {
+  useQuickActionRouting();
+  return null;
 }
 
 function RootLayout() {

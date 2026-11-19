@@ -33,6 +33,27 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-quick-actions",
+        {
+          "androidIcons": {
+            "add": {
+              "foregroundImage": "./assets/adaptive-icon-foreground.png",
+              "backgroundColor": "#5c5595"
+            }
+          },
+          "iosActions": [
+            {
+              "id": "quick-add",
+              "title": "Quick add",
+              "icon": "add",
+              "params": {
+                "href": "/quick-add"
+              }
+            }
+          ]
+        }
+      ],
       "expo-font",
       "expo-asset",
       "@sentry/react-native/expo",

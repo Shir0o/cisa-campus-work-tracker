@@ -33,6 +33,7 @@ describe("i18n dictionary and helper", () => {
       "modals.contact_noun": "Discard this contact?",
       "modals.gathering_noun": "Discard this gathering?",
       "modals.interaction_noun": "Discard this interaction?",
+      "modals.quickAdd.noun": "Discard this note?",
       "modals.rhythm_noun": "Discard this rhythm?",
       "modals.smartImport.import_noun": "Discard this import?",
       "todoComposer.noun": "Discard this task?",

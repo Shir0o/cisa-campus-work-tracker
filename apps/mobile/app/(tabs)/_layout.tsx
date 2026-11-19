@@ -1,6 +1,7 @@
 import { useEffect, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import * as QuickActions from 'expo-quick-actions';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { tabsForRole } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
@@ -140,6 +141,24 @@ export default function TabsLayout() {
 function RoleTabs() {
   const { role } = useAuth();
   const { language } = useLanguage();
+
+  // Long-pressing the app icon offers "Quick add" on both platforms (§26).
+  // iOS gets a static action from the config plugin (app.json) so it exists
+  // before JS; this runtime call is what also gives Android its shortcut, and
+  // keeps both in one place. The root layout routes the action's `href` once
+  // auth resolves.
+  useEffect(() => {
+    void QuickActions.setItems([
+      {
+        id: 'quick-add',
+        title: translate('mobile.quickAdd.shortcut_title', language),
+        icon: 'add',
+        params: { href: '/quick-add' },
+      },
+    ]).catch(() => {
+      /* Unsupported (e.g. Expo Go, web): the route stays reachable by URL. */
+    });
+  }, [language]);
 
   const tabs = tabsForRole(role);
   const mobileTitle = (name: string) => getMobileTabTitle(name, language);

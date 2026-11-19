@@ -18,6 +18,13 @@ import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { ContactCombineEngine, ContactEngineError } from "./src/server/contactEngine";
 import { TestAccountPurgeEngine, purgePlanFingerprint } from "./src/server/testAccountPurgeEngine";
 import { failsClosed, rateLimitKey } from "./src/server/requestGuards";
+import {
+  QUICK_ADD_SYSTEM_INSTRUCTION,
+  resolveQuickAddAccess,
+  runQuickAddParse,
+  selectQuickAddContacts,
+  type QuickAddAccess,
+} from "./src/server/quickAddEngine";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
@@ -444,6 +451,112 @@ ${JSON.stringify(contactsList)}`;
     } catch (error: any) {
       console.error("AI Smart Import Error: ", error);
       res.status(500).json({ error: error.message || "Failed to parse text" });
+    }
+  });
+
+  // Quick add (cut-or-keep §26): the same model as Smart Import, but open to
+  // any approved teammate and scoped to one person's next step. The parse/merge
+  // is pure (src/server/quickAddEngine); this route only supplies Gemini, the
+  // contacts the caller may match, and the response.
+  app.post("/api/quick-add/parse", standardRateLimiter, async (req, res) => {
+    try {
+      // Any approved teammate — Full-timer or Trainee — may parse a note. The
+      // caller's role also decides whose people they may match: a Trainee only
+      // sees the directory rows tied to them, a Full-timer all of it.
+      let access: QuickAddAccess = { allowed: true, uid: "test-user", seesAll: true };
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          const decodedToken = await authenticateFirebaseUser(req);
+          const userDoc = await getAdminDb().collection("users").doc(decodedToken.uid).get();
+          const resolved = resolveQuickAddAccess(
+            decodedToken.uid,
+            userDoc.exists
+              ? { ...userDoc.data(), secondFactor: !!decodedToken.firebase?.sign_in_second_factor }
+              : null,
+          );
+          if (!resolved.allowed) throw new Error(resolved.reason);
+          access = resolved;
+        } catch (authErr: any) {
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+
+      const { text } = req.body;
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Missing required 'text' parameter." });
+      }
+
+      console.log(`[AI Quick Add] Parsing note (${text.length} chars)`);
+
+      const db = getAdminDb();
+      // A Trainee's read carries the same visibleTo scope as every other
+      // person read; a Full-timer keeps the whole directory.
+      const contactsQuery = access.seesAll
+        ? db.collection("contacts")
+        : db.collection("contacts").where("visibleTo", "array-contains", access.uid);
+      const contactsSnapshot = await contactsQuery.get();
+      const contacts = selectQuickAddContacts(
+        contactsSnapshot.docs.map((d) => ({
+          id: d.id,
+          name: String(d.data().name || "").trim(),
+          visibleTo: d.data().visibleTo,
+        })),
+        access,
+      ).filter((c) => c.name && c.name !== "Unknown");
+
+      const result = await runQuickAddParse({ text, contacts }, async (prompt) => {
+        const response = await getAiClient().models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: QUICK_ADD_SYSTEM_INSTRUCTION,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                contact: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    year: { type: Type.STRING },
+                    step: { type: Type.STRING },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  },
+                },
+                interaction: {
+                  type: Type.OBJECT,
+                  properties: {
+                    type: { type: Type.STRING },
+                    when: { type: Type.STRING },
+                    notes: { type: Type.STRING },
+                  },
+                },
+                prayer: { type: Type.STRING },
+                reminder: {
+                  type: Type.OBJECT,
+                  properties: {
+                    when: { type: Type.STRING },
+                    text: { type: Type.STRING },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!response.text) {
+          throw new Error("No response returned from Gemini API.");
+        }
+        return response.text;
+      });
+
+      console.log(`[AI Quick Add] Parse complete: ${result.match.length} name match(es).`);
+      res.status(200).json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("AI Quick Add Error: ", error);
+      res.status(500).json({ error: error.message || "Failed to parse note" });
     }
   });
 

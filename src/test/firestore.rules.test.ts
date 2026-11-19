@@ -27,6 +27,7 @@ import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
 import { nullEmailContact, noOwnerContact } from './fixtures/contacts';
 import { buildContactActivityPatch } from '../lib/contactActivity';
+import { visibleToOf } from '../lib/contactTies';
 
 let testEnv: RulesTestEnvironment;
 const PROJECT_ID = 'campus-hub-security-test';
@@ -2240,6 +2241,119 @@ describeRules('Firestore Security Rules', () => {
         content: 'New content',
         dateTime: '2026-08-09',
         type: 'call',
+      }));
+    });
+  });
+
+  // §26 Quick add: one note saves a new person and their first interaction,
+  // prayer and follow-up to-do in ONE batch (src/lib/quickAdd.ts and
+  // packages/core/src/data/quickAdd.ts). For a Trainee the parent contact only
+  // exists inside that batch, so the interaction's create reads the parent as
+  // it will be after the batch — getAfter, not get.
+  describe('Quick add batch (§26)', () => {
+    const seedUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+      });
+    };
+
+    // The exact shape saveQuickAdd commits: the new person with their ties and
+    // visibleTo, the interaction, the prayer, the reminder to-do.
+    const commitQuickAdd = (uid: string, contactId: string) => {
+      const fs = getFirestore({ uid });
+      const now = '2026-11-17T10:00:00.000Z';
+      const data: Record<string, unknown> = {
+        name: 'Jordan Lee',
+        email: 'jordan@example.com',
+        phone: '(555) 010-2030',
+        stage: 'contact',
+        year: 'Sophomore',
+        tags: ['Bible study'],
+        lastSeen: now,
+        initials: 'JL',
+        createdAt: now,
+        serverCreatedAt: serverTimestamp(),
+        createdBy: uid,
+        createdByName: uid,
+        hasNewActivity: true,
+        attendance: {},
+        lastContactedDate: now,
+        lastContactedBy: uid,
+        lastContactedById: uid,
+        reachedAt: now,
+      };
+      // stampFounders stamps the founding set; visibleToOf folds it into the
+      // access list, which is what lets the adder read the person back.
+      data.founders = [uid];
+      const batch = writeBatch(fs);
+      batch.set(doc(fs, 'contacts', contactId), {
+        ...data,
+        visibleTo: visibleToOf(data as { createdBy?: string | null; founders?: string[] }),
+      });
+      batch.set(doc(fs, 'contacts', contactId, 'interactions', 'first'), {
+        type: 'meeting',
+        dateTime: now,
+        content: 'Met at the club table',
+        createdAt: serverTimestamp(),
+        userId: uid,
+        userName: uid,
+        contactId,
+        contactName: 'Jordan Lee',
+      });
+      batch.set(doc(fs, 'prayers', `${contactId}-prayer`), {
+        contactId,
+        date: now,
+        burden: 'Peace for finals',
+        status: 'pending',
+        teamPrayer: false,
+        updatedAt: now,
+        updatedBy: uid,
+        updatedByName: uid,
+      });
+      batch.set(doc(fs, 'tasks', `${contactId}-task`), {
+        title: 'Text Jordan about Bible study',
+        dueDate: '2026-11-24',
+        priority: 'medium',
+        status: 'pending',
+        assigneeId: uid,
+        contactId,
+        contactName: 'Jordan Lee',
+        createdById: uid,
+        createdByName: uid,
+        createdAt: serverTimestamp(),
+        subtasks: [],
+      });
+      return batch.commit();
+    };
+
+    it('lets an approved Trainee save a new person with their interaction, prayer and reminder in one batch', async () => {
+      await seedUsers();
+      await assertSucceeds(commitQuickAdd('manager1', 'quick-add-trainee'));
+    });
+
+    it('lets a Full-timer save the same batch', async () => {
+      await seedUsers();
+      await assertSucceeds(commitQuickAdd('admin1', 'quick-add-full-timer'));
+    });
+
+    it('refuses a Trainee an interaction under a person they cannot see', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'contacts', 'untied'), { name: 'Untied', visibleTo: [] });
+      });
+      const fs = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(fs, 'contacts/untied/interactions/new'), {
+        type: 'meeting',
+        dateTime: '2026-11-17T10:00:00.000Z',
+        content: 'Coffee',
+        createdAt: serverTimestamp(),
+        userId: 'manager1',
+        userName: 'M1',
+        contactId: 'untied',
+        contactName: 'Untied',
       }));
     });
   });
