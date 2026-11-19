@@ -75,7 +75,7 @@ const ref = (contactId: string, messageId: string) =>
 
 /** Legacy Full-timers messages may still sit in `threads` with this scope;
  *  nothing reads them any more. */
-const isLegacyTeam = (data: Partial<ThreadMessage>) => data.scope === "team";
+const isLegacyTeam = (data: { scope?: unknown }) => data.scope === "team";
 
 const norm = (val?: string | null) => (val === "" || val === undefined ? null : val);
 
@@ -221,7 +221,7 @@ export function subscribeTiedThreads(
     (docs) =>
       onUpdate(
         docs
-          .filter((d) => !isLegacyTeam(d.data() as Partial<ThreadMessage>))
+          .filter((d) => !isLegacyTeam(d.data()))
           .map((d) => toMessageWithContact(d))
           .sort((a, b) => b.at.localeCompare(a.at)),
       ),
