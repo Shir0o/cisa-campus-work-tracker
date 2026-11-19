@@ -154,7 +154,7 @@ describe('History View', () => {
     });
   });
 
-  it('keeps the desktop header whole and never shows the phone terminator (#1827)', async () => {
+  it("keeps the desktop header's prose but no counts or stats card (cut-or-keep §7)", async () => {
     render(<HistoryView />);
 
     await waitFor(() => {
@@ -162,33 +162,33 @@ describe('History View', () => {
     });
 
     const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header')!;
-    // The prose and the record's size stay on the wide page, and the phone's
-    // end band (a device-width fix) does not leak into it.
     expect(header).toHaveTextContent(/A record of the small, faithful work/);
-    expect(header).toHaveTextContent(/1 moment across the team/);
+    // Stats and counts are cut everywhere they appear (§7 and cross-cutting).
+    expect(header).not.toHaveTextContent(/\d+ moments? across the team/);
+    expect(header).not.toHaveTextContent(/touching/);
+    expect(screen.queryByText('moments noted')).not.toBeInTheDocument();
+    expect(screen.queryByText('people remembered')).not.toBeInTheDocument();
+    expect(screen.queryByText('hands at work')).not.toBeInTheDocument();
     expect(screen.queryByTestId('history-end')).not.toBeInTheDocument();
   });
 
-  it('filters activities based on category buttons and renders localized labels', async () => {
+  it('offers search but has no kind or teammate filter (cut-or-keep §7)', async () => {
     render(<HistoryView />);
 
     await waitFor(() => {
       expect(screen.getByText(/started walking with Alice/i)).toBeInTheDocument();
     });
 
-    // Check all category filter buttons render localized labels instead of missing keys (e.g. history.all)
-    expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Interactions' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
-
-    // Click 'Prayer' category button (which is type 'prayer')
-    const prayerButton = screen.getByRole('button', { name: 'Prayer' });
-    fireEvent.click(prayerButton);
-
-    expect(screen.queryByText(/started walking with Alice/i)).not.toBeInTheDocument();
-    expect(screen.getByText('Nothing here yet for that filter')).toBeInTheDocument();
+    // The traceback search stays.
+    expect(screen.getByPlaceholderText(/Find a moment or a name/i)).toBeInTheDocument();
+    // The kind buttons and the Whole team select are gone.
+    expect(screen.queryByRole('button', { name: 'Everything' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Steps forward' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Prayer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Interactions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gatherings' })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Whole team')).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Whole team' })).not.toBeInTheDocument();
   });
 
   it('performs text search matching activity fields', async () => {
@@ -261,14 +261,14 @@ describe('History View', () => {
   it('humanize: "created a new contact" shows welcomed', async () => {
     renderWithActivity({ action: 'created a new contact', description: '' });
     await waitFor(() => {
-      expect(screen.getByText('welcomed')).toBeInTheDocument();
+      expect(screen.getAllByText('welcomed').length).toBeGreaterThan(0);
     });
   });
 
   it('humanize: "created contact" also shows welcomed', async () => {
     renderWithActivity({ action: 'created contact', description: '' });
     await waitFor(() => {
-      expect(screen.getByText('welcomed')).toBeInTheDocument();
+      expect(screen.getAllByText('welcomed').length).toBeGreaterThan(0);
     });
   });
 
@@ -483,152 +483,27 @@ describe('History View', () => {
     });
   });
 
-  // ── Who dropdown filter ────────────────────────────────────────────
+  // ── No teammate filter ─────────────────────────────────────────────
 
-  it('filters activities by staff member via Who dropdown', async () => {
-    // Set up two activities from different staff
+  it('does not subscribe to the users list for a teammate filter any more (cut-or-keep §7)', async () => {
+    const usersListener = vi.fn();
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
-      } else if (ref?.path === 'activities') {
-        callback({
-          docs: [
-            {
-              id: 'a1',
-              data: () => ({
-                userName: 'Alice Staff',
-                action: 'created a new contact',
-                targetName: 'Bob',
-                targetType: 'contact',
-                targetId: 'c1',
-                type: 'create',
-                description: '',
-                createdAt: new Date().toISOString(),
-              }),
-            },
-            {
-              id: 'a2',
-              data: () => ({
-                userName: 'Charlie Staff',
-                action: 'created a new contact',
-                targetName: 'Dave',
-                targetType: 'contact',
-                targetId: 'c2',
-                type: 'create',
-                description: '',
-                createdAt: new Date().toISOString(),
-              }),
-            },
-          ],
-          size: 2,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
+      if (ref?.path === 'users') usersListener();
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 1 });
+      else if (ref?.path === 'activities') callback({ docs: mockActivities, size: 1 });
+      else callback({ docs: [], size: 0 });
       return vi.fn();
     });
 
     render(<HistoryView />);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
-      expect(screen.getByText('Charlie')).toBeInTheDocument();
+      expect(screen.getByText(/started walking with Alice/i)).toBeInTheDocument();
     });
-
-    // Filter by Charlie Staff
-    const whoSelect = screen.getByDisplayValue('Whole team');
-    fireEvent.change(whoSelect, { target: { value: 'Charlie Staff' } });
-
-    await waitFor(() => {
-      expect(screen.queryByText('Alice')).not.toBeInTheDocument();
-      expect(screen.getByText('Charlie')).toBeInTheDocument();
-    });
+    expect(usersListener).not.toHaveBeenCalled();
+    expect(screen.queryByRole('option', { name: 'Diana Prince' })).not.toBeInTheDocument();
   });
 
-  it('lists every approved team member in the Who dropdown, even with no logged activity', async () => {
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
-      } else if (ref?.path === 'activities') {
-        callback({ docs: mockActivities, size: 1 });
-      } else if (ref?.path === 'users') {
-        callback({
-          docs: [
-            { id: 'u-diana', data: () => ({ displayName: 'Diana Prince', role: 'Full-timer', approved: true }) },
-            { id: 'u-ghost', data: () => ({ displayName: 'cisa-qa', approved: true }) },
-          ],
-          size: 2,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<HistoryView />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Diana Prince' })).toBeInTheDocument();
-    });
-    expect(screen.queryByRole('option', { name: 'cisa-qa' })).not.toBeInTheDocument();
-  });
-
-  it('filters a Trainee\'s activity by their listed name even when it was logged as Anonymous', async () => {
-    // A Trainee is typically invited by an admin, so their Firebase Auth
-    // profile has no displayName while the users doc holds their real name:
-    // activities are stamped "Anonymous". Filtering must match on the stable
-    // id, not the mutable name (#1254 follow-up).
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
-      } else if (ref?.path === 'activities') {
-        callback({
-          docs: [
-            {
-              id: 'a1',
-              data: () => ({
-                userId: 'u-zion',
-                userName: 'Anonymous',
-                action: 'created a new contact',
-                targetName: 'Bob',
-                targetType: 'contact',
-                targetId: 'c1',
-                type: 'create',
-                description: '',
-                createdAt: new Date().toISOString(),
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (ref?.path === 'users') {
-        callback({
-          docs: [
-            { id: 'u-zion', data: () => ({ displayName: 'Zion Adeyemi', role: 'manager', approved: true }) },
-          ],
-          size: 1,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<HistoryView />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Bob')).toBeInTheDocument();
-    });
-    // The activity's stamped name is folded into the teammate by id, so no
-    // stray "Anonymous" option is offered.
-    expect(screen.queryByRole('option', { name: 'Anonymous' })).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByDisplayValue('Whole team'), { target: { value: 'Zion Adeyemi' } });
-
-    await waitFor(() => {
-      expect(screen.getByText('Bob')).toBeInTheDocument();
-    });
-  });
 
   const pageOf = (n: number, contactIds: string[] = ['c1']) =>
     Array.from({ length: n }, (_, i) => ({
@@ -685,7 +560,10 @@ describe('History View', () => {
 
     render(<HistoryView />);
 
-    expect(await screen.findByText('moments noted')).toBeInTheDocument();
+    // The page must settle before we can say the door is closed.
+    await waitFor(() => {
+      expect(screen.getAllByText('welcomed').length).toBeGreaterThan(0);
+    });
     expect(screen.queryByRole('button', { name: 'Show older moments' })).not.toBeInTheDocument();
   });
 
@@ -694,83 +572,35 @@ describe('History View', () => {
 
     render(<HistoryView />);
 
-    expect(await screen.findByText('moments noted')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('welcomed').length).toBeGreaterThan(0);
+    });
     expect(screen.queryByRole('button', { name: 'Show older moments' })).not.toBeInTheDocument();
   });
 
-  it('the header total comes from the aggregate, not the loaded page (#1828)', async () => {
+  it('draws no counts or stats card at all (cut-or-keep §7)', async () => {
     mockHistory(pageOf(2), 3412);
 
     render(<HistoryView />);
 
     await waitFor(() => {
-      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
-      expect(header).toHaveTextContent(/3412 moments across the team/);
+      expect(screen.getAllByText('welcomed').length).toBeGreaterThan(0);
     });
+    const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header')!;
+    expect(header).not.toHaveTextContent(/3412/);
+    expect(screen.queryByText('moments noted')).not.toBeInTheDocument();
+    expect(screen.queryByText('people remembered')).not.toBeInTheDocument();
+    expect(screen.queryByText('hands at work')).not.toBeInTheDocument();
   });
 
-  it('scopes the distinct-people figure to the moments shown when the record is longer (#1828)', async () => {
-    mockHistory(pageOf(100, ['c1', 'c2', 'c2']), 3412);
-
-    render(<HistoryView />);
-
-    await waitFor(() => {
-      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
-      // The record total is all-time; the people figure is not claimed for it,
-      // because distinct contacts cannot be counted server-side.
-      expect(header).toHaveTextContent(/3412 moments across the team\.$/);
-      expect(header).not.toHaveTextContent(/touching/);
-    });
-
-    // The shown window says exactly what it measures.
-    expect(
-      screen.getByText(
-        /The small, faithful work of these days — 100 moments across the team, touching 2 of the people in our care\./,
-      ),
-    ).toBeInTheDocument();
-
-    const card = screen.getByText('moments noted').parentElement!.parentElement!;
-    expect(card).toHaveTextContent('100 of 3412');
-    expect(card).toHaveTextContent('moments noted');
-    expect(card).not.toHaveTextContent(/people remembered/);
-  });
-
-  it('counts people over the whole record once every page is loaded (#1828)', async () => {
-    mockHistory(pageOf(3, ['c1', 'c2', 'c2']), 3);
-
-    render(<HistoryView />);
-
-    await waitFor(() => {
-      const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
-      expect(header).toHaveTextContent(/3 moments across the team, touching 2 of the people in our care\./);
-    });
-
-    const card = screen.getByText('moments noted').parentElement!.parentElement!;
-    expect(card).toHaveTextContent(/^3moments noted/);
-    expect(card).toHaveTextContent(/2people remembered/);
-  });
-
-  it('scopes to the window when the count cannot be read, and still reaches older moments (#1828)', async () => {
+  it('still reaches older moments when the count cannot be read (#1828)', async () => {
     mockHistory(pageOf(100), 'unreadable');
 
     render(<HistoryView />);
 
     expect(await screen.findByRole('button', { name: 'Show older moments' })).toBeInTheDocument();
     const header = screen.getByRole('heading', { name: 'Looking back' }).closest('header');
-    // No total to claim, so the header says exactly what the window holds.
-    expect(header).toHaveTextContent(/100 moments across the team, touching/);
-  });
-
-  // ── Footer statistics ──────────────────────────────────────────────
-
-  it('renders footer statistics with moments, people, hands', async () => {
-    render(<HistoryView />);
-
-    await waitFor(() => {
-      expect(screen.getByText('moments noted')).toBeInTheDocument();
-      expect(screen.getByText('people remembered')).toBeInTheDocument();
-      expect(screen.getByText('hands at work')).toBeInTheDocument();
-    });
+    expect(header).not.toHaveTextContent(/100 moments across the team/);
   });
 
   // ── Contact click opens modal ──────────────────────────────────────
@@ -795,7 +625,7 @@ describe('History View', () => {
     expect(screen.getAllByText('Alice Johnson').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders mobile layout on mobile viewport', async () => {
+  it('renders the one main view at phone width (the phone-only view is cut, §7)', async () => {
     const mediaQuery = await import('../lib/useMediaQuery');
     vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(true);
     renderWithActivity({
@@ -808,8 +638,10 @@ describe('History View', () => {
     await waitFor(() => {
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     });
-    // Looking back title is rendered in mobile layout
+    // The same main page, with the search and the stream — not HistoryMobile.
     expect(screen.getByText('Looking back')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Find a moment or a name/i)).toBeInTheDocument();
+    expect(document.querySelector('.history--m')).toBeNull();
   });
 
   it('renders clean DataLoadError on mobile when an error occurs', async () => {

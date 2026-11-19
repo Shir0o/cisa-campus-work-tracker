@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ExternalLink,
   BookOpen,
+  MessageCircleQuestion,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -56,6 +57,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/coordination': FileText,
   '/bible-study': BookOpen,
   '/around': Users,
+  '/ask': MessageCircleQuestion,
   '/feedback': StickyNote,
   '/settings': SettingsIcon,
 };

@@ -87,15 +87,16 @@ describe('the drawer and More lists', () => {
   });
 
   it("matches the design's full-timer More, in order", () => {
-    // Outreach (the monthly park outing log) is cut (cut-or-keep §2), and
-    // "How this works" is cut (cut-or-keep §16).
+    // Outreach (the monthly park outing log) is cut (cut-or-keep §2), "How this
+    // works" is cut (§16), and the phone Gatherings screen is cut (§8);
+    // /attendance stays only as a redirect.
     expect(FT_MORE.map((l) => l.label)).toEqual([
-      'Gatherings',
       'Prayer log',
       'The Board',
       'Sign-up form',
       'Settings',
     ]);
+    expect(FT_MORE.some((l) => l.href === '/attendance')).toBe(false);
   });
 
   // ADR 0047: on the phone The Journey is People narrowed by Step, so People is

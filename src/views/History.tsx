@@ -21,19 +21,15 @@ import {
   House,
   Tag,
   Pencil,
-  Users,
   ArrowRightLeft,
   Search,
-  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
-import { cn, relTime, isServiceAccountName } from "../lib/utils";
+import { cn, relTime } from "../lib/utils";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import PageContainer from "../components/layout/PageContainer";
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
-import HistoryMobile from './HistoryMobile';
 import { useLanguage } from '../components/LanguageProvider';
 import { t as resolveKey } from '../lib/i18n';
 import { dayMark, historyRows } from './historyTime';
@@ -45,14 +41,6 @@ type Bucket = "steps" | "prayer" | "talk" | "gather";
 // window, so the whole record stays reachable instead of stopping at the
 // newest page. The size lives with the paging contract (#1828).
 const PAGE_SIZE = HISTORY_PAGE_SIZE;
-
-const KINDS: { id: "all" | Bucket; label: string; i18nKey: string }[] = [
-  { id: "all", label: "Everything", i18nKey: "history.everything" },
-  { id: "steps", label: "Steps forward", i18nKey: "history.steps_forward" },
-  { id: "prayer", label: "Prayer", i18nKey: "history.prayer" },
-  { id: "talk", label: "Interactions", i18nKey: "history.conversations" },
-  { id: "gather", label: "Gatherings", i18nKey: "history.gatherings" },
-];
 
 // Static class strings (so Tailwind keeps them) for each bucket's tonal node.
 const BUCKET_NODE: Record<Bucket, string> = {
@@ -73,11 +61,6 @@ interface Hist {
   type: Activity["type"];
   description?: string;
   createdAt: string;
-}
-
-interface StaffOption {
-  id: string;
-  name: string;
 }
 
 interface Humanized {
@@ -324,16 +307,12 @@ const firstName = (name: string) => (name || "Someone").split(" ")[0];
 export default function History() {
   useAuth();
   const { t, language } = useLanguage();
-  const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [team, setTeam] = useState<StaffOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  const [kind, setKind] = useState<"all" | Bucket>("all");
-  const [who, setWho] = useState("all");
   const [q, setQ] = useState("");
   const [windowSize, setWindowSize] = useState(PAGE_SIZE);
   const [recordCount, setRecordCount] = useState<number | null>(null);
@@ -355,27 +334,8 @@ export default function History() {
       (e) => onLoadError(e, "contacts"),
     );
 
-    // The "Whole team" select lists every approved teammate, not only the people
-    // who happen to appear in the recent activity window.
-    const unsubscribeUsers = onSnapshot(
-      query(collection(db, "users")),
-      (snapshot) => {
-        setTeam(
-          snapshot.docs
-            .map((d) => {
-              const u = d.data() as { displayName?: string; email?: string; approved?: boolean };
-              return { id: d.id, name: (u.displayName || u.email || "").trim(), approved: u.approved };
-            })
-            .filter((u) => u.approved !== false && !!u.name && !isServiceAccountName(u.name))
-            .map((u) => ({ id: u.id, name: u.name })),
-        );
-      },
-      (e) => onLoadError(e, "users"),
-    );
-
     return () => {
       unsubscribeContacts();
-      unsubscribeUsers();
     };
   }, [onLoadError]);
 
@@ -413,11 +373,10 @@ export default function History() {
     };
   }, [windowSize, onLoadError]);
 
-  // The record's own size (#1828). The stream is a page of it, so the header
-  // asks for the count instead of reading `activities.length` — one aggregate
-  // read, re-run when the newest moment changes (a live write) or another
-  // page is asked for. If the aggregate is refused or fails, the total stays
-  // unknown and every view scopes itself to the window rather than invent one.
+  // The record's own size (#1828), read only to keep "Show older" honest: a
+  // full page is not the end unless the aggregate agrees. Nothing prints this
+  // number any more (§7 cuts the stats), and when the aggregate is refused the
+  // page simply keeps the door open rather than inventing a total.
   const newestId = activities[0]?.id;
   useEffect(() => {
     if (loading || error) return;
@@ -444,46 +403,17 @@ export default function History() {
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!selectedContact);
 
-  // The "Whole team ▾" select: every approved teammate, plus any legacy
-  // activity author not (or no longer) in the users collection. Each option
-  // carries the author's stable id, so filtering survives a display-name
-  // change: activities are stamped with the name at write time, which may no
-  // longer match the name shown here (#1254 follow-up).
-  const staffOptions = useMemo<StaffOption[]>(() => {
-    const byId = new Map<string, StaffOption>();
-    const names = new Set<string>();
-    team.forEach((u) => {
-      byId.set(u.id, u);
-      names.add(u.name);
-    });
-    activities.forEach((a) => {
-      if (!a.user || (a.userId && byId.has(a.userId)) || names.has(a.user)) return;
-      const id = a.userId || `legacy:${a.user}`;
-      byId.set(id, { id, name: a.user });
-      names.add(a.user);
-    });
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [activities, team]);
-
-  const staff = useMemo(() => [...new Set(staffOptions.map((o) => o.name))], [staffOptions]);
-
+  // The traceback search — the one way into the record besides scrolling.
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const selected = who === "all" ? undefined : staffOptions.find((o) => o.name === who);
     return activities.filter((a) => {
-      if (who !== "all") {
-        const matchId = !!selected && !selected.id.startsWith("legacy:") && a.userId === selected.id;
-        const matchName = a.user === who;
-        if (!matchId && !matchName) return false;
-      }
-      if (kind !== "all" && humanize(a).bucket !== kind) return false;
       if (needle) {
         const hay = `${a.user} ${a.action} ${a.target} ${a.description || ""}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
     });
-  }, [activities, who, kind, q, staffOptions]);
+  }, [activities, q]);
 
   // One continuous stream, with a small marker wherever the day changes.
   const rows = useMemo(() => historyRows(filtered), [filtered]);
@@ -494,52 +424,18 @@ export default function History() {
   );
 
   // The diary speaks the reader's language (#1826). The dictionary is bound
-  // here and handed to both renderers, so the phone needs no localization
-  // logic of its own — and the stored `action` stays the only key.
+  // here and handed to the renderer, so the stored `action` stays the only key.
   const translate = useCallback((key: string, fallback?: string) => t(key, fallback), [t]);
   const humanizeActivity = useCallback((a: Hist) => humanize(a, translate), [translate]);
 
-  const clearFilters = useCallback(() => {
-    setKind("all");
-    setWho("all");
-    setQ("");
-  }, []);
-
-  const peopleRemembered = useMemo(
-    () => new Set(activities.filter((a) => a.contactId).map((a) => a.contactId)).size,
-    [activities],
-  );
-
   // A short page is proof the record ended; a full page is only proof when the
-  // aggregate agrees (#1828). The count is floored by what is in view, so a
-  // live write that lands between the two reads can never print "100 of 99".
-  const pageIsShort = activities.length < windowSize;
-  const totalMoments =
-    recordCount === null
-      ? (pageIsShort ? activities.length : null)
-      : Math.max(recordCount, activities.length);
-  const recordComplete = totalMoments !== null && activities.length >= totalMoments;
-  const hasMore = historyHasMore(activities.length, windowSize, totalMoments);
-
-  // The one sentence that may describe a page: it counts exactly the moments
-  // on screen, so it is only used while the record is longer than the page.
-  const shownMomentWord = activities.length === 1 ? t('history.moment') : t('history.moments');
-  const windowDeck = t(
-    'history.deck',
-    'The small, faithful work of these days — {moments} across the team, touching {people} of the people in our care.',
-  )
-    .replace('{moments}', `${activities.length} ${shownMomentWord}`)
-    .replace('{people}', String(peopleRemembered));
-
-  // The card's moments figure. While the page is shorter than the record it
-  // says "100 of 3412" using the app's plain "{shown} of {total}" template —
-  // reused rather than minting a locale key for this one slot (#1828).
-  const momentsFigure =
-    recordComplete || totalMoments === null
-      ? String(totalMoments ?? activities.length)
-      : t('directory.of_people')
-          .replace('{shown}', String(activities.length))
-          .replace('{total}', String(totalMoments));
+  // count agrees (#1828). No count is printed any more (§7 cuts the stats),
+  // but the aggregate still answers whether older moments remain.
+  const hasMore = historyHasMore(
+    activities.length,
+    windowSize,
+    recordCount === null ? null : Math.max(recordCount, activities.length),
+  );
 
   const showOlder = () => setWindowSize((s) => s + PAGE_SIZE);
   const todayLong = new Date().toLocaleDateString(undefined, {
@@ -564,36 +460,6 @@ export default function History() {
     return <DataLoadError label={error} />;
   }
 
-  if (isMobile) {
-    return (
-      <>
-        <HistoryMobile
-          activities={activities}
-          contacts={contacts}
-          filteredActivities={filtered}
-          rows={rows}
-          peopleRemembered={peopleRemembered}
-          kind={kind}
-          setKind={setKind}
-          who={who}
-          setWho={setWho}
-          q={q}
-          setQ={setQ}
-          staff={staff}
-          onOpenContact={openContact}
-          onClearFilters={clearFilters}
-          loading={loading}
-          humanize={humanizeActivity}
-          dayInfo={dayInfo}
-          firstName={firstName}
-          hasMore={hasMore}
-          onShowOlder={showOlder}
-          totalMoments={totalMoments}
-        />
-      </>
-    );
-  }
-
   return (
     <PageContainer variant="wide">
       {/* Header */}
@@ -603,62 +469,12 @@ export default function History() {
         </div>
         <h1 className="font-serif page-title text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-          {totalMoments !== null ? (
-            <>
-              {t('history.record_small_faithful')}{" "}
-              <span className="text-on-surface font-medium">{totalMoments}</span>{" "}
-              {totalMoments === 1 ? t('history.moment') : t('history.moments')} across the team
-              {recordComplete ? (
-                <>
-                  , touching{" "}
-                  <span className="text-on-surface font-medium">{peopleRemembered}</span> of the people in our care.
-                </>
-              ) : (
-                "."
-              )}
-            </>
-          ) : (
-            windowDeck
-          )}
+          {t('history.record_small_faithful')}
         </p>
       </header>
 
-      {/* Controls — one row */}
+      {/* Controls — the traceback search */}
       <div className="flex flex-wrap items-center gap-3 mb-7">
-        <div className="inline-flex flex-wrap gap-1 p-1 rounded-full bg-surface-container-low border border-outline-variant">
-          {KINDS.map((k) => (
-            <button
-              key={k.id}
-              onClick={() => setKind(k.id)}
-              className={cn(
-                "text-[13px] px-3 py-1.5 rounded-full transition-colors",
-                kind === k.id
-                  ? "bg-surface text-on-surface "
-                  : "text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {t(k.i18nKey, k.label)}
-            </button>
-          ))}
-        </div>
-
-        <label className="inline-flex items-center gap-2 h-10 pl-3 pr-2 rounded-full bg-surface border border-outline-variant text-sm text-on-surface focus-within:border-primary transition-colors">
-          <Users className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
-          <select
-            value={who}
-            onChange={(e) => setWho(e.target.value)}
-            className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer appearance-none"
-          >
-            <option value="all">{t('history.whole_team')}</option>
-            {staff.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant shrink-0 pointer-events-none" aria-hidden />
-        </label>
-
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input
@@ -750,8 +566,10 @@ export default function History() {
         </div>
       )}
 
-      {!loading && !recordComplete && totalMoments !== null && (
-        <p className="mt-6 text-center text-[13px] text-on-surface-variant/80 italic">{windowDeck}</p>
+      {!loading && rows.length > 0 && (
+        <p className="mt-6 text-center text-[13px] text-on-surface-variant/80 italic">
+          {t('history.we_write_it_down')}
+        </p>
       )}
 
       {!loading && hasMore && (
@@ -763,34 +581,6 @@ export default function History() {
           >
             {t('history.show_older')}
           </button>
-        </div>
-      )}
-
-      {/* Quiet figures card */}
-      {!loading && activities.length > 0 && (
-        <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl text-on-surface">
-              {momentsFigure}
-            </span>
-            <span className="text-[13px] text-on-surface-variant">{t('history.moments_noted')}</span>
-          </div>
-          {/* Distinct contacts cannot be counted across the record server-side,
-              so this figure is only claimed once every moment is loaded. Until
-              then the page-scoped deck under the stream carries it. */}
-          {recordComplete && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl text-on-surface">{peopleRemembered}</span>
-              <span className="text-[13px] text-on-surface-variant">{t('history.people_remembered')}</span>
-            </div>
-          )}
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl text-on-surface">{staff.length}</span>
-            <span className="text-[13px] text-on-surface-variant">{t('history.hands_at_work')}</span>
-          </div>
-          <span className="text-[13px] text-on-surface-variant/70 italic ml-auto">
-            {t('history.we_write_it_down')}
-          </span>
         </div>
       )}
     </PageContainer>

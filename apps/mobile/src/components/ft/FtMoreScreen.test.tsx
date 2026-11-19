@@ -55,7 +55,9 @@ describe('FtMoreScreen', () => {
 
     // The Journey is People's Step pills now, not a More row (ADR 0047).
     expect(queryByText('The Journey')).toBeNull();
-    expect(getByText('Gatherings')).toBeTruthy();
+    // The phone Gatherings screen is cut (cut-or-keep §8); /attendance is a
+    // redirect stub, so it must not be offered as a More row.
+    expect(queryByText('Gatherings')).toBeNull();
     expect(getByText("Report a problem or idea")).toBeTruthy();
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });

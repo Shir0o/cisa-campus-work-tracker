@@ -145,6 +145,19 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.getByText('Sign-up form')).toBeInTheDocument();
   });
 
+  it('offers To ask in a Full-timer’s More menu, never a Trainee’s (cut-or-keep §10)', () => {
+    renderTopNav();
+    fireEvent.click(screen.getByRole('button', { name: /more/i }));
+    expect(screen.getByText('To ask')).toBeInTheDocument();
+  });
+
+  it('has no To ask destination for a Trainee', () => {
+    h.auth = { ...baseAuth, role: 'manager', isAdmin: false };
+    renderTopNav();
+    fireEvent.click(screen.getByRole('button', { name: /more/i }));
+    expect(screen.queryByText('To ask')).not.toBeInTheDocument();
+  });
+
   it('opening More navigates to a destination', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /more/i }));

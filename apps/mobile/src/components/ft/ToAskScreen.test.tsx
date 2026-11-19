@@ -104,7 +104,6 @@ const group = (over: Partial<ToAskGroup> = {}): ToAskGroup => ({
 const view = (over: Partial<ToAskView> = {}): ToAskView => ({
   groups: [group()],
   openCount: 1,
-  clearedCount: 0,
   topTrainees: [],
   drafted: {},
   dismissed: [],
@@ -116,7 +115,6 @@ function mockData(v: ToAskView, extra: Record<string, unknown> = {}) {
     view: v,
     notepad: {},
     notepadRef: { current: {} },
-    filter: 'all',
     messages: [],
     contactById: new Map([['c1', { id: 'c1', name: 'Priya' }]]),
     loading: false,
@@ -200,12 +198,11 @@ describe('ToAskScreen', () => {
     expect(getByLabelText('Dismiss')).toBeTruthy();
   });
 
-  it('saves the team filter to the notepad', async () => {
-    const { getByText } = await renderScreen();
+  it('has no team filter and no Clear done control (cut-or-keep §10)', async () => {
+    const { queryByText } = await renderScreen();
 
-    await fireEvent.press(getByText('YP'));
-
-    expect(saveToAskNotepad).toHaveBeenCalledWith('ft-1', { teamFilter: 'yp' });
+    expect(queryByText('All')).toBeNull();
+    expect(queryByText(/Clear done/)).toBeNull();
   });
 
   it('dismisses with a swipe action, and Undo brings it back', async () => {

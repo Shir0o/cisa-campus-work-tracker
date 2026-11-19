@@ -28,9 +28,6 @@ import {
 import { campusCalendarDaysSince, REMIND_AFTER_CALENDAR_DAYS } from "./reminders";
 import { isOpenMention } from "./mentions";
 
-/** The team filter, as on Around the team. */
-export type ToAskTeamFilter = "all" | "campus" | "yp";
-
 /** Ticked or cleared lines stay struck through this long, then drop. */
 export const STRUCK_VISIBLE_DAYS = 7;
 
@@ -147,16 +144,12 @@ export interface ToAskNotepad {
   /** Signal keys the notepad has drafted, so a cleared one can still say what
    *  cleared it for a week. Written back from `ToAskView.drafted`. */
   drafted?: Record<string, { at: string }>;
-  /** Lines struck at or before this mark have been cleared with "Clear done". */
-  clearedBefore?: string | null;
-  teamFilter?: ToAskTeamFilter;
 }
 
 export interface ToAskInput {
   /** The Full-timer reading the page. */
   uid: string;
   now: number | Date;
-  filter?: ToAskTeamFilter | null;
   people: readonly ToAskPerson[];
   reach: ReadonlyMap<string, ReachReading>;
   trainees: readonly ToAskTrainee[];
@@ -237,7 +230,7 @@ export interface ToAskDismissed {
   /** The line as its group would show it: text, kind, signal meta, updates. */
   line: ToAskLine;
   /** The group it was hidden from — for a person tied to two Trainees, the
-   *  first one the team filter shows. */
+   *  first one the tray names. */
   groupId: string;
   groupKind: ToAskGroup["kind"];
   /** The same display name as `ToAskGroup.name`. */
@@ -250,14 +243,12 @@ export interface ToAskView {
   /** The page pill and the My Day pointer card, by construction: open lines,
    *  counted once per signal key. */
   openCount: number;
-  /** Struck lines shown — the "Clear done" button's number. */
-  clearedCount: number;
   /** Trainee groups with open lines, busiest first — the pointer card's rows. */
   topTrainees: ToAskTopTrainee[];
   /** The drafted keys to persist back, so a later clear can say what cleared it. */
   drafted: Record<string, { at: string }>;
   /** Dismissed lines, newest dismissal first, once per key. Never counted in
-   *  `openCount`, a group's `open`, `clearedCount` or `topTrainees`. */
+   *  `openCount`, a group's `open` or `topTrainees`. */
   dismissed: ToAskDismissed[];
 }
 
@@ -598,10 +589,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
   const notepad = input.notepad ?? {};
   const overrides = notepad.overrides ?? {};
   const storedDrafted = notepad.drafted ?? {};
-  const clearedBefore = notepad.clearedBefore ?? null;
-  const clearedBeforeMs = parseMs(clearedBefore);
   const struckWindowMs = STRUCK_VISIBLE_DAYS * DAY_MS;
-  const filter = input.filter && input.filter !== "all" ? input.filter : null;
 
   const personById = new Map<string, ToAskPerson>();
   for (const p of input.people) personById.set(p.id, p);
@@ -609,7 +597,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
   for (const t of input.trainees) traineeByUid.set(t.uid, t);
 
   const interactions = input.interactions ?? [];
-  /** Every drafted key, whatever the team filter hides — persisted back. */
+  /** Every drafted key — persisted back. */
   const drafted: Record<string, { at: string }> = {};
   const signals = openSignals(input, nowMs);
   const signalByKey = new Map<string, OpenSignal>();
@@ -626,18 +614,16 @@ export function buildToAsk(input: ToAskInput): ToAskView {
   const struck = (atIso: string): boolean => {
     const at = parseMs(atIso);
     if (at == null) return false;
-    if (clearedBeforeMs != null && at <= clearedBeforeMs) return false;
     return nowMs - at < struckWindowMs;
   };
 
-  /** Where a group id would show, or null when the team filter hides it. */
+  /** Where a group id shows. */
   const groupMeta = (
     groupId: string,
   ): { kind: ToAskGroup["kind"]; name: string } | null => {
     if (groupId === GENERAL_GROUP) return { kind: "general", name: "General" };
     if (groupId === NO_TRAINEE_GROUP) return { kind: "none", name: "No Trainee tied" };
     const trainee = traineeByUid.get(groupId);
-    if (filter && trainee?.team !== filter) return null;
     return { kind: "trainee", name: trainee?.name || groupId };
   };
 
@@ -667,7 +653,6 @@ export function buildToAsk(input: ToAskInput): ToAskView {
 
   // ── Hand-written lines ─────────────────────────────────────────────────────
   const seenNoteKeys = new Set<string>();
-  let clearedCount = 0;
   for (const note of notepad.lines ?? []) {
     const key = `note:${note.id}`;
     if (seenNoteKeys.has(key)) continue;
@@ -692,7 +677,6 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       pushDismissed([note.group || GENERAL_GROUP], line, note.dismissedAt);
       continue;
     }
-    if (askedAt) clearedCount += 1;
     pushLine(note.group || GENERAL_GROUP, line);
   }
 
@@ -737,7 +721,6 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       pushDismissed(groupIdsFor(person), line, override!.dismissedAt!);
       continue;
     }
-    if (askedAt) clearedCount += 1;
     for (const groupId of groupIdsFor(person)) pushLine(groupId, line);
   }
 
@@ -783,7 +766,6 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       pushDismissed(groupIdsFor(person), line, override.dismissedAt!);
       continue;
     }
-    clearedCount += 1;
     for (const groupId of groupIdsFor(person)) pushLine(groupId, line);
   }
 
@@ -825,7 +807,6 @@ export function buildToAsk(input: ToAskInput): ToAskView {
   for (const [groupId, lines] of groupLines) {
     if (groupId === GENERAL_GROUP || groupId === NO_TRAINEE_GROUP) continue;
     const trainee = traineeByUid.get(groupId);
-    if (filter && trainee?.team !== filter) continue;
     const sorted = lines.slice().sort(lineSort);
     traineeGroups.push({
       id: groupId,
@@ -871,5 +852,5 @@ export function buildToAsk(input: ToAskInput): ToAskView {
     (a, b) => (parseMs(b.dismissedAt) ?? 0) - (parseMs(a.dismissedAt) ?? 0),
   );
 
-  return { groups, openCount, clearedCount, topTrainees, drafted, dismissed };
+  return { groups, openCount, topTrainees, drafted, dismissed };
 }

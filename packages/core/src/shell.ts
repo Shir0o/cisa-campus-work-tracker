@@ -87,7 +87,6 @@ export const TRAINEE_DRAWER_FOOT = "The queue is the app. Everything else lives 
  *  tab for this role, so it isn't repeated here; The Journey is People's
  *  Step pills (ADR 0047), so it has no row either. */
 export const FT_MORE: ShellLink[] = [
-  { key: "gatherings", label: "Gatherings", href: "/attendance" },
   { key: "prayers", label: "Prayer log", href: "/prayer-log" },
   { key: "board", label: "The Board", href: "/coordination" },
   { key: "signup", label: "Sign-up form", href: "/signup" },
@@ -97,7 +96,7 @@ export const FT_MORE: ShellLink[] = [
 export const FT_MORE_INTRO =
   "The screens you sometimes need on the move. Everything heavier lives on the desktop.";
 export const FT_MORE_FOOT =
-  "Board pages, gatherings and kinds are read-mostly here — edit them at a desk.";
+  "Board pages and kinds are read-mostly here — edit them at a desk.";
 
 // ── the queue's chrome copy (`.m2-top`, `.m2-queue`, `.m2-clear`) ──────────
 

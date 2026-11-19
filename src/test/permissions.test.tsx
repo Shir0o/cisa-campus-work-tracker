@@ -122,7 +122,7 @@ describe('canAccessRoute()', () => {
     // '/bible-study/present' is any signed-in user's: the code anyone in the
     // room may hold up. Only '/bible-study' — the archive — stays admin.
     manager:  ['/', '/directory', '/feedback', '/settings', '/bible-study/present'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/history', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/history', '/coordination', '/answered', '/bible-study', '/bible-study/present', '/around', '/ask', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -294,6 +294,7 @@ describe('TopNav primary tabs per role', () => {
       'Gatherings',
       'Looking back',
       'My Day',
+      'To ask',
       'Your reports',
     ]);
   });
@@ -563,6 +564,37 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, canSeeHist
   });
 });
 
+// ─── To ask is a Full-timer destination (cut-or-keep §10) ────────────────────
+// The notepad keeps its page and gains a nav item where Questions used to sit,
+// so it is no longer reachable only from My Day and a contact's page.
+
+describe('To ask is a Full-timer destination', () => {
+  it('is reachable by a Full-timer and refused to a Trainee', () => {
+    expect(canAccessRoute('admin', '/ask')).toBe(true);
+    expect(canAccessRoute('manager', '/ask')).toBe(false);
+    expect(canAccessRoute(null, '/ask')).toBe(false);
+  });
+
+  it('is a nav item for Full-timers only, in the Today group where Questions sat', () => {
+    const item = NAV_ITEMS.find((i) => i.href === '/ask');
+    expect(item).toBeDefined();
+    expect(item!.label).toBe('To ask');
+    expect(item!.minRole).toBe('admin');
+
+    const today = groupedNavFor('admin').find((g) => g.label === 'Today')!;
+    const hrefs = today.items.map((i) => i.href);
+    expect(hrefs).toContain('/ask');
+    // Questions sat between Coordination Notes and Around the team.
+    expect(hrefs.indexOf('/ask')).toBe(hrefs.indexOf('/coordination') + 1);
+  });
+
+  it('is absent from a Trainee\'s navigation entirely', () => {
+    const trainee = [...primaryNavFor('manager'), ...moreNavFor('manager')].map((i) => i.href);
+    expect(trainee).not.toContain('/ask');
+    expect(groupedNavFor('manager').flatMap((g) => g.items.map((i) => i.href))).not.toContain('/ask');
+  });
+});
+
 // ─── Questions for the team is cut (cut-or-keep §5) ──────────────────────────
 
 describe('Questions for the team is gone', () => {
@@ -663,7 +695,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   // the hrefs inside each. Empty groups are omitted from the output.
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
-      { label: 'Today', hrefs: ['/', '/coordination', '/around', '/feedback'] },
+      { label: 'Today', hrefs: ['/', '/coordination', '/ask', '/around', '/feedback'] },
       { label: 'People', hrefs: ['/directory', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },

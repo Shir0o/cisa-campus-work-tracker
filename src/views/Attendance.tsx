@@ -16,7 +16,7 @@ import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
-import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, hydrateGatherings, heldGatherings, averageAttendance, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
+import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, hydrateGatherings, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
 import { subscribeRhythms, uncancelGatheringDoc, cancelGatheringForRhythm } from '../lib/rhythms';
 import {
   buildGatheringViewModel,
@@ -40,9 +40,7 @@ import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import type { TodoPerson } from '../lib/todos';
 import PageContainer from '../components/layout/PageContainer';
 import { format, parseISO, isValid } from 'date-fns';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
-import AttendanceMobile from './AttendanceMobile';
 import AttendanceSyncPanel from '../components/AttendanceSyncPanel';
 import { useLanguage } from '../components/LanguageProvider';
 import { useCalendarSync, calStartOfDay, calAddDays, canSeeCalendarSync, type CalContextItem } from '../lib/calendar/calendarSync';
@@ -72,45 +70,6 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
     );
   }
   return <div className={cn(dim)}>{initials}</div>;
-}
-
-function Figure({ n, label }: { n: number | string; label: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-serif text-2xl text-on-surface leading-none">{n}</span>
-      <span className="text-xs text-on-surface-variant">{label}</span>
-    </div>
-  );
-}
-
-/** The three figures card, used in both the missed-section sidebar and the
- *  quiet-figures row when nobody has gone quiet. Hairline separators between
- *  figures so each reads as its own line. Same shape in both branches. */
-function FiguresCard({
-  eventsCount,
-  avgPer,
-  missedCount,
-}: {
-  eventsCount: number;
-  avgPer: number;
-  missedCount: number;
-}) {
-  return (
-    <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 divide-y divide-outline-variant/40">
-      <div className="pb-3 first:pt-0">
-        <Figure n={eventsCount} label="gatherings" />
-      </div>
-      <div className="py-3">
-        <Figure n={avgPer} label="come, on average" />
-      </div>
-      <div className="py-3">
-        <Figure n={missedCount} label="gone quiet" />
-      </div>
-      <p className="text-sm text-on-surface-variant italic pt-3 mb-0">
-        Counting heads is just a way of noticing who's missing.
-      </p>
-    </div>
-  );
 }
 
 const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
@@ -185,7 +144,6 @@ function RowAction({
 export default function Attendance() {
   const { user, isAdmin, role, effectiveUserId } = useAuth();
   const { t } = useLanguage();
-  const isMobile = useMediaQuery("(max-width: 768px)");
   const [rawContacts, setRawContacts] = useState<Contact[]>([]);
   const [rawEvents, setRawEvents] = useState<Gathering[]>([]);
   const [rhythms, setRhythms] = useState<Rhythm[]>([]);
@@ -383,16 +341,6 @@ export default function Attendance() {
     await writeAttendance(contact, event, cycleAttendanceStatus(current, onRoster));
   };
 
-  const setAttendanceStatus = async (
-    contact: Contact,
-    eventId: string,
-    next: GatheringAttendanceStatus | undefined,
-  ) => {
-    const event = events.find((e) => e.id === eventId);
-    if (event === undefined) return;
-    await writeAttendance(contact, event, next);
-  };
-
   const handleCreateWalkInContact = async (name: string, event: Gathering) => {
     const trimmed = name.trim();
     if (!trimmed || isCreatingContact) return;
@@ -532,32 +480,6 @@ export default function Attendance() {
     return calOn ? getItemsBetween(upFrom, upTo).context.slice(0, 4) : [];
   }, [calOn, getItemsBetween, upFrom, upTo]);
 
-  // Mobile's "Coming up" — our own upcoming Gatherings only (the calendar
-  // merge is gone; ADR 0016 decision 2).
-  const upcomingOwnEvents = useMemo(() => {
-    const now = Date.now() - 86_400_000;
-    return events
-      .filter((ev) => !ev.cancelled)
-      .filter((ev) => {
-        const ms = evtMs(ev.date);
-        return ms != null && ms >= now;
-      })
-      .sort((a, b) => (evtMs(a.date) ?? 0) - (evtMs(b.date) ?? 0))
-      .slice(0, 4)
-      .map((ev) => ({ id: ev.id, name: ev.name, date: ev.date, location: ev.location }));
-  }, [events]);
-
-  // quiet figures — only the Gatherings actually held: a season's "N times"
-  // and "about M people" are claims about the past (issue 1769).
-  const held = useMemo(() => heldGatherings(events, new Date()), [events]);
-  const avgPer = useMemo(() => averageAttendance(held), [held]);
-  // "When we met" keeps cancelled weeks — they belong to the record — but not
-  // an occasion that has not happened yet.
-  const sessionsHeld = useMemo(
-    () => sessionsNewestFirst.filter((s) => !isFutureEventDate(s.date)),
-    [sessionsNewestFirst],
-  );
-
   // The full view model: this-week band, Rhythm rows, and one-offs. The view
   // below is a renderer of this model and holds no grouping, week-bounding
   // or chip-state logic of its own.
@@ -606,56 +528,6 @@ export default function Attendance() {
     return <DataLoadError label={error} />;
   }
 
-  if (isMobile) {
-    return (
-      <>
-        <AttendanceSyncPanel
-          isAdmin={isAdmin}
-          contacts={contacts}
-          rhythms={rhythms}
-          gatherings={events}
-          userId={effectiveUserId ?? user?.uid}
-          userName={user?.displayName ?? user?.email?.split('@')[0]}
-        />
-        <AttendanceMobile
-          contacts={contacts}
-          events={held}
-          sessions={sessionsHeld}
-          upcoming={upcomingOwnEvents}
-          calContext={calContext}
-          missed={missed}
-          avgPer={avgPer}
-          isAdmin={isAdmin}
-          onOpenContact={openContact}
-          onLogGathering={() => setIsAddEventModalOpen(true)}
-          onEditSession={(session) => setEditingEvent(session)}
-          onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
-          cycleAttendance={cycleAttendance}
-          setAttendanceStatus={setAttendanceStatus}
-          here={here}
-          team={team}
-          onOpenTodo={openTodoFor}
-          resolvedRosterFor={resolvedRosterFor}
-          onToggleRoster={handleToggleRoster}
-          onCreateWalkIn={handleCreateWalkInContact}
-          markAttendanceTaken={markAttendanceTaken}
-        />
-        {todoFor && (
-          <FromEntryTodoComposer
-            text={`Check on ${todoFor.contact.name.split(' ')[0]}`}
-            contactId={todoFor.contact.id}
-            contactName={todoFor.contact.name}
-            source={{ interactionId: todoFor.event.id, interactionTitle: todoFor.event.name }}
-            team={team}
-            meUid={user?.uid ?? ''}
-            meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
-            onClose={() => setTodoFor(null)}
-          />
-        )}
-      </>
-    );
-  }
-
   if (loading) {
     return (
       <PageContainer variant="wide" className="space-y-8 animate-pulse">
@@ -698,18 +570,7 @@ export default function Attendance() {
             <p className="text-sm text-on-surface-variant">{format(new Date(), 'EEEE, MMMM d')}</p>
             <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">{t('nav.gatherings')}</h1>
             <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-              We've come together{' '}
-              <b className="text-on-surface font-semibold">
-                {held.length} {held.length === 1 ? 'time' : 'times'}
-              </b>
-              {held.length > 0 && (
-                <>
-                  {' '}— about <span className="text-on-surface font-medium">{avgPer}</span>{' '}
-                  {avgPer === 1 ? 'person' : 'people'} each time
-                </>
-              )}
-              .
-              {missed.length > 0 && ' A few faces have gone quiet lately; they’re the first thing below.'}
+              {t('attendance.sub', 'Who we gather with, week by week.')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0 lg:justify-end lg:mt-9">
@@ -925,17 +786,16 @@ export default function Attendance() {
           )}
         </section>
 
-        {/* ── Who we've missed lately, beside a figures side column ──
-           * Heading spans both columns; figures card stops stretching and
-           * stays in view while the list scrolls; hairlines separate the
-           * three figures. */}
-        {missed.length > 0 ? (
+        {/* ── Who we've missed lately ──
+           * The stats card beside it is cut (cut-or-keep §8); the list is the
+           * point. */}
+        {missed.length > 0 && (
           <div className="mt-12">
             <SectionHead
               title={t('attendance.missed_title', "Who we've missed lately")}
               sub="They used to come, but it's been a few gatherings."
             />
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+            <div className="grid grid-cols-1 gap-6 items-start">
               <section className="min-w-0">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   {/* The card lays itself out from its own width, not the
@@ -994,18 +854,7 @@ export default function Attendance() {
                   ))}
                 </div>
               </section>
-              <aside className="self-start lg:sticky lg:top-4">
-                <FiguresCard
-                  eventsCount={held.length}
-                  avgPer={avgPer}
-                  missedCount={missed.length}
-                />
-              </aside>
             </div>
-          </div>
-        ) : (
-          <div className="mt-12 max-w-sm">
-            <FiguresCard eventsCount={held.length} avgPer={avgPer} missedCount={missed.length} />
           </div>
         )}
 

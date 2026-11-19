@@ -4,8 +4,6 @@ import {
   MessageSquare,
   HelpCircle,
   Heart,
-  Mail,
-  Phone,
   Bell,
   Check,
   ClipboardList,
@@ -249,7 +247,6 @@ export function WorklistCard({
   onUnreview,
   onToast,
   mobile,
-  showReach,
   reviewedOnly,
   threads,
   teamMembers,
@@ -272,7 +269,6 @@ export function WorklistCard({
   onUnreview?: (stack: AttentionStack) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
-  showReach?: boolean;
   /** One state on this card — Reviewed — instead of two (#1012). No accent
    *  dot, no seen-based dimming, and neither opening the person nor writing to
    *  them records anything: a glance is not the same as having dealt with
@@ -533,33 +529,6 @@ export function WorklistCard({
                         ? t("whatsNew.write_back")
                         : t("whatsNew.comment")}
                   </button>
-                )}
-                {showReach && contact && contact.phone && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(`tel:${contact.phone}`);
-                    }}
-                    className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
-                      mobile ? "min-h-11" : "py-1.5",
-                    )}
-                  >
-                    <Phone className="w-3.5 h-3.5" aria-hidden="true" /> {t("whatsNew.reach_call")}
-                  </button>
-                )}
-                {showReach && contact && contact.email && (
-                  <a
-                    href={`mailto:${contact.email}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap",
-                      mobile ? "min-h-11" : "py-1.5",
-                    )}
-                  >
-                    <Mail className="w-3.5 h-3.5" aria-hidden="true" /> {t("whatsNew.reach_email")}
-                  </a>
                 )}
               </div>
 

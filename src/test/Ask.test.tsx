@@ -217,20 +217,24 @@ describe('To ask page (#1649)', () => {
     expect(patch.lines.at(-1)).toMatchObject({ text: 'Who drives Friday?', group: 'jae' });
   });
 
-  it('remembers the team filter', async () => {
-    renderAsk();
-    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'YP team' }));
-    await waitFor(() => expect(h.save).toHaveBeenCalledWith('ft', { teamFilter: 'yp' }));
-  });
-
-  it('offers Clear done and drops struck lines on click', async () => {
+  it('has no team filter and no Clear done button (cut-or-keep §10)', async () => {
     h.notepad = { lines: [{ id: 'n1', text: 'old note', group: 'jae', createdAt: ago(30), askedAt: ago(1) }] };
     renderAsk();
-    await waitFor(() => expect(screen.getByText('old note')).toBeTruthy());
-    const clear = screen.getByRole('button', { name: /Clear done/ });
-    fireEvent.click(clear);
-    await waitFor(() => expect(h.save).toHaveBeenCalledWith('ft', expect.objectContaining({ clearedBefore: expect.any(String) })));
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+
+    expect(screen.queryByRole('button', { name: 'YP team' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'All teams' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Clear done/ })).not.toBeInTheDocument();
+    // The struck line still shows for its week, as before.
+    expect(screen.getByText('old note')).toBeTruthy();
+  });
+
+  it('offers no Delegate control on a line with no Trainee tied (cut-or-keep §10)', async () => {
+    h.contacts = [{ id: 'c2', data: { name: 'Solo Person', createdAt: ago(5) } }];
+    renderAsk();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'To ask' })).toBeTruthy());
+    expect(screen.getByText('No Trainee tied')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
   });
 
   it('is invisible to a non-Full-timer', () => {

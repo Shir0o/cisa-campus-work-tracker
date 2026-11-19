@@ -14,7 +14,6 @@ import {
   type Interaction,
   type ThreadMessageWithContact,
   type ToAskNotepad,
-  type ToAskTeamFilter,
   type ToAskView,
 } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from './firebase';
@@ -153,13 +152,11 @@ export function useToAskData(uid: string | null) {
     [interactions, events, contacts],
   );
 
-  const filter: ToAskTeamFilter = notepad.teamFilter ?? 'all';
   const view: ToAskView = useMemo(
     () =>
       buildToAsk({
         uid: uid ?? '',
         now: nowMs(),
-        filter,
         people,
         reach,
         trainees,
@@ -167,7 +164,7 @@ export function useToAskData(uid: string | null) {
         interactions: toAskInteractionsOf(interactions),
         notepad,
       }),
-    [uid, filter, people, reach, trainees, messages, interactions, notepad],
+    [uid, people, reach, trainees, messages, interactions, notepad],
   );
 
   // Persist the drafted keys the derivation has seen, so a line that clears
@@ -192,7 +189,6 @@ export function useToAskData(uid: string | null) {
     view,
     notepad,
     notepadRef,
-    filter,
     messages,
     contactById,
     loading: useMinLoading(!loaded && !timedOut),

@@ -2702,18 +2702,18 @@ describeRules('Firestore Security Rules', () => {
     it('TA2: another Full-timer and a Trainee are denied', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'toAskNotes', 'u1'), { teamFilter: 'all' });
+        await setDoc(doc(context.firestore(), 'toAskNotes', 'u1'), { lines: [] });
       });
       await assertFails(getDoc(doc(getFirestore({ uid: 'u2' }), 'toAskNotes', 'u1')));
-      await assertFails(setDoc(doc(getFirestore({ uid: 'u2' }), 'toAskNotes', 'u1'), { teamFilter: 'yp' }));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'u2' }), 'toAskNotes', 'u1'), { lines: [] }));
       await assertFails(getDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'u1')));
-      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'u1'), { teamFilter: 'yp' }));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'u1'), { lines: [] }));
     });
 
     it('TA3: a Full-timer cannot reach a Trainee’s notepad, and a Trainee cannot touch their own', async () => {
       await seedUsers();
       await assertFails(getDoc(doc(getFirestore({ uid: 'u1' }), 'toAskNotes', 'trainee1')));
-      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'trainee1'), { teamFilter: 'all' }));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'trainee1'), { lines: [] }));
     });
 
     // The worklist's two per-person axes (#813). Get this wrong and every write

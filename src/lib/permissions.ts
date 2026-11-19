@@ -122,6 +122,9 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/prayer', label: 'On our hearts', minRole: 'manager' },
   { href: '/answered', label: 'Answered', minRole: 'manager' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'manager' },
+  // To ask (#1649) — the Full-timer's private notepad. It sits where Questions
+  // used to, in Today; Trainees never reach it.
+  { href: '/ask', label: 'To ask', minRole: 'admin' },
   // "Around the team" — the label the team already says, not renamed (#943).
   { href: '/around', label: 'Around the team', minRole: 'admin' },
   // Your reports (`/feedback`) is the submitter's own side of the feedback
@@ -223,7 +226,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 // here; the "grouping covers every NAV_ITEMS destination except /settings"
 // test in src/test/permissions.test.tsx guards against drift.
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
-  Today: ['/', '/coordination', '/around', '/feedback'],
+  Today: ['/', '/coordination', '/ask', '/around', '/feedback'],
   People: ['/directory', '/history'],
   Gatherings: ['/attendance', '/bible-study'],
   Prayer: ['/prayer', '/answered'],
