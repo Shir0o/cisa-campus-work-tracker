@@ -29,6 +29,7 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { requestQuickAddParse } from '../../lib/quickAddParse';
 import { saveQuickAdd } from '../../lib/data/quickAdd';
+import { MULTILINE_FIELD_MAX_HEIGHT } from '../ui/KeyboardField';
 
 type Phase = 'input' | 'parsing' | 'preview' | 'saving' | 'saved';
 
@@ -389,6 +390,7 @@ function Field({
         autoCapitalize={autoCapitalize ?? (multiline ? 'sentences' : 'words')}
         style={{
           minHeight: minHeight ?? 48,
+          ...(multiline ? { maxHeight: MULTILINE_FIELD_MAX_HEIGHT } : null),
           paddingHorizontal: 14,
           paddingVertical: 12,
           borderRadius: radius.chip,

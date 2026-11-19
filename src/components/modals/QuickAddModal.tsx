@@ -411,7 +411,7 @@ export default function QuickAddModal({ isOpen, onClose, stages = [] }: QuickAdd
 
         {step === 'saved' && (
           <div className="py-12 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto">
               <Check className="w-8 h-8" />
             </div>
             <h3 className="font-serif text-2xl font-semibold">{t('modals.quickAdd.saved')}</h3>
