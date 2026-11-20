@@ -1,0 +1,87 @@
+name: iOS build check
+
+# Builds the iOS app unsigned for the simulator on the same Xcode image the
+# release uses, so a toolchain bump (like the move to Xcode 27 for ITMS-90725)
+# is proven to compile before a release tag depends on it. Nothing is signed,
+# submitted or uploaded, and no secrets are read.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/app.config.ts'
+      - 'apps/mobile/package.json'
+      - 'apps/mobile/package-lock.json'
+      - 'apps/mobile/plugins/**'
+      - 'apps/mobile/patches/**'
+      - '.github/workflows/release-ios.yml'
+      - '.github/workflows/ios-build-check.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build iOS (unsigned, Xcode 27)
+    runs-on: xcode-27
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select the newest installed Xcode
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          major="$(xcodebuild -version | awk 'NR==1 {split($2, v, "."); print v[1]}')"
+          echo "Selected $XCODE_APP (Xcode $major)"
+          if [ "$major" -lt 27 ]; then
+            echo "::error::Expected Xcode 27 or later, found Xcode $major."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Install mobile dependencies
+        run: npm ci
+
+      - name: Generate the native iOS project
+        run: npx expo prebuild --platform ios --clean --non-interactive
+
+      - name: Build for the simulator, unsigned
+        timeout-minutes: 50
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
+        run: |
+          set -euo pipefail
+          WORKSPACE="$(ls -d ios/*.xcworkspace | head -1)"
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+          echo "Building $SCHEME from $WORKSPACE"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tail -n 200

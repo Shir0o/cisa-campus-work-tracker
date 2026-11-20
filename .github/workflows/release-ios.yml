@@ -32,7 +32,10 @@ concurrency:
 jobs:
   release:
     name: Build IPA and submit to TestFlight
-    runs-on: macos-15
+    # Apple requires the iOS 27 SDK (Xcode 27) for App Store uploads from
+    # April 2027 (ITMS-90725, first warned on build 1.17.0). The xcode-27 image
+    # is arm64 and ships it.
+    runs-on: xcode-27
     timeout-minutes: 90
     environment: mobile-release
     defaults:
@@ -57,19 +60,21 @@ jobs:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
 
-      # react-native's Podfile hard-fails below Xcode 16.1 ("React Native
-      # requires XCode >= 16.1"), and macos-14 ships 15.4. Pick the newest Xcode
-      # on the image and refuse to continue on one that is too old, so the
-      # failure is one line instead of a cryptic invalid-Podfile error.
+      # App Store Connect wants the iOS 27 SDK (ITMS-90725), and react-native's
+      # Podfile hard-fails below Xcode 16.1. Pick the newest Xcode on the image
+      # and refuse to continue below 27, so the failure is one line here
+      # instead of a rejected upload at the end of the build.
       - name: Select the newest installed Xcode
         run: |
           set -euo pipefail
-          XCODE_APP="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          XCODE_APP="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
           sudo xcode-select -s "$XCODE_APP"
-          VERSION="$(xcodebuild -version | awk 'NR==1 {print $2}')"
-          echo "Selected $XCODE_APP (Xcode $VERSION)"
-          if [ "$(printf '%s\n' 16.1 "$VERSION" | sort -V | head -1)" != "16.1" ]; then
-            echo "::error::Xcode $VERSION is below 16.1, which React Native 0.81 requires."
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          major="$(xcodebuild -version | awk 'NR==1 {split($2, v, "."); print v[1]}')"
+          echo "Selected $XCODE_APP (Xcode $major)"
+          if [ "$major" -lt 27 ]; then
+            echo "::error::Expected Xcode 27 or later (iOS 27 SDK, ITMS-90725), found Xcode $major."
             exit 1
           fi
 
