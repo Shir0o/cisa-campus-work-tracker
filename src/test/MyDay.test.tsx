@@ -687,12 +687,15 @@ describe('MyDay', () => {
     // "for {name}" appears, and there's no editing textbox (read-only).
     expect(screen.getByRole('button', { name: 'for Mara Vale' })).toBeInTheDocument();
 
-    // Clicking a status pill writes the mapped status to the shared prayer.
+    // Clicking a status pill opens its composer first; Skip commits the mark.
     fireEvent.click(screen.getByRole('button', { name: 'answered' }));
+    expect(h.updatePrayerStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String), undefined);
 
     // Archive maps to the existing "unanswered" status.
     fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined, undefined);
 
     // Prayer Log link navigates to the Prayer page.
@@ -714,6 +717,8 @@ describe('MyDay', () => {
     expect(answeredButton).not.toBeDisabled();
 
     fireEvent.click(answeredButton);
+    expect(h.updatePrayerStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String), undefined);
   });
 
@@ -759,9 +764,15 @@ describe('MyDay', () => {
     expect(screen.getByText('personal')).toBeInTheDocument();
     expect(screen.getByText('tagged prayer')).toBeInTheDocument();
 
-    // Status pill → updatePersonalPrayer({status}).
+    // Status pill → composer first; Skip commits updatePersonalPrayer({status}).
     fireEvent.click(screen.getAllByRole('button', { name: 'answered' })[0]);
-    expect(h.updatePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1', { status: 'answered', answeredAt: expect.any(String) });
+    expect(h.updatePersonalPrayer).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(h.updatePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1', {
+      status: 'answered',
+      answeredBody: undefined,
+      answeredAt: expect.any(String),
+    });
 
     // Expand the first → edit + save.
     fireEvent.click(screen.getByText('pray for exams'));
@@ -844,8 +855,10 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByText('pray for provision')).toBeInTheDocument());
 
-    // Archive it
+    // Archive it: the reason composer opens first; Skip commits the archive.
     fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+    expect(h.updatePrayerStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined, undefined);
 
     // Snackbar should appear
