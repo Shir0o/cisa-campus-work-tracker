@@ -479,8 +479,8 @@ export default function LandingTrainee() {
               prayer={p}
               contact={contactById(p.contactId)}
               first={i === 0}
-              onUpdateStatus={(id, status, answer, answeredAt) =>
-                updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt)
+              onUpdateStatus={(id, status, answer, answeredAt, archiveReason) =>
+                updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt, archiveReason)
               }
               onOpenContact={openContact}
               onOpenPrayerLog={() => navigate("/prayer")}
