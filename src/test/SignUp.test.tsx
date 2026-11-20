@@ -577,4 +577,48 @@ describe('SignUp View', () => {
     seasonState.isAuto = true;
     seasonState.clubRush = false;
   });
+
+  it('names the next missing required field and flags an invalid email inline', () => {
+    render(<SignUp />);
+
+    const guidance = () => screen.getByRole('status');
+    const sendIt = () => screen.getByRole('button', { name: /Send it/i });
+
+    expect(guidance()).toHaveTextContent('7 required fields left — next: your full name.');
+    expect(sendIt()).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
+      target: { value: 'Grace Lee' },
+    });
+    expect(guidance()).toHaveTextContent('6 required fields left — next: your gender.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sophomore' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Nursing' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-0101' },
+    });
+    expect(guidance()).toHaveTextContent('2 required fields left — next: your email.');
+
+    // A non-empty, invalid email is called out under the field once it is
+    // blurred — never only in the banner at the top of the mobile form.
+    const emailInput = screen.getByPlaceholderText('you@umail.edu');
+    fireEvent.change(emailInput, { target: { value: 'grace@' } });
+    fireEvent.blur(emailInput);
+
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(guidance()).toHaveTextContent('2 required fields left — next: a valid email address.');
+    expect(sendIt()).toBeDisabled();
+
+    fireEvent.change(emailInput, { target: { value: 'grace@umail.edu' } });
+    expect(screen.queryByText('Enter a valid email address.')).not.toBeInTheDocument();
+    expect(guidance()).toHaveTextContent('1 required field left — next: at least one interest.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bible study' }));
+    expect(guidance()).toHaveTextContent('Ready to send.');
+    expect(sendIt()).not.toBeDisabled();
+  });
 });

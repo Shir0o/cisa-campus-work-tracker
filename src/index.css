@@ -5097,6 +5097,24 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 }
 .su-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* Why "Send it" is still disabled — the count of required fields left and the
+   next one to fill. Sits directly above the action buttons on desktop and in
+   the mobile action bar, so the reason never hides at the top of the form. */
+.su-fields-state {
+  display: flex; align-items: flex-start; gap: 7px;
+  margin-top: 18px;
+  font-size: 13px; line-height: 1.45;
+  color: var(--on-surface-variant);
+  text-wrap: pretty;
+}
+.su-fields-state-dot {
+  flex: none; width: 6px; height: 6px; border-radius: 50%;
+  margin-top: 7px;
+  background: var(--outline);
+}
+.su-fields-state.ready { color: var(--success); }
+.su-fields-state.ready .su-fields-state-dot { background: var(--success); }
+
 @media (max-width: 720px) {
   .signup { grid-template-columns: 1fr; }
   .sum-hero {
@@ -5139,15 +5157,19 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .sum-done-wrap .su-done { gap: 14px; }
   .sum-done-wrap h1 { font-size: 26px; }
 
+  /* In-flow action bar: it follows the privacy note, so it never floats over a
+     field or eats a slice of a 375x667 viewport. The guidance line spans the
+     full width above the two buttons. */
   .sum-bar {
-    position: sticky; bottom: 0;
-    margin-top: auto;
-    display: flex; gap: 10px; align-items: center;
-    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
     background: var(--surface);
     border-top: 1px solid var(--outline-variant);
-    box-shadow: 0 -6px 20px -14px rgba(0,0,0,0.35);
   }
+  .sum-bar .su-fields-state { grid-column: 1 / -1; margin-top: 0; }
   .sum-bar button { min-height: 48px; border-radius: 12px; font-size: 15px; }
   .sum-bar-pri { flex: 1; justify-content: center; gap: 8px; }
   .sum-bar-sec { flex: none; padding: 0 18px; }
