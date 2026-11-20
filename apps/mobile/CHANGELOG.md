@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.17.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.16.0...v1.17.0) (2026-11-19)
+
+
+### Features
+
+* **announcements:** cut chats; announcements as a card with Got it ([#2032](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2032)) ([a67bd8e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a67bd8e1915eb8c14d95f28d366ffd26962fff5b))
+* **contact:** lean the contact page, My Day, prayer cards and search ([#2042](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2042)) ([2f23e6f](https://github.com/Shir0o/cisa-campus-work-tracker/commit/2f23e6fe2ede55457dd97839373cf0875e77807a))
+* **directory:** cut the Journey board; steps move to Settings ([#2035](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2035)) ([67e186b](https://github.com/Shir0o/cisa-campus-work-tracker/commit/67e186b1d0fed240e194a01a04091195c9b59264))
+* **goal:** the day's goal shows until a chosen date ([#2040](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2040)) ([f34d0ce](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f34d0ce3448e81732ca0eab53679291998284bb9))
+* **i18n:** remove Spanish ([#2027](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2027)) ([4fc8fb7](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4fc8fb73a66ca8ed1552cae86990ae245610bb21))
+* **lean:** Combine, Bible study, Coordination and Vault ([#2043](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2043)) ([735f77d](https://github.com/Shir0o/cisa-campus-work-tracker/commit/735f77d646b056c1afa03276b4d1086c70cf0247))
+* **notifications:** notify only what is addressed to you ([#2046](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2046)) ([dfe44a1](https://github.com/Shir0o/cisa-campus-work-tracker/commit/dfe44a176ce704162c4b9ba8bbaba1e7513fb115))
+* **outreach:** remove the monthly park outing log ([#2029](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2029)) ([6f36053](https://github.com/Shir0o/cisa-campus-work-tracker/commit/6f360539cea2c80c125104506506dbaa9ba93bb1))
+* **pages:** lean Looking back, Gatherings, Around and To ask ([#2038](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2038)) ([309cdb1](https://github.com/Shir0o/cisa-campus-work-tracker/commit/309cdb128afd69fc81f9a5960826459de6216881))
+* **prayer:** team prayer is per person ([#2047](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2047)) ([470f037](https://github.com/Shir0o/cisa-campus-work-tracker/commit/470f037318cd7891dd922a112b3f8e0178c88322))
+* **questions:** remove Questions for the team ([#2031](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2031)) ([6c36b9b](https://github.com/Shir0o/cisa-campus-work-tracker/commit/6c36b9b7825f2884a42336885f161abf32d1245a))
+* **quick-add:** parse a note into a person and their next step ([#2044](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2044)) ([de920ec](https://github.com/Shir0o/cisa-campus-work-tracker/commit/de920ec18c05788f4b769a68dbfdccf9742d8ed5))
+* **roles:** remove the Student and Community roles ([#2033](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2033)) ([9fe3d3e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9fe3d3ec3805973c381f3cd2b81b506a10b5206f))
+* **settings:** lean Settings, Help, Reports and Smart Import ([#2036](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2036)) ([3d35da4](https://github.com/Shir0o/cisa-campus-work-tracker/commit/3d35da4fe110e65555ba315ea2c0dc5d254ec91f))
+* **translate:** remove the reading-translation stack ([#2028](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2028)) ([5b7792d](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5b7792d3c9484a6206e24f5a848c78e4abe2926d))
+* **visits:** a Visit is an interaction type, for several people at once ([#2034](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2034)) ([9fbd9a3](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9fbd9a3beb2e1730700a94750e0d4fe5b499c396))
+* **widgets:** a Quick add widget on the Android home screen ([#2048](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2048)) ([af22415](https://github.com/Shir0o/cisa-campus-work-tracker/commit/af22415d6f2267197b604a1ddde1663f6b8212fd))
+* **widgets:** the Quick add widget on iPhone ([#2051](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2051)) ([74a7941](https://github.com/Shir0o/cisa-campus-work-tracker/commit/74a794160e4a5a5df5936801aa4db719336bf408))
+
+
+### Bug Fixes
+
+* **audit:** close the final cut-or-keep review gaps ([#2049](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2049)) ([f187b97](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f187b97848016cd910de5e266dd49ff619f64b6b))
+* **mobile:** polish To ask empty state, submit button, and switch toggle ([#2022](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2022)) ([76825c0](https://github.com/Shir0o/cisa-campus-work-tracker/commit/76825c0800c8e135edf40856f990e30dc6228a0f))
+* **mobile:** prevent V2Seg text overflow and V2Input keyboard drop ([#2024](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2024)) ([a18a916](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a18a91635b09ec1067b861334c7c74b0efba5e80))
+
+
+### Refactoring
+
+* **prayer:** drop the transitional team prayer fallback ([#2052](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2052)) ([5c93c6f](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5c93c6f9ae2fe917f5c8e243f51bd5a9b5e928ec))
+
 ## [1.16.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.15.1...v1.16.0) (2026-11-13)
 
 
