@@ -86,7 +86,8 @@
         }
       ],
       "./plugins/withGradleJvmArgs",
-      "./plugins/withQuickAddWidget"
+      "./plugins/withQuickAddWidget",
+      "./plugins/withPodsDeploymentTarget"
     ],
     "experiments": {
       "typedRoutes": false
