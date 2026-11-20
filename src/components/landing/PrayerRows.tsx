@@ -36,20 +36,31 @@ export function TeamPrayerRow({
     { val: "unanswered", label: t("prayers.pill_archive", "archive"), tone: "archived" },
   ], [t]);
 
+  const commitAnswer = (answer?: string) =>
+    onUpdateStatus(prayer.id, "answered", answer, prayer.answeredAt || today);
+
+  const commitArchive = (reason?: string) =>
+    onUpdateStatus(prayer.id, "unanswered", undefined, undefined, reason);
+
   const handleStatusChange = (status: PrayerRecord["status"]) => {
     if (status === "answered") {
       setArchiving(false);
-      onUpdateStatus(prayer.id, "answered", prayer.answer || undefined, prayer.answeredAt || today);
+      // The home page only lists open prayers, so committing "answered" before
+      // the composer opens would unmount the row mid-sentence. Ask first;
+      // Save and Skip both commit.
       if (!prayer.answer) {
-        setHowDraft("");
+        if (!answering) setHowDraft("");
         setAnswering(true);
+      } else {
+        commitAnswer(prayer.answer);
       }
     } else if (status === "unanswered") {
       setAnswering(false);
-      onUpdateStatus(prayer.id, "unanswered", undefined, undefined, prayer.archiveReason || undefined);
       if (!prayer.archiveReason) {
-        setArchiveReasonDraft("");
+        if (!archiving) setArchiveReasonDraft("");
         setArchiving(true);
+      } else {
+        commitArchive(prayer.archiveReason);
       }
     } else {
       setAnswering(false);
@@ -59,12 +70,24 @@ export function TeamPrayerRow({
   };
 
   const saveAnswer = () => {
-    onUpdateStatus(prayer.id, "answered", howDraft.trim(), prayer.answeredAt || today);
+    commitAnswer(howDraft.trim());
+    setAnswering(false);
+  };
+
+  const skipAnswer = () => {
+    // Clicking "answered" was the decision; Skip only drops the testimony.
+    if (prayer.status !== "answered") commitAnswer(undefined);
     setAnswering(false);
   };
 
   const saveArchiveReason = () => {
-    onUpdateStatus(prayer.id, "unanswered", undefined, undefined, archiveReasonDraft.trim());
+    commitArchive(archiveReasonDraft.trim());
+    setArchiving(false);
+  };
+
+  const skipArchiveReason = () => {
+    // Clicking "archive" was the decision; Skip only drops the reason.
+    if (prayer.status !== "unanswered") commitArchive(undefined);
     setArchiving(false);
   };
 
@@ -145,7 +168,7 @@ export function TeamPrayerRow({
                 <button
                   type="button"
                   className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
-                  onClick={() => setAnswering(false)}
+                  onClick={skipAnswer}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
@@ -200,7 +223,7 @@ export function TeamPrayerRow({
                 <button
                   type="button"
                   className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
-                  onClick={() => setArchiving(false)}
+                  onClick={skipArchiveReason}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
@@ -289,12 +312,19 @@ export function PersonalPrayerRow({
     setOpen(false);
   };
 
+  const commitAnswer = (body?: string) =>
+    onUpdate(prayer.id, { status: "answered", answeredBody: body, answeredAt: prayer.answeredAt || today });
+
   const handleStatusChange = (status: PersonalPrayerStatus) => {
     if (status === "answered") {
-      onUpdate(prayer.id, { status: "answered", answeredAt: prayer.answeredAt || today });
+      // Home only lists open prayers, so committing "answered" before the
+      // composer opens would unmount the row mid-sentence. Ask first; Save and
+      // Skip both commit.
       if (!prayer.answeredBody) {
-        setHowDraft("");
+        if (!answering) setHowDraft("");
         setAnswering(true);
+      } else {
+        commitAnswer(prayer.answeredBody);
       }
     } else {
       setAnswering(false);
@@ -303,7 +333,13 @@ export function PersonalPrayerRow({
   };
 
   const saveAnswer = () => {
-    onUpdate(prayer.id, { status: "answered", answeredBody: howDraft.trim(), answeredAt: prayer.answeredAt || today });
+    commitAnswer(howDraft.trim());
+    setAnswering(false);
+  };
+
+  const skipAnswer = () => {
+    // Clicking "answered" was the decision; Skip only drops the testimony.
+    if (prayer.status !== "answered") commitAnswer(undefined);
     setAnswering(false);
   };
 
@@ -382,7 +418,7 @@ export function PersonalPrayerRow({
                 <button
                   type="button"
                   className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
-                  onClick={() => setAnswering(false)}
+                  onClick={skipAnswer}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
