@@ -157,6 +157,26 @@ describe('seasons — subscription & save error handling', () => {
     spy.mockRestore();
   });
 
+  it('a refused setter write is caught, not an unhandled rejection (Sentry CAMPUS-TRACKER-WEB-4)', async () => {
+    const { handleFirestoreError } = await import('../lib/firebase');
+    vi.mocked(handleFirestoreError).mockImplementationOnce(() => {
+      throw new Error('Missing or insufficient permissions.');
+    });
+    hoisted.setDocReject = true;
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const { result } = renderHook(() => useSeason());
+      result.current.toggleClubRush();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(handleFirestoreError).toHaveBeenCalled();
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+      hoisted.setDocReject = false;
+    }
+  });
+
   it('forwards save failures through handleFirestoreError', async () => {
     const { handleFirestoreError, OperationType } = await import('../lib/firebase');
     hoisted.setDocReject = true;

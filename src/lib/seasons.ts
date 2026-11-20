@@ -53,6 +53,14 @@ export async function saveSeasonSettings(patch: Partial<SeasonSettings>): Promis
   }
 }
 
+/** Fire-and-forget save for the season setters. A refused write (rules,
+ *  offline) is already logged by handleFirestoreError; catching it here keeps
+ *  it from surfacing as an unhandled rejection (Sentry CAMPUS-TRACKER-WEB-4).
+ *  The live subscription leaves the controls showing what is stored. */
+function persistSeason(patch: Partial<SeasonSettings>): void {
+  saveSeasonSettings(patch).catch(() => {});
+}
+
 export interface SeasonView {
   autoId: SeasonId;
   activeId: SeasonId;
@@ -96,9 +104,9 @@ export function useSeason(): SeasonView {
     bfa,
     label: seasonLabel(activeId),
     tags: seasonTags(activeId, clubRush, new Date(), bfa),
-    setSeason: (id) => void saveSeasonSettings({ override: id === autoId ? null : id }),
-    resetSeason: () => void saveSeasonSettings({ override: null }),
-    toggleClubRush: () => void saveSeasonSettings({ clubRush: !clubRush }),
-    toggleBfa: () => void saveSeasonSettings({ bfa: !bfa }),
+    setSeason: (id) => persistSeason({ override: id === autoId ? null : id }),
+    resetSeason: () => persistSeason({ override: null }),
+    toggleClubRush: () => persistSeason({ clubRush: !clubRush }),
+    toggleBfa: () => persistSeason({ bfa: !bfa }),
   };
 }
