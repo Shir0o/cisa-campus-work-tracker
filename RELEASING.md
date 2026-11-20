@@ -298,6 +298,7 @@ the newest tag.
 | Play rejects the AAB as a duplicate version code | The build's tag was already released. Both stores reject a reused build number, so cut a new tag. |
 | `AutoIncrement option is not supported when using app.config.js` | The app config is dynamic. Keep `autoIncrement` off - it is not supported with a dynamic config. |
 | `React Native requires XCode >= 16.1` during pod install | The runner's Xcode is too old (`macos-14` ships 15.4). The iOS workflow moves to `macos-15` and asserts the version. |
+| ITMS-90725 warning on an upload, "built with the iOS 26.x SDK" | From April 2027 App Store Connect takes only iOS 27 SDK builds. The iOS workflow runs on the `xcode-27` image and refuses an Xcode below 27; `ios-build-check.yml` builds unsigned on the same image for PRs that touch the toolchain. |
 | `java.lang.OutOfMemoryError: Metaspace` from Gradle | Gradle fell back to its 512 MiB default. See `apps/mobile/plugins/withGradleJvmArgs.js`; `android.extraGradleProperties` in `app.json` does **not** exist and is ignored. |
 | `The service account is missing the necessary permissions` | `PLAY_SERVICE_ACCOUNT_JSON_B64` is not the Play Console release-manager account. The log's `Account Email` names the one in use. |
 | `No changelog at fastlane/metadata/...` from the fastlane lane | The lane's paths lost their project-root anchor. Fastlane runs a **lane body** from `<project>/fastlane` but an **action** from `<project>`. |
