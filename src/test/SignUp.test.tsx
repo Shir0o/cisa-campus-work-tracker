@@ -37,11 +37,16 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+const STAFF_AUTH = {
+  user: { uid: 'ft-123', displayName: 'Staff Tester', email: 'staff@test.com' },
+  role: 'admin',
+  isManager: true,
+  isApproved: true,
+};
+const authState = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+
 vi.mock('../components/AuthProvider', () => ({
-  useAuth: () => ({
-    user: { uid: 'ft-123', displayName: 'Staff Tester', email: 'staff@test.com' },
-    role: 'admin',
-  }),
+  useAuth: () => authState.current ?? STAFF_AUTH,
 }));
 
 const mockSetSeason = vi.fn();
@@ -134,6 +139,27 @@ describe('SignUp View', () => {
     expect(screen.getByRole('button', { name: /Club rush/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /BFA/i }));
     expect(mockToggleBfa).toHaveBeenCalled();
+  });
+
+  it('hides the staff strip from a signed-out visitor (Sentry CAMPUS-TRACKER-WEB-4)', () => {
+    authState.current = { user: null, role: null, isManager: false, isApproved: false };
+    try {
+      render(<SignUp />);
+      expect(screen.queryByText(/Tagging sign-ups for/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Club rush/i })).not.toBeInTheDocument();
+    } finally {
+      authState.current = null;
+    }
+  });
+
+  it('hides the staff strip from an unapproved manager', () => {
+    authState.current = { ...STAFF_AUTH, role: 'manager', isManager: true, isApproved: false };
+    try {
+      render(<SignUp />);
+      expect(screen.queryByText(/Tagging sign-ups for/i)).not.toBeInTheDocument();
+    } finally {
+      authState.current = null;
+    }
   });
 
   it('fills all fields and submits successfully in one step', async () => {

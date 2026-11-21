@@ -80,6 +80,11 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   const navigate = useNavigate();
   const auth = useAuth();
   const season = useSeason();
+  // The season strip writes settings/season, which the rules allow only for
+  // approved managers and admins. The public sign-up page is open to anyone,
+  // so a signed-out visitor saw the controls and a click failed with
+  // "Missing or insufficient permissions" (Sentry CAMPUS-TRACKER-WEB-4).
+  const canSetSeason = auth.isManager && auth.isApproved;
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptyForm);
@@ -571,7 +576,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   if (isMobile) {
     return (
       <div className="signup-wrap sum min-h-screen bg-surface flex flex-col">
-        {adminStrip}
+        {canSetSeason && adminStrip}
 
         {isSubmitted ? (
           <div className="sum-body sum-done-wrap flex-1 flex flex-col justify-center">{successBody}</div>
@@ -685,7 +690,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   // ═══════════════════ DESKTOP — Two-Panel Welcome ═══════════════════
   return (
     <div className="signup-wrap min-h-screen bg-surface flex flex-col">
-      {adminStrip}
+      {canSetSeason && adminStrip}
 
       <div className="signup flex-1">
         {/* ── Left: A warm welcome ── */}
