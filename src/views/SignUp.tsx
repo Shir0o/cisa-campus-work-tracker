@@ -62,6 +62,13 @@ const inputCls =
   'w-full h-11 px-3.5 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/75';
 const textareaCls =
   'w-full px-3.5 py-3 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/75 resize-none';
+// Option pills: 44px on the phone branch (the form's own breakpoint is 720px),
+// the quieter 36px pill once the two-panel desktop layout takes over.
+const chipCls =
+  'inline-flex items-center gap-1.5 min-h-11 md:min-h-9 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer';
+
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+const INVALID_EMAIL_MESSAGE = 'Enter a valid email address.';
 
 interface SignUpProps {
   onBack?: () => void;
@@ -73,11 +80,17 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   const navigate = useNavigate();
   const auth = useAuth();
   const season = useSeason();
+  // The season strip writes settings/season, which the rules allow only for
+  // approved managers and admins. The public sign-up page is open to anyone,
+  // so a signed-out visitor saw the controls and a click failed with
+  // "Missing or insufficient permissions" (Sentry CAMPUS-TRACKER-WEB-4).
+  const canSetSeason = auth.isManager && auth.isApproved;
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 720 : false,
@@ -113,6 +126,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   const resetForm = () => {
     setForm(emptyForm);
     setError(null);
+    setEmailTouched(false);
     setIsSubmitted(false);
   };
 
@@ -122,7 +136,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
     if (!form.year) return 'Please select your year.';
     if (form.year === 'Other' && !yearValue) return 'Please tell us your year.';
     if (!form.major.trim()) return 'Please enter your major.';
-    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
+    if (!EMAIL_PATTERN.test(form.email.trim())) return 'Please enter a valid email address.';
     if (!form.phone.trim()) return 'Please enter your phone number.';
     if (!form.interests || form.interests.length === 0) return 'Please select at least one area you are interested in.';
     return null;
@@ -130,6 +144,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
   const submit = async () => {
     setError(null);
+    setEmailTouched(true);
 
     // Anti-abuse honeypot check
     if (form.botField) {
@@ -222,14 +237,29 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   };
 
   const firstName = form.name.trim().split(' ')[0] || 'friend';
-  const isFormValid =
-    form.name.trim() &&
-    form.gender &&
-    yearValue &&
-    form.major.trim() &&
-    form.phone.trim() &&
-    form.email.trim() &&
-    form.interests.length > 0;
+
+  const emailLooksValid = EMAIL_PATTERN.test(form.email.trim());
+  const emailError = emailTouched && form.email.trim() !== '' && !emailLooksValid ? INVALID_EMAIL_MESSAGE : null;
+
+  // Required fields in the order they appear on the form, so "next" always
+  // points at the field the visitor would reach by scrolling down.
+  const requiredFields = [
+    { label: 'your full name', complete: form.name.trim() !== '' },
+    { label: 'your gender', complete: form.gender !== '' },
+    { label: 'your year', complete: yearValue !== '' },
+    { label: 'your major', complete: form.major.trim() !== '' },
+    { label: 'your cell number', complete: form.phone.trim() !== '' },
+    {
+      label: form.email.trim() !== '' ? 'a valid email address' : 'your email',
+      complete: emailLooksValid,
+    },
+    { label: 'at least one interest', complete: form.interests.length > 0 },
+  ];
+  const requiredLeft = requiredFields.filter((field) => !field.complete);
+  const isFormValid = requiredLeft.length === 0;
+  const requiredGuidance = isFormValid
+    ? 'Ready to send.'
+    : `${requiredLeft.length} required field${requiredLeft.length === 1 ? '' : 's'} left — next: ${requiredLeft[0].label}.`;
 
   // ── Form Body (Shared between Desktop & Mobile) ──────────
   const formBody = (
@@ -258,7 +288,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
               key={g}
               onClick={() => set('gender', form.gender === g ? '' : g)}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                chipCls,
                 form.gender === g
                   ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
                   : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
@@ -281,7 +311,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
               key={y}
               onClick={() => set('year', form.year === y ? '' : y)}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                chipCls,
                 form.year === y
                   ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
                   : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
@@ -336,13 +366,21 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         </label>
         <input
           id="signup-email"
-          className={inputCls}
+          className={cn(inputCls, emailError && 'border-error')}
           type="email"
           inputMode="email"
           value={form.email}
           onChange={(e) => set('email', e.target.value)}
+          onBlur={() => setEmailTouched(true)}
+          aria-invalid={emailError ? true : undefined}
+          aria-describedby={emailError ? 'signup-email-error' : undefined}
           placeholder="you@umail.edu"
         />
+        {emailError && (
+          <p id="signup-email-error" className="text-xs text-error">
+            {emailError}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
@@ -358,7 +396,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
                 key={s.value}
                 onClick={() => set('spiritualBackground', active ? '' : s.value)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                  chipCls,
                   active
                     ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
                     : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
@@ -384,7 +422,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
                 key={i}
                 onClick={() => toggleInterest(i)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                  chipCls,
                   active
                     ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
                     : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
@@ -538,7 +576,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   if (isMobile) {
     return (
       <div className="signup-wrap sum min-h-screen bg-surface flex flex-col">
-        {adminStrip}
+        {canSetSeason && adminStrip}
 
         {isSubmitted ? (
           <div className="sum-body sum-done-wrap flex-1 flex flex-col justify-center">{successBody}</div>
@@ -613,8 +651,12 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
               <div className="su-note mt-3">We hold your details with care, and never share them.</div>
             </div>
 
-            {/* Sticky, thumb-reachable action bar */}
+            {/* In-flow action bar — follows the privacy note, never over a field */}
             <div className="sum-bar">
+              <div className={cn('su-fields-state', isFormValid && 'ready')} role="status">
+                <span className="su-fields-state-dot" aria-hidden="true" />
+                <span>{requiredGuidance}</span>
+              </div>
               <button
                 type="button"
                 className="sum-bar-sec px-4 text-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
@@ -648,7 +690,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   // ═══════════════════ DESKTOP — Two-Panel Welcome ═══════════════════
   return (
     <div className="signup-wrap min-h-screen bg-surface flex flex-col">
-      {adminStrip}
+      {canSetSeason && adminStrip}
 
       <div className="signup flex-1">
         {/* ── Left: A warm welcome ── */}
@@ -748,7 +790,11 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
               <div>
                 {formBody}
-                <div className="flex items-center justify-between mt-6 pt-2">
+                <div className={cn('su-fields-state', isFormValid && 'ready')} role="status">
+                  <span className="su-fields-state-dot" aria-hidden="true" />
+                  <span>{requiredGuidance}</span>
+                </div>
+                <div className="flex items-center justify-between mt-3">
                   <button
                     type="button"
                     className="text-sm text-on-surface-variant hover:text-on-surface transition-colors px-3 py-2 cursor-pointer"

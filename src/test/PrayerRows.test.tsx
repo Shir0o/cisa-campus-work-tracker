@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 
@@ -21,8 +22,72 @@ const personal = (over: any = {}) => ({
   ...over,
 } as any);
 
+// Mirrors My Day: only open prayers render, so a status write that lands before
+// the composer opens re-filters the row and unmounts it.
+function HomePrayerList() {
+  const [p, setP] = useState(prayer({ status: 'pending' }));
+  const open = p.status !== 'answered' && p.status !== 'unanswered';
+  return open ? (
+    <TeamPrayerRow
+      prayer={p}
+      first
+      onUpdateStatus={(_id, status, answer, answeredAt, archiveReason) => {
+        setP((prev) => ({ ...prev, status, answer, answeredAt, archiveReason }));
+      }}
+      onOpenContact={vi.fn()}
+      onOpenPrayerLog={vi.fn()}
+    />
+  ) : (
+    <p>no prayers</p>
+  );
+}
+
+function HomePersonalPrayerList() {
+  const [p, setP] = useState(personal({ status: 'open' }));
+  const open = p.status !== 'answered' && p.status !== 'archived';
+  return open ? (
+    <PersonalPrayerRow
+      prayer={p}
+      first
+      contacts={[]}
+      onUpdate={(_id, patch) => setP((prev) => ({ ...prev, ...patch }))}
+      onDelete={vi.fn()}
+      onOpenContact={vi.fn()}
+    />
+  ) : (
+    <p>no prayers</p>
+  );
+}
+
 describe('TeamPrayerRow', () => {
-  it('marks a prayer answered without an answer and opens the composer', () => {
+  it('keeps the archive reason on screen instead of unmounting the row', () => {
+    render(<HomePrayerList />);
+    fireEvent.click(screen.getByText('archive'));
+    expect(
+      screen.getByPlaceholderText(/A note on why this is archived/),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/A note on why this is archived/), {
+      target: { value: 'Moved away' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    expect(screen.getByText('no prayers')).toBeInTheDocument();
+  });
+
+  it('keeps the answered testimony on screen instead of unmounting the row', () => {
+    render(<HomePrayerList />);
+    fireEvent.click(screen.getByText('answered'));
+    expect(
+      screen.getByPlaceholderText(/A sentence on how God answered/),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/A sentence on how God answered/), {
+      target: { value: 'Healed' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    expect(screen.getByText('no prayers')).toBeInTheDocument();
+  });
+  it('opens the answered composer before committing the status', () => {
     const onUpdateStatus = vi.fn();
     render(
       <TeamPrayerRow
@@ -34,7 +99,7 @@ describe('TeamPrayerRow', () => {
       />
     );
     fireEvent.click(screen.getByText('answered'));
-    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'answered', undefined, expect.any(String));
+    expect(onUpdateStatus).not.toHaveBeenCalled();
     expect(screen.getByText(/How was it answered/)).toBeInTheDocument();
   });
 
@@ -90,7 +155,7 @@ describe('TeamPrayerRow', () => {
     expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'answered', 'New testimony', 'Aug 1');
   });
 
-  it('skips out of the composer without saving', () => {
+  it('skips the testimony but still marks the prayer answered', () => {
     const onUpdateStatus = vi.fn();
     render(
       <TeamPrayerRow
@@ -103,10 +168,11 @@ describe('TeamPrayerRow', () => {
     );
     fireEvent.click(screen.getByText('answered'));
     fireEvent.click(screen.getByText('Skip'));
+    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'answered', undefined, expect.any(String));
     expect(screen.queryByText(/How was it answered/)).not.toBeInTheDocument();
   });
 
-  it('saves an archive reason through the composer when marking as archive', () => {
+  it('opens the archive composer before committing the status', () => {
     const onUpdateStatus = vi.fn();
     render(
       <TeamPrayerRow
@@ -118,7 +184,8 @@ describe('TeamPrayerRow', () => {
       />
     );
     fireEvent.click(screen.getByText('archive'));
-    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, undefined);
+    expect(onUpdateStatus).not.toHaveBeenCalled();
+    expect(screen.getByText(/Why is this archived/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText(/A note on why this is archived/), {
       target: { value: 'Moved out of area' },
@@ -146,7 +213,7 @@ describe('TeamPrayerRow', () => {
     expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, 'New archive reason');
   });
 
-  it('skips out of the archive reason composer without saving', () => {
+  it('skips the reason but still marks the prayer archived', () => {
     const onUpdateStatus = vi.fn();
     render(
       <TeamPrayerRow
@@ -159,6 +226,7 @@ describe('TeamPrayerRow', () => {
     );
     fireEvent.click(screen.getByText('archive'));
     fireEvent.click(screen.getByText('Skip'));
+    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, undefined);
     expect(screen.queryByText(/Why is this archived/)).not.toBeInTheDocument();
   });
 
@@ -174,6 +242,7 @@ describe('TeamPrayerRow', () => {
       />
     );
     fireEvent.click(screen.getByText('answered'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onUpdateStatus).toHaveBeenCalled();
   });
 
@@ -234,7 +303,21 @@ describe('TeamPrayerRow', () => {
 });
 
 describe('PersonalPrayerRow', () => {
-  it('marks a prayer answered and opens the composer', () => {
+  it('keeps the answered testimony on screen instead of unmounting the row', () => {
+    render(<HomePersonalPrayerList />);
+    fireEvent.click(screen.getByText('answered'));
+    expect(
+      screen.getByPlaceholderText(/A sentence on how God answered/),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/A sentence on how God answered/), {
+      target: { value: 'Praise God' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    expect(screen.getByText('no prayers')).toBeInTheDocument();
+  });
+
+  it('opens the answered composer before committing the status', () => {
     const onUpdate = vi.fn();
     render(
       <PersonalPrayerRow
@@ -247,8 +330,29 @@ describe('PersonalPrayerRow', () => {
       />
     );
     fireEvent.click(screen.getByText('answered'));
-    expect(onUpdate).toHaveBeenCalledWith('pp1', { status: 'answered', answeredAt: expect.any(String) });
+    expect(onUpdate).not.toHaveBeenCalled();
     expect(screen.getByText(/How was it answered/)).toBeInTheDocument();
+  });
+
+  it('skips the testimony but still marks the personal prayer answered', () => {
+    const onUpdate = vi.fn();
+    render(
+      <PersonalPrayerRow
+        prayer={personal({ status: 'open' })}
+        first
+        contacts={[]}
+        onUpdate={onUpdate}
+        onDelete={vi.fn()}
+        onOpenContact={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('answered'));
+    fireEvent.click(screen.getByText('Skip'));
+    expect(onUpdate).toHaveBeenCalledWith('pp1', {
+      status: 'answered',
+      answeredBody: undefined,
+      answeredAt: expect.any(String),
+    });
   });
 
   it('saves an answered body', () => {
