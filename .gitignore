@@ -66,5 +66,7 @@ mcp/node_modules/
 mcp/.dev.vars
 mcp/.wrangler/
 
-# Local agent settings (project-scope MCP config, machine-specific paths)
-.gemini/
+# Local agent settings: keep the machine-specific config out, ship the example
+.gemini/*
+!.gemini/README.md
+!.gemini/settings.example.json
