@@ -65,3 +65,6 @@ docs/design/**/[a-z]*-*.html
 mcp/node_modules/
 mcp/.dev.vars
 mcp/.wrangler/
+
+# Local agent settings (project-scope MCP config, machine-specific paths)
+.gemini/
