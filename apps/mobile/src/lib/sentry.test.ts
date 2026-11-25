@@ -10,6 +10,7 @@ import {
   measureFirestore,
   wrapRootLayout,
   buildMobileSentryOptions,
+  shouldInitMobileSentry,
 } from './sentry';
 
 describe('sentry (mobile telemetry)', () => {
@@ -116,6 +117,15 @@ describe('sentry (mobile telemetry)', () => {
         true
       );
       expect(options.tracesSampleRate).toBe(1.0);
+    });
+  });
+
+  describe('free-plan quota discipline', () => {
+    it('initializes only outside development builds with a DSN', () => {
+      expect(shouldInitMobileSentry('https://public@sentry.example.com/2', false)).toBe(true);
+      expect(shouldInitMobileSentry('https://public@sentry.example.com/2', true)).toBe(false);
+      expect(shouldInitMobileSentry(undefined, false)).toBe(false);
+      expect(shouldInitMobileSentry('', false)).toBe(false);
     });
   });
 });

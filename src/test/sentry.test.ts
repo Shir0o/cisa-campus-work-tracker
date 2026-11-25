@@ -9,6 +9,8 @@ import {
   measureFirestore,
   wrapRoutesWithSentry,
   buildSentryOptions,
+  shouldInitSentry,
+  isNoisyRequest,
 } from '../lib/sentry';
 
 describe('sentry (web & pwa telemetry)', () => {
@@ -100,6 +102,26 @@ describe('sentry (web & pwa telemetry)', () => {
     it('uses 100% traces sample rate in development environment', () => {
       const options = buildSentryOptions('https://public@sentry.example.com/1', 'development');
       expect(options.tracesSampleRate).toBe(1.0);
+    });
+  });
+
+  describe('free-plan quota discipline', () => {
+    it('initializes only in production builds with a DSN', () => {
+      expect(shouldInitSentry('https://public@sentry.example.com/1', true)).toBe(true);
+      // Local dev with a DSN in .env.local must not send errors or spans.
+      expect(shouldInitSentry('https://public@sentry.example.com/1', false)).toBe(false);
+      expect(shouldInitSentry(undefined, true)).toBe(false);
+      expect(shouldInitSentry('', true)).toBe(false);
+    });
+
+    it('skips spans for Google background traffic only', () => {
+      expect(isNoisyRequest('https://www.google.com/recaptcha/api2/clr')).toBe(true);
+      expect(
+        isNoisyRequest('https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel')
+      ).toBe(true);
+      expect(isNoisyRequest('/api/contacts')).toBe(false);
+      expect(isNoisyRequest('https://example.com/google.com')).toBe(false);
+      expect(isNoisyRequest('https://notgoogle.com/')).toBe(false);
     });
   });
 });

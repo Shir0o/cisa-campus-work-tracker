@@ -2,7 +2,8 @@
 // Complies with AGENTS.md Rule 6:
 // - Zero session recording / replay scripts (CIPA / Wiretapping compliance)
 // - Zero PII: sendDefaultPii=false, opaque Firebase UID only, no emails/usernames/IPs
-// - Inert when VITE_SENTRY_DSN is unset (zero test/dev overhead)
+// - Inert in dev builds and when VITE_SENTRY_DSN is unset, so local work never
+//   spends the free-plan quota or raises alerts
 
 import * as Sentry from '@sentry/react';
 import React from 'react';
@@ -14,6 +15,23 @@ import {
 } from 'react-router-dom';
 
 let isInitialized = false;
+
+/** Only production builds with a DSN report; local dev stays silent. */
+export function shouldInitSentry(dsn: string | undefined, isProd: boolean): boolean {
+  return isProd && !!dsn;
+}
+
+// Background Google traffic (auth, Firestore long-poll) makes slow, noisy
+// spans that tell us nothing about the app.
+const NOISY_HOSTS = /(^|\.)google\.com$|(^|\.)googleapis\.com$/;
+
+export function isNoisyRequest(url: string): boolean {
+  try {
+    return NOISY_HOSTS.test(new URL(url, 'http://localhost').hostname);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Build Sentry client options ensuring strict AGENTS.md compliance.
@@ -36,6 +54,7 @@ export function buildSentryOptions(
         useNavigationType,
         createRoutesFromChildren,
         matchRoutes,
+        shouldCreateSpanForRequest: (url) => !isNoisyRequest(url),
       }),
     ],
 
@@ -73,7 +92,7 @@ export function buildSentryOptions(
 export function initSentry(): void {
   if (isInitialized) return;
   const dsn = import.meta.env.VITE_SENTRY_DSN;
-  if (!dsn) return;
+  if (!shouldInitSentry(dsn, import.meta.env.PROD)) return;
 
   try {
     const options = buildSentryOptions(

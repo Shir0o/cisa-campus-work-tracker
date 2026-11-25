@@ -13,6 +13,11 @@ import React from 'react';
 let Sentry: typeof SentryModule | null = null;
 let routingIntegrationInstance: any = null;
 
+/** Only non-development builds with a DSN report; dev builds stay silent. */
+export function shouldInitMobileSentry(dsn: string | undefined, isDev: boolean): boolean {
+  return !isDev && !!dsn;
+}
+
 export interface MobileSentryOptions {
   dsn: string;
   environment: string;
@@ -74,11 +79,11 @@ export function buildMobileSentryOptions(
 export function initSentry(): void {
   if (Sentry) return;
   const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
-  if (!dsn) return;
+  const isDev = process.env.NODE_ENV === 'development';
+  if (!dsn || !shouldInitMobileSentry(dsn, isDev)) return;
 
   try {
     const mod = require('@sentry/react-native') as typeof SentryModule;
-    const isDev = process.env.NODE_ENV === 'development';
     const env = process.env.EXPO_PUBLIC_APP_ENV || 'production';
     const options = buildMobileSentryOptions(dsn, env, isDev);
 
