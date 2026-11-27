@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.17.0...v1.17.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **sentry:** report only from production builds ([#2069](https://github.com/Shir0o/cisa-campus-work-tracker/issues/2069)) ([1c73b02](https://github.com/Shir0o/cisa-campus-work-tracker/commit/1c73b026bf3e82db8a4f4a4ee53831ab064d50cd))
+
 ## [1.17.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.16.0...v1.17.0) (2026-11-19)
 
 
