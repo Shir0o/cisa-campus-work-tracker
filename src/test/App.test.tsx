@@ -192,6 +192,34 @@ describe('App Component', () => {
     expect(screen.getByText('Sign in with Google')).toBeInTheDocument();
   });
 
+  it('exposes the sign-in view as the main landmark with a single h1 title', () => {
+    render(<App />);
+    const main = screen.getByRole('main');
+    expect(main).toHaveAttribute('data-testid', 'sign-in-view');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Welcome to CISA Campus Work Tracker' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+  });
+
+  it('labels the email and password inputs for assistive technology', () => {
+    render(<App />);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('id', 'signin-email');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('id', 'signin-password');
+  });
+
+  it('keeps Google as the only filled primary CTA and demotes email sign-in', () => {
+    render(<App />);
+    const googleBtn = screen.getByRole('button', { name: 'Sign in with Google' });
+    const emailBtn = screen.getByRole('button', { name: 'Sign in with email' });
+
+    expect(googleBtn.className).toMatch(/\bbg-primary\b/);
+    expect(emailBtn.className).not.toMatch(/\bbg-primary\b/);
+    expect(emailBtn.className).toMatch(/\bbg-surface\b/);
+    expect(emailBtn.className).toMatch(/\bborder-outline\b/);
+    expect(emailBtn.className).toMatch(/focus-visible:ring-2/);
+  });
+
   it('shows the MFA challenge and completes it with the entered code', async () => {
     mockAuthValue.user = null;
     mockAuthValue.pendingMfa = { hints: [{ uid: 'factor-1', factorId: 'totp' }] };
@@ -304,7 +332,7 @@ describe('App Component', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Incorrect email or password.')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toHaveTextContent('Incorrect email or password.');
     });
   });
 

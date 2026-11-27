@@ -107,6 +107,7 @@ export function useOptionalLayout(): LayoutContextType | undefined {
 
 function EmailPasswordForm() {
   const { signInWithEmail } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
@@ -125,8 +126,8 @@ function EmailPasswordForm() {
       const code = err?.code ?? "";
       setError(
         code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")
-          ? "Incorrect email or password."
-          : "Sign-in failed. Please try again.",
+          ? t("auth.invalid_credentials")
+          : t("auth.sign_in_failed"),
       );
       setBusy(false);
     }
@@ -134,59 +135,83 @@ function EmailPasswordForm() {
 
   return (
     <form onSubmit={submit} className="mt-6 space-y-3 text-left">
-      <input
-        type="email"
-        autoComplete="username"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
-        required
-      />
-    <div className="relative">
-      <input
-        ref={passwordRef}
-        type={showPassword ? "text" : "password"}
-        autoComplete="current-password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 pr-12 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
-        required
-      />
-      <button
-        type="button"
-        onClick={() => {
-          setShowPassword((v) => !v);
-          passwordRef.current?.focus();
-        }}
-        aria-label={showPassword ? "Hide password" : "Show password"}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors cursor-pointer"
-      >
-        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-      </button>
-    </div>
-      {error && <p className="text-sm text-error px-1">{error}</p>}
+      <div>
+        <label
+          htmlFor="signin-email"
+          className="block text-sm font-medium text-on-surface mb-1.5"
+        >
+          {t("auth.email_label")}
+        </label>
+        <input
+          id="signin-email"
+          type="email"
+          autoComplete="username"
+          placeholder={t("auth.email_placeholder")}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline-variant focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
+          required
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="signin-password"
+          className="block text-sm font-medium text-on-surface mb-1.5"
+        >
+          {t("auth.password_label")}
+        </label>
+        <div className="relative">
+          <input
+            id="signin-password"
+            ref={passwordRef}
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder={t("auth.password_placeholder")}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 pr-12 rounded-xl bg-surface border border-outline-variant focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary outline-none text-on-surface placeholder:text-on-surface-variant/70 transition-colors"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setShowPassword((v) => !v);
+              passwordRef.current?.focus();
+            }}
+            aria-label={showPassword ? t("auth.hide_password") : t("auth.show_password")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-on-surface-variant hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors cursor-pointer"
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-error px-1">
+          {error}
+        </p>
+      )}
       <button
         type="submit"
         disabled={busy}
-        className="w-full py-3 bg-primary text-on-primary rounded-full font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+        className="w-full py-3 bg-surface text-on-surface border border-outline rounded-full font-semibold hover:bg-surface-container-high active:scale-[0.98] disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >
-        {busy ? "Signing in…" : "Sign in with email"}
+        {busy ? t("auth.signing_in") : t("auth.sign_in_email")}
       </button>
-      <div className="pt-2 text-center flex items-center justify-center gap-3 text-xs text-on-surface-variant">
+      <div className="pt-2 text-center flex flex-wrap items-center justify-center gap-x-1 text-xs text-on-surface-variant">
         <Link
           to="/privacy"
-          className="hover:text-accent transition-colors underline"
+          className="inline-flex items-center min-h-[44px] sm:min-h-[32px] px-2 rounded-md underline underline-offset-2 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
         >
-          Privacy Policy
+          {t("auth.privacy_policy")}
         </Link>
-        <span>&bull;</span>
+        <span aria-hidden="true" className="px-1">
+          ·
+        </span>
         <Link
           to="/support"
-          className="hover:text-accent transition-colors underline"
+          className="inline-flex items-center min-h-[44px] sm:min-h-[32px] px-2 rounded-md underline underline-offset-2 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
         >
-          Support
+          {t("auth.support")}
         </Link>
       </div>
     </form>
@@ -195,6 +220,7 @@ function EmailPasswordForm() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut, pendingMfa, completeMfaSignIn, cancelMfa } = useAuth();
+  const { t } = useLanguage();
   const [signInError, setSignInError] = React.useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = React.useState(false);
   const googleBusyRef = React.useRef(false);
@@ -311,14 +337,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       );
     }
     return (
-      <div
+      <main
         data-testid="sign-in-view"
         className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
       >
         <div className="max-w-md w-full bg-surface-container rounded-2xl p-6 sm:p-8 shadow-sm text-center border border-outline-variant">
-          <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
+          <h1 className="text-2xl sm:text-3xl font-medium tracking-tight text-balance mb-3">
+            {t("auth.welcome_title")}
+          </h1>
           <p className="text-on-surface-variant mb-8">
-            Please sign in with your Google account to continue.
+            {t("auth.welcome_subtitle")}
           </p>
           <button
             onClick={handleSignIn}
@@ -333,7 +361,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
               aria-hidden="true"
               className={cn("w-5 h-5 bg-white rounded-full p-0.5", googleBusy && "hidden")}
             />
-            {googleBusy ? "Signing in…" : "Sign in with Google"}
+            {googleBusy ? t("auth.signing_in") : t("auth.sign_in_google")}
           </button>
 
           {signInError && (
@@ -344,13 +372,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3 my-6">
             <div className="flex-1 h-px bg-outline-variant" />
-            <span className="text-xs text-on-surface-variant">or</span>
+            <span className="text-xs text-on-surface-variant">{t("auth.or_divider")}</span>
             <div className="flex-1 h-px bg-outline-variant" />
           </div>
 
           <EmailPasswordForm />
         </div>
-      </div>
+      </main>
     );
   }
 
