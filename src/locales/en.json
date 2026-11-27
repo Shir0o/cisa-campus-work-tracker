@@ -28,6 +28,24 @@
     "back_to": "Back to {place}",
     "mobile_navigation": "Mobile Navigation"
   },
+  "auth": {
+    "welcome_title": "Welcome to CISA Campus Work Tracker",
+    "welcome_subtitle": "Please sign in with your Google account to continue.",
+    "sign_in_google": "Sign in with Google",
+    "signing_in": "Signing in…",
+    "or_divider": "or",
+    "email_label": "Email",
+    "email_placeholder": "Email",
+    "password_label": "Password",
+    "password_placeholder": "Password",
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "sign_in_email": "Sign in with email",
+    "invalid_credentials": "Incorrect email or password.",
+    "sign_in_failed": "Sign-in failed. Please try again.",
+    "privacy_policy": "Privacy Policy",
+    "support": "Support"
+  },
   "actions": {
     "add_someone": "Add someone",
     "log_visit": "Log a visit",
