@@ -65,3 +65,8 @@ docs/design/**/[a-z]*-*.html
 mcp/node_modules/
 mcp/.dev.vars
 mcp/.wrangler/
+
+# Local agent settings: keep the machine-specific config out, ship the example
+.gemini/*
+!.gemini/README.md
+!.gemini/settings.example.json
