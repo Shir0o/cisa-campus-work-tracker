@@ -10,6 +10,12 @@ updates:
         dependency-type: development
       production-dependencies:
         dependency-type: production
+    ignore:
+      # TypeScript majors move faster than @typescript-eslint's peer range
+      # (8.x supports typescript <6.1.0), so a TS major breaks npm ci.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
